@@ -1,5 +1,6 @@
 import { DcaCalculator } from '@/components/DcaCalculator';
 import { AdSlot } from '@/components/AdSlot';
+import { EducationalContent } from '@/components/EducationalContent';
 
 export default function Home() {
   return (
@@ -21,29 +22,17 @@ export default function Home() {
       {/* Content Blocks */}
       <div className="grid md:grid-cols-3 gap-8 items-start">
         <div className="md:col-span-2 space-y-8">
-          <section className="prose dark:prose-invert max-w-none">
-            <h3 className="text-2xl font-bold text-slate-900 dark:text-white">What is Dollar Cost Averaging (DCA)?</h3>
-            <p className="text-slate-600 dark:text-slate-400">
-              Dollar Cost Averaging (DCA) is an investment strategy where you divide the total amount to be invested across periodic purchases of a target asset in an effort to reduce the impact of volatility on the overall purchase. The purchases occur regardless of the asset's price and at regular intervals.
-            </p>
-            <p className="text-slate-600 dark:text-slate-400">
-              For Bitcoin, this strategy is particularly popular because it removes the emotional component of "timing the market" and takes advantage of Bitcoin's long-term upward trend while mitigating short-term crashes.
-            </p>
-
-            <h3 className="text-2xl font-bold text-slate-900 dark:text-white mt-8">Why Use a Bitcoin DCA Calculator?</h3>
-            <ul className="list-disc pl-5 text-slate-600 dark:text-slate-400 space-y-2">
-              <li><strong>Visualize Growth:</strong> See exactly how small, regular contributions can compound over time.</li>
-              <li><strong>Compare Strategies:</strong> Test different frequencies (daily vs weekly) to see what works best.</li>
-              <li><strong>Understand value:</strong> Track the "Avg. Cost" to see your break-even price.</li>
-            </ul>
-          </section>
+          <div className="mb-12">
+            <EducationalContent />
+          </div>
 
           <section className="space-y-4">
             <h3 className="text-2xl font-bold text-slate-900 dark:text-white">Frequently Asked Questions</h3>
             <div className="space-y-4">
-              <ConfigurableFaq question="Is this calculator accurate?" answer="We use real historical daily price data from Kraken for our 'Live API' mode. However, for dates where data might be missing, we use a closest-match fallback. It is intended for estimation and educational purposes." />
-              <ConfigurableFaq question="Does this include transaction fees?" answer="Yes! You can adjust the 'Fee %' input to simulate exchange fees (e.g., Coinbase or Binance usually charge 0.1% to 1.5%)." />
-              <ConfigurableFaq question="What is the best frequency for DCA?" answer="Historically, there is little difference between daily and weekly DCA over long periods. Weekly is often preferred to minimize transaction fees and record-keeping." />
+              <ConfigurableFaq question="Is this calculator accurate?" answer="We use real historical daily price data from high-volume exchanges for our 'Live API' mode. However, for dates where data might be missing, we use a closest-match fallback. It is intended for estimation and educational purposes." />
+              <ConfigurableFaq question="Does this include transaction fees?" answer="Yes! You can adjust the 'Fee %' input to simulate exchange fees. Most major exchanges like Coinbase, Kraken, or Binance charge between 0.1% and 1.5% per transaction, which can impact long-term returns." />
+              <ConfigurableFaq question="What is the best frequency for DCA?" answer="Historically, the difference between Daily and Weekly DCA is negligible over multi-year periods. Weekly is often preferred by manual investors to minimize transaction fees and record-keeping effort, while Daily is great for automated setups." />
+              <ConfigurableFaq question="Can I export my data?" answer="Currently, this tool is a visualizer. We are working on a feature to export your calculation results to CSV for tax or record-keeping purposes." />
             </div>
           </section>
         </div>
