@@ -297,7 +297,12 @@ const PricePredictionScenario = ({ btcAmount, totalInvested }: { btcAmount: numb
                     </div>
                     <div className="flex justify-between items-center pt-2">
                         <span className="text-slate-400">Total Profit</span>
-                        <span className="text-lg font-semibold text-green-300">+${projectedProfit.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
+                        <span className={clsx(
+                            "text-lg font-semibold",
+                            projectedProfit >= 0 ? "text-green-300" : "text-red-400"
+                        )}>
+                            {projectedProfit >= 0 ? '+' : ''}${projectedProfit.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                        </span>
                     </div>
                     <div className="flex justify-between items-center">
                         <span className="text-slate-400">Multiplier</span>
