@@ -7,7 +7,7 @@ import { calculateDca } from '@/utils/dca';
 import { getBitcoinPriceHistory, getCurrentBitcoinPrice } from '@/app/actions';
 import { DcaChart } from './DcaChart';
 import { AdSlot } from './AdSlot';
-import { Loader2, TrendingUp, TrendingDown, DollarSign, Activity } from 'lucide-react';
+import { Loader2, TrendingUp, TrendingDown, DollarSign, Activity, Repeat } from 'lucide-react';
 import clsx from 'clsx';
 
 export const DcaCalculator = () => {
@@ -21,6 +21,10 @@ export const DcaCalculator = () => {
     const [feePercentage, setFeePercentage] = useState<number>(0.5);
     const [priceMode, setPriceMode] = useState<PriceMode>('api');
     const [manualPrice, setManualPrice] = useState<number>(50000);
+    const [provider, setProvider] = useState<'kraken' | 'coinbase'>('kraken');
+
+    // New state for Unit Toggle
+    const [unit, setUnit] = useState<'BTC' | 'SATS'>('BTC');
 
     const [priceData, setPriceData] = useState<[number, number][]>([]);
     const [livePrice, setLivePrice] = useState<number | null>(null);
@@ -40,15 +44,15 @@ export const DcaCalculator = () => {
 
                 // Fetch parallel
                 const [history, current] = await Promise.all([
-                    getBitcoinPriceHistory(startTs, endTs + 86400000),
-                    getCurrentBitcoinPrice()
+                    getBitcoinPriceHistory(startTs, endTs + 86400000, provider),
+                    getCurrentBitcoinPrice(provider)
                 ]);
 
                 setPriceData(history);
                 setLivePrice(current);
             } catch (err) {
                 console.error(err);
-                setError('Failed to fetch live prices (API limit or error). Switched to manual mode.');
+                setError(`Failed to fetch live prices from ${provider}. Switched to manual mode.`);
             } finally {
                 setLoading(false);
             }
@@ -57,7 +61,7 @@ export const DcaCalculator = () => {
         const timer = setTimeout(fetchPrices, 500);
         return () => clearTimeout(timer);
 
-    }, [startDate, endDate, priceMode]);
+    }, [startDate, endDate, priceMode, provider]);
 
     const results = useMemo(() => {
         return calculateDca({
@@ -145,35 +149,50 @@ export const DcaCalculator = () => {
                         />
                     </div>
 
-                    {/* Price Mode */}
-                    <div className="space-y-2">
-                        <label className="text-sm font-medium text-slate-600 dark:text-slate-300 flex justify-between">
-                            <span>Price Mode</span>
-                        </label>
-                        <div className="flex bg-slate-100 dark:bg-slate-800 rounded-lg p-1">
-                            <button
-                                onClick={() => setPriceMode('api')}
-                                className={clsx(
-                                    "flex-1 py-1.5 text-sm font-medium rounded-md transition-all",
-                                    priceMode === 'api'
-                                        ? "bg-white dark:bg-slate-700 shadow text-amber-600 dark:text-amber-400"
-                                        : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
-                                )}
-                            >
-                                Live API
-                            </button>
-                            <button
-                                onClick={() => setPriceMode('manual')}
-                                className={clsx(
-                                    "flex-1 py-1.5 text-sm font-medium rounded-md transition-all",
-                                    priceMode === 'manual'
-                                        ? "bg-white dark:bg-slate-700 shadow text-amber-600 dark:text-amber-400"
-                                        : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
-                                )}
-                            >
-                                Manual
-                            </button>
+                    {/* Price Mode & Provider */}
+                    <div className="space-y-4">
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium text-slate-600 dark:text-slate-300">Price Mode</label>
+                            <div className="flex bg-slate-100 dark:bg-slate-800 rounded-lg p-1">
+                                <button
+                                    onClick={() => setPriceMode('api')}
+                                    className={clsx(
+                                        "flex-1 py-1.5 text-sm font-medium rounded-md transition-all",
+                                        priceMode === 'api'
+                                            ? "bg-white dark:bg-slate-700 shadow text-amber-600 dark:text-amber-400"
+                                            : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+                                    )}
+                                >
+                                    Live API
+                                </button>
+                                <button
+                                    onClick={() => setPriceMode('manual')}
+                                    className={clsx(
+                                        "flex-1 py-1.5 text-sm font-medium rounded-md transition-all",
+                                        priceMode === 'manual'
+                                            ? "bg-white dark:bg-slate-700 shadow text-amber-600 dark:text-amber-400"
+                                            : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+                                    )}
+                                >
+                                    Manual
+                                </button>
+                            </div>
                         </div>
+
+                        {/* Data Provider (Only visible in API mode) */}
+                        {priceMode === 'api' && (
+                            <div className="fade-in">
+                                <label className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-1 block">Data Source</label>
+                                <select
+                                    value={provider}
+                                    onChange={(e) => setProvider(e.target.value as 'kraken' | 'coinbase')}
+                                    className="w-full text-sm px-3 py-1.5 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 outline-none focus:border-amber-500"
+                                >
+                                    <option value="kraken">Kraken</option>
+                                    <option value="coinbase">Coinbase</option>
+                                </select>
+                            </div>
+                        )}
                     </div>
 
                     {/* Manual Price Input */}
@@ -206,7 +225,23 @@ export const DcaCalculator = () => {
             {/* Results Section */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <ResultCard label="Total Invested" value={`$${results.totalInvested.toLocaleString()}`} />
-                <ResultCard label="BTC Accumulated" value={`${results.btcAccumulated.toFixed(8)} ₿`} subValue={`Avg Cost: $${results.averageCost.toLocaleString()}`} />
+                <ResultCard
+                    label={unit === 'BTC' ? "BTC Accumulated" : "Sats Accumulated"}
+                    value={unit === 'BTC'
+                        ? `${results.btcAccumulated.toFixed(8)} ₿`
+                        : `${Math.floor(results.btcAccumulated * 100_000_000).toLocaleString()} Sats`
+                    }
+                    subValue={`Avg Cost: $${results.averageCost.toLocaleString()}`}
+                    action={
+                        <button
+                            onClick={() => setUnit(prev => prev === 'BTC' ? 'SATS' : 'BTC')}
+                            className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition-colors"
+                            title={`Switch to ${unit === 'BTC' ? 'Sats' : 'BTC'}`}
+                        >
+                            <Repeat className="w-4 h-4 text-slate-400" />
+                        </button>
+                    }
+                />
                 <ResultCard
                     label="Current Value"
                     value={`$${results.currentValue.toLocaleString()}`}
@@ -235,14 +270,17 @@ export const DcaCalculator = () => {
     );
 };
 
-const ResultCard = ({ label, value, subValue, highlight, valueColor, icon, subValueColor }: any) => (
+const ResultCard = ({ label, value, subValue, highlight, valueColor, icon, subValueColor, action }: any) => (
     <div className={clsx(
-        "p-6 rounded-xl border transition-all",
+        "p-6 rounded-xl border transition-all relative group",
         highlight
             ? "bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800/50"
             : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800"
     )}>
-        <div className="text-sm text-slate-500 dark:text-slate-400 mb-1">{label}</div>
+        <div className="flex justify-between items-start mb-1">
+            <div className="text-sm text-slate-500 dark:text-slate-400">{label}</div>
+            {action && <div className="opacity-100 transition-opacity">{action}</div>}
+        </div>
         <div className="flex items-center gap-2">
             <div className={clsx("text-2xl font-bold text-slate-900 dark:text-slate-100", valueColor)}>{value}</div>
             {icon}
