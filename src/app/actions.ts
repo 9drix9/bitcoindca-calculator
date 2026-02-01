@@ -304,16 +304,30 @@ export async function getCpiData(from: number, to: number): Promise<[number, num
 
 export async function getMempoolFees(): Promise<{ highFee: number; mediumFee: number; lowFee: number } | null> {
     try {
-        const response = await fetch('https://mempool.space/api/v1/fees/mempool-blocks', {
-            next: { revalidate: 300 } // 5 min cache
-        });
-        if (!response.ok) return null;
-        const blocks: { medianFee: number }[] = await response.json();
-        if (!Array.isArray(blocks) || blocks.length === 0) return null;
+        const [recRes, blocksRes] = await Promise.all([
+            fetch('https://mempool.space/api/v1/fees/recommended', { next: { revalidate: 30 } }),
+            fetch('https://mempool.space/api/v1/fees/mempool-blocks', { next: { revalidate: 30 } }),
+        ]);
+
+        if (!recRes.ok) return null;
+        const rec = await recRes.json();
+
+        let mediumFee = rec.halfHourFee as number;
+        let lowFee = rec.hourFee as number;
+
+        // Use mempool-blocks for decimal precision on medium/low tiers
+        if (blocksRes.ok) {
+            const blocks: { medianFee: number }[] = await blocksRes.json();
+            if (Array.isArray(blocks) && blocks.length >= 3) {
+                mediumFee = blocks[1].medianFee;
+                lowFee = blocks[Math.min(3, blocks.length - 1)].medianFee;
+            }
+        }
+
         return {
-            highFee: blocks[0]?.medianFee ?? 0,
-            mediumFee: blocks[Math.min(1, blocks.length - 1)]?.medianFee ?? 0,
-            lowFee: blocks[Math.min(2, blocks.length - 1)]?.medianFee ?? 0,
+            highFee: rec.fastestFee as number,
+            mediumFee,
+            lowFee,
         };
     } catch {
         return null;
