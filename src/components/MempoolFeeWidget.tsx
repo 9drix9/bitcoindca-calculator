@@ -4,11 +4,9 @@ import { useState, useEffect } from 'react';
 import { getMempoolFees } from '@/app/actions';
 
 interface MempoolFees {
-    fastestFee: number;
-    halfHourFee: number;
-    hourFee: number;
-    economyFee: number;
-    minimumFee: number;
+    highFee: number;
+    mediumFee: number;
+    lowFee: number;
 }
 
 interface MempoolFeeWidgetProps {
@@ -19,7 +17,14 @@ const getFeeColor = (fee: number) => {
     if (fee >= 100) return 'text-red-500';
     if (fee >= 50) return 'text-orange-500';
     if (fee >= 20) return 'text-amber-500';
+    if (fee >= 5) return 'text-yellow-500';
     return 'text-green-500';
+};
+
+const formatFee = (fee: number) => {
+    if (fee >= 10) return fee.toFixed(0);
+    if (fee >= 1) return fee.toFixed(1);
+    return fee.toFixed(2);
 };
 
 export const MempoolFeeWidget = ({ initialData }: MempoolFeeWidgetProps) => {
@@ -37,10 +42,7 @@ export const MempoolFeeWidget = ({ initialData }: MempoolFeeWidgetProps) => {
             }
         };
 
-        // Fetch immediately on mount to get fresh data
         refresh();
-
-        // Then poll every 30 seconds
         const interval = setInterval(refresh, 30_000);
         return () => { mounted = false; clearInterval(interval); };
     }, []);
@@ -48,9 +50,9 @@ export const MempoolFeeWidget = ({ initialData }: MempoolFeeWidgetProps) => {
     if (!data) return null;
 
     const fees = [
-        { label: 'High', value: data.fastestFee, desc: '~10 min' },
-        { label: 'Medium', value: data.halfHourFee, desc: '~30 min' },
-        { label: 'Low', value: data.hourFee, desc: '~60 min' },
+        { label: 'High', value: data.highFee, desc: '~10 min' },
+        { label: 'Medium', value: data.mediumFee, desc: '~30 min' },
+        { label: 'Low', value: data.lowFee, desc: '~60 min' },
     ];
 
     return (
@@ -64,7 +66,7 @@ export const MempoolFeeWidget = ({ initialData }: MempoolFeeWidgetProps) => {
                             <span className="text-[10px] text-slate-400 dark:text-slate-500">({fee.desc})</span>
                         </div>
                         <span className={`text-xs sm:text-sm font-mono font-semibold tabular-nums ${getFeeColor(fee.value)}`}>
-                            {fee.value} <span className="text-[10px] font-normal text-slate-400">sat/vB</span>
+                            {formatFee(fee.value)} <span className="text-[10px] font-normal text-slate-400">sat/vB</span>
                         </span>
                     </div>
                 ))}
