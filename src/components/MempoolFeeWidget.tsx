@@ -1,5 +1,8 @@
 'use client';
 
+import { useState, useEffect } from 'react';
+import { getMempoolFees } from '@/app/actions';
+
 interface MempoolFees {
     fastestFee: number;
     halfHourFee: number;
@@ -20,12 +23,34 @@ const getFeeColor = (fee: number) => {
 };
 
 export const MempoolFeeWidget = ({ initialData }: MempoolFeeWidgetProps) => {
-    if (!initialData) return null;
+    const [data, setData] = useState<MempoolFees | null>(initialData);
+
+    useEffect(() => {
+        let mounted = true;
+
+        const refresh = async () => {
+            try {
+                const fresh = await getMempoolFees();
+                if (mounted && fresh) setData(fresh);
+            } catch {
+                // keep showing last known data
+            }
+        };
+
+        // Fetch immediately on mount to get fresh data
+        refresh();
+
+        // Then poll every 30 seconds
+        const interval = setInterval(refresh, 30_000);
+        return () => { mounted = false; clearInterval(interval); };
+    }, []);
+
+    if (!data) return null;
 
     const fees = [
-        { label: 'High', value: initialData.fastestFee, desc: '~10 min' },
-        { label: 'Medium', value: initialData.halfHourFee, desc: '~30 min' },
-        { label: 'Low', value: initialData.hourFee, desc: '~60 min' },
+        { label: 'High', value: data.fastestFee, desc: '~10 min' },
+        { label: 'Medium', value: data.halfHourFee, desc: '~30 min' },
+        { label: 'Low', value: data.hourFee, desc: '~60 min' },
     ];
 
     return (
