@@ -121,7 +121,7 @@ export default async function Home() {
               <h4 className="font-semibold text-slate-800 dark:text-white mb-1.5 text-sm">Start Stacking Sats</h4>
               <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">Consistency is key. Use this tool to plan your path to financial sovereignty.</p>
               <div className="flex justify-center">
-                <AdSlot slotId="5341142659" format="rectangle" className="min-h-[250px] w-full max-w-[300px]" />
+                <AdSlot slotId="5341142659" className="min-h-[250px] w-full max-w-[300px]" />
               </div>
             </div>
           </div>
