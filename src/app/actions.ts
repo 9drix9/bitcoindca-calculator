@@ -302,19 +302,18 @@ export async function getCpiData(from: number, to: number): Promise<[number, num
     }
 }
 
-export async function getMempoolFees(): Promise<{ fastestFee: number; halfHourFee: number; hourFee: number; economyFee: number; minimumFee: number } | null> {
+export async function getMempoolFees(): Promise<{ highFee: number; mediumFee: number; lowFee: number } | null> {
     try {
-        const response = await fetch('https://mempool.space/api/v1/fees/recommended', {
+        const response = await fetch('https://mempool.space/api/v1/fees/mempool-blocks', {
             next: { revalidate: 300 } // 5 min cache
         });
         if (!response.ok) return null;
-        const json = await response.json();
+        const blocks: { medianFee: number }[] = await response.json();
+        if (!Array.isArray(blocks) || blocks.length === 0) return null;
         return {
-            fastestFee: json.fastestFee,
-            halfHourFee: json.halfHourFee,
-            hourFee: json.hourFee,
-            economyFee: json.economyFee,
-            minimumFee: json.minimumFee,
+            highFee: blocks[0]?.medianFee ?? 0,
+            mediumFee: blocks[Math.min(1, blocks.length - 1)]?.medianFee ?? 0,
+            lowFee: blocks[Math.min(2, blocks.length - 1)]?.medianFee ?? 0,
         };
     } catch {
         return null;
