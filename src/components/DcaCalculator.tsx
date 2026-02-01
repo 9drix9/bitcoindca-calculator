@@ -267,7 +267,7 @@ export const DcaCalculator = () => {
                     ))}
                 </div>
 
-                <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-5">
                     {/* Amount */}
                     <div className="space-y-1.5">
                         <label className="text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300">Amount (USD)</label>
@@ -341,7 +341,7 @@ export const DcaCalculator = () => {
                     </div>
 
                     {/* Price Mode + Provider */}
-                    <div className="space-y-3 col-span-2 lg:col-span-1">
+                    <div className="space-y-3 sm:col-span-2 lg:col-span-1">
                         <div className="space-y-1.5">
                             <label className="text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300">Price Mode</label>
                             <div className="flex bg-slate-100 dark:bg-slate-800 rounded-lg p-0.5">
@@ -386,7 +386,7 @@ export const DcaCalculator = () => {
                     </div>
 
                     {priceMode === 'manual' && (
-                        <div className="space-y-1.5 fade-in col-span-2 lg:col-span-1">
+                        <div className="space-y-1.5 fade-in sm:col-span-2 lg:col-span-1">
                             <label className="text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300">Avg. BTC Price</label>
                             <input
                                 type="number"
