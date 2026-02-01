@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(tree:*)",
+      "Bash(del \"D:\\\\Coding\\\\Bitcoin DCA Calculator\\\\src\\\\utils\\\\api.ts\")",
+      "Bash(npx tsc:*)",
+      "Bash(npm run build:*)",
+      "Bash(npm run lint)",
+      "Bash(npx eslint:*)",
+      "WebSearch",
+      "Bash(dir:*)",
+      "Bash(npm install:*)"
+    ]
+  }
+}
