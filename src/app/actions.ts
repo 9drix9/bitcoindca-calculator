@@ -304,30 +304,15 @@ export async function getCpiData(from: number, to: number): Promise<[number, num
 
 export async function getMempoolFees(): Promise<{ highFee: number; mediumFee: number; lowFee: number } | null> {
     try {
-        const [recRes, blocksRes] = await Promise.all([
-            fetch('https://mempool.space/api/v1/fees/recommended', { cache: 'no-store' }),
-            fetch('https://mempool.space/api/v1/fees/mempool-blocks', { cache: 'no-store' }),
-        ]);
-
-        if (!recRes.ok) return null;
-        const rec = await recRes.json();
-
-        let mediumFee = rec.halfHourFee as number;
-        let lowFee = rec.hourFee as number;
-
-        // Use mempool-blocks for decimal precision on medium/low tiers
-        if (blocksRes.ok) {
-            const blocks: { medianFee: number }[] = await blocksRes.json();
-            if (Array.isArray(blocks) && blocks.length >= 3) {
-                mediumFee = blocks[1].medianFee;
-                lowFee = blocks[Math.min(3, blocks.length - 1)].medianFee;
-            }
-        }
-
+        const response = await fetch('https://mempool.space/api/v1/fees/recommended', {
+            cache: 'no-store',
+        });
+        if (!response.ok) return null;
+        const json = await response.json();
         return {
-            highFee: rec.fastestFee as number,
-            mediumFee,
-            lowFee,
+            highFee: json.fastestFee,
+            mediumFee: json.halfHourFee,
+            lowFee: json.hourFee,
         };
     } catch {
         return null;
