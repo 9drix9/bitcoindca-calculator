@@ -32,3 +32,43 @@ export interface DcaBreakdownItem {
     totalAccumulated: number;
     portfolioValue: number;
 }
+
+export interface ResultCardProps {
+    label: string;
+    value: string;
+    subValue?: string;
+    highlight?: boolean;
+    valueColor?: string;
+    icon?: React.ReactNode;
+    subValueColor?: string;
+    action?: React.ReactNode;
+}
+
+export interface LumpSumResult {
+    totalInvested: number;
+    btcAccumulated: number;
+    currentValue: number;
+    profit: number;
+    roi: number;
+}
+
+export interface AssetDcaResult {
+    asset: string;
+    label: string;
+    totalInvested: number;
+    currentValue: number;
+    profit: number;
+    roi: number;
+    breakdown: { date: string; portfolioValue: number }[];
+}
+
+export interface CalculatorSearchParams {
+    amount?: string;
+    frequency?: string;
+    startDate?: string;
+    endDate?: string;
+    fee?: string;
+    mode?: string;
+    provider?: string;
+    manualPrice?: string;
+}

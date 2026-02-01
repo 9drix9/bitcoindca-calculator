@@ -1,21 +1,54 @@
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
+import Link from 'next/link';
 import './globals.css';
 import { GoogleAdSense } from '@/components/GoogleAdSense';
+import { ThemeToggle } from '@/components/ThemeToggle';
+import { CookieConsent } from '@/components/CookieConsent';
+import { BtcDonationButton } from '@/components/BtcDonationButton';
 import clsx from 'clsx';
 
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_BASE_URL || 'https://btcdollarcostaverage.com'),
   title: 'Bitcoin DCA Calculator | Calculate Your BTC Returns',
   description: 'Free Bitcoin Dollar Cost Averaging (DCA) calculator. Visualize your portfolio growth with real historical data and compare investment strategies.',
+  openGraph: {
+    title: 'Bitcoin DCA Calculator | Calculate Your BTC Returns',
+    description: 'Free Bitcoin Dollar Cost Averaging (DCA) calculator. Visualize your portfolio growth with real historical data and compare investment strategies.',
+    type: 'website',
+    siteName: 'Bitcoin DCA Calculator',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Bitcoin DCA Calculator | Calculate Your BTC Returns',
+    description: 'Free Bitcoin Dollar Cost Averaging (DCA) calculator. Visualize your portfolio growth with real historical data.',
+  },
+  manifest: '/manifest.json',
+  other: {
+    'apple-mobile-web-app-capable': 'yes',
+    'apple-mobile-web-app-status-bar-style': 'default',
+    'apple-mobile-web-app-title': 'BTC DCA Calc',
+  },
 };
 
 export const viewport = {
   width: 'device-width',
   initialScale: 1,
-  maximumScale: 1,
+  themeColor: '#f59e0b',
 };
+
+const themeScript = `
+(function(){
+  try {
+    var t = localStorage.getItem('theme-preference');
+    if (t === 'dark' || (!t && window.matchMedia('(prefers-color-scheme: dark)').matches) || (t === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+      document.documentElement.classList.add('dark');
+    }
+  } catch(e) {}
+})();
+`;
 
 export default function RootLayout({
   children,
@@ -25,30 +58,75 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
+        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
         <GoogleAdSense />
         <meta name="google-adsense-account" content="ca-pub-7196704678615727" />
       </head>
       <body className={clsx(inter.className, "bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-50 antialiased")}>
         <div className="min-h-screen flex flex-col">
-          <header className="border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 sticky top-0 z-50">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 bg-amber-500 rounded-full flex items-center justify-center text-white font-bold">₿</div>
-                <h1 className="text-xl font-bold bg-gradient-to-r from-amber-500 to-orange-600 bg-clip-text text-transparent">Bitcoin DCA</h1>
-              </div>
+          {/* Header */}
+          <header className="border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-950/80 backdrop-blur-md sticky top-0 z-50">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-14 sm:h-16 flex items-center justify-between">
+              <Link href="/" className="flex items-center gap-2 group">
+                <div className="w-8 h-8 bg-amber-500 rounded-full flex items-center justify-center text-white font-bold text-sm shrink-0 group-hover:scale-105 transition-transform">₿</div>
+                <h1 className="text-lg sm:text-xl font-bold bg-gradient-to-r from-amber-500 to-orange-600 bg-clip-text text-transparent">Bitcoin DCA</h1>
+              </Link>
+              <ThemeToggle />
             </div>
           </header>
 
+          {/* Main */}
           <main className="flex-grow">
             {children}
           </main>
 
-          <footer className="bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 py-8 mt-12">
-            <div className="max-w-7xl mx-auto px-4 text-center text-slate-500 text-sm">
-              <p>© {new Date().getFullYear()} Bitcoin DCA Calculator. Data provided by Kraken.</p>
-              <p className="mt-2 text-xs opacity-60">This website is for informational purposes only and does not constitute financial advice.</p>
+          {/* Footer */}
+          <footer className="bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 mt-12">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10">
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-6 sm:gap-8 mb-8">
+                {/* Brand */}
+                <div className="col-span-2 md:col-span-1 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <div className="w-6 h-6 bg-amber-500 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0">₿</div>
+                    <span className="font-semibold text-slate-800 dark:text-white text-sm">Bitcoin DCA Calculator</span>
+                  </div>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">
+                    Built by{' '}
+                    <a href="https://x.com/9drix9" target="_blank" rel="noopener noreferrer" className="text-amber-600 dark:text-amber-400 hover:underline">
+                      @9drix9
+                    </a>
+                  </p>
+                </div>
+
+                {/* Links */}
+                <div className="space-y-2">
+                  <h4 className="text-xs font-semibold text-slate-800 dark:text-white uppercase tracking-wider">Legal</h4>
+                  <div className="flex flex-col gap-1.5">
+                    <Link href="/privacy" className="text-sm text-slate-500 dark:text-slate-400 hover:text-amber-600 dark:hover:text-amber-400 transition-colors">
+                      Privacy Policy
+                    </Link>
+                    <Link href="/terms" className="text-sm text-slate-500 dark:text-slate-400 hover:text-amber-600 dark:hover:text-amber-400 transition-colors">
+                      Terms of Service
+                    </Link>
+                  </div>
+                </div>
+
+                {/* Donation */}
+                <div className="space-y-2">
+                  <h4 className="text-xs font-semibold text-slate-800 dark:text-white uppercase tracking-wider">Support</h4>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">Donate BTC</p>
+                  <BtcDonationButton />
+                </div>
+              </div>
+
+              <div className="border-t border-slate-100 dark:border-slate-800 pt-6 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-400">
+                <p>&copy; {new Date().getFullYear()} Bitcoin DCA Calculator. Market data from public exchange APIs.</p>
+                <p className="opacity-60">Not financial advice.</p>
+              </div>
             </div>
           </footer>
+
+          <CookieConsent />
         </div>
       </body>
     </html>

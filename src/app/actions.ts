@@ -1,12 +1,40 @@
 'use server';
 
-import { differenceInMinutes, addDays, startOfDay, differenceInDays } from 'date-fns';
+import { differenceInMinutes, addDays, differenceInDays } from 'date-fns';
 
-const CACHE_KEY = 'btc_price_history_cache';
 const CACHE_DURATION_MINUTES = 60;
+const MAX_CACHE_ENTRIES = 50;
 
-// Simple in-memory cache
-let memoryCache: { [key: string]: { timestamp: number; data: [number, number][] } } = {};
+class LRUCache {
+    private cache = new Map<string, { timestamp: number; data: [number, number][] }>();
+    private maxSize: number;
+
+    constructor(maxSize: number) {
+        this.maxSize = maxSize;
+    }
+
+    get(key: string) {
+        const entry = this.cache.get(key);
+        if (!entry) return undefined;
+        // Move to end (most recently used)
+        this.cache.delete(key);
+        this.cache.set(key, entry);
+        return entry;
+    }
+
+    set(key: string, value: { timestamp: number; data: [number, number][] }) {
+        if (this.cache.has(key)) {
+            this.cache.delete(key);
+        } else if (this.cache.size >= this.maxSize) {
+            // Delete oldest (first) entry
+            const firstKey = this.cache.keys().next().value;
+            if (firstKey !== undefined) this.cache.delete(firstKey);
+        }
+        this.cache.set(key, value);
+    }
+}
+
+const memoryCache = new LRUCache(MAX_CACHE_ENTRIES);
 
 const COINBASE_CACHE_DURATION = 3600; // 1 hour
 
@@ -14,25 +42,22 @@ export async function getBitcoinPriceHistory(from: number, to: number, provider:
     const cacheKey = `${provider}_weekly_interp_${from}_${to}`;
 
     // Check memory cache
-    if (memoryCache[cacheKey]) {
-        const parsed = memoryCache[cacheKey];
-        const age = differenceInMinutes(Date.now(), parsed.timestamp);
+    const cached = memoryCache.get(cacheKey);
+    if (cached) {
+        const age = differenceInMinutes(Date.now(), cached.timestamp);
         if (age < CACHE_DURATION_MINUTES) {
-            console.log(`Cache hit for ${cacheKey}`);
-            return parsed.data;
+            return cached.data;
         }
     }
 
     try {
-        let dailyPrices: [number, number][] = [];
+        const dailyPrices: [number, number][] = [];
 
         if (provider === 'coinbase') {
             // Coinbase Exchange Public API
             // Granularity 86400 = 1 day. Max 300 candles per request.
             // To get full history (e.g., 2015-2024 ~3300 days), we need ~11 requests.
             // We'll fetch in parallel chunks.
-
-            console.log(`Fetching history from Coinbase (Chunked) from ${new Date(from).toISOString()} to ${new Date(to).toISOString()}`);
 
             // 1. Calculate required chunks
             const chunks: { start: string; end: string }[] = [];
@@ -70,25 +95,22 @@ export async function getBitcoinPriceHistory(from: number, to: number, provider:
                 });
             }
 
-            console.log(`Prepared ${chunks.length} chunks for Coinbase.`);
-
-            // 2. Fetch all chunks in parallel
-            // Note: Coinbase rate limit is public but bursting might 429. 
-            // 10-15 requests in parallel *usually* works, but sequential batching or limited concurrency is safer.
-            // Let's try Promise.all for speed, user requested "entire history".
-
+            // 2. Fetch chunks with limited concurrency to avoid 429s
             const fetchChunk = async (chunk: { start: string, end: string }) => {
                 const url = `https://api.exchange.coinbase.com/products/BTC-USD/candles?granularity=86400&start=${chunk.start}&end=${chunk.end}`;
                 const res = await fetch(url, { headers: { 'User-Agent': 'BitcoinDcaBot/1.0' }, next: { revalidate: COINBASE_CACHE_DURATION } });
-                if (!res.ok) {
-                    console.warn(`Coinbase chunk failed: ${res.status} for ${chunk.start}`);
-                    return [];
-                }
+                if (!res.ok) return [];
                 const json = await res.json();
                 return Array.isArray(json) ? json : [];
             };
 
-            const chunkResults = await Promise.all(chunks.map(fetchChunk));
+            const CONCURRENCY = 5;
+            const chunkResults: number[][][] = [];
+            for (let i = 0; i < chunks.length; i += CONCURRENCY) {
+                const batch = chunks.slice(i, i + CONCURRENCY);
+                const batchResults = await Promise.all(batch.map(fetchChunk));
+                chunkResults.push(...batchResults);
+            }
 
             // 3. Flatten and Deduplicate
             const candles = chunkResults.flat();
@@ -102,14 +124,37 @@ export async function getBitcoinPriceHistory(from: number, to: number, provider:
             });
 
             // Convert to array and sort
-            dailyPrices = Array.from(map.entries()).sort((a, b) => a[0] - b[0]);
+            const coinbaseDailyPrices: [number, number][] = Array.from(map.entries()).sort((a, b) => a[0] - b[0]);
 
-            console.log(`Fetched ${dailyPrices.length} total days from Coinbase.`);
+            // Add Genesis Point + interpolate gap (same as Kraken)
+            const genesisTs = new Date('2010-01-01T00:00:00Z').getTime();
+            if (coinbaseDailyPrices.length > 0 && coinbaseDailyPrices[0][0] > genesisTs) {
+                coinbaseDailyPrices.unshift([genesisTs, 0.05]);
+            }
+
+            // Interpolate any gaps > 1 day (fills genesis-to-first-real-data gap)
+            for (let i = 0; i < coinbaseDailyPrices.length - 1; i++) {
+                const [startTs, startPrice] = coinbaseDailyPrices[i];
+                const [endTs, endPrice] = coinbaseDailyPrices[i + 1];
+                dailyPrices.push([startTs, startPrice]);
+
+                const daysDiff = differenceInDays(new Date(endTs), new Date(startTs));
+                if (daysDiff > 1) {
+                    const priceStep = (endPrice - startPrice) / daysDiff;
+                    for (let d = 1; d < daysDiff; d++) {
+                        const interpTs = addDays(new Date(startTs), d).getTime();
+                        const interpPrice = startPrice + (priceStep * d);
+                        dailyPrices.push([interpTs, interpPrice]);
+                    }
+                }
+            }
+            if (coinbaseDailyPrices.length > 0) {
+                dailyPrices.push(coinbaseDailyPrices[coinbaseDailyPrices.length - 1]);
+            }
 
         } else {
             // Kraken (Existing Logic)
             const url = `https://api.kraken.com/0/public/OHLC?pair=XBTUSD&interval=10080`; // Weekly
-            console.log('Fetching history from Kraken (Weekly):', url);
 
             const response = await fetch(url, {
                 headers: { 'User-Agent': 'Mozilla/5.0 (compatible; BitcoinDcaBot/1.0)' },
@@ -126,9 +171,9 @@ export async function getBitcoinPriceHistory(from: number, to: number, provider:
             if (!pairKey || !Array.isArray(result[pairKey])) throw new Error('Invalid data format from Kraken');
 
             const weeklyCandles = result[pairKey];
-            weeklyCandles.sort((a: any, b: any) => a[0] - b[0]);
+            weeklyCandles.sort((a: number[], b: number[]) => a[0] - b[0]);
 
-            const weeklyPoints: [number, number][] = weeklyCandles.map((item: any[]) => [item[0] * 1000, parseFloat(item[4])]);
+            const weeklyPoints: [number, number][] = weeklyCandles.map((item: number[]) => [item[0] * 1000, parseFloat(String(item[4]))]);
 
             // Add Genesis Point
             const genesisTs = new Date('2010-01-01T00:00:00Z').getTime();
@@ -154,12 +199,143 @@ export async function getBitcoinPriceHistory(from: number, to: number, provider:
         }
 
         // Update memory cache
-        memoryCache[cacheKey] = { timestamp: Date.now(), data: dailyPrices };
+        memoryCache.set(cacheKey, { timestamp: Date.now(), data: dailyPrices });
         return dailyPrices;
 
     } catch (error) {
-        console.error('Server Action Error:', error);
         throw error;
+    }
+}
+
+export async function getAssetPriceHistory(symbol: string, from: number, to: number): Promise<[number, number][] | null> {
+    const cacheKey = `asset_${symbol}_${from}_${to}`;
+
+    const cached = memoryCache.get(cacheKey);
+    if (cached) {
+        const age = differenceInMinutes(Date.now(), cached.timestamp);
+        if (age < CACHE_DURATION_MINUTES) {
+            return cached.data;
+        }
+    }
+
+    try {
+        const period1 = Math.floor(from / 1000);
+        const period2 = Math.floor(to / 1000);
+        const url = `https://query1.finance.yahoo.com/v7/finance/download/${encodeURIComponent(symbol)}?period1=${period1}&period2=${period2}&interval=1d&events=history`;
+
+        const response = await fetch(url, {
+            headers: { 'User-Agent': 'Mozilla/5.0 (compatible; BitcoinDcaBot/1.0)' },
+            next: { revalidate: 3600 }
+        });
+
+        if (!response.ok) return null;
+
+        const csv = await response.text();
+        const lines = csv.trim().split('\n');
+        if (lines.length < 2) return null;
+
+        const data: [number, number][] = [];
+        for (let i = 1; i < lines.length; i++) {
+            const cols = lines[i].split(',');
+            if (cols.length < 5) continue;
+            const dateTs = new Date(cols[0]).getTime();
+            const close = parseFloat(cols[4]);
+            if (!isNaN(dateTs) && !isNaN(close) && close > 0) {
+                data.push([dateTs, close]);
+            }
+        }
+
+        if (data.length === 0) return null;
+
+        data.sort((a, b) => a[0] - b[0]);
+        memoryCache.set(cacheKey, { timestamp: Date.now(), data });
+        return data;
+    } catch {
+        return null;
+    }
+}
+
+export async function getCpiData(from: number, to: number): Promise<[number, number][] | null> {
+    const apiKey = process.env.FRED_API_KEY;
+    if (!apiKey) return null;
+
+    const cacheKey = `cpi_${from}_${to}`;
+
+    const cached = memoryCache.get(cacheKey);
+    if (cached) {
+        const age = differenceInMinutes(Date.now(), cached.timestamp);
+        if (age < 1440) { // 24h cache for CPI (monthly data)
+            return cached.data;
+        }
+    }
+
+    try {
+        const startDate = new Date(from).toISOString().split('T')[0];
+        const endDate = new Date(to).toISOString().split('T')[0];
+        const url = `https://api.stlouisfed.org/fred/series/observations?series_id=CPIAUCSL&api_key=${apiKey}&file_type=json&observation_start=${startDate}&observation_end=${endDate}`;
+
+        const response = await fetch(url, {
+            next: { revalidate: 86400 }
+        });
+
+        if (!response.ok) return null;
+
+        const json = await response.json();
+        if (!json.observations || !Array.isArray(json.observations)) return null;
+
+        const data: [number, number][] = [];
+        for (const obs of json.observations) {
+            const dateTs = new Date(obs.date).getTime();
+            const value = parseFloat(obs.value);
+            if (!isNaN(dateTs) && !isNaN(value) && value > 0) {
+                data.push([dateTs, value]);
+            }
+        }
+
+        if (data.length === 0) return null;
+
+        data.sort((a, b) => a[0] - b[0]);
+        memoryCache.set(cacheKey, { timestamp: Date.now(), data });
+        return data;
+    } catch {
+        return null;
+    }
+}
+
+export async function getMempoolFees(): Promise<{ fastestFee: number; halfHourFee: number; hourFee: number; economyFee: number; minimumFee: number } | null> {
+    try {
+        const response = await fetch('https://mempool.space/api/v1/fees/recommended', {
+            next: { revalidate: 300 } // 5 min cache
+        });
+        if (!response.ok) return null;
+        const json = await response.json();
+        return {
+            fastestFee: json.fastestFee,
+            halfHourFee: json.halfHourFee,
+            hourFee: json.hourFee,
+            economyFee: json.economyFee,
+            minimumFee: json.minimumFee,
+        };
+    } catch {
+        return null;
+    }
+}
+
+export async function getFearGreedIndex(): Promise<{ value: number; classification: string } | null> {
+    try {
+        const response = await fetch('https://api.alternative.me/fng/?limit=1', {
+            next: { revalidate: 3600 } // 1 hour cache
+        });
+        if (!response.ok) return null;
+        const json = await response.json();
+        if (!json.data || !Array.isArray(json.data) || json.data.length === 0) return null;
+        const entry = json.data[0];
+        return {
+            value: parseInt(entry.value, 10),
+            classification: entry.value_classification,
+        };
+    } catch {
+        return null;
     }
 }
 
@@ -172,7 +348,6 @@ export async function getCurrentBitcoinPrice(provider: 'kraken' | 'coinbase' = '
             url = 'https://api.kraken.com/0/public/Ticker?pair=XBTUSD';
         }
 
-        console.log(`Fetching from provider: ${provider}`);
         const response = await fetch(url, { headers: { 'User-Agent': 'BitcoinDcaBot/1.0' }, next: { revalidate: 60 } });
 
         if (!response.ok) throw new Error(`API Error: ${response.status}`);
@@ -187,8 +362,6 @@ export async function getCurrentBitcoinPrice(provider: 'kraken' | 'coinbase' = '
             return parseFloat(result[pairKey].c[0]);
         }
     } catch (error) {
-        console.error('Current Price Error:', error);
-        // Fallback to manual/null handling in UI
         throw error;
     }
 }
