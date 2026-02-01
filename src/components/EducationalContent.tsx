@@ -1,7 +1,27 @@
 import React from 'react';
 import { BookOpen, TrendingUp, AlertTriangle, HelpCircle } from 'lucide-react';
 
+const BITCOIN_QUOTES = [
+    { text: "If you don't believe it or don't get it, I don't have the time to try to convince you, sorry.", author: "Satoshi Nakamoto" },
+    { text: "Bitcoin is a technological tour de force.", author: "Bill Gates" },
+    { text: "Bitcoin is the most important invention in the history of the world since the Internet.", author: "Roger Ver" },
+    { text: "Every informed person needs to know about Bitcoin because it might be one of the world's most important developments.", author: "Leon Luow" },
+    { text: "Bitcoin will do to banks what email did to the postal industry.", author: "Rick Falkvinge" },
+    { text: "Bitcoin is a remarkable cryptographic achievement and the ability to create something that is not duplicable in the digital world has enormous value.", author: "Eric Schmidt" },
+    { text: "I think the fact that within the bitcoin universe an algorithm replaces the function of the government is actually pretty cool.", author: "Al Gore" },
+    { text: "The best time to buy bitcoin was 10 years ago. The second best time is now.", author: "Bitcoin Proverb" },
+    { text: "Bitcoin is the beginning of something great: a currency without a government, something necessary and imperative.", author: "Nassim Nicholas Taleb" },
+    { text: "There is no second best.", author: "Michael Saylor" },
+    { text: "I am very intrigued by Bitcoin. It has all the signs. Paradigm shift, hackers love it, yet it's derided as a toy. Just like microcomputers.", author: "Paul Graham" },
+    { text: "The swarm is headed towards us.", author: "Satoshi Nakamoto" },
+];
+
 export const EducationalContent = () => {
+    // Use current date as deterministic seed for quote selection (changes daily)
+    const today = new Date();
+    const dayOfYear = Math.floor((today.getTime() - new Date(today.getFullYear(), 0, 0).getTime()) / 86400000);
+    const randomQuote = BITCOIN_QUOTES[dayOfYear % BITCOIN_QUOTES.length];
+
     return (
         <div className="space-y-8 sm:space-y-12">
 
@@ -28,6 +48,16 @@ export const EducationalContent = () => {
                         </p>
                     </div>
                 </div>
+            </section>
+
+            {/* Bitcoin Quote */}
+            <section className="border-l-4 border-amber-400 bg-amber-50/50 dark:bg-amber-950/20 px-4 sm:px-6 py-3 sm:py-4 rounded-r-xl">
+                <blockquote className="text-sm sm:text-base text-slate-700 dark:text-slate-300 italic leading-relaxed">
+                    &ldquo;{randomQuote.text}&rdquo;
+                </blockquote>
+                <cite className="block mt-2 text-xs sm:text-sm text-amber-700 dark:text-amber-400 font-medium not-italic">
+                    &mdash; {randomQuote.author}
+                </cite>
             </section>
 
             {/* Historical Context */}

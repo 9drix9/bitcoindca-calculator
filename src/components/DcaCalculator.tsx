@@ -2,9 +2,9 @@
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { format, subYears, subMonths, startOfToday, differenceInMonths } from 'date-fns';
-import { Frequency, PriceMode, ResultCardProps, AssetDcaResult } from '@/types';
+import { Frequency, PriceMode, ResultCardProps, AssetDcaResult, CurrencyCode, CurrencyConfig } from '@/types';
 import { calculateDca, calculateLumpSum, calculateAssetDca } from '@/utils/dca';
-import { getBitcoinPriceHistory, getCurrentBitcoinPrice, getAssetPriceHistory, getCpiData } from '@/app/actions';
+import { getBitcoinPriceHistory, getCurrentBitcoinPrice, getAssetPriceHistory, getCpiData, getM2Data } from '@/app/actions';
 import { generateCsvContent, downloadCsv } from '@/utils/csv';
 import { encodeParams, decodeParams } from '@/utils/urlParams';
 import { DcaChart } from './DcaChart';
@@ -13,6 +13,10 @@ import { AssetComparison } from './AssetComparison';
 import { ExchangeFeeComparison } from './ExchangeFeeComparison';
 import { StackingGoalTracker } from './StackingGoalTracker';
 import { ShareMyStack } from './ShareMyStack';
+import { UnitBiasCalculator } from './UnitBiasCalculator';
+import { SavingsComparison } from './SavingsComparison';
+import { FireCalculator } from './FireCalculator';
+import { CostBasisTracker } from './CostBasisTracker';
 import { SkeletonCard, SkeletonChart } from './Skeleton';
 import { AdSlot } from './AdSlot';
 import { TrendingUp, TrendingDown, DollarSign, Activity, Repeat, Download, Share2 } from 'lucide-react';
@@ -20,11 +24,31 @@ import clsx from 'clsx';
 
 const BTC_MAX_SUPPLY = 21_000_000;
 
+const CURRENCIES: CurrencyConfig[] = [
+    { code: 'USD', symbol: '$', rate: 1, label: 'USD ($)' },
+    { code: 'EUR', symbol: '€', rate: 0.92, label: 'EUR (€)' },
+    { code: 'GBP', symbol: '£', rate: 0.79, label: 'GBP (£)' },
+    { code: 'CAD', symbol: 'C$', rate: 1.36, label: 'CAD (C$)' },
+    { code: 'AUD', symbol: 'A$', rate: 1.53, label: 'AUD (A$)' },
+    { code: 'JPY', symbol: '¥', rate: 149.5, label: 'JPY (¥)' },
+];
+
+const formatCurrency = (usdValue: number, config: CurrencyConfig): string => {
+    const converted = usdValue * config.rate;
+    if (config.code === 'JPY') {
+        return `${config.symbol}${Math.round(converted).toLocaleString()}`;
+    }
+    return `${config.symbol}${converted.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
+};
+
 const PRESETS: { label: string; amount: number; frequency: Frequency; yearsBack?: number; monthsBack?: number; startDate?: string }[] = [
     { label: '5Y $50/week', amount: 50, frequency: 'weekly', yearsBack: 5 },
     { label: '3Y $100/week', amount: 100, frequency: 'weekly', yearsBack: 3 },
     { label: '1Y $200/month', amount: 200, frequency: 'monthly', yearsBack: 1 },
     { label: 'Since 2013 $25/week', amount: 25, frequency: 'weekly', startDate: '2013-01-01' },
+    { label: 'ATH 2013 $50/wk', amount: 50, frequency: 'weekly', startDate: '2013-12-04' },
+    { label: 'ATH 2017 $50/wk', amount: 50, frequency: 'weekly', startDate: '2017-12-17' },
+    { label: 'ATH 2021 $50/wk', amount: 50, frequency: 'weekly', startDate: '2021-11-10' },
 ];
 
 export const DcaCalculator = () => {
@@ -59,6 +83,10 @@ export const DcaCalculator = () => {
     const [goldData, setGoldData] = useState<[number, number][] | null>(null);
     const [comparisonLoading, setComparisonLoading] = useState(false);
     const [cpiData, setCpiData] = useState<[number, number][] | null>(null);
+    const [currency, setCurrency] = useState<CurrencyCode>('USD');
+    const [m2Data, setM2Data] = useState<[number, number][] | null>(null);
+
+    const currencyConfig = useMemo(() => CURRENCIES.find(c => c.code === currency) || CURRENCIES[0], [currency]);
 
     const applyPreset = useCallback((preset: typeof PRESETS[number]) => {
         const now = startOfToday();
@@ -125,6 +153,7 @@ export const DcaCalculator = () => {
             setSp500Data(null);
             setGoldData(null);
             setCpiData(null);
+            setM2Data(null);
             return;
         }
         const fetchComparison = async () => {
@@ -132,18 +161,21 @@ export const DcaCalculator = () => {
             try {
                 const startTs = new Date(startDate).getTime();
                 const endTs = new Date(endDate).getTime() + 86400000;
-                const [sp500, gold, cpi] = await Promise.all([
+                const [sp500, gold, cpi, m2] = await Promise.all([
                     getAssetPriceHistory('^GSPC', startTs, endTs),
                     getAssetPriceHistory('GC=F', startTs, endTs),
                     getCpiData(startTs, endTs),
+                    getM2Data(startTs, endTs),
                 ]);
                 setSp500Data(sp500);
                 setGoldData(gold);
                 setCpiData(cpi);
+                setM2Data(m2);
             } catch {
                 setSp500Data(null);
                 setGoldData(null);
                 setCpiData(null);
+                setM2Data(null);
             } finally {
                 setComparisonLoading(false);
             }
@@ -152,12 +184,14 @@ export const DcaCalculator = () => {
         return () => clearTimeout(timer);
     }, [startDate, endDate, priceMode, dateError]);
 
+    const amountUsd = useMemo(() => amount / currencyConfig.rate, [amount, currencyConfig.rate]);
+
     const results = useMemo(() => {
         if (dateError) {
             return { totalInvested: 0, btcAccumulated: 0, averageCost: 0, currentValue: 0, profit: 0, roi: 0, breakdown: [] };
         }
-        return calculateDca({ amount, frequency, startDate: new Date(startDate), endDate: new Date(endDate), feePercentage, priceMode, manualPrice }, priceData, priceMode === 'api' ? livePrice : undefined);
-    }, [amount, frequency, startDate, endDate, feePercentage, priceMode, manualPrice, priceData, livePrice, dateError]);
+        return calculateDca({ amount: amountUsd, frequency, startDate: new Date(startDate), endDate: new Date(endDate), feePercentage, priceMode, manualPrice }, priceData, priceMode === 'api' ? livePrice : undefined);
+    }, [amountUsd, frequency, startDate, endDate, feePercentage, priceMode, manualPrice, priceData, livePrice, dateError]);
 
     const lumpSumResult = useMemo(() => {
         if (priceMode !== 'api' || !priceData.length || !livePrice || dateError) return null;
@@ -166,13 +200,13 @@ export const DcaCalculator = () => {
 
     const sp500Result: AssetDcaResult | null = useMemo(() => {
         if (!sp500Data) return null;
-        return calculateAssetDca(amount, frequency, new Date(startDate), new Date(endDate), feePercentage, sp500Data, '^GSPC', 'S&P 500');
-    }, [sp500Data, amount, frequency, startDate, endDate, feePercentage]);
+        return calculateAssetDca(amountUsd, frequency, new Date(startDate), new Date(endDate), feePercentage, sp500Data, '^GSPC', 'S&P 500');
+    }, [sp500Data, amountUsd, frequency, startDate, endDate, feePercentage]);
 
     const goldResult: AssetDcaResult | null = useMemo(() => {
         if (!goldData) return null;
-        return calculateAssetDca(amount, frequency, new Date(startDate), new Date(endDate), feePercentage, goldData, 'GC=F', 'Gold');
-    }, [goldData, amount, frequency, startDate, endDate, feePercentage]);
+        return calculateAssetDca(amountUsd, frequency, new Date(startDate), new Date(endDate), feePercentage, goldData, 'GC=F', 'Gold');
+    }, [goldData, amountUsd, frequency, startDate, endDate, feePercentage]);
 
     const btcAssetResult: AssetDcaResult = useMemo(() => ({
         asset: 'BTC', label: 'Bitcoin', totalInvested: results.totalInvested, currentValue: results.currentValue,
@@ -270,9 +304,9 @@ export const DcaCalculator = () => {
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-5 overflow-hidden">
                     {/* Amount */}
                     <div className="space-y-1.5">
-                        <label className="text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300">Amount (USD)</label>
+                        <label className="text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300">Amount ({currencyConfig.code})</label>
                         <div className="relative">
-                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">$</span>
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">{currencyConfig.symbol}</span>
                             <input
                                 type="number"
                                 value={amount}
@@ -309,6 +343,20 @@ export const DcaCalculator = () => {
                             onChange={handleFeeChange}
                             className="w-full px-3 py-2 text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500 outline-none transition-all"
                         />
+                    </div>
+
+                    {/* Currency */}
+                    <div className="space-y-1.5">
+                        <label className="text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300">Currency</label>
+                        <select
+                            value={currency}
+                            onChange={(e) => setCurrency(e.target.value as CurrencyCode)}
+                            className="w-full px-3 py-2 text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500 outline-none transition-all"
+                        >
+                            {CURRENCIES.map(c => (
+                                <option key={c.code} value={c.code}>{c.label}</option>
+                            ))}
+                        </select>
                     </div>
 
                     {/* Start Date */}
@@ -402,7 +450,7 @@ export const DcaCalculator = () => {
                 <div className="mt-5 pt-4 border-t border-slate-100 dark:border-slate-800 flex flex-wrap justify-between items-center gap-3">
                     <div className="flex items-center gap-2">
                         <span className="text-xs sm:text-sm text-slate-500">Projected</span>
-                        <span className="text-base sm:text-lg font-bold text-slate-800 dark:text-white">${results.totalInvested.toLocaleString()}</span>
+                        <span className="text-base sm:text-lg font-bold text-slate-800 dark:text-white">{formatCurrency(results.totalInvested, currencyConfig)}</span>
                     </div>
                     <div className="flex items-center gap-1">
                         <button
@@ -447,14 +495,14 @@ export const DcaCalculator = () => {
                 <>
                     {/* Result Cards */}
                     <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-                        <ResultCard label="Total Invested" value={`$${results.totalInvested.toLocaleString()}`} />
+                        <ResultCard label="Total Invested" value={formatCurrency(results.totalInvested, currencyConfig)} />
                         <ResultCard
                             label={unit === 'BTC' ? "BTC Accumulated" : "Sats Accumulated"}
                             value={unit === 'BTC'
                                 ? `${results.btcAccumulated.toFixed(8)} ₿`
                                 : `${Math.floor(results.btcAccumulated * 100_000_000).toLocaleString()} sats`
                             }
-                            subValue={`Avg: $${results.averageCost.toLocaleString(undefined, { maximumFractionDigits: 0 })}`}
+                            subValue={`Avg: ${formatCurrency(results.averageCost, currencyConfig)}`}
                             action={
                                 <button
                                     onClick={() => setUnit(prev => prev === 'BTC' ? 'SATS' : 'BTC')}
@@ -467,15 +515,15 @@ export const DcaCalculator = () => {
                         />
                         <ResultCard
                             label="Current Value"
-                            value={`$${results.currentValue.toLocaleString()}`}
-                            subValue={priceMode === 'api' && livePrice ? `@ $${livePrice.toLocaleString()}` : undefined}
+                            value={formatCurrency(results.currentValue, currencyConfig)}
+                            subValue={priceMode === 'api' && livePrice ? `@ ${formatCurrency(livePrice, currencyConfig)}` : undefined}
                             subValueColor="text-amber-600 dark:text-amber-400 font-medium"
                             highlight={true}
                             icon={<Activity className="w-4 h-4 sm:w-5 sm:h-5 text-amber-500 shrink-0" />}
                         />
                         <ResultCard
                             label="Profit / Loss"
-                            value={`${profitPrefix}$${Math.abs(results.profit).toLocaleString()}`}
+                            value={`${profitPrefix}${formatCurrency(Math.abs(results.profit), currencyConfig)}`}
                             valueColor={isProfit ? 'text-green-500' : 'text-red-500'}
                             icon={isProfit ? <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5 text-green-500 shrink-0" /> : <TrendingDown className="w-4 h-4 sm:w-5 sm:h-5 text-red-500 shrink-0" />}
                             subValue={`${results.roi.toFixed(1)}% ROI`}
@@ -507,7 +555,7 @@ export const DcaCalculator = () => {
                                 <div>
                                     <div className="text-slate-500 dark:text-slate-400 mb-0.5">Real Value</div>
                                     <div className="font-semibold text-slate-800 dark:text-white">
-                                        ${inflationStats.adjustedValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                                        {formatCurrency(inflationStats.adjustedValue, currencyConfig)}
                                     </div>
                                 </div>
                                 <div>
@@ -533,16 +581,16 @@ export const DcaCalculator = () => {
                             <div className="grid grid-cols-2 gap-3 sm:gap-6">
                                 <div className="p-3 sm:p-4 rounded-lg bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/50">
                                     <div className="text-xs sm:text-sm font-medium text-amber-700 dark:text-amber-400 mb-1">DCA Strategy</div>
-                                    <div className="text-lg sm:text-2xl font-bold text-slate-900 dark:text-white">${results.currentValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
+                                    <div className="text-lg sm:text-2xl font-bold text-slate-900 dark:text-white">{formatCurrency(results.currentValue, currencyConfig)}</div>
                                     <div className={clsx("text-xs sm:text-sm mt-1", results.profit >= 0 ? "text-green-600" : "text-red-600")}>
-                                        {results.profit >= 0 ? '+' : '-'}${Math.abs(results.profit).toLocaleString(undefined, { maximumFractionDigits: 0 })} ({results.roi.toFixed(1)}%)
+                                        {results.profit >= 0 ? '+' : '-'}{formatCurrency(Math.abs(results.profit), currencyConfig)} ({results.roi.toFixed(1)}%)
                                     </div>
                                 </div>
                                 <div className="p-3 sm:p-4 rounded-lg bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800/50">
                                     <div className="text-xs sm:text-sm font-medium text-blue-700 dark:text-blue-400 mb-1">Lump Sum</div>
-                                    <div className="text-lg sm:text-2xl font-bold text-slate-900 dark:text-white">${lumpSumResult.currentValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
+                                    <div className="text-lg sm:text-2xl font-bold text-slate-900 dark:text-white">{formatCurrency(lumpSumResult.currentValue, currencyConfig)}</div>
                                     <div className={clsx("text-xs sm:text-sm mt-1", lumpSumResult.profit >= 0 ? "text-green-600" : "text-red-600")}>
-                                        {lumpSumResult.profit >= 0 ? '+' : '-'}${Math.abs(lumpSumResult.profit).toLocaleString(undefined, { maximumFractionDigits: 0 })} ({lumpSumResult.roi.toFixed(1)}%)
+                                        {lumpSumResult.profit >= 0 ? '+' : '-'}{formatCurrency(Math.abs(lumpSumResult.profit), currencyConfig)} ({lumpSumResult.roi.toFixed(1)}%)
                                     </div>
                                 </div>
                             </div>
@@ -557,8 +605,19 @@ export const DcaCalculator = () => {
                     {/* Exchange Fee Comparison */}
                     <ExchangeFeeComparison totalInvested={results.totalInvested} purchaseCount={purchaseCount} />
 
+                    {/* Savings Account Comparison */}
+                    <SavingsComparison
+                        totalInvested={results.totalInvested}
+                        btcCurrentValue={results.currentValue}
+                        btcRoi={results.roi}
+                        amount={amountUsd}
+                        frequency={frequency}
+                        startDate={startDate}
+                        endDate={endDate}
+                    />
+
                     {/* Chart */}
-                    <DcaChart data={results.breakdown} unit={unit} />
+                    <DcaChart data={results.breakdown} unit={unit} m2Data={m2Data} />
 
                     {/* Transaction Table */}
                     <TransactionTable breakdown={results.breakdown} unit={unit} />
@@ -578,6 +637,9 @@ export const DcaCalculator = () => {
                         unit={unit}
                     />
 
+                    {/* Unit Bias Calculator */}
+                    <UnitBiasCalculator btcAccumulated={results.btcAccumulated} />
+
                     {/* Share My Stack */}
                     <ShareMyStack
                         totalInvested={results.totalInvested}
@@ -587,6 +649,22 @@ export const DcaCalculator = () => {
                         unit={unit}
                         startDate={startDate}
                         endDate={endDate}
+                    />
+
+                    {/* FIRE Calculator */}
+                    <FireCalculator
+                        btcAccumulated={results.btcAccumulated}
+                        totalInvested={results.totalInvested}
+                        livePrice={livePrice}
+                        amount={amountUsd}
+                        frequency={frequency}
+                    />
+
+                    {/* Cost Basis Tracker */}
+                    <CostBasisTracker
+                        priceData={priceData}
+                        livePrice={livePrice}
+                        priceMode={priceMode}
                     />
                 </>
             )}

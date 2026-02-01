@@ -337,6 +337,157 @@ export async function getFearGreedIndex(): Promise<{ value: number; classificati
     }
 }
 
+export async function getBlockHeight(): Promise<number | null> {
+    try {
+        const response = await fetch('https://mempool.space/api/v1/blocks/tip/height', {
+            cache: 'no-store',
+        });
+        if (!response.ok) return null;
+        const text = await response.text();
+        const height = parseInt(text, 10);
+        return isNaN(height) ? null : height;
+    } catch {
+        return null;
+    }
+}
+
+export async function getHashRateDifficulty(): Promise<{
+    hashrate: number;
+    difficulty: number;
+    adjustmentPercent: number;
+    blocksUntilAdjustment: number;
+    estimatedRetargetDate: string;
+} | null> {
+    try {
+        const [diffRes, hashRes] = await Promise.all([
+            fetch('https://mempool.space/api/v1/difficulty-adjustment', { cache: 'no-store' }),
+            fetch('https://mempool.space/api/v1/mining/hashrate/1m', { cache: 'no-store' }),
+        ]);
+        if (!diffRes.ok || !hashRes.ok) return null;
+        const diffJson = await diffRes.json();
+        const hashJson = await hashRes.json();
+
+        const latestHashrate = hashJson.hashrates && hashJson.hashrates.length > 0
+            ? hashJson.hashrates[hashJson.hashrates.length - 1].avgHashrate
+            : 0;
+
+        return {
+            hashrate: latestHashrate,
+            difficulty: diffJson.difficultyChange !== undefined ? diffJson.previousDifficulty || 0 : 0,
+            adjustmentPercent: diffJson.difficultyChange || 0,
+            blocksUntilAdjustment: diffJson.remainingBlocks || 0,
+            estimatedRetargetDate: diffJson.estimatedRetargetDate ? new Date(diffJson.estimatedRetargetDate).toISOString() : '',
+        };
+    } catch {
+        return null;
+    }
+}
+
+export async function getCirculatingSupply(): Promise<number | null> {
+    try {
+        const response = await fetch('https://blockchain.info/q/totalbc', {
+            cache: 'no-store',
+        });
+        if (!response.ok) return null;
+        const text = await response.text();
+        const sats = parseInt(text, 10);
+        return isNaN(sats) ? null : sats;
+    } catch {
+        return null;
+    }
+}
+
+export async function getLightningStats(): Promise<{
+    nodeCount: number;
+    channelCount: number;
+    totalCapacityBtc: number;
+} | null> {
+    try {
+        const response = await fetch('https://mempool.space/api/v1/lightning/statistics/latest', {
+            cache: 'no-store',
+        });
+        if (!response.ok) return null;
+        const json = await response.json();
+        return {
+            nodeCount: json.latest?.node_count ?? 0,
+            channelCount: json.latest?.channel_count ?? 0,
+            totalCapacityBtc: (json.latest?.total_capacity ?? 0) / 100_000_000,
+        };
+    } catch {
+        return null;
+    }
+}
+
+export async function getBitcoinDominance(): Promise<{
+    dominancePercent: number;
+    btcMarketCap: number;
+    totalMarketCap: number;
+} | null> {
+    try {
+        const response = await fetch('https://api.coingecko.com/api/v3/global', {
+            next: { revalidate: 300 }, // 5min revalidate for rate limits
+        });
+        if (!response.ok) return null;
+        const json = await response.json();
+        const data = json.data;
+        if (!data) return null;
+        return {
+            dominancePercent: data.market_cap_percentage?.btc ?? 0,
+            btcMarketCap: data.total_market_cap?.btc ? data.total_market_cap.btc * (data.market_cap_percentage?.btc / 100) : 0,
+            totalMarketCap: data.total_market_cap?.usd ?? 0,
+        };
+    } catch {
+        return null;
+    }
+}
+
+export async function getM2Data(from: number, to: number): Promise<[number, number][] | null> {
+    const apiKey = process.env.FRED_API_KEY;
+    if (!apiKey) return null;
+
+    const cacheKey = `m2_${from}_${to}`;
+
+    const cached = memoryCache.get(cacheKey);
+    if (cached) {
+        const age = differenceInMinutes(Date.now(), cached.timestamp);
+        if (age < 1440) { // 24h cache for M2 (monthly data)
+            return cached.data;
+        }
+    }
+
+    try {
+        const startDate = new Date(from).toISOString().split('T')[0];
+        const endDate = new Date(to).toISOString().split('T')[0];
+        const url = `https://api.stlouisfed.org/fred/series/observations?series_id=M2SL&api_key=${apiKey}&file_type=json&observation_start=${startDate}&observation_end=${endDate}`;
+
+        const response = await fetch(url, {
+            next: { revalidate: 86400 }
+        });
+
+        if (!response.ok) return null;
+
+        const json = await response.json();
+        if (!json.observations || !Array.isArray(json.observations)) return null;
+
+        const data: [number, number][] = [];
+        for (const obs of json.observations) {
+            const dateTs = new Date(obs.date).getTime();
+            const value = parseFloat(obs.value);
+            if (!isNaN(dateTs) && !isNaN(value) && value > 0) {
+                data.push([dateTs, value]);
+            }
+        }
+
+        if (data.length === 0) return null;
+
+        data.sort((a, b) => a[0] - b[0]);
+        memoryCache.set(cacheKey, { timestamp: Date.now(), data });
+        return data;
+    } catch {
+        return null;
+    }
+}
+
 export async function getCurrentBitcoinPrice(provider: 'kraken' | 'coinbase' = 'kraken'): Promise<number> {
     try {
         let url = '';
