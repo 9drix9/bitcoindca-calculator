@@ -248,7 +248,7 @@ export const DcaCalculator = () => {
     return (
         <div className="space-y-6 sm:space-y-8">
             {/* Input Section */}
-            <div className="bg-white dark:bg-slate-900 p-4 sm:p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800">
+            <div className="bg-white dark:bg-slate-900 p-4 sm:p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden">
                 <h2 className="text-lg sm:text-xl font-bold mb-4 text-slate-800 dark:text-white flex items-center gap-2">
                     <DollarSign className="w-5 h-5 text-amber-500 shrink-0" />
                     Investment Parameters
@@ -267,7 +267,7 @@ export const DcaCalculator = () => {
                     ))}
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-5 overflow-hidden">
                     {/* Amount */}
                     <div className="space-y-1.5">
                         <label className="text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300">Amount (USD)</label>
@@ -312,28 +312,28 @@ export const DcaCalculator = () => {
                     </div>
 
                     {/* Start Date */}
-                    <div className="space-y-1.5 min-w-0">
+                    <div className="space-y-1.5 min-w-0 overflow-hidden">
                         <label className="text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300">Start Date</label>
                         <input
                             type="date"
                             value={startDate}
                             onChange={(e) => setStartDate(e.target.value)}
                             className={clsx(
-                                "w-full max-w-full px-2 sm:px-3 py-2 text-sm rounded-lg border bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500 outline-none transition-all min-h-[38px]",
+                                "w-full max-w-full box-border px-2 sm:px-3 py-2 text-sm rounded-lg border bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500 outline-none transition-all min-h-[38px]",
                                 dateError ? "border-red-400 dark:border-red-600" : "border-slate-200 dark:border-slate-700"
                             )}
                         />
                     </div>
 
                     {/* End Date */}
-                    <div className="space-y-1.5 min-w-0">
+                    <div className="space-y-1.5 min-w-0 overflow-hidden">
                         <label className="text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300">End Date</label>
                         <input
                             type="date"
                             value={endDate}
                             onChange={(e) => setEndDate(e.target.value)}
                             className={clsx(
-                                "w-full max-w-full px-2 sm:px-3 py-2 text-sm rounded-lg border bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500 outline-none transition-all min-h-[38px]",
+                                "w-full max-w-full box-border px-2 sm:px-3 py-2 text-sm rounded-lg border bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500 outline-none transition-all min-h-[38px]",
                                 dateError ? "border-red-400 dark:border-red-600" : "border-slate-200 dark:border-slate-700"
                             )}
                         />
