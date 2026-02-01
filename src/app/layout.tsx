@@ -12,18 +12,24 @@ const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_BASE_URL || 'https://btcdollarcostaverage.com'),
-  title: 'Bitcoin DCA Calculator | Calculate Your BTC Returns',
-  description: 'Free Bitcoin Dollar Cost Averaging (DCA) calculator. Visualize your portfolio growth with real historical data and compare investment strategies.',
+  title: 'Bitcoin DCA Calculator | Dollar Cost Averaging BTC Returns Calculator',
+  description: 'Free Bitcoin DCA calculator with real historical price data. See how much $50/week in BTC would be worth today. Compare vs S&P 500, Gold, and savings accounts. Track halving countdown, hashrate, lightning network stats, and more.',
+  keywords: ['bitcoin dca calculator', 'dollar cost averaging bitcoin', 'btc dca', 'bitcoin investment calculator', 'bitcoin returns calculator', 'bitcoin savings calculator', 'crypto dca', 'bitcoin halving countdown', 'stack sats calculator', 'bitcoin portfolio tracker'],
   openGraph: {
-    title: 'Bitcoin DCA Calculator | Calculate Your BTC Returns',
-    description: 'Free Bitcoin Dollar Cost Averaging (DCA) calculator. Visualize your portfolio growth with real historical data and compare investment strategies.',
+    title: 'Bitcoin DCA Calculator | See What $50/Week in BTC Would Be Worth',
+    description: 'Free Bitcoin DCA calculator with real historical data from Kraken & Coinbase. Compare BTC vs S&P 500, Gold, and savings. Track halving, hashrate, lightning stats.',
     type: 'website',
     siteName: 'Bitcoin DCA Calculator',
+    locale: 'en_US',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Bitcoin DCA Calculator | Calculate Your BTC Returns',
-    description: 'Free Bitcoin Dollar Cost Averaging (DCA) calculator. Visualize your portfolio growth with real historical data.',
+    title: 'Bitcoin DCA Calculator | See What $50/Week in BTC Would Be Worth',
+    description: 'Free Bitcoin DCA calculator with real historical data. Compare BTC vs S&P 500, Gold, and savings accounts.',
+    creator: '@9drix9',
+  },
+  alternates: {
+    canonical: '/',
   },
   manifest: '/manifest.json',
   other: {
