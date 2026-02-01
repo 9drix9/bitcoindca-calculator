@@ -305,8 +305,8 @@ export async function getCpiData(from: number, to: number): Promise<[number, num
 export async function getMempoolFees(): Promise<{ highFee: number; mediumFee: number; lowFee: number } | null> {
     try {
         const [recRes, blocksRes] = await Promise.all([
-            fetch('https://mempool.space/api/v1/fees/recommended', { next: { revalidate: 30 } }),
-            fetch('https://mempool.space/api/v1/fees/mempool-blocks', { next: { revalidate: 30 } }),
+            fetch('https://mempool.space/api/v1/fees/recommended', { cache: 'no-store' }),
+            fetch('https://mempool.space/api/v1/fees/mempool-blocks', { cache: 'no-store' }),
         ]);
 
         if (!recRes.ok) return null;
@@ -337,7 +337,7 @@ export async function getMempoolFees(): Promise<{ highFee: number; mediumFee: nu
 export async function getFearGreedIndex(): Promise<{ value: number; classification: string } | null> {
     try {
         const response = await fetch('https://api.alternative.me/fng/?limit=1', {
-            next: { revalidate: 3600 } // 1 hour cache
+            cache: 'no-store',
         });
         if (!response.ok) return null;
         const json = await response.json();
