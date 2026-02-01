@@ -3,7 +3,21 @@ import { AdSlot } from '@/components/AdSlot';
 import { EducationalContent } from '@/components/EducationalContent';
 import { FearGreedWidget } from '@/components/FearGreedWidget';
 import { MempoolFeeWidget } from '@/components/MempoolFeeWidget';
-import { getMempoolFees, getFearGreedIndex } from '@/app/actions';
+import { HalvingCountdownWidget } from '@/components/HalvingCountdownWidget';
+import { HashRateWidget } from '@/components/HashRateWidget';
+import { SupplyScarcityWidget } from '@/components/SupplyScarcityWidget';
+import { LightningWidget } from '@/components/LightningWidget';
+import { DominanceWidget } from '@/components/DominanceWidget';
+import { SatConverterWidget } from '@/components/SatConverterWidget';
+import {
+  getMempoolFees,
+  getFearGreedIndex,
+  getBlockHeight,
+  getHashRateDifficulty,
+  getCirculatingSupply,
+  getLightningStats,
+  getBitcoinDominance,
+} from '@/app/actions';
 import { ChevronDown } from 'lucide-react';
 
 const faqItems = [
@@ -39,9 +53,14 @@ const faqJsonLd = {
 };
 
 export default async function Home() {
-  const [mempoolFees, fearGreed] = await Promise.all([
+  const [mempoolFees, fearGreed, blockHeight, hashRateData, circulatingSupply, lightningData, dominanceData] = await Promise.all([
     getMempoolFees(),
     getFearGreedIndex(),
+    getBlockHeight(),
+    getHashRateDifficulty(),
+    getCirculatingSupply(),
+    getLightningStats(),
+    getBitcoinDominance(),
   ]);
 
   return (
@@ -90,8 +109,14 @@ export default async function Home() {
 
           {/* Sidebar */}
           <div className="space-y-4 lg:sticky lg:top-20">
+            <HalvingCountdownWidget initialHeight={blockHeight} />
             <FearGreedWidget initialData={fearGreed} />
             <MempoolFeeWidget initialData={mempoolFees} />
+            <HashRateWidget initialData={hashRateData} />
+            <SupplyScarcityWidget initialSupply={circulatingSupply} blockHeight={blockHeight} />
+            <LightningWidget initialData={lightningData} />
+            <DominanceWidget initialData={dominanceData} />
+            <SatConverterWidget />
             <div className="bg-white dark:bg-slate-900 rounded-xl p-4 sm:p-5 border border-slate-200 dark:border-slate-800">
               <h4 className="font-semibold text-slate-800 dark:text-white mb-1.5 text-sm">Start Stacking Sats</h4>
               <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">Consistency is key. Use this tool to plan your path to financial sovereignty.</p>

@@ -12,7 +12,9 @@
       "Bash(npm install:*)",
       "Bash(curl:*)",
       "Bash(python:*)",
-      "Bash(del \"D:\\\\Coding\\\\Bitcoin DCA Calculator\\\\temp_mempool.json\")"
+      "Bash(del \"D:\\\\Coding\\\\Bitcoin DCA Calculator\\\\temp_mempool.json\")",
+      "WebFetch(domain:mempool.space)",
+      "Bash(findstr:*)"
     ]
   }
 }

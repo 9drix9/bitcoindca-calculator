@@ -13,14 +13,15 @@ import {
     Line,
     ComposedChart
 } from 'recharts';
-import { DcaBreakdownItem } from '@/types';
-import { format } from 'date-fns';
+import { DcaBreakdownItem, HistoricalEvent } from '@/types';
+import { format, startOfDay } from 'date-fns';
 import { Camera } from 'lucide-react';
 import { toPng } from 'html-to-image';
 
 interface DcaChartProps {
     data: DcaBreakdownItem[];
     unit?: 'BTC' | 'SATS';
+    m2Data?: [number, number][] | null;
 }
 
 const HALVING_DATES: { date: string; label: string }[] = [
@@ -29,6 +30,16 @@ const HALVING_DATES: { date: string; label: string }[] = [
     { date: '2020-05-11', label: 'Halving 3' },
     { date: '2024-04-19', label: 'Halving 4' },
     { date: '2028-04-17', label: 'Halving 5 (est.)' },
+];
+
+const HISTORICAL_EVENTS: HistoricalEvent[] = [
+    { date: '2014-02-24', label: 'Mt. Gox', color: '#ef4444' },
+    { date: '2017-09-04', label: 'China Ban', color: '#f97316' },
+    { date: '2020-03-12', label: 'COVID Crash', color: '#ef4444' },
+    { date: '2021-05-19', label: 'China Ban 2', color: '#f97316' },
+    { date: '2021-09-07', label: 'El Salvador', color: '#22c55e' },
+    { date: '2024-01-10', label: 'ETF Approval', color: '#3b82f6' },
+    { date: '2024-12-05', label: '$100k', color: '#f59e0b' },
 ];
 
 const GENESIS_DATE = new Date('2009-01-03T00:00:00Z');
@@ -48,9 +59,11 @@ const computePowerLawPrice = (dateStr: string): number | null => {
     return price;
 };
 
-export const DcaChart = ({ data, unit = 'BTC' }: DcaChartProps) => {
+export const DcaChart = ({ data, unit = 'BTC', m2Data }: DcaChartProps) => {
     const chartRef = useRef<HTMLDivElement>(null);
     const [showPowerLaw, setShowPowerLaw] = useState(false);
+    const [showM2, setShowM2] = useState(false);
+    const [showEvents, setShowEvents] = useState(false);
 
     const isSats = unit === 'SATS';
 
@@ -78,14 +91,90 @@ export const DcaChart = ({ data, unit = 'BTC' }: DcaChartProps) => {
             });
     }, [data]);
 
+    const eventLines = useMemo(() => {
+        if (!showEvents || !data || data.length < 2) return [];
+        const firstDate = new Date(data[0].date).getTime();
+        const lastDate = new Date(data[data.length - 1].date).getTime();
+        return HISTORICAL_EVENTS
+            .filter(e => {
+                const eTs = new Date(e.date).getTime();
+                return eTs >= firstDate && eTs <= lastDate;
+            })
+            .map(e => {
+                const eTs = new Date(e.date).getTime();
+                let closestIdx = 0;
+                let closestDist = Infinity;
+                for (let i = 0; i < data.length; i++) {
+                    const dist = Math.abs(new Date(data[i].date).getTime() - eTs);
+                    if (dist < closestDist) {
+                        closestDist = dist;
+                        closestIdx = i;
+                    }
+                }
+                return { ...e, snappedDate: data[closestIdx].date };
+            });
+    }, [data, showEvents]);
+
+    // Build M2 lookup map for normalization
+    const m2Map = useMemo(() => {
+        if (!m2Data || m2Data.length === 0) return null;
+        const map = new Map<string, number>();
+        m2Data.forEach(([ts, val]) => {
+            const key = startOfDay(new Date(ts)).toISOString();
+            map.set(key, val);
+        });
+        return map;
+    }, [m2Data]);
+
     const chartData = useMemo(() => {
         if (!data || data.length === 0) return [];
-        if (!showPowerLaw) return data;
-        return data.map(item => ({
-            ...item,
-            powerLaw: computePowerLawPrice(item.date),
-        }));
-    }, [data, showPowerLaw]);
+
+        // Determine max portfolio value for M2 normalization
+        let maxPortfolioValue = 0;
+        if (showM2 && m2Map) {
+            for (const item of data) {
+                if (item.portfolioValue > maxPortfolioValue) maxPortfolioValue = item.portfolioValue;
+            }
+        }
+
+        // Find min/max M2 values
+        let minM2 = Infinity;
+        let maxM2 = 0;
+        if (showM2 && m2Map) {
+            m2Map.forEach(val => {
+                if (val < minM2) minM2 = val;
+                if (val > maxM2) maxM2 = val;
+            });
+        }
+
+        return data.map(item => {
+            const extended: Record<string, unknown> = { ...item };
+
+            if (showPowerLaw) {
+                extended.powerLaw = computePowerLawPrice(item.date);
+            }
+
+            if (showM2 && m2Map && maxM2 > minM2 && maxPortfolioValue > 0) {
+                // Find closest M2 data point
+                const dateTs = new Date(item.date).getTime();
+                let closestM2Val: number | null = null;
+                let closestDist = Infinity;
+                m2Map.forEach((val, key) => {
+                    const dist = Math.abs(new Date(key).getTime() - dateTs);
+                    if (dist < closestDist) {
+                        closestDist = dist;
+                        closestM2Val = val;
+                    }
+                });
+                if (closestM2Val !== null) {
+                    // Normalize M2 to left Y-axis scale (0 to maxPortfolioValue)
+                    extended.m2Normalized = ((closestM2Val - minM2) / (maxM2 - minM2)) * maxPortfolioValue;
+                }
+            }
+
+            return extended;
+        });
+    }, [data, showPowerLaw, showM2, m2Map]);
 
     const handleExport = useCallback(async () => {
         if (!chartRef.current) return;
@@ -114,6 +203,9 @@ export const DcaChart = ({ data, unit = 'BTC' }: DcaChartProps) => {
         if (name === 'powerLaw' || name === 'Power Law') {
             return [`$${Number(value).toLocaleString(undefined, { maximumFractionDigits: 0 })}`, 'Power Law'];
         }
+        if (name === 'm2Normalized' || name === 'M2 Supply') {
+            return [`$${Number(value).toLocaleString(undefined, { maximumFractionDigits: 0 })}`, 'M2 Supply (normalized)'];
+        }
         if ((name === 'accumulated' || name === 'BTC Bought') && isSats) {
             return [`${Math.floor(Number(value) * 100_000_000).toLocaleString()} sats`, 'Sats Bought'];
         }
@@ -128,7 +220,7 @@ export const DcaChart = ({ data, unit = 'BTC' }: DcaChartProps) => {
             {/* Header */}
             <div className="flex items-center justify-between mb-2 sm:mb-4 gap-2 shrink-0">
                 <h3 className="text-sm sm:text-lg font-semibold text-slate-800 dark:text-slate-100 truncate">Performance Over Time</h3>
-                <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+                <div className="flex items-center gap-1 sm:gap-2 shrink-0 flex-wrap justify-end">
                     <label className="flex items-center gap-1 sm:gap-1.5 text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 cursor-pointer select-none whitespace-nowrap">
                         <input
                             type="checkbox"
@@ -137,6 +229,26 @@ export const DcaChart = ({ data, unit = 'BTC' }: DcaChartProps) => {
                             className="rounded border-slate-300 dark:border-slate-600 text-violet-500 focus:ring-violet-500 w-3 h-3 sm:w-3.5 sm:h-3.5"
                         />
                         Power Law
+                    </label>
+                    {m2Data && m2Data.length > 0 && (
+                        <label className="flex items-center gap-1 sm:gap-1.5 text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 cursor-pointer select-none whitespace-nowrap">
+                            <input
+                                type="checkbox"
+                                checked={showM2}
+                                onChange={(e) => setShowM2(e.target.checked)}
+                                className="rounded border-slate-300 dark:border-slate-600 text-green-500 focus:ring-green-500 w-3 h-3 sm:w-3.5 sm:h-3.5"
+                            />
+                            M2 Supply
+                        </label>
+                    )}
+                    <label className="flex items-center gap-1 sm:gap-1.5 text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 cursor-pointer select-none whitespace-nowrap">
+                        <input
+                            type="checkbox"
+                            checked={showEvents}
+                            onChange={(e) => setShowEvents(e.target.checked)}
+                            className="rounded border-slate-300 dark:border-slate-600 text-blue-500 focus:ring-blue-500 w-3 h-3 sm:w-3.5 sm:h-3.5"
+                        />
+                        Events
                     </label>
                     <button
                         onClick={handleExport}
@@ -205,11 +317,25 @@ export const DcaChart = ({ data, unit = 'BTC' }: DcaChartProps) => {
                             label={{ value: h.label, position: 'top', fill: '#a855f7', fontSize: 9 }}
                         />
                     ))}
+                    {eventLines.map((e) => (
+                        <ReferenceLine
+                            key={e.date}
+                            x={e.snappedDate}
+                            yAxisId="left"
+                            stroke={e.color}
+                            strokeDasharray="3 3"
+                            strokeWidth={1}
+                            label={{ value: e.label, position: 'insideTopRight', fill: e.color, fontSize: 8 }}
+                        />
+                    ))}
                     <Area yAxisId="left" type="monotone" dataKey="portfolioValue" name="Portfolio Value" stroke="#f59e0b" strokeWidth={2} fillOpacity={1} fill="url(#colorValue)" isAnimationActive={false} />
                     <Area yAxisId="left" type="monotone" dataKey="totalInvested" name="Total Invested" stroke="#64748b" strokeWidth={1.5} fillOpacity={0.5} fill="url(#colorInvested)" isAnimationActive={false} />
                     <Area yAxisId="right" type="monotone" dataKey="price" name="BTC Price" stroke="#10b981" strokeWidth={1.5} fillOpacity={0.1} strokeDasharray="5 5" fill="#10b981" isAnimationActive={false} />
                     {showPowerLaw && (
                         <Line yAxisId="right" type="monotone" dataKey="powerLaw" name="Power Law" stroke="#8b5cf6" strokeWidth={1.5} strokeDasharray="4 4" dot={false} isAnimationActive={false} />
+                    )}
+                    {showM2 && (
+                        <Line yAxisId="left" type="monotone" dataKey="m2Normalized" name="M2 Supply" stroke="#22c55e" strokeWidth={1.5} strokeDasharray="6 3" dot={false} isAnimationActive={false} />
                     )}
                 </ComposedChart>
             </ResponsiveContainer>

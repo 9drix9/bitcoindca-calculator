@@ -72,3 +72,33 @@ export interface CalculatorSearchParams {
     provider?: string;
     manualPrice?: string;
 }
+
+export type CurrencyCode = 'USD' | 'EUR' | 'GBP' | 'CAD' | 'AUD' | 'JPY';
+
+export interface CurrencyConfig {
+    code: CurrencyCode;
+    symbol: string;
+    rate: number; // rate relative to USD (1 USD = rate units)
+    label: string;
+}
+
+export interface CostBasisPosition {
+    id: string;
+    label: string;
+    startDate: string;
+    endDate: string;
+    amount: number;
+    frequency: Frequency;
+    feePercentage: number;
+}
+
+export interface AppreciationScenario {
+    label: string;
+    rate: number; // annual appreciation rate as decimal (e.g. 0.10 for 10%)
+}
+
+export interface HistoricalEvent {
+    date: string;
+    label: string;
+    color: string;
+}
