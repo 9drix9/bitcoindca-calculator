@@ -312,28 +312,28 @@ export const DcaCalculator = () => {
                     </div>
 
                     {/* Start Date */}
-                    <div className="space-y-1.5">
+                    <div className="space-y-1.5 min-w-0">
                         <label className="text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300">Start Date</label>
                         <input
                             type="date"
                             value={startDate}
                             onChange={(e) => setStartDate(e.target.value)}
                             className={clsx(
-                                "w-full px-3 py-2 text-sm rounded-lg border bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500 outline-none transition-all min-h-[38px]",
+                                "w-full max-w-full px-2 sm:px-3 py-2 text-sm rounded-lg border bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500 outline-none transition-all min-h-[38px]",
                                 dateError ? "border-red-400 dark:border-red-600" : "border-slate-200 dark:border-slate-700"
                             )}
                         />
                     </div>
 
                     {/* End Date */}
-                    <div className="space-y-1.5">
+                    <div className="space-y-1.5 min-w-0">
                         <label className="text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300">End Date</label>
                         <input
                             type="date"
                             value={endDate}
                             onChange={(e) => setEndDate(e.target.value)}
                             className={clsx(
-                                "w-full px-3 py-2 text-sm rounded-lg border bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500 outline-none transition-all min-h-[38px]",
+                                "w-full max-w-full px-2 sm:px-3 py-2 text-sm rounded-lg border bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500 outline-none transition-all min-h-[38px]",
                                 dateError ? "border-red-400 dark:border-red-600" : "border-slate-200 dark:border-slate-700"
                             )}
                         />
@@ -341,7 +341,7 @@ export const DcaCalculator = () => {
                     </div>
 
                     {/* Price Mode + Provider */}
-                    <div className="space-y-3">
+                    <div className="space-y-3 col-span-2 lg:col-span-1">
                         <div className="space-y-1.5">
                             <label className="text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300">Price Mode</label>
                             <div className="flex bg-slate-100 dark:bg-slate-800 rounded-lg p-0.5">
@@ -386,7 +386,7 @@ export const DcaCalculator = () => {
                     </div>
 
                     {priceMode === 'manual' && (
-                        <div className="space-y-1.5 fade-in">
+                        <div className="space-y-1.5 fade-in col-span-2 lg:col-span-1">
                             <label className="text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300">Avg. BTC Price</label>
                             <input
                                 type="number"
