@@ -7,7 +7,7 @@ export const SkeletonCard = () => (
 );
 
 export const SkeletonChart = () => (
-    <div className="w-full h-[280px] sm:h-[400px] bg-white dark:bg-slate-900 rounded-xl p-3 sm:p-4 shadow-sm border border-slate-200 dark:border-slate-800 animate-pulse">
+    <div className="w-full h-[300px] sm:h-[420px] bg-white dark:bg-slate-900 rounded-xl p-3 sm:p-4 shadow-sm border border-slate-200 dark:border-slate-800 animate-pulse">
         <div className="h-4 sm:h-5 w-32 sm:w-40 bg-slate-200 dark:bg-slate-700 rounded mb-4 sm:mb-6" />
         <div className="flex items-end gap-0.5 sm:gap-1 h-[calc(100%-3rem)]">
             {Array.from({ length: 24 }).map((_, i) => (

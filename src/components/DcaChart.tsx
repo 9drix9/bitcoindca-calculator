@@ -123,10 +123,10 @@ export const DcaChart = ({ data, unit = 'BTC' }: DcaChartProps) => {
     return (
         <div
             ref={chartRef}
-            className="w-full h-[280px] sm:h-[400px] bg-white dark:bg-slate-900 rounded-xl p-3 sm:p-4 shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden relative"
+            className="w-full h-[300px] sm:h-[420px] bg-white dark:bg-slate-900 rounded-xl p-3 sm:p-4 shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden relative flex flex-col"
         >
             {/* Header */}
-            <div className="flex items-center justify-between mb-2 sm:mb-4 gap-2">
+            <div className="flex items-center justify-between mb-2 sm:mb-4 gap-2 shrink-0">
                 <h3 className="text-sm sm:text-lg font-semibold text-slate-800 dark:text-slate-100 truncate">Performance Over Time</h3>
                 <div className="flex items-center gap-1 sm:gap-2 shrink-0">
                     <label className="flex items-center gap-1 sm:gap-1.5 text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 cursor-pointer select-none whitespace-nowrap">
@@ -149,8 +149,9 @@ export const DcaChart = ({ data, unit = 'BTC' }: DcaChartProps) => {
                 </div>
             </div>
 
+            <div className="flex-1 min-h-0">
             <ResponsiveContainer width="100%" height="100%">
-                <ComposedChart data={chartData} margin={{ top: 5, right: 5, left: -10, bottom: 15 }}>
+                <ComposedChart data={chartData} margin={{ top: 5, right: 5, left: -10, bottom: 5 }}>
                     <defs>
                         <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
                             <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.8} />
@@ -212,6 +213,7 @@ export const DcaChart = ({ data, unit = 'BTC' }: DcaChartProps) => {
                     )}
                 </ComposedChart>
             </ResponsiveContainer>
+            </div>
             <div className="absolute bottom-0.5 right-2 text-[9px] text-slate-400/40 dark:text-slate-600/40 select-none pointer-events-none">
                 btcdollarcostaverage.com
             </div>
