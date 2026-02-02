@@ -63,8 +63,6 @@ const PRESET_GROUPS: { title: string; presets: Preset[] }[] = [
     },
 ];
 
-const PRESETS = PRESET_GROUPS.flatMap(g => g.presets);
-
 export const DcaCalculator = () => {
     const [today, setToday] = useState(() => startOfToday());
     const oneYearAgo = subYears(today, 1);
@@ -102,7 +100,7 @@ export const DcaCalculator = () => {
 
     const currencyConfig = useMemo(() => CURRENCIES.find(c => c.code === currency) || CURRENCIES[0], [currency]);
 
-    const applyPreset = useCallback((preset: typeof PRESETS[number]) => {
+    const applyPreset = useCallback((preset: Preset) => {
         const now = startOfToday();
         setAmount(preset.amount);
         setFrequency(preset.frequency);
