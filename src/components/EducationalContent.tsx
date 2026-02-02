@@ -1,5 +1,5 @@
 import React from 'react';
-import { BookOpen, TrendingUp, AlertTriangle, HelpCircle } from 'lucide-react';
+import { BookOpen, TrendingUp, AlertTriangle, Lightbulb } from 'lucide-react';
 
 const BITCOIN_QUOTES = [
     { text: "If you don't believe it or don't get it, I don't have the time to try to convince you, sorry.", author: "Satoshi Nakamoto" },
@@ -79,8 +79,8 @@ export const EducationalContent = () => {
             {/* How to Use */}
             <section className="bg-slate-100 dark:bg-slate-900/50 p-5 sm:p-8 rounded-2xl border border-slate-200 dark:border-slate-800">
                 <div className="flex items-center gap-2 sm:gap-3 mb-4 sm:mb-6">
-                    <HelpCircle className="w-6 h-6 sm:w-8 sm:h-8 text-blue-500 shrink-0" />
-                    <h2 className="text-lg sm:text-2xl font-bold text-slate-900 dark:text-white">How to Use This Calculator</h2>
+                    <Lightbulb className="w-6 h-6 sm:w-8 sm:h-8 text-amber-500 shrink-0" />
+                    <h2 className="text-lg sm:text-2xl font-bold text-slate-900 dark:text-white">Advanced Tips</h2>
                 </div>
                 <ol className="list-decimal pl-4 sm:pl-5 space-y-2 sm:space-y-4 text-xs sm:text-base text-slate-700 dark:text-slate-300">
                     <li>

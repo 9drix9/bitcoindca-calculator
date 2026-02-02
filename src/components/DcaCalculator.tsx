@@ -41,15 +41,29 @@ const formatCurrency = (usdValue: number, config: CurrencyConfig): string => {
     return `${config.symbol}${converted.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
 };
 
-const PRESETS: { label: string; amount: number; frequency: Frequency; yearsBack?: number; monthsBack?: number; startDate?: string }[] = [
-    { label: '5Y $50/week', amount: 50, frequency: 'weekly', yearsBack: 5 },
-    { label: '3Y $100/week', amount: 100, frequency: 'weekly', yearsBack: 3 },
-    { label: '1Y $200/month', amount: 200, frequency: 'monthly', yearsBack: 1 },
-    { label: 'Since 2013 $25/week', amount: 25, frequency: 'weekly', startDate: '2013-01-01' },
-    { label: 'ATH 2013 $50/wk', amount: 50, frequency: 'weekly', startDate: '2013-12-04' },
-    { label: 'ATH 2017 $50/wk', amount: 50, frequency: 'weekly', startDate: '2017-12-17' },
-    { label: 'ATH 2021 $50/wk', amount: 50, frequency: 'weekly', startDate: '2021-11-10' },
+type Preset = { label: string; amount: number; frequency: Frequency; yearsBack?: number; monthsBack?: number; startDate?: string };
+
+const PRESET_GROUPS: { title: string; presets: Preset[] }[] = [
+    {
+        title: 'Quick scenarios',
+        presets: [
+            { label: '$50/week for 5 years', amount: 50, frequency: 'weekly', yearsBack: 5 },
+            { label: '$100/week for 3 years', amount: 100, frequency: 'weekly', yearsBack: 3 },
+            { label: '$200/month for 1 year', amount: 200, frequency: 'monthly', yearsBack: 1 },
+            { label: '$25/week since 2013', amount: 25, frequency: 'weekly', startDate: '2013-01-01' },
+        ],
+    },
+    {
+        title: 'What if I bought the peak?',
+        presets: [
+            { label: '$50/week from 2013 peak', amount: 50, frequency: 'weekly', startDate: '2013-12-04' },
+            { label: '$50/week from 2017 peak', amount: 50, frequency: 'weekly', startDate: '2017-12-17' },
+            { label: '$50/week from 2021 peak', amount: 50, frequency: 'weekly', startDate: '2021-11-10' },
+        ],
+    },
 ];
+
+const PRESETS = PRESET_GROUPS.flatMap(g => g.presets);
 
 export const DcaCalculator = () => {
     const [today, setToday] = useState(() => startOfToday());
@@ -289,15 +303,24 @@ export const DcaCalculator = () => {
                 </h2>
 
                 {/* Presets */}
-                <div className="flex flex-wrap gap-1.5 sm:gap-2 mb-5 sm:mb-6">
-                    {PRESETS.map((preset) => (
-                        <button
-                            key={preset.label}
-                            onClick={() => applyPreset(preset)}
-                            className="px-2.5 sm:px-3 py-1 sm:py-1.5 text-xs font-medium rounded-full bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/40 border border-amber-200/60 dark:border-amber-800/40 transition-colors"
-                        >
-                            {preset.label}
-                        </button>
+                <div className="space-y-3 mb-5 sm:mb-6">
+                    {PRESET_GROUPS.map((group) => (
+                        <div key={group.title}>
+                            <div className="text-[11px] sm:text-xs font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wide mb-1.5">
+                                {group.title}
+                            </div>
+                            <div className="flex flex-wrap gap-1.5 sm:gap-2">
+                                {group.presets.map((preset) => (
+                                    <button
+                                        key={preset.label}
+                                        onClick={() => applyPreset(preset)}
+                                        className="px-2.5 sm:px-3 py-1 sm:py-1.5 text-xs font-medium rounded-full bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/40 border border-amber-200/60 dark:border-amber-800/40 transition-colors"
+                                    >
+                                        {preset.label}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
                     ))}
                 </div>
 
@@ -546,6 +569,17 @@ export const DcaCalculator = () => {
                                 )}
                             </p>
                         </div>
+                    )}
+
+                    {/* Result Explainer */}
+                    {purchaseCount > 0 && (
+                        <p className="text-center text-xs sm:text-sm text-slate-500 dark:text-slate-400 leading-relaxed max-w-2xl mx-auto">
+                            If you had invested {formatCurrency(amount, currencyConfig)} every {frequency === 'biweekly' ? 'two weeks' : frequency.replace('ly', '')} from{' '}
+                            {format(new Date(startDate), 'MMM yyyy')} to {format(new Date(endDate), 'MMM yyyy')}, you would have spent{' '}
+                            {formatCurrency(results.totalInvested, currencyConfig)} and your Bitcoin would now be worth{' '}
+                            <span className="font-medium text-slate-700 dark:text-slate-200">{formatCurrency(results.currentValue, currencyConfig)}</span>{' '}
+                            &mdash; a <span className={clsx("font-medium", isProfit ? "text-green-600 dark:text-green-400" : "text-red-500")}>{results.roi.toFixed(1)}% return</span>.
+                        </p>
                     )}
 
                     {/* Inflation-Adjusted Returns */}
