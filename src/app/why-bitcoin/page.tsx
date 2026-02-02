@@ -9,6 +9,19 @@ export const metadata: Metadata = {
     alternates: {
         canonical: '/why-bitcoin',
     },
+    openGraph: {
+        title: 'Where Does Bitcoin\'s Value Come From?',
+        description: 'User adoption, network effects, cost of mining, and the case for exiting fiat. A data-driven look at Bitcoin\'s fundamentals.',
+        type: 'article',
+        siteName: 'Bitcoin DCA Calculator',
+        locale: 'en_US',
+    },
+    twitter: {
+        card: 'summary_large_image',
+        title: 'Where Does Bitcoin\'s Value Come From?',
+        description: 'User adoption, network effects, cost of mining, and the case for exiting fiat. A data-driven look at Bitcoin\'s fundamentals.',
+        creator: '@9drix9',
+    },
 };
 
 export default function WhyBitcoinPage() {
