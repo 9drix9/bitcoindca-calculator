@@ -52,7 +52,7 @@ export const BitcoinAdoption = () => {
                         <div className="text-lg sm:text-xl font-bold text-amber-500">
                             {ADOPTION_PERCENT}%
                         </div>
-                        <div className="text-xs text-slate-400">
+                        <div className="text-xs text-slate-500 dark:text-slate-400">
                             of {WORLD_POPULATION_B}B people
                         </div>
                     </div>
@@ -66,7 +66,7 @@ export const BitcoinAdoption = () => {
                             style={{ width: `${ADOPTION_PERCENT}%` }}
                         />
                     </div>
-                    <div className="flex justify-between text-[10px] text-slate-400">
+                    <div className="flex justify-between text-[10px] text-slate-500 dark:text-slate-400">
                         <span>0%</span>
                         <span>100% global adoption</span>
                     </div>
@@ -124,12 +124,12 @@ export const BitcoinAdoption = () => {
                                 </defs>
                                 <XAxis
                                     dataKey="year"
-                                    tick={{ fontSize: 10, fill: '#94a3b8' }}
+                                    tick={{ fontSize: 10, fill: '#64748b' }}
                                     axisLine={false}
                                     tickLine={false}
                                 />
                                 <YAxis
-                                    tick={{ fontSize: 10, fill: '#94a3b8' }}
+                                    tick={{ fontSize: 10, fill: '#64748b' }}
                                     axisLine={false}
                                     tickLine={false}
                                     tickFormatter={v => `${v}%`}
@@ -168,7 +168,7 @@ export const BitcoinAdoption = () => {
                     ) : (
                         <div className="h-[180px] bg-slate-50 dark:bg-slate-800/50 rounded-lg animate-pulse" />
                     )}
-                    <div className="flex justify-center gap-4 mt-1 text-[10px] sm:text-xs text-slate-400">
+                    <div className="flex justify-center gap-4 mt-1 text-[10px] sm:text-xs text-slate-500 dark:text-slate-400">
                         <span className="flex items-center gap-1">
                             <span className="w-2.5 h-2.5 rounded-full bg-blue-500 inline-block" /> Internet
                         </span>
@@ -178,7 +178,7 @@ export const BitcoinAdoption = () => {
                     </div>
                 </div>
 
-                <p className="text-[10px] sm:text-xs text-slate-400 dark:text-slate-500 italic">
+                <p className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 italic">
                     Adoption estimates vary by source and methodology.
                 </p>
             </div>

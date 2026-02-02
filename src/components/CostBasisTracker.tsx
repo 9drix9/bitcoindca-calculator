@@ -216,7 +216,7 @@ export const CostBasisTracker = ({ priceData, livePrice, priceMode }: CostBasisT
                                     <tr key={position.id} className="border-b border-slate-100 dark:border-slate-800">
                                         <td className="py-2 pr-2">
                                             <div className="font-medium text-slate-800 dark:text-white">{position.label}</div>
-                                            <div className="text-[10px] text-slate-400">{position.startDate} to {position.endDate}</div>
+                                            <div className="text-[10px] text-slate-500 dark:text-slate-400">{position.startDate} to {position.endDate}</div>
                                         </td>
                                         <td className="py-2 pr-2 text-right font-mono text-slate-700 dark:text-slate-300">${result.totalInvested.toLocaleString(undefined, { maximumFractionDigits: 0 })}</td>
                                         <td className="py-2 pr-2 text-right font-mono text-slate-700 dark:text-slate-300">{result.btcAccumulated.toFixed(6)}</td>
@@ -227,7 +227,7 @@ export const CostBasisTracker = ({ priceData, livePrice, priceMode }: CostBasisT
                                         <td className="py-2 text-right">
                                             <button
                                                 onClick={() => removePosition(position.id)}
-                                                className="text-slate-400 hover:text-red-500 transition-colors p-1"
+                                                className="text-slate-500 dark:text-slate-400 hover:text-red-500 transition-colors p-1"
                                                 title="Remove position"
                                             >
                                                 &times;
@@ -254,13 +254,13 @@ export const CostBasisTracker = ({ priceData, livePrice, priceMode }: CostBasisT
                     </div>
 
                     {positionResults.length > 0 && (
-                        <div className="text-[10px] sm:text-xs text-slate-400 dark:text-slate-500 pt-1">
+                        <div className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 pt-1">
                             Avg. Cost Basis: ${totals.avgCost.toLocaleString(undefined, { maximumFractionDigits: 0 })} per BTC
                         </div>
                     )}
                 </div>
             ) : (
-                <p className="text-xs sm:text-sm text-slate-400 dark:text-slate-500 text-center py-4">
+                <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 text-center py-4">
                     No positions yet. Add your first DCA position to track your cost basis.
                 </p>
             )}

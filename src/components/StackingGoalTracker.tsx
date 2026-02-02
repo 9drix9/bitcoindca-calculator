@@ -82,7 +82,7 @@ export const StackingGoalTracker = ({
                                         {formatBtcLabel(milestone, unit)}
                                     </span>
                                 </div>
-                                <span className="text-[10px] sm:text-xs text-slate-400 tabular-nums">
+                                <span className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 tabular-nums">
                                     {completed ? 'Reached' : `${progress.toFixed(1)}%`}
                                 </span>
                             </div>

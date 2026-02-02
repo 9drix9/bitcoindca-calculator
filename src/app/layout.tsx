@@ -162,9 +162,9 @@ export default function RootLayout({
                 </div>
               </nav>
 
-              <div className="border-t border-slate-100 dark:border-slate-800 pt-6 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-400">
+              <div className="border-t border-slate-100 dark:border-slate-800 pt-6 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-500 dark:text-slate-400">
                 <p>&copy; {new Date().getFullYear()} Bitcoin DCA Calculator. Market data from public exchange APIs.</p>
-                <p className="opacity-60">Not financial advice.</p>
+                <p className="text-slate-500 dark:text-slate-500">Not financial advice.</p>
               </div>
             </div>
           </footer>

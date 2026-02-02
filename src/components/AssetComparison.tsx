@@ -43,7 +43,7 @@ const AssetCard = ({
                 <div className={clsx('text-xs sm:text-sm font-medium mb-1', style.label)}>
                     {result?.label ?? 'Asset'}
                 </div>
-                <div className="text-xs sm:text-sm text-slate-400 dark:text-slate-500">Data unavailable</div>
+                <div className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">Data unavailable</div>
             </div>
         );
     }

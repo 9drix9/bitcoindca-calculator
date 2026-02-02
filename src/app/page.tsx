@@ -112,7 +112,7 @@ export default async function Home() {
                   <details key={i} className="group bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 transition-shadow hover:shadow-sm">
                     <summary className="flex items-center justify-between cursor-pointer p-4 list-none [&::-webkit-details-marker]:hidden">
                       <h4 className="font-semibold text-sm sm:text-base text-slate-800 dark:text-slate-200 pr-4">{item.question}</h4>
-                      <ChevronDown className="w-4 h-4 text-slate-400 transition-transform duration-200 group-open:rotate-180 shrink-0" />
+                      <ChevronDown className="w-4 h-4 text-slate-500 dark:text-slate-400 transition-transform duration-200 group-open:rotate-180 shrink-0" aria-hidden="true" />
                     </summary>
                     <div className="px-4 pb-4 -mt-1">
                       <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">{item.answer}</p>
