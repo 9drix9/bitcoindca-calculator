@@ -251,7 +251,7 @@ export const DcaChart = ({ data, unit = 'BTC', m2Data }: DcaChartProps) => {
                     </label>
                     <button
                         onClick={handleExport}
-                        className="p-1.5 sm:p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+                        className="p-1.5 sm:p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-slate-500 dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
                         aria-label="Export chart as image"
                         title="Export chart as PNG"
                     >

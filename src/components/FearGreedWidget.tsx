@@ -53,7 +53,7 @@ export const FearGreedWidget = ({ initialData }: FearGreedWidgetProps) => {
                 <span className={`text-2xl sm:text-3xl font-bold tabular-nums ${getValueColor(data.value)}`}>
                     {data.value}
                 </span>
-                <span className="text-xs sm:text-sm text-slate-400 ml-0.5">/100</span>
+                <span className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 ml-0.5">/100</span>
                 <p className={`text-xs sm:text-sm font-medium mt-0.5 ${getValueColor(data.value)}`}>
                     {data.classification}
                 </p>
@@ -66,8 +66,8 @@ export const FearGreedWidget = ({ initialData }: FearGreedWidgetProps) => {
                 />
             </div>
             <div className="flex justify-between mt-1">
-                <span className="text-[9px] sm:text-[10px] text-slate-400">Extreme Fear</span>
-                <span className="text-[9px] sm:text-[10px] text-slate-400">Extreme Greed</span>
+                <span className="text-[9px] sm:text-[10px] text-slate-500 dark:text-slate-400">Extreme Fear</span>
+                <span className="text-[9px] sm:text-[10px] text-slate-500 dark:text-slate-400">Extreme Greed</span>
             </div>
 
             <div className="mt-2 pt-2 border-t border-slate-100 dark:border-slate-800">
@@ -75,7 +75,7 @@ export const FearGreedWidget = ({ initialData }: FearGreedWidgetProps) => {
                     href="https://alternative.me/crypto/fear-and-greed-index/"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-[10px] sm:text-xs text-slate-400 hover:text-amber-500 transition-colors"
+                    className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 hover:text-amber-500 transition-colors"
                 >
                     Data from alternative.me
                 </a>

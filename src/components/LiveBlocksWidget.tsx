@@ -95,7 +95,7 @@ export const LiveBlocksWidget = ({ initialData }: LiveBlocksWidgetProps) => {
                             <span className="text-xs sm:text-sm font-mono font-semibold text-amber-600 dark:text-amber-400 tabular-nums">
                                 {block.height.toLocaleString()}
                             </span>
-                            <span className="text-[10px] text-slate-400 dark:text-slate-500">
+                            <span className="text-[10px] text-slate-500 dark:text-slate-400">
                                 {formatTimeAgo(block.timestamp)}
                             </span>
                         </div>
@@ -103,7 +103,7 @@ export const LiveBlocksWidget = ({ initialData }: LiveBlocksWidgetProps) => {
                             <span className="text-[10px] sm:text-xs text-slate-600 dark:text-slate-400">
                                 {block.txCount.toLocaleString()} txs
                             </span>
-                            <span className="text-[10px] text-slate-400 dark:text-slate-500">
+                            <span className="text-[10px] text-slate-500 dark:text-slate-400">
                                 {formatSize(block.size)} MB
                             </span>
                         </div>
@@ -115,7 +115,7 @@ export const LiveBlocksWidget = ({ initialData }: LiveBlocksWidgetProps) => {
                     href="https://mempool.space"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-[10px] sm:text-xs text-slate-400 hover:text-amber-500 transition-colors"
+                    className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 hover:text-amber-500 transition-colors"
                 >
                     Data from mempool.space
                 </a>

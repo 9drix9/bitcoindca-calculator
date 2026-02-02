@@ -83,7 +83,7 @@ export const SavingsComparison = ({
                         onChange={(e) => setApy(Math.min(20, Math.max(0, Number(e.target.value))))}
                         className="w-16 px-2 py-1 text-xs rounded border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:ring-1 focus:ring-amber-500/40 outline-none"
                     />
-                    <span className="text-xs text-slate-400">%</span>
+                    <span className="text-xs text-slate-500 dark:text-slate-400">%</span>
                 </div>
             </div>
 

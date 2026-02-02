@@ -41,10 +41,10 @@ export const TransactionTable = ({ breakdown, unit = 'BTC' }: TransactionTablePr
                 className="w-full flex items-center justify-between p-4 sm:p-5 text-left hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
             >
                 <h3 className="text-sm sm:text-lg font-semibold text-slate-800 dark:text-slate-100">
-                    Transaction History <span className="text-slate-400 font-normal">({breakdown.length})</span>
+                    Transaction History <span className="text-slate-500 dark:text-slate-400 font-normal">({breakdown.length})</span>
                 </h3>
                 <ChevronDown className={clsx(
-                    "w-4 h-4 text-slate-400 transition-transform duration-200 shrink-0",
+                    "w-4 h-4 text-slate-500 dark:text-slate-400 transition-transform duration-200 shrink-0",
                     open && "rotate-180"
                 )} />
             </button>

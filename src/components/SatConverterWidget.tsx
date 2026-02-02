@@ -66,7 +66,7 @@ export const SatConverterWidget = () => {
 
             <div className="space-y-2.5">
                 <div>
-                    <label className="text-[10px] sm:text-xs text-slate-400 mb-1 block">Sats</label>
+                    <label className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 mb-1 block">Sats</label>
                     <input
                         type="number"
                         value={satsDisplay}
@@ -77,11 +77,11 @@ export const SatConverterWidget = () => {
                 </div>
 
                 <div className="flex justify-center">
-                    <span className="text-slate-400 text-xs">&#8596;</span>
+                    <span className="text-slate-500 dark:text-slate-400 text-xs" aria-hidden="true">&#8596;</span>
                 </div>
 
                 <div>
-                    <label className="text-[10px] sm:text-xs text-slate-400 mb-1 block">USD</label>
+                    <label className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 mb-1 block">USD</label>
                     <input
                         type="number"
                         value={usdDisplay}
@@ -94,7 +94,7 @@ export const SatConverterWidget = () => {
             </div>
 
             <div className="mt-3 pt-2.5 border-t border-slate-100 dark:border-slate-800 text-center">
-                <span className="text-[10px] sm:text-xs text-slate-400">
+                <span className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400">
                     1 sat = ${satUsdPrice.toFixed(8)}
                 </span>
             </div>

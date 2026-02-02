@@ -101,7 +101,7 @@ export const EducationalContent = () => {
             {/* Disclaimer */}
             <section className="border-t border-slate-200 dark:border-slate-800 pt-6 sm:pt-8">
                 <div className="flex items-start gap-3">
-                    <AlertTriangle className="w-5 h-5 text-slate-400 shrink-0 mt-0.5" />
+                    <AlertTriangle className="w-5 h-5 text-slate-500 dark:text-slate-400 shrink-0 mt-0.5" />
                     <p className="text-[11px] sm:text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
                         <strong>Disclaimer:</strong> This website is for educational and entertainment purposes only. The calculations are based on historical data and do not guarantee future performance. Bitcoin and cryptocurrency investments carry significant risk. Always conduct your own research (DYOR) and consult with a qualified financial advisor before making investment decisions.
                     </p>

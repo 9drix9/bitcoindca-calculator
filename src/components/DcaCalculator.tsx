@@ -295,7 +295,7 @@ export const DcaCalculator = () => {
                 <div className="space-y-3 mb-5 sm:mb-6">
                     {PRESET_GROUPS.map((group) => (
                         <div key={group.title}>
-                            <div className="text-[11px] sm:text-xs font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wide mb-1.5">
+                            <div className="text-[11px] sm:text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1.5">
                                 {group.title}
                             </div>
                             <div className="flex flex-wrap gap-1.5 sm:gap-2">
@@ -318,7 +318,7 @@ export const DcaCalculator = () => {
                     <div className="space-y-1.5">
                         <label className="text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300">Amount ({currencyConfig.code})</label>
                         <div className="relative">
-                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">{currencyConfig.symbol}</span>
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 dark:text-slate-400 text-sm">{currencyConfig.symbol}</span>
                             <input
                                 type="number"
                                 value={amount}
@@ -467,7 +467,7 @@ export const DcaCalculator = () => {
                     <div className="flex items-center gap-1">
                         <button
                             onClick={handleShare}
-                            className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+                            className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-slate-500 dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
                             title="Share calculator settings"
                             aria-label="Share calculator settings"
                         >
@@ -476,7 +476,7 @@ export const DcaCalculator = () => {
                         {results.breakdown.length > 0 && (
                             <button
                                 onClick={handleExportCsv}
-                                className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+                                className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-slate-500 dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
                                 title="Export to CSV"
                                 aria-label="Export transaction history to CSV"
                             >
@@ -521,7 +521,7 @@ export const DcaCalculator = () => {
                                     className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition-colors"
                                     title={`Switch to ${unit === 'BTC' ? 'Sats' : 'BTC'}`}
                                 >
-                                    <Repeat className="w-3.5 h-3.5 text-slate-400" />
+                                    <Repeat className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
                                 </button>
                             }
                         />
@@ -718,7 +718,7 @@ const ResultCard = ({ label, value, subValue, highlight, valueColor, icon, subVa
             <div className={clsx("text-base sm:text-2xl font-bold text-slate-900 dark:text-slate-100 truncate", valueColor)}>{value}</div>
             {icon}
         </div>
-        {subValue && <div className={clsx("text-[11px] sm:text-sm mt-0.5 sm:mt-1 truncate", subValueColor || "text-slate-400")}>{subValue}</div>}
+        {subValue && <div className={clsx("text-[11px] sm:text-sm mt-0.5 sm:mt-1 truncate", subValueColor || "text-slate-500 dark:text-slate-400")}>{subValue}</div>}
     </div>
 );
 
@@ -740,7 +740,7 @@ const PricePredictionScenario = ({ btcAmount, totalInvested }: { btcAmount: numb
                 <div className="space-y-3">
                     <label className="text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300">If Bitcoin Price Hits...</label>
                     <div className="relative">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">$</span>
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 dark:text-slate-400">$</span>
                         <input
                             type="number"
                             value={targetPrice}

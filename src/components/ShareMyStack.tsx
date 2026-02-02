@@ -105,13 +105,13 @@ export const ShareMyStack = ({
                         </div>
                     </div>
 
-                    <div className="text-[10px] text-slate-400 dark:text-slate-500 mb-3.5">
+                    <div className="text-[10px] text-slate-500 dark:text-slate-400 mb-3.5">
                         {startDate} &mdash; {endDate}
                     </div>
 
                     <div className="border-t border-slate-200 dark:border-slate-700 pt-2.5 flex justify-between items-center">
-                        <span className="text-[10px] text-slate-400 dark:text-slate-500">btcdollarcostaverage.com</span>
-                        <span className="text-[10px] text-slate-400 dark:text-slate-500">@9drix9</span>
+                        <span className="text-[10px] text-slate-500 dark:text-slate-400">btcdollarcostaverage.com</span>
+                        <span className="text-[10px] text-slate-500 dark:text-slate-400">@9drix9</span>
                     </div>
                 </div>
             </div>

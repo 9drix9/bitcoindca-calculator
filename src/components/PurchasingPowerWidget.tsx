@@ -84,12 +84,12 @@ export const PurchasingPowerWidget = ({ initialData }: PurchasingPowerWidgetProp
                 </div>
             </div>
 
-            <p className="text-[10px] sm:text-xs text-slate-400 dark:text-slate-500 mt-2.5 leading-relaxed">
+            <p className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 mt-2.5 leading-relaxed">
                 $100 of fiat lost purchasing power to inflation, while $100 of Bitcoin appreciated significantly.
             </p>
 
             <div className="mt-2 pt-2 border-t border-slate-100 dark:border-slate-800">
-                <span className="text-[10px] sm:text-xs text-slate-400">
+                <span className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400">
                     CPI data from FRED
                 </span>
             </div>

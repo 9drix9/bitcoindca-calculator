@@ -63,10 +63,10 @@ export const MempoolFeeWidget = ({ initialData }: MempoolFeeWidgetProps) => {
                     <div key={fee.label} className="flex items-center justify-between">
                         <div className="flex items-center gap-1">
                             <span className="text-xs text-slate-600 dark:text-slate-400">{fee.label}</span>
-                            <span className="text-[10px] text-slate-400 dark:text-slate-500">({fee.desc})</span>
+                            <span className="text-[10px] text-slate-500 dark:text-slate-400">({fee.desc})</span>
                         </div>
                         <span className={`text-xs sm:text-sm font-mono font-semibold tabular-nums ${getFeeColor(fee.value)}`}>
-                            {formatFee(fee.value)} <span className="text-[10px] font-normal text-slate-400">sat/vB</span>
+                            {formatFee(fee.value)} <span className="text-[10px] font-normal text-slate-500 dark:text-slate-400">sat/vB</span>
                         </span>
                     </div>
                 ))}
@@ -76,7 +76,7 @@ export const MempoolFeeWidget = ({ initialData }: MempoolFeeWidgetProps) => {
                     href="https://mempool.space"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-[10px] sm:text-xs text-slate-400 hover:text-amber-500 transition-colors"
+                    className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 hover:text-amber-500 transition-colors"
                 >
                     Data from mempool.space
                 </a>

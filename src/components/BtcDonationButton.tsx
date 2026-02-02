@@ -25,7 +25,7 @@ export const BtcDonationButton = () => {
             </code>
             <button
                 onClick={handleCopy}
-                className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+                className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-slate-500 dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
                 title="Copy BTC address"
                 aria-label="Copy BTC donation address"
             >

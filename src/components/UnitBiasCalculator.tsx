@@ -58,7 +58,7 @@ export const UnitBiasCalculator = ({ btcAccumulated }: UnitBiasCalculatorProps) 
                     </div>
                 </div>
 
-                <p className="text-[10px] sm:text-xs text-slate-400 dark:text-slate-500">
+                <p className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400">
                     Based on 21M BTC max supply and ~8B world population ({FAIR_SHARE_SATS.toLocaleString()} sats per person)
                 </p>
             </div>

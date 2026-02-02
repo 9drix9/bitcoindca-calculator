@@ -50,8 +50,8 @@ export const SupplyScarcityWidget = ({ initialSupply, blockHeight }: SupplyScarc
             <div className="space-y-2.5 text-xs sm:text-sm">
                 <div>
                     <div className="flex justify-between mb-1">
-                        <span className="text-[10px] text-slate-400">Mined</span>
-                        <span className="text-[10px] text-slate-400">{stats.percentMined.toFixed(2)}% of 21M</span>
+                        <span className="text-[10px] text-slate-500 dark:text-slate-400">Mined</span>
+                        <span className="text-[10px] text-slate-500 dark:text-slate-400">{stats.percentMined.toFixed(2)}% of 21M</span>
                     </div>
                     <div className="h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
                         <div

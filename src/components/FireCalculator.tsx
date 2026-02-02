@@ -88,7 +88,7 @@ export const FireCalculator = ({
                 <div className="space-y-2">
                     <label className="text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300">Annual Withdrawal Target</label>
                     <div className="relative">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">$</span>
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 dark:text-slate-400">$</span>
                         <input
                             type="number"
                             value={targetWithdrawal}
@@ -137,7 +137,7 @@ export const FireCalculator = ({
                 ))}
             </div>
 
-            <div className="mt-3 text-[10px] sm:text-xs text-slate-400 dark:text-slate-500 text-center">
+            <div className="mt-3 text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 text-center">
                 Assumes continued DCA of ${getContributionsPerYear(amount, frequency).toLocaleString()}/yr and 4% safe withdrawal rate
             </div>
         </div>

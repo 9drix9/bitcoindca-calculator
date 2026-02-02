@@ -59,8 +59,8 @@ export const DominanceWidget = ({ initialData }: DominanceWidgetProps) => {
                     />
                 </div>
                 <div className="flex justify-between mt-1">
-                    <span className="text-[9px] sm:text-[10px] text-slate-400">0%</span>
-                    <span className="text-[9px] sm:text-[10px] text-slate-400">100%</span>
+                    <span className="text-[9px] sm:text-[10px] text-slate-500 dark:text-slate-400">0%</span>
+                    <span className="text-[9px] sm:text-[10px] text-slate-500 dark:text-slate-400">100%</span>
                 </div>
             </div>
 

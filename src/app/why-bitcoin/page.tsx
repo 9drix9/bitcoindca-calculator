@@ -257,15 +257,15 @@ export default function WhyBitcoinPage() {
                                     </tr>
                                     <tr className="border-t border-slate-200 dark:border-slate-700/50">
                                         <td className="py-1.5 pr-4">$1,000,000</td>
-                                        <td className="py-1.5">$0.01 <span className="text-slate-400 font-sans">(one cent)</span></td>
+                                        <td className="py-1.5">$0.01 <span className="text-slate-500 dark:text-slate-400 font-sans">(one cent)</span></td>
                                     </tr>
                                     <tr className="border-t border-slate-200 dark:border-slate-700/50">
                                         <td className="py-1.5 pr-4">$10,000,000</td>
-                                        <td className="py-1.5">$0.10 <span className="text-slate-400 font-sans">(one dime)</span></td>
+                                        <td className="py-1.5">$0.10 <span className="text-slate-500 dark:text-slate-400 font-sans">(one dime)</span></td>
                                     </tr>
                                     <tr className="border-t border-slate-200 dark:border-slate-700/50">
                                         <td className="py-1.5 pr-4">$100,000,000</td>
-                                        <td className="py-1.5">$1.00 <span className="text-slate-400 font-sans">(one dollar)</span></td>
+                                        <td className="py-1.5">$1.00 <span className="text-slate-500 dark:text-slate-400 font-sans">(one dollar)</span></td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -302,7 +302,7 @@ export default function WhyBitcoinPage() {
             {/* Disclaimer */}
             <section className="border-t border-slate-200 dark:border-slate-800 pt-6 sm:pt-8">
                 <div className="flex items-start gap-3">
-                    <AlertTriangle className="w-5 h-5 text-slate-400 shrink-0 mt-0.5" />
+                    <AlertTriangle className="w-5 h-5 text-slate-500 dark:text-slate-400 shrink-0 mt-0.5" />
                     <p className="text-[11px] sm:text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
                         <strong>Disclaimer:</strong> This page is for educational and informational purposes only. It does not constitute
                         financial advice. Bitcoin and cryptocurrency investments carry significant risk, including the possibility of total
