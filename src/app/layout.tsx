@@ -71,10 +71,15 @@ export default function RootLayout({
           {/* Header */}
           <header className="border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-950/80 backdrop-blur-md sticky top-0 z-50">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-14 sm:h-16 flex items-center justify-between">
-              <Link href="/" className="flex items-center gap-2 group">
-                <div className="w-8 h-8 bg-amber-500 rounded-full flex items-center justify-center text-white font-bold text-sm shrink-0 group-hover:scale-105 transition-transform">₿</div>
-                <h1 className="text-lg sm:text-xl font-bold bg-gradient-to-r from-amber-500 to-orange-600 bg-clip-text text-transparent">Bitcoin DCA</h1>
-              </Link>
+              <div className="flex items-center gap-4 sm:gap-6">
+                <Link href="/" className="flex items-center gap-2 group">
+                  <div className="w-8 h-8 bg-amber-500 rounded-full flex items-center justify-center text-white font-bold text-sm shrink-0 group-hover:scale-105 transition-transform">₿</div>
+                  <h1 className="text-lg sm:text-xl font-bold bg-gradient-to-r from-amber-500 to-orange-600 bg-clip-text text-transparent">Bitcoin DCA</h1>
+                </Link>
+                <Link href="/why-bitcoin" className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 hover:text-amber-600 dark:hover:text-amber-400 transition-colors">
+                  Why Bitcoin
+                </Link>
+              </div>
               <ThemeToggle />
             </div>
           </header>
@@ -87,7 +92,7 @@ export default function RootLayout({
           {/* Footer */}
           <footer className="bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 mt-12">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10">
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-6 sm:gap-8 mb-8">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-6 sm:gap-8 mb-8">
                 {/* Brand */}
                 <div className="col-span-2 md:col-span-1 space-y-2">
                   <div className="flex items-center gap-2">
@@ -100,6 +105,16 @@ export default function RootLayout({
                       @9drix9
                     </a>
                   </p>
+                </div>
+
+                {/* Learn */}
+                <div className="space-y-2">
+                  <h4 className="text-xs font-semibold text-slate-800 dark:text-white uppercase tracking-wider">Learn</h4>
+                  <div className="flex flex-col gap-1.5">
+                    <Link href="/why-bitcoin" className="text-sm text-slate-500 dark:text-slate-400 hover:text-amber-600 dark:hover:text-amber-400 transition-colors">
+                      Why Bitcoin
+                    </Link>
+                  </div>
                 </div>
 
                 {/* Links */}
