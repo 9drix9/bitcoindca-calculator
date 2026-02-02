@@ -10,7 +10,10 @@ import { SupplyScarcityWidget } from '@/components/SupplyScarcityWidget';
 import { LightningWidget } from '@/components/LightningWidget';
 import { DominanceWidget } from '@/components/DominanceWidget';
 import { SatConverterWidget } from '@/components/SatConverterWidget';
-import { BitcoinAdoption } from '@/components/BitcoinAdoption';
+import dynamic from 'next/dynamic';
+const BitcoinAdoption = dynamic(() => import('@/components/BitcoinAdoption').then(m => m.BitcoinAdoption), {
+  loading: () => <div className="h-[400px] bg-slate-100 dark:bg-slate-800/50 rounded-xl animate-pulse" />,
+});
 import { PurchasingPowerWidget } from '@/components/PurchasingPowerWidget';
 import { LiveBlocksWidget } from '@/components/LiveBlocksWidget';
 import {
@@ -81,9 +84,9 @@ export default async function Home() {
 
         {/* Hero Section */}
         <section className="text-center max-w-3xl mx-auto space-y-3 sm:space-y-4">
-          <h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-slate-900 dark:text-white tracking-tight text-balance">
+          <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-slate-900 dark:text-white tracking-tight text-balance">
             Calculate Your <span className="text-amber-500">Bitcoin</span> Wealth
-          </h2>
+          </h1>
           <p className="text-base sm:text-lg text-slate-600 dark:text-slate-300 max-w-xl mx-auto">
             See how much you would have today if you started investing $50 a week in Bitcoin 5 years ago.
           </p>
