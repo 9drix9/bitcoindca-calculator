@@ -228,16 +228,6 @@ export const DcaCalculator = () => {
         breakdown: results.breakdown.map(b => ({ date: b.date, portfolioValue: b.portfolioValue })),
     }), [results]);
 
-    const ownershipPercent = useMemo(() => {
-        if (results.btcAccumulated <= 0) return null;
-        return (results.btcAccumulated / BTC_MAX_SUPPLY) * 100;
-    }, [results.btcAccumulated]);
-
-    const oneInEvery = useMemo(() => {
-        if (!ownershipPercent || ownershipPercent <= 0) return null;
-        return Math.round(BTC_MAX_SUPPLY / results.btcAccumulated);
-    }, [ownershipPercent, results.btcAccumulated]);
-
     const purchaseCount = results.breakdown.length;
 
     const durationText = useMemo(() => {
@@ -559,11 +549,11 @@ export const DcaCalculator = () => {
                         <div className="text-center text-xs sm:text-sm text-slate-500 dark:text-slate-400 py-1">
                             <p className="flex flex-wrap justify-center gap-x-1 gap-y-0.5">
                                 <span>{purchaseCount} purchases{durationText ? ` over ${durationText}` : ''}</span>
-                                {ownershipPercent !== null && oneInEvery !== null && (
+                                {results.btcAccumulated > 0 && (
                                     <>
                                         <span className="hidden sm:inline mx-1">|</span>
                                         <span>
-                                            <span className="font-medium text-amber-600 dark:text-amber-400">{ownershipPercent < 0.000001 ? ownershipPercent.toExponential(2) : ownershipPercent.toFixed(6)}%</span> of all BTC
+                                            <span className="font-medium text-amber-600 dark:text-amber-400">{results.btcAccumulated < 1 ? results.btcAccumulated.toFixed(4) : results.btcAccumulated.toFixed(2)}</span> of 21M BTC
                                         </span>
                                     </>
                                 )}
@@ -574,7 +564,7 @@ export const DcaCalculator = () => {
                     {/* Result Explainer */}
                     {purchaseCount > 0 && (
                         <p className="text-center text-xs sm:text-sm text-slate-500 dark:text-slate-400 leading-relaxed max-w-2xl mx-auto">
-                            If you had invested {formatCurrency(amount, currencyConfig)} every {frequency === 'biweekly' ? 'two weeks' : frequency.replace('ly', '')} from{' '}
+                            If you had invested {currencyConfig.symbol}{amount.toLocaleString()} every {frequency === 'daily' ? 'day' : frequency === 'biweekly' ? 'two weeks' : frequency.replace('ly', '')} from{' '}
                             {format(new Date(startDate), 'MMM yyyy')} to {format(new Date(endDate), 'MMM yyyy')}, you would have spent{' '}
                             {formatCurrency(results.totalInvested, currencyConfig)} and your Bitcoin would now be worth{' '}
                             <span className="font-medium text-slate-700 dark:text-slate-200">{formatCurrency(results.currentValue, currencyConfig)}</span>{' '}
