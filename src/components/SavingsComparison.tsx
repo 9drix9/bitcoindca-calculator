@@ -36,7 +36,7 @@ export const SavingsComparison = ({
         const end = startOfDay(new Date(endDate));
 
         while (!isAfter(currentDate, end)) {
-            // Compound existing balance daily since last deposit
+            // Deposit
             balance += amount;
             totalDeposited += amount;
 
@@ -49,8 +49,9 @@ export const SavingsComparison = ({
                 case 'monthly': nextDate = addMonths(currentDate, 1); break;
             }
 
-            // Compound balance for the period
-            const daysUntilNext = Math.max(1, Math.round((nextDate.getTime() - currentDate.getTime()) / (1000 * 60 * 60 * 24)));
+            // Cap compounding to the end date so we don't over-compound past the period
+            const compoundEnd = isAfter(nextDate, end) ? end : nextDate;
+            const daysUntilNext = Math.max(1, Math.round((compoundEnd.getTime() - currentDate.getTime()) / (1000 * 60 * 60 * 24)));
             balance *= Math.pow(1 + dailyRate, daysUntilNext);
 
             currentDate = nextDate;

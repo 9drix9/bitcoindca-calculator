@@ -14,7 +14,7 @@ import {
     ComposedChart
 } from 'recharts';
 import { DcaBreakdownItem, HistoricalEvent } from '@/types';
-import { format, startOfDay } from 'date-fns';
+import { format } from 'date-fns';
 import { Camera } from 'lucide-react';
 import { toPng } from 'html-to-image';
 
@@ -115,15 +115,12 @@ export const DcaChart = ({ data, unit = 'BTC', m2Data }: DcaChartProps) => {
             });
     }, [data, showEvents]);
 
-    // Build M2 lookup map for normalization
-    const m2Map = useMemo(() => {
+    // Build sorted M2 array for efficient lookup
+    const m2Sorted = useMemo(() => {
         if (!m2Data || m2Data.length === 0) return null;
-        const map = new Map<string, number>();
-        m2Data.forEach(([ts, val]) => {
-            const key = startOfDay(new Date(ts)).toISOString();
-            map.set(key, val);
-        });
-        return map;
+        // m2Data is already [timestamp, value][], ensure sorted by timestamp
+        const sorted = [...m2Data].sort((a, b) => a[0] - b[0]);
+        return sorted;
     }, [m2Data]);
 
     const chartData = useMemo(() => {
@@ -131,7 +128,7 @@ export const DcaChart = ({ data, unit = 'BTC', m2Data }: DcaChartProps) => {
 
         // Determine max portfolio value for M2 normalization
         let maxPortfolioValue = 0;
-        if (showM2 && m2Map) {
+        if (showM2 && m2Sorted) {
             for (const item of data) {
                 if (item.portfolioValue > maxPortfolioValue) maxPortfolioValue = item.portfolioValue;
             }
@@ -140,12 +137,15 @@ export const DcaChart = ({ data, unit = 'BTC', m2Data }: DcaChartProps) => {
         // Find min/max M2 values
         let minM2 = Infinity;
         let maxM2 = 0;
-        if (showM2 && m2Map) {
-            m2Map.forEach(val => {
+        if (showM2 && m2Sorted) {
+            for (const [, val] of m2Sorted) {
                 if (val < minM2) minM2 = val;
                 if (val > maxM2) maxM2 = val;
-            });
+            }
         }
+
+        // Use index pointer for O(n+m) M2 lookup instead of O(n*m)
+        let m2Idx = 0;
 
         return data.map(item => {
             const extended: Record<string, unknown> = { ...item };
@@ -154,27 +154,26 @@ export const DcaChart = ({ data, unit = 'BTC', m2Data }: DcaChartProps) => {
                 extended.powerLaw = computePowerLawPrice(item.date);
             }
 
-            if (showM2 && m2Map && maxM2 > minM2 && maxPortfolioValue > 0) {
-                // Find closest M2 data point
+            if (showM2 && m2Sorted && m2Sorted.length > 0 && maxM2 > minM2 && maxPortfolioValue > 0) {
                 const dateTs = new Date(item.date).getTime();
-                let closestM2Val: number | null = null;
-                let closestDist = Infinity;
-                m2Map.forEach((val, key) => {
-                    const dist = Math.abs(new Date(key).getTime() - dateTs);
-                    if (dist < closestDist) {
-                        closestDist = dist;
-                        closestM2Val = val;
-                    }
-                });
-                if (closestM2Val !== null) {
-                    // Normalize M2 to left Y-axis scale (0 to maxPortfolioValue)
-                    extended.m2Normalized = ((closestM2Val - minM2) / (maxM2 - minM2)) * maxPortfolioValue;
+                // Advance pointer to closest M2 data point
+                while (m2Idx < m2Sorted.length - 1 && m2Sorted[m2Idx + 1][0] <= dateTs) {
+                    m2Idx++;
                 }
+                // Check if next point is closer than current
+                let closestVal = m2Sorted[m2Idx][1];
+                if (m2Idx < m2Sorted.length - 1) {
+                    const distCurrent = Math.abs(m2Sorted[m2Idx][0] - dateTs);
+                    const distNext = Math.abs(m2Sorted[m2Idx + 1][0] - dateTs);
+                    if (distNext < distCurrent) closestVal = m2Sorted[m2Idx + 1][1];
+                }
+                // Normalize M2 to left Y-axis scale (0 to maxPortfolioValue)
+                extended.m2Normalized = ((closestVal - minM2) / (maxM2 - minM2)) * maxPortfolioValue;
             }
 
             return extended;
         });
-    }, [data, showPowerLaw, showM2, m2Map]);
+    }, [data, showPowerLaw, showM2, m2Sorted]);
 
     const handleExport = useCallback(async () => {
         if (!chartRef.current) return;
