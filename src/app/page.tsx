@@ -1,4 +1,5 @@
 import { DcaCalculator } from '@/components/DcaCalculator';
+import { HowItWorks } from '@/components/HowItWorks';
 import { AdSlot } from '@/components/AdSlot';
 import { EducationalContent } from '@/components/EducationalContent';
 import { FearGreedWidget } from '@/components/FearGreedWidget';
@@ -80,6 +81,9 @@ export default async function Home() {
             See how much you would have today if you started investing $50 a week in Bitcoin 5 years ago.
           </p>
         </section>
+
+        {/* How It Works */}
+        <HowItWorks />
 
         {/* Main Calculator */}
         <DcaCalculator />
