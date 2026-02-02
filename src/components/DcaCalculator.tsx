@@ -730,22 +730,22 @@ const PricePredictionScenario = ({ btcAmount, totalInvested }: { btcAmount: numb
     const multiplier = totalInvested > 0 ? projectedValue / totalInvested : 0;
 
     return (
-        <div className="bg-gradient-to-br from-slate-900 to-slate-800 text-white p-4 sm:p-6 rounded-2xl shadow-lg border border-slate-700">
+        <div className="bg-gradient-to-br from-slate-50 to-white dark:from-slate-900 dark:to-slate-800 text-slate-900 dark:text-white p-4 sm:p-6 rounded-2xl shadow-sm dark:shadow-lg border border-slate-200 dark:border-slate-700">
             <h3 className="text-base sm:text-xl font-bold mb-3 sm:mb-4 flex items-center gap-2">
-                <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5 text-green-400 shrink-0" />
+                <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5 text-green-600 dark:text-green-400 shrink-0" />
                 Price Prediction
             </h3>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-8 items-center">
                 <div className="space-y-3">
-                    <label className="text-xs sm:text-sm font-medium text-slate-300">If Bitcoin Price Hits...</label>
+                    <label className="text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300">If Bitcoin Price Hits...</label>
                     <div className="relative">
                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">$</span>
                         <input
                             type="number"
                             value={targetPrice}
                             onChange={(e) => setTargetPrice(Math.max(0, Number(e.target.value)))}
-                            className="w-full pl-7 pr-3 py-2.5 rounded-xl border border-slate-600 bg-slate-900/50 text-lg font-bold focus:ring-2 focus:ring-green-500 outline-none transition-all"
+                            className="w-full pl-7 pr-3 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900/50 text-lg font-bold focus:ring-2 focus:ring-green-500 outline-none transition-all"
                         />
                     </div>
                     <div className="flex gap-1.5 flex-wrap">
@@ -753,7 +753,7 @@ const PricePredictionScenario = ({ btcAmount, totalInvested }: { btcAmount: numb
                             <button
                                 key={price}
                                 onClick={() => setTargetPrice(price)}
-                                className="px-2.5 py-1 text-[11px] sm:text-xs font-medium rounded-full bg-slate-700/80 hover:bg-slate-600 text-slate-300 transition-colors"
+                                className="px-2.5 py-1 text-[11px] sm:text-xs font-medium rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 dark:bg-slate-700/80 dark:hover:bg-slate-600 dark:text-slate-300 transition-colors"
                             >
                                 ${price >= 1000000 ? `${price / 1000000}M` : `${price / 1000}k`}
                             </button>
@@ -761,20 +761,20 @@ const PricePredictionScenario = ({ btcAmount, totalInvested }: { btcAmount: numb
                     </div>
                 </div>
 
-                <div className="space-y-3 bg-slate-800/50 p-4 sm:p-5 rounded-xl border border-slate-700/50">
-                    <div className="flex justify-between items-end border-b border-slate-700 pb-3">
-                        <span className="text-xs sm:text-sm text-slate-400">Portfolio Value</span>
-                        <span className="text-xl sm:text-3xl font-bold text-green-400">${projectedValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
+                <div className="space-y-3 bg-slate-50 dark:bg-slate-800/50 p-4 sm:p-5 rounded-xl border border-slate-200 dark:border-slate-700/50">
+                    <div className="flex justify-between items-end border-b border-slate-200 dark:border-slate-700 pb-3">
+                        <span className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">Portfolio Value</span>
+                        <span className="text-xl sm:text-3xl font-bold text-green-600 dark:text-green-400">${projectedValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
                     </div>
                     <div className="flex justify-between items-center">
-                        <span className="text-xs sm:text-sm text-slate-400">Profit</span>
-                        <span className={clsx("text-sm sm:text-lg font-semibold", projectedProfit >= 0 ? "text-green-300" : "text-red-400")}>
+                        <span className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">Profit</span>
+                        <span className={clsx("text-sm sm:text-lg font-semibold", projectedProfit >= 0 ? "text-green-600 dark:text-green-300" : "text-red-500 dark:text-red-400")}>
                             {projectedProfit >= 0 ? '+' : ''}${projectedProfit.toLocaleString(undefined, { maximumFractionDigits: 0 })}
                         </span>
                     </div>
                     <div className="flex justify-between items-center">
-                        <span className="text-xs sm:text-sm text-slate-400">Multiplier</span>
-                        <span className="text-xs sm:text-sm font-medium bg-green-900/30 text-green-400 px-2 py-0.5 rounded">{multiplier.toFixed(1)}x</span>
+                        <span className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">Multiplier</span>
+                        <span className="text-xs sm:text-sm font-medium bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 px-2 py-0.5 rounded">{multiplier.toFixed(1)}x</span>
                     </div>
                 </div>
             </div>
