@@ -10,6 +10,7 @@ export const AdSlot = ({ unitId = '2426249', className = '' }: AdSlotProps) => (
         <iframe
             data-aa={unitId}
             src={`//acceptable.a-ads.com/${unitId}/?size=Adaptive`}
+            suppressHydrationWarning
             style={{
                 border: 0,
                 padding: 0,

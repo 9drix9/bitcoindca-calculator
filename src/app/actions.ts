@@ -493,6 +493,31 @@ export async function getM2Data(from: number, to: number): Promise<[number, numb
     }
 }
 
+export async function getPurchasingPowerData(): Promise<{
+    cpiStart: number;
+    cpiNow: number;
+    btcPriceStart: number;
+    btcPriceNow: number;
+} | null> {
+    try {
+        const jan2015 = new Date('2015-01-01').getTime();
+        const now = Date.now();
+        const [cpiData, btcPriceNow] = await Promise.all([
+            getCpiData(jan2015, now),
+            getCurrentBitcoinPrice(),
+        ]);
+        if (!cpiData || cpiData.length < 2) return null;
+        return {
+            cpiStart: cpiData[0][1],
+            cpiNow: cpiData[cpiData.length - 1][1],
+            btcPriceStart: 314, // BTC price Jan 2015 — historical fact
+            btcPriceNow,
+        };
+    } catch {
+        return null;
+    }
+}
+
 export async function getCurrentBitcoinPrice(provider: 'kraken' | 'coinbase' = 'kraken'): Promise<number> {
     try {
         let url = '';
