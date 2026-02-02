@@ -643,9 +643,6 @@ export const DcaCalculator = () => {
                     {/* Chart */}
                     <DcaChart data={results.breakdown} unit={unit} m2Data={m2Data} />
 
-                    {/* Mid-content Ad */}
-                    <AdSlot unitId="2426252" className="min-h-[100px] flex justify-center" />
-
                     {/* Transaction Table */}
                     <TransactionTable breakdown={results.breakdown} unit={unit} />
 
@@ -695,6 +692,9 @@ export const DcaCalculator = () => {
                     />
                 </>
             )}
+
+            {/* Mid-content Ad */}
+            <AdSlot unitId="2426252" className="min-h-[100px] flex justify-center" />
         </div>
     );
 };
