@@ -10,6 +10,8 @@ import { SupplyScarcityWidget } from '@/components/SupplyScarcityWidget';
 import { LightningWidget } from '@/components/LightningWidget';
 import { DominanceWidget } from '@/components/DominanceWidget';
 import { SatConverterWidget } from '@/components/SatConverterWidget';
+import { BitcoinAdoption } from '@/components/BitcoinAdoption';
+import { PurchasingPowerWidget } from '@/components/PurchasingPowerWidget';
 import {
   getMempoolFees,
   getFearGreedIndex,
@@ -18,6 +20,7 @@ import {
   getCirculatingSupply,
   getLightningStats,
   getBitcoinDominance,
+  getPurchasingPowerData,
 } from '@/app/actions';
 import { ChevronDown } from 'lucide-react';
 
@@ -54,7 +57,7 @@ const faqJsonLd = {
 };
 
 export default async function Home() {
-  const [mempoolFees, fearGreed, blockHeight, hashRateData, circulatingSupply, lightningData, dominanceData] = await Promise.all([
+  const [mempoolFees, fearGreed, blockHeight, hashRateData, circulatingSupply, lightningData, dominanceData, purchasingPowerData] = await Promise.all([
     getMempoolFees(),
     getFearGreedIndex(),
     getBlockHeight(),
@@ -62,6 +65,7 @@ export default async function Home() {
     getCirculatingSupply(),
     getLightningStats(),
     getBitcoinDominance(),
+    getPurchasingPowerData(),
   ]);
 
   return (
@@ -93,6 +97,8 @@ export default async function Home() {
           <div className="lg:col-span-2 space-y-8">
             <EducationalContent />
 
+            <BitcoinAdoption />
+
             <section className="space-y-4">
               <h3 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">Frequently Asked Questions</h3>
               <div className="space-y-2.5">
@@ -118,6 +124,7 @@ export default async function Home() {
             <MempoolFeeWidget initialData={mempoolFees} />
             <HashRateWidget initialData={hashRateData} />
             <SupplyScarcityWidget initialSupply={circulatingSupply} blockHeight={blockHeight} />
+            <PurchasingPowerWidget initialData={purchasingPowerData} />
             <LightningWidget initialData={lightningData} />
             <DominanceWidget initialData={dominanceData} />
             <SatConverterWidget />

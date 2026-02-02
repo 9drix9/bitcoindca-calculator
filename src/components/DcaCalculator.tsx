@@ -15,6 +15,7 @@ import { StackingGoalTracker } from './StackingGoalTracker';
 import { ShareMyStack } from './ShareMyStack';
 import { UnitBiasCalculator } from './UnitBiasCalculator';
 import { SavingsComparison } from './SavingsComparison';
+import { OpportunityCostCalculator } from './OpportunityCostCalculator';
 import { FireCalculator } from './FireCalculator';
 import { CostBasisTracker } from './CostBasisTracker';
 import { SkeletonCard, SkeletonChart } from './Skeleton';
@@ -637,6 +638,11 @@ export const DcaCalculator = () => {
                         startDate={startDate}
                         endDate={endDate}
                     />
+
+                    {/* Opportunity Cost Calculator */}
+                    {priceMode === 'api' && priceData.length > 0 && livePrice && (
+                        <OpportunityCostCalculator priceData={priceData} livePrice={livePrice} />
+                    )}
 
                     {/* Chart */}
                     <DcaChart data={results.breakdown} unit={unit} m2Data={m2Data} />
