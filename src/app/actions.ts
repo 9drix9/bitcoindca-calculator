@@ -311,7 +311,7 @@ export async function getCpiData(from: number, to: number): Promise<[number, num
 
 export async function getMempoolFees(): Promise<{ highFee: number; mediumFee: number; lowFee: number } | null> {
     try {
-        const response = await fetchWithTimeout('https://mempool.space/api/v1/fees/recommended', {
+        const response = await fetchWithTimeout('https://mempool.space/api/v1/fees/precise', {
             cache: 'no-store',
         });
         if (!response.ok) return null;
