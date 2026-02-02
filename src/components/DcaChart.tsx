@@ -16,7 +16,6 @@ import {
 import { DcaBreakdownItem, HistoricalEvent } from '@/types';
 import { format } from 'date-fns';
 import { Camera } from 'lucide-react';
-import { toPng } from 'html-to-image';
 
 interface DcaChartProps {
     data: DcaBreakdownItem[];
@@ -178,6 +177,7 @@ export const DcaChart = ({ data, unit = 'BTC', m2Data }: DcaChartProps) => {
     const handleExport = useCallback(async () => {
         if (!chartRef.current) return;
         try {
+            const { toPng } = await import('html-to-image');
             const dataUrl = await toPng(chartRef.current, {
                 pixelRatio: 2,
                 backgroundColor: '#0f172a',

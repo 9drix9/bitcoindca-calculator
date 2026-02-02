@@ -4,7 +4,7 @@ import { Users, Network, Cpu, BadgeDollarSign, AlertTriangle, ArrowRight } from 
 
 export const metadata: Metadata = {
     title: 'Why Bitcoin Has Value | Bitcoin DCA Calculator',
-    description: 'Understand where Bitcoin\'s value comes from: user adoption, network effects, cost of mining, and the case for exiting fiat currency. Data-driven analysis of Bitcoin\'s fundamentals.',
+    description: 'Where does Bitcoin\'s value come from? Explore user adoption, network effects, mining costs, and the case for exiting fiat currency.',
     keywords: ['why bitcoin has value', 'bitcoin value proposition', 'bitcoin fundamentals', 'bitcoin adoption', 'bitcoin mining cost', 'bitcoin vs fiat', 'bitcoin network effect', 'metcalfe law bitcoin'],
     alternates: {
         canonical: '/why-bitcoin',
@@ -24,8 +24,36 @@ export const metadata: Metadata = {
     },
 };
 
+const articleJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    "headline": "Where Does Bitcoin's Value Come From?",
+    "description": "Where does Bitcoin's value come from? Explore user adoption, network effects, mining costs, and the case for exiting fiat currency.",
+    "author": {
+        "@type": "Organization",
+        "name": "Bitcoin DCA Calculator",
+        "url": "https://btcdollarcostaverage.com"
+    },
+    "publisher": {
+        "@type": "Organization",
+        "name": "Bitcoin DCA Calculator",
+        "url": "https://btcdollarcostaverage.com"
+    },
+    "mainEntityOfPage": {
+        "@type": "WebPage",
+        "@id": "https://btcdollarcostaverage.com/why-bitcoin"
+    },
+    "datePublished": "2025-01-01",
+    "dateModified": new Date().toISOString().split('T')[0],
+};
+
 export default function WhyBitcoinPage() {
     return (
+        <>
+        <script
+            type="application/ld+json"
+            dangerouslySetInnerHTML={{ __html: JSON.stringify(articleJsonLd) }}
+        />
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 space-y-10 sm:space-y-16">
 
             {/* Hero */}
@@ -285,5 +313,6 @@ export default function WhyBitcoinPage() {
             </section>
 
         </div>
+        </>
     );
 }

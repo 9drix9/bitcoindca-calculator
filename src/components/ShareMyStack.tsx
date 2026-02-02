@@ -2,7 +2,6 @@
 
 import { useRef, useCallback, useState } from 'react';
 import { Download } from 'lucide-react';
-import { toPng } from 'html-to-image';
 
 interface ShareMyStackProps {
     totalInvested: number;
@@ -37,6 +36,7 @@ export const ShareMyStack = ({
         if (!cardRef.current || downloading) return;
         setDownloading(true);
         try {
+            const { toPng } = await import('html-to-image');
             const dataUrl = await toPng(cardRef.current, {
                 pixelRatio: 2,
                 skipFonts: true,
