@@ -4,6 +4,13 @@ import { differenceInMinutes, addDays, differenceInDays } from 'date-fns';
 
 const CACHE_DURATION_MINUTES = 60;
 const MAX_CACHE_ENTRIES = 50;
+const DEFAULT_FETCH_TIMEOUT_MS = 10_000; // 10 seconds
+
+function fetchWithTimeout(url: string, options: RequestInit & { next?: { revalidate?: number } } = {}, timeoutMs = DEFAULT_FETCH_TIMEOUT_MS): Promise<Response> {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    return fetch(url, { ...options, signal: controller.signal }).finally(() => clearTimeout(timer));
+}
 
 class LRUCache {
     private cache = new Map<string, { timestamp: number; data: [number, number][] }>();
@@ -304,7 +311,7 @@ export async function getCpiData(from: number, to: number): Promise<[number, num
 
 export async function getMempoolFees(): Promise<{ highFee: number; mediumFee: number; lowFee: number } | null> {
     try {
-        const response = await fetch('https://mempool.space/api/v1/fees/recommended', {
+        const response = await fetchWithTimeout('https://mempool.space/api/v1/fees/recommended', {
             cache: 'no-store',
         });
         if (!response.ok) return null;
@@ -321,7 +328,7 @@ export async function getMempoolFees(): Promise<{ highFee: number; mediumFee: nu
 
 export async function getFearGreedIndex(): Promise<{ value: number; classification: string } | null> {
     try {
-        const response = await fetch('https://api.alternative.me/fng/?limit=1', {
+        const response = await fetchWithTimeout('https://api.alternative.me/fng/?limit=1', {
             cache: 'no-store',
         });
         if (!response.ok) return null;
@@ -339,7 +346,7 @@ export async function getFearGreedIndex(): Promise<{ value: number; classificati
 
 export async function getBlockHeight(): Promise<number | null> {
     try {
-        const response = await fetch('https://mempool.space/api/v1/blocks/tip/height', {
+        const response = await fetchWithTimeout('https://mempool.space/api/v1/blocks/tip/height', {
             cache: 'no-store',
         });
         if (!response.ok) return null;
@@ -360,8 +367,8 @@ export async function getHashRateDifficulty(): Promise<{
 } | null> {
     try {
         const [diffRes, hashRes] = await Promise.all([
-            fetch('https://mempool.space/api/v1/difficulty-adjustment', { cache: 'no-store' }),
-            fetch('https://mempool.space/api/v1/mining/hashrate/1m', { cache: 'no-store' }),
+            fetchWithTimeout('https://mempool.space/api/v1/difficulty-adjustment', { cache: 'no-store' }),
+            fetchWithTimeout('https://mempool.space/api/v1/mining/hashrate/1m', { cache: 'no-store' }),
         ]);
         if (!diffRes.ok || !hashRes.ok) return null;
         const diffJson = await diffRes.json();
@@ -381,7 +388,7 @@ export async function getHashRateDifficulty(): Promise<{
 
 export async function getCirculatingSupply(): Promise<number | null> {
     try {
-        const response = await fetch('https://blockchain.info/q/totalbc', {
+        const response = await fetchWithTimeout('https://blockchain.info/q/totalbc', {
             cache: 'no-store',
         });
         if (!response.ok) return null;
@@ -399,7 +406,7 @@ export async function getLightningStats(): Promise<{
     totalCapacityBtc: number;
 } | null> {
     try {
-        const response = await fetch('https://mempool.space/api/v1/lightning/statistics/latest', {
+        const response = await fetchWithTimeout('https://mempool.space/api/v1/lightning/statistics/latest', {
             cache: 'no-store',
         });
         if (!response.ok) return null;
@@ -420,7 +427,7 @@ export async function getBitcoinDominance(): Promise<{
     totalMarketCap: number;
 } | null> {
     try {
-        const response = await fetch('https://api.coingecko.com/api/v3/global', {
+        const response = await fetchWithTimeout('https://api.coingecko.com/api/v3/global', {
             next: { revalidate: 300 }, // 5min revalidate for rate limits
         });
         if (!response.ok) return null;
