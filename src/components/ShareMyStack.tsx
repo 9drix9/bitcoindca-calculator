@@ -72,57 +72,46 @@ export const ShareMyStack = ({
             <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
                 <div
                     ref={cardRef}
-                    style={{
-                        width: 440,
-                        minWidth: 440,
-                        padding: 28,
-                        background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)',
-                        borderRadius: 16,
-                        fontFamily: 'system-ui, -apple-system, sans-serif',
-                        color: '#f8fafc',
-                    }}
+                    className="bg-gradient-to-br from-slate-50 to-white dark:from-slate-900 dark:to-slate-800 text-slate-900 dark:text-slate-50 rounded-2xl font-sans border border-slate-200 dark:border-slate-700"
+                    style={{ width: 440, minWidth: 440, padding: 28 }}
                 >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
-                        <div style={{
-                            width: 32, height: 32, borderRadius: '50%', background: '#f59e0b',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            fontSize: 18, fontWeight: 'bold', color: 'white',
-                        }}>
+                    <div className="flex items-center gap-2.5 mb-5">
+                        <div className="w-8 h-8 rounded-full bg-amber-500 flex items-center justify-center text-lg font-bold text-white">
                             ₿
                         </div>
-                        <span style={{ fontSize: 16, fontWeight: 700, background: 'linear-gradient(90deg, #f59e0b, #ea580c)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+                        <span className="text-base font-bold bg-gradient-to-r from-amber-500 to-orange-600 bg-clip-text text-transparent">
                             My Bitcoin Stack
                         </span>
                     </div>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 16 }}>
+                    <div className="grid grid-cols-2 gap-3.5 mb-4">
                         <div>
-                            <div style={{ fontSize: 10, color: '#94a3b8', marginBottom: 3, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Total Invested</div>
-                            <div style={{ fontSize: 18, fontWeight: 700 }}>${totalInvested.toLocaleString()}</div>
+                            <div className="text-[10px] text-slate-500 dark:text-slate-400 mb-0.5 uppercase tracking-wide">Total Invested</div>
+                            <div className="text-lg font-bold">${totalInvested.toLocaleString()}</div>
                         </div>
                         <div>
-                            <div style={{ fontSize: 10, color: '#94a3b8', marginBottom: 3, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Current Value</div>
-                            <div style={{ fontSize: 18, fontWeight: 700, color: '#f59e0b' }}>${currentValue.toLocaleString()}</div>
+                            <div className="text-[10px] text-slate-500 dark:text-slate-400 mb-0.5 uppercase tracking-wide">Current Value</div>
+                            <div className="text-lg font-bold text-amber-600 dark:text-amber-400">${currentValue.toLocaleString()}</div>
                         </div>
                         <div>
-                            <div style={{ fontSize: 10, color: '#94a3b8', marginBottom: 3, textTransform: 'uppercase', letterSpacing: '0.05em' }}>ROI</div>
-                            <div style={{ fontSize: 18, fontWeight: 700, color: isProfit ? '#22c55e' : '#ef4444' }}>
+                            <div className="text-[10px] text-slate-500 dark:text-slate-400 mb-0.5 uppercase tracking-wide">ROI</div>
+                            <div className={`text-lg font-bold ${isProfit ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400'}`}>
                                 {isProfit ? '+' : ''}{roi.toFixed(1)}%
                             </div>
                         </div>
                         <div>
-                            <div style={{ fontSize: 10, color: '#94a3b8', marginBottom: 3, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Accumulated</div>
-                            <div style={{ fontSize: 14, fontWeight: 700 }}>{formattedBtc}</div>
+                            <div className="text-[10px] text-slate-500 dark:text-slate-400 mb-0.5 uppercase tracking-wide">Accumulated</div>
+                            <div className="text-sm font-bold">{formattedBtc}</div>
                         </div>
                     </div>
 
-                    <div style={{ fontSize: 10, color: '#64748b', marginBottom: 14 }}>
+                    <div className="text-[10px] text-slate-400 dark:text-slate-500 mb-3.5">
                         {startDate} &mdash; {endDate}
                     </div>
 
-                    <div style={{ borderTop: '1px solid #334155', paddingTop: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span style={{ fontSize: 10, color: '#64748b' }}>btcdollarcostaverage.com</span>
-                        <span style={{ fontSize: 10, color: '#64748b' }}>@9drix9</span>
+                    <div className="border-t border-slate-200 dark:border-slate-700 pt-2.5 flex justify-between items-center">
+                        <span className="text-[10px] text-slate-400 dark:text-slate-500">btcdollarcostaverage.com</span>
+                        <span className="text-[10px] text-slate-400 dark:text-slate-500">@9drix9</span>
                     </div>
                 </div>
             </div>
