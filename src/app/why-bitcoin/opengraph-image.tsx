@@ -20,23 +20,18 @@ export default function Image() {
                     fontFamily: 'sans-serif',
                 }}
             >
-                <div
-                    style={{
-                        width: 80,
-                        height: 80,
-                        borderRadius: '50%',
-                        background: '#f59e0b',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontSize: 44,
-                        fontWeight: 'bold',
-                        color: 'white',
-                        marginBottom: 24,
-                    }}
+                <svg
+                    width="80"
+                    height="80"
+                    viewBox="0 0 64 64"
+                    style={{ marginBottom: 24 }}
                 >
-                    ₿
-                </div>
+                    <circle cx="32" cy="32" r="32" fill="#f59e0b" />
+                    <path
+                        fill="white"
+                        d="M41.7 27.8c.5-3.4-2.1-5.2-5.6-6.4l1.1-4.6-2.8-.7-1.1 4.5c-.7-.2-1.5-.4-2.2-.5l1.1-4.5-2.8-.7-1.1 4.6c-.6-.1-1.2-.3-1.7-.4l-3.9-1-.7 3s2.1.5 2 .5c1.1.3 1.3 1 1.3 1.6l-1.3 5.3c.1 0 .2 0 .3.1h-.3l-1.8 7.4c-.1.3-.5.9-1.3.7 0 0-2-.5-2-.5l-1.4 3.2 3.7.9c.7.2 1.3.3 2 .5l-1.2 4.6 2.8.7 1.2-4.6c.8.2 1.5.4 2.2.5l-1.1 4.6 2.8.7 1.2-4.6c4.8.9 8.4.5 9.9-3.8 1.2-3.5-.1-5.5-2.5-6.8 1.8-.4 3.2-1.6 3.5-4.1zm-6.3 8.8c-.9 3.5-6.8 1.6-8.7 1.1l1.6-6.2c1.9.5 8.1 1.4 7.1 5.1zm.9-8.9c-.8 3.2-5.7 1.6-7.3 1.2l1.4-5.7c1.6.4 6.8 1.1 5.9 4.5z"
+                    />
+                </svg>
                 <div
                     style={{
                         fontSize: 48,
