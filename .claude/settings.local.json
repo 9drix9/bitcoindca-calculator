@@ -14,7 +14,8 @@
       "Bash(python:*)",
       "Bash(del \"D:\\\\Coding\\\\Bitcoin DCA Calculator\\\\temp_mempool.json\")",
       "WebFetch(domain:mempool.space)",
-      "Bash(findstr:*)"
+      "Bash(findstr:*)",
+      "Bash(del \"D:\\\\Coding\\\\Bitcoin DCA Calculator\\\\src\\\\components\\\\GoogleAdSense.tsx\")"
     ]
   }
 }
