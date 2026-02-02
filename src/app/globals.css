@@ -41,9 +41,11 @@
   }
 }
 
-/* Smooth scrolling */
-html {
-  scroll-behavior: smooth;
+/* Smooth scrolling — disabled on mobile for better scroll performance */
+@media (prefers-reduced-motion: no-preference) and (min-width: 640px) {
+  html {
+    scroll-behavior: smooth;
+  }
 }
 
 /* Custom scrollbar for overflow tables */
