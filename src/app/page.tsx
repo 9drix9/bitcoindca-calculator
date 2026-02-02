@@ -12,6 +12,7 @@ import { DominanceWidget } from '@/components/DominanceWidget';
 import { SatConverterWidget } from '@/components/SatConverterWidget';
 import { BitcoinAdoption } from '@/components/BitcoinAdoption';
 import { PurchasingPowerWidget } from '@/components/PurchasingPowerWidget';
+import { LiveBlocksWidget } from '@/components/LiveBlocksWidget';
 import {
   getMempoolFees,
   getFearGreedIndex,
@@ -21,6 +22,7 @@ import {
   getLightningStats,
   getBitcoinDominance,
   getPurchasingPowerData,
+  getRecentBlocks,
 } from '@/app/actions';
 import { ChevronDown } from 'lucide-react';
 
@@ -57,7 +59,7 @@ const faqJsonLd = {
 };
 
 export default async function Home() {
-  const [mempoolFees, fearGreed, blockHeight, hashRateData, circulatingSupply, lightningData, dominanceData, purchasingPowerData] = await Promise.all([
+  const [mempoolFees, fearGreed, blockHeight, hashRateData, circulatingSupply, lightningData, dominanceData, purchasingPowerData, recentBlocks] = await Promise.all([
     getMempoolFees(),
     getFearGreedIndex(),
     getBlockHeight(),
@@ -66,6 +68,7 @@ export default async function Home() {
     getLightningStats(),
     getBitcoinDominance(),
     getPurchasingPowerData(),
+    getRecentBlocks(),
   ]);
 
   return (
@@ -120,6 +123,7 @@ export default async function Home() {
           {/* Sidebar */}
           <div className="space-y-4 lg:sticky lg:top-20">
             <HalvingCountdownWidget initialHeight={blockHeight} />
+            <LiveBlocksWidget initialData={recentBlocks} />
             <FearGreedWidget initialData={fearGreed} />
             <MempoolFeeWidget initialData={mempoolFees} />
             <HashRateWidget initialData={hashRateData} />

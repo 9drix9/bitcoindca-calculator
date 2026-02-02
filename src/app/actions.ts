@@ -518,6 +518,30 @@ export async function getPurchasingPowerData(): Promise<{
     }
 }
 
+export async function getRecentBlocks(): Promise<{
+    height: number;
+    timestamp: number;
+    txCount: number;
+    size: number;
+}[] | null> {
+    try {
+        const response = await fetchWithTimeout('https://mempool.space/api/v1/blocks', {
+            cache: 'no-store',
+        });
+        if (!response.ok) return null;
+        const json = await response.json();
+        if (!Array.isArray(json) || json.length === 0) return null;
+        return json.slice(0, 5).map((block: { height: number; timestamp: number; tx_count: number; size: number }) => ({
+            height: block.height,
+            timestamp: block.timestamp,
+            txCount: block.tx_count,
+            size: block.size,
+        }));
+    } catch {
+        return null;
+    }
+}
+
 export async function getCurrentBitcoinPrice(provider: 'kraken' | 'coinbase' = 'kraken'): Promise<number> {
     try {
         let url = '';
