@@ -10,7 +10,7 @@ export default function TermsPage() {
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
             <article className="prose dark:prose-invert prose-sm sm:prose-base max-w-none prose-headings:scroll-mt-20">
                 <h1>Terms of Service</h1>
-                <p className="text-sm text-slate-500 dark:text-slate-400">Last updated: {new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</p>
+                <p className="text-sm text-slate-500 dark:text-slate-400">Last updated: February 1, 2026</p>
 
                 <h2>Acceptance of Terms</h2>
                 <p>
