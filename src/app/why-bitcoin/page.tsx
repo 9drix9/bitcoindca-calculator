@@ -192,6 +192,51 @@ export default function WhyBitcoinPage() {
                             </p>
                         </div>
                     </div>
+
+                    <div className="bg-slate-100 dark:bg-slate-900/50 p-5 sm:p-6 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-3">
+                        <h3 className="text-sm sm:text-base font-bold text-slate-800 dark:text-white">What Is a Satoshi?</h3>
+                        <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+                            You don&apos;t need to buy a whole bitcoin. Each bitcoin is divisible
+                            into <strong className="text-slate-800 dark:text-slate-200">100,000,000 (100 million) satoshis</strong> (or
+                            &ldquo;sats&rdquo;), named after Bitcoin&apos;s creator Satoshi Nakamoto. Think of them like cents
+                            to a dollar&mdash;except there are a million times more sats per bitcoin than cents per dollar.
+                        </p>
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-xs sm:text-sm">
+                                <thead>
+                                    <tr className="text-left text-slate-500 dark:text-slate-400">
+                                        <th className="pb-2 pr-4 font-medium">If 1 BTC reaches</th>
+                                        <th className="pb-2 font-medium">1 satoshi =</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="font-mono text-slate-700 dark:text-slate-300">
+                                    <tr className="border-t border-slate-200 dark:border-slate-700/50">
+                                        <td className="py-1.5 pr-4">$100,000</td>
+                                        <td className="py-1.5">$0.001</td>
+                                    </tr>
+                                    <tr className="border-t border-slate-200 dark:border-slate-700/50">
+                                        <td className="py-1.5 pr-4">$1,000,000</td>
+                                        <td className="py-1.5">$0.01 <span className="text-slate-400 font-sans">(one cent)</span></td>
+                                    </tr>
+                                    <tr className="border-t border-slate-200 dark:border-slate-700/50">
+                                        <td className="py-1.5 pr-4">$10,000,000</td>
+                                        <td className="py-1.5">$0.10 <span className="text-slate-400 font-sans">(one dime)</span></td>
+                                    </tr>
+                                    <tr className="border-t border-slate-200 dark:border-slate-700/50">
+                                        <td className="py-1.5 pr-4">$100,000,000</td>
+                                        <td className="py-1.5">$1.00 <span className="text-slate-400 font-sans">(one dollar)</span></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+                            Some Bitcoiners envision a future where the world prices goods in satoshis rather than
+                            dollars&mdash;where a sat <em>becomes</em> the everyday unit of money. Whether or not that
+                            happens, the math shows that Bitcoin is divisible enough to serve as a global medium of exchange
+                            at virtually any price level. When people say they &ldquo;can&apos;t afford a bitcoin,&rdquo;
+                            the answer is simple: you&apos;re not meant to buy a whole one. You stack sats.
+                        </p>
+                    </div>
                 </div>
             </section>
 
