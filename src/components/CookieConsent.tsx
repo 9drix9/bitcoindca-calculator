@@ -43,7 +43,7 @@ export const CookieConsent = () => {
             <div className="max-w-4xl mx-auto">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
                     <p className="flex-1 text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
-                        We use cookies to improve your experience and serve personalized ads.{' '}
+                        We use cookies to improve your experience and display ads.{' '}
                         <Link href="/privacy" className="underline text-amber-600 dark:text-amber-400 hover:text-amber-700">Learn more</Link>
                     </p>
                     <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
@@ -77,7 +77,7 @@ export const CookieConsent = () => {
                         <div className="flex items-center justify-between gap-4">
                             <div className="min-w-0">
                                 <span className="text-xs sm:text-sm font-medium text-slate-800 dark:text-slate-200">Advertising</span>
-                                <p className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 truncate">Google AdSense personalized ads</p>
+                                <p className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 truncate">Anonymous ads (AADS)</p>
                             </div>
                             <button
                                 onClick={() => setAdvertisingEnabled(!advertisingEnabled)}

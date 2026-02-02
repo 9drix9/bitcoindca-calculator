@@ -491,7 +491,7 @@ export const DcaCalculator = () => {
             </div>
 
             {/* Ad Slot */}
-            <AdSlot slotId="3250600703" className="min-h-[100px] flex justify-center" />
+            <AdSlot className="min-h-[100px] flex justify-center" />
 
             {/* Loading / Results */}
             {loading ? (
@@ -644,7 +644,7 @@ export const DcaCalculator = () => {
                     <DcaChart data={results.breakdown} unit={unit} m2Data={m2Data} />
 
                     {/* Mid-content Ad */}
-                    <AdSlot slotId="3921858006" className="min-h-[100px] flex justify-center" />
+                    <AdSlot className="min-h-[100px] flex justify-center" />
 
                     {/* Transaction Table */}
                     <TransactionTable breakdown={results.breakdown} unit={unit} />

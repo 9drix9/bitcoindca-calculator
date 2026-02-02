@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import Link from 'next/link';
 import './globals.css';
-import { GoogleAdSense } from '@/components/GoogleAdSense';
+
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { CookieConsent } from '@/components/CookieConsent';
 import { BtcDonationButton } from '@/components/BtcDonationButton';
@@ -65,8 +65,6 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
-        <GoogleAdSense />
-        <meta name="google-adsense-account" content="ca-pub-7196704678615727" />
       </head>
       <body className={clsx(inter.className, "bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-50 antialiased")}>
         <div className="min-h-screen flex flex-col">
