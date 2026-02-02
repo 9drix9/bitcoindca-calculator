@@ -3,7 +3,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { getBlockHeight } from '@/app/actions';
 
-const NEXT_HALVING_BLOCK = 1_050_000;
 const BLOCKS_PER_EPOCH = 210_000;
 const AVG_BLOCK_TIME_MINUTES = 10;
 
@@ -33,14 +32,15 @@ export const HalvingCountdownWidget = ({ initialHeight }: HalvingCountdownWidget
 
     const stats = useMemo(() => {
         if (height === null) return null;
-        const blocksRemaining = NEXT_HALVING_BLOCK - height;
+        const currentEpoch = Math.floor(height / BLOCKS_PER_EPOCH);
+        const nextHalvingBlock = (currentEpoch + 1) * BLOCKS_PER_EPOCH;
+        const blocksRemaining = nextHalvingBlock - height;
         if (blocksRemaining <= 0) return null;
         const minutesRemaining = blocksRemaining * AVG_BLOCK_TIME_MINUTES;
         const estimatedDate = new Date(now + minutesRemaining * 60_000);
-        const currentEpoch = Math.floor(height / BLOCKS_PER_EPOCH);
         const epochStart = currentEpoch * BLOCKS_PER_EPOCH;
         const epochProgress = ((height - epochStart) / BLOCKS_PER_EPOCH) * 100;
-        return { blocksRemaining, estimatedDate, epochProgress, currentEpoch };
+        return { blocksRemaining, estimatedDate, epochProgress, currentEpoch, nextHalvingBlock };
     }, [height, now]);
 
     if (!stats || height === null) return null;

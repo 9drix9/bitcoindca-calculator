@@ -367,13 +367,9 @@ export async function getHashRateDifficulty(): Promise<{
         const diffJson = await diffRes.json();
         const hashJson = await hashRes.json();
 
-        const latestHashrate = hashJson.hashrates && hashJson.hashrates.length > 0
-            ? hashJson.hashrates[hashJson.hashrates.length - 1].avgHashrate
-            : 0;
-
         return {
-            hashrate: latestHashrate,
-            difficulty: diffJson.difficultyChange !== undefined ? diffJson.previousDifficulty || 0 : 0,
+            hashrate: hashJson.currentHashrate || 0,
+            difficulty: hashJson.currentDifficulty || 0,
             adjustmentPercent: diffJson.difficultyChange || 0,
             blocksUntilAdjustment: diffJson.remainingBlocks || 0,
             estimatedRetargetDate: diffJson.estimatedRetargetDate ? new Date(diffJson.estimatedRetargetDate).toISOString() : '',
@@ -431,10 +427,12 @@ export async function getBitcoinDominance(): Promise<{
         const json = await response.json();
         const data = json.data;
         if (!data) return null;
+        const totalMarketCapUsd = data.total_market_cap?.usd ?? 0;
+        const dominancePct = data.market_cap_percentage?.btc ?? 0;
         return {
-            dominancePercent: data.market_cap_percentage?.btc ?? 0,
-            btcMarketCap: data.total_market_cap?.btc ? data.total_market_cap.btc * (data.market_cap_percentage?.btc / 100) : 0,
-            totalMarketCap: data.total_market_cap?.usd ?? 0,
+            dominancePercent: dominancePct,
+            btcMarketCap: totalMarketCapUsd * (dominancePct / 100),
+            totalMarketCap: totalMarketCapUsd,
         };
     } catch {
         return null;
