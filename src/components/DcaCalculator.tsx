@@ -7,19 +7,22 @@ import { calculateDca, calculateLumpSum, calculateAssetDca } from '@/utils/dca';
 import { getBitcoinPriceHistory, getCurrentBitcoinPrice, getAssetPriceHistory, getCpiData, getM2Data } from '@/app/actions';
 import { generateCsvContent, downloadCsv } from '@/utils/csv';
 import { encodeParams, decodeParams } from '@/utils/urlParams';
-import { DcaChart } from './DcaChart';
-import { TransactionTable } from './TransactionTable';
-import { AssetComparison } from './AssetComparison';
-import { ExchangeFeeComparison } from './ExchangeFeeComparison';
-import { StackingGoalTracker } from './StackingGoalTracker';
-import { ShareMyStack } from './ShareMyStack';
-import { UnitBiasCalculator } from './UnitBiasCalculator';
-import { SavingsComparison } from './SavingsComparison';
-import { OpportunityCostCalculator } from './OpportunityCostCalculator';
-import { FireCalculator } from './FireCalculator';
-import { CostBasisTracker } from './CostBasisTracker';
+import dynamic from 'next/dynamic';
 import { SkeletonCard, SkeletonChart } from './Skeleton';
 import { AdSlot } from './AdSlot';
+
+// Lazy-load result sub-components — none render until after a calculation
+const DcaChart = dynamic(() => import('./DcaChart').then(m => m.DcaChart));
+const TransactionTable = dynamic(() => import('./TransactionTable').then(m => m.TransactionTable));
+const AssetComparison = dynamic(() => import('./AssetComparison').then(m => m.AssetComparison));
+const ExchangeFeeComparison = dynamic(() => import('./ExchangeFeeComparison').then(m => m.ExchangeFeeComparison));
+const StackingGoalTracker = dynamic(() => import('./StackingGoalTracker').then(m => m.StackingGoalTracker));
+const ShareMyStack = dynamic(() => import('./ShareMyStack').then(m => m.ShareMyStack));
+const UnitBiasCalculator = dynamic(() => import('./UnitBiasCalculator').then(m => m.UnitBiasCalculator));
+const SavingsComparison = dynamic(() => import('./SavingsComparison').then(m => m.SavingsComparison));
+const OpportunityCostCalculator = dynamic(() => import('./OpportunityCostCalculator').then(m => m.OpportunityCostCalculator));
+const FireCalculator = dynamic(() => import('./FireCalculator').then(m => m.FireCalculator));
+const CostBasisTracker = dynamic(() => import('./CostBasisTracker').then(m => m.CostBasisTracker));
 import { TrendingUp, TrendingDown, DollarSign, Activity, Repeat, Download, Share2 } from 'lucide-react';
 import clsx from 'clsx';
 

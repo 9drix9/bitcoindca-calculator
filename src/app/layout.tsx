@@ -4,9 +4,11 @@ import Link from 'next/link';
 import './globals.css';
 
 import { ThemeToggle } from '@/components/ThemeToggle';
-import { CookieConsent } from '@/components/CookieConsent';
 import { BtcDonationButton } from '@/components/BtcDonationButton';
+import dynamic from 'next/dynamic';
 import clsx from 'clsx';
+
+const CookieConsent = dynamic(() => import('@/components/CookieConsent').then(m => m.CookieConsent));
 
 const inter = Inter({ subsets: ['latin'], display: 'swap' });
 
@@ -93,7 +95,7 @@ export default function RootLayout({
             Skip to main content
           </a>
           {/* Header */}
-          <header className="border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-950/80 backdrop-blur-md sticky top-0 z-50">
+          <header className="border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 sm:bg-white/80 sm:dark:bg-slate-950/80 sm:backdrop-blur-md sticky top-0 z-50">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-14 sm:h-16 flex items-center justify-between">
               <nav aria-label="Main navigation" className="flex items-center gap-4 sm:gap-6">
                 <Link href="/" className="flex items-center gap-2 group">
