@@ -121,13 +121,7 @@ export default async function Home() {
             <LightningWidget initialData={lightningData} />
             <DominanceWidget initialData={dominanceData} />
             <SatConverterWidget />
-            <div className="bg-white dark:bg-slate-900 rounded-xl p-4 sm:p-5 border border-slate-200 dark:border-slate-800">
-              <h4 className="font-semibold text-slate-800 dark:text-white mb-1.5 text-sm">Start Stacking Sats</h4>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">Consistency is key. Use this tool to plan your path to financial sovereignty.</p>
-              <div className="flex justify-center">
-                <AdSlot unitId="2426251" className="min-h-[250px] w-full max-w-[300px]" />
-              </div>
-            </div>
+            <AdSlot unitId="2426251" />
           </div>
         </div>
 
