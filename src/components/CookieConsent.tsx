@@ -39,7 +39,7 @@ export const CookieConsent = () => {
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
                     <p className="flex-1 text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
                         We use essential cookies for site functionality. Ads are served by AADS and do not track you.{' '}
-                        <Link href="/privacy" className="underline text-amber-600 dark:text-amber-400 hover:text-amber-700">Learn more</Link>
+                        <Link href="/privacy" className="underline text-amber-600 dark:text-amber-400 hover:text-amber-700">Privacy Policy</Link>
                     </p>
                     <button
                         onClick={handleAccept}
