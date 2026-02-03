@@ -3,7 +3,7 @@
 import { useState, useMemo } from 'react';
 import { addDays, addWeeks, addMonths, isAfter, startOfDay, format, differenceInDays } from 'date-fns';
 import { Frequency } from '@/types';
-import { TrendingUp, Calendar, Sparkles } from 'lucide-react';
+import { Calendar, Sparkles } from 'lucide-react';
 import clsx from 'clsx';
 
 interface FutureProjectionProps {
@@ -237,7 +237,7 @@ export const FutureProjection = ({
                 ))}
             </div>
 
-            <p className="text-[10px] sm:text-xs text-slate-400 dark:text-slate-500 mt-3 text-center italic">
+            <p className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 mt-3 text-center italic">
                 Projections assume continued DCA at current rate. Future prices are speculative — not financial advice.
             </p>
         </div>
