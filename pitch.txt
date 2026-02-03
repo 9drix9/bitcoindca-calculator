@@ -1,0 +1,64 @@
+Subject: Sponsorship Request — Free, Open-Source Bitcoin DCA Calculator (btcdollarcostaverage.com)
+
+
+Hi [Name / Team],
+
+My name is [Your Name], and I built btcdollarcostaverage.com — a free, open-source Bitcoin Dollar Cost Averaging calculator designed to help newcomers understand Bitcoin through real data, not hype.
+
+I'm reaching out to ask if [Organization Name] would consider supporting the project with a small grant or donation to help cover hosting, API costs, and continued development.
+
+
+WHAT IT DOES
+
+The tool lets anyone plug in an amount (say $50/week), pick a date range, and instantly see what their Bitcoin stack would be worth today using real historical price data from Kraken and Coinbase. No signup, no paywall, no tracking.
+
+Beyond the calculator, the site includes:
+
+- 10 live dashboard widgets (halving countdown, mempool fees, hashrate, Fear & Greed Index, Lightning Network stats, supply scarcity, purchasing power erosion, Bitcoin dominance, live block feed, sat/USD converter)
+- Side-by-side comparisons vs S&P 500, Gold, and savings accounts
+- Inflation-adjusted returns using Federal Reserve CPI data
+- A "Why Bitcoin" educational page covering adoption, network effects, mining costs, and fiat debasement — written for complete beginners
+- A satoshi explainer showing what 1 sat could be worth at various BTC price levels
+- An adoption tracker comparing Bitcoin's growth curve to early internet adoption
+- FIRE calculator, cost basis tracker, exchange fee comparisons, and more
+
+Everything runs on publicly available data. The entire codebase is open source.
+
+
+WHY IT MATTERS
+
+Most people who hear about Bitcoin still think they need to buy a whole coin. The biggest barrier to adoption isn't skepticism — it's misunderstanding. Tools like this show people, with real numbers, that consistent small purchases add up over time.
+
+Every feature on the site is built to answer the questions newcomers actually ask:
+- "Is it too late to buy Bitcoin?"
+- "What if I can only afford $20 a week?"
+- "How does Bitcoin compare to just leaving my money in a savings account?"
+- "What even is a satoshi?"
+
+The calculator answers these with data, not opinions.
+
+
+WHAT THE SUPPORT WOULD GO TOWARD
+
+- Vercel hosting and bandwidth (the site serves thousands of requests)
+- FRED API access for inflation data
+- Continued feature development (multi-language support, more educational content, mobile app)
+- Keeping the tool ad-light and free for everyone
+
+
+TRACTION
+
+The site is live at btcdollarcostaverage.com, fully functional, and actively maintained. It scores 90+ on Google Lighthouse across SEO, accessibility, and best practices. The codebase is built with Next.js 16, TypeScript, and Tailwind CSS — production-grade infrastructure, not a weekend project.
+
+
+I'd be happy to add [Organization Name] as a sponsor on the site, include your logo, or collaborate in whatever way makes sense.
+
+Thank you for your time and for the work you do for the Bitcoin ecosystem.
+
+Best,
+[Your Name]
+[Your Email]
+[Your Twitter/X Handle]
+
+BTC Donation Address: bc1qg9vdwfcn2c4wv6dtfvhjd4j3fmq2kzhrt6cq6k
+Site: https://btcdollarcostaverage.com

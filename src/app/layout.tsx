@@ -3,6 +3,8 @@ import { Inter } from 'next/font/google';
 import Link from 'next/link';
 import './globals.css';
 
+import { Analytics } from '@vercel/analytics/next';
+import { SpeedInsights } from '@vercel/speed-insights/next';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { CookieConsent } from '@/components/CookieConsent';
 import { BtcDonationButton } from '@/components/BtcDonationButton';
@@ -171,6 +173,8 @@ export default function RootLayout({
 
           <CookieConsent />
         </div>
+        <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   );
