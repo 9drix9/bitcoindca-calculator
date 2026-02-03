@@ -4,11 +4,9 @@ import Link from 'next/link';
 import './globals.css';
 
 import { ThemeToggle } from '@/components/ThemeToggle';
+import { CookieConsent } from '@/components/CookieConsent';
 import { BtcDonationButton } from '@/components/BtcDonationButton';
-import dynamic from 'next/dynamic';
 import clsx from 'clsx';
-
-const CookieConsent = dynamic(() => import('@/components/CookieConsent').then(m => m.CookieConsent));
 
 const inter = Inter({ subsets: ['latin'], display: 'swap' });
 

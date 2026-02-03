@@ -1,12 +1,22 @@
 import { DcaCalculator } from '@/components/DcaCalculator';
 import { HowItWorks } from '@/components/HowItWorks';
 import { EducationalContent } from '@/components/EducationalContent';
+import { FearGreedWidget } from '@/components/FearGreedWidget';
+import { MempoolFeeWidget } from '@/components/MempoolFeeWidget';
+import { HalvingCountdownWidget } from '@/components/HalvingCountdownWidget';
+import { HashRateWidget } from '@/components/HashRateWidget';
+import { SupplyScarcityWidget } from '@/components/SupplyScarcityWidget';
+import { LightningWidget } from '@/components/LightningWidget';
+import { DominanceWidget } from '@/components/DominanceWidget';
+import { SatConverterWidget } from '@/components/SatConverterWidget';
+import { PurchasingPowerWidget } from '@/components/PurchasingPowerWidget';
+import { LiveBlocksWidget } from '@/components/LiveBlocksWidget';
+import { AdSlot } from '@/components/AdSlot';
 import dynamic from 'next/dynamic';
 
 const BitcoinAdoption = dynamic(() => import('@/components/BitcoinAdoption').then(m => m.BitcoinAdoption), {
   loading: () => <div className="h-[400px] bg-slate-100 dark:bg-slate-800/50 rounded-xl animate-pulse" />,
 });
-const SidebarWidgets = dynamic(() => import('@/components/SidebarWidgets').then(m => m.SidebarWidgets));
 import {
   getMempoolFees,
   getFearGreedIndex,
@@ -116,17 +126,17 @@ export default async function Home() {
 
           {/* Sidebar */}
           <div className="space-y-4 lg:sticky lg:top-20">
-            <SidebarWidgets
-              blockHeight={blockHeight}
-              recentBlocks={recentBlocks}
-              fearGreed={fearGreed}
-              mempoolFees={mempoolFees}
-              hashRateData={hashRateData}
-              circulatingSupply={circulatingSupply}
-              purchasingPowerData={purchasingPowerData}
-              lightningData={lightningData}
-              dominanceData={dominanceData}
-            />
+            <HalvingCountdownWidget initialHeight={blockHeight} />
+            <LiveBlocksWidget initialData={recentBlocks} />
+            <FearGreedWidget initialData={fearGreed} />
+            <MempoolFeeWidget initialData={mempoolFees} />
+            <HashRateWidget initialData={hashRateData} />
+            <SupplyScarcityWidget initialSupply={circulatingSupply} blockHeight={blockHeight} />
+            <PurchasingPowerWidget initialData={purchasingPowerData} />
+            <LightningWidget initialData={lightningData} />
+            <DominanceWidget initialData={dominanceData} />
+            <SatConverterWidget />
+            <AdSlot unitId="2426251" />
           </div>
         </div>
 
