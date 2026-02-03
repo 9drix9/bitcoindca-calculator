@@ -23,6 +23,7 @@ const SavingsComparison = dynamic(() => import('./SavingsComparison').then(m => 
 const OpportunityCostCalculator = dynamic(() => import('./OpportunityCostCalculator').then(m => m.OpportunityCostCalculator));
 const FireCalculator = dynamic(() => import('./FireCalculator').then(m => m.FireCalculator));
 const CostBasisTracker = dynamic(() => import('./CostBasisTracker').then(m => m.CostBasisTracker));
+const FutureProjection = dynamic(() => import('./FutureProjection').then(m => m.FutureProjection));
 import { TrendingUp, TrendingDown, DollarSign, Activity, Repeat, Download, Share2 } from 'lucide-react';
 import clsx from 'clsx';
 
@@ -572,6 +573,20 @@ export const DcaCalculator = () => {
                             <span className="font-medium text-slate-700 dark:text-slate-200">{formatCurrency(results.currentValue, currencyConfig)}</span>{' '}
                             &mdash; a <span className={clsx("font-medium", isProfit ? "text-green-600 dark:text-green-400" : "text-red-500")}>{results.roi.toFixed(1)}% return</span>.
                         </p>
+                    )}
+
+                    {/* Future Projection (when end date is in the future) */}
+                    {livePrice && (
+                        <FutureProjection
+                            amount={amountUsd}
+                            frequency={frequency}
+                            startDate={startDate}
+                            endDate={endDate}
+                            feePercentage={feePercentage}
+                            currentPrice={livePrice}
+                            currentBtc={results.btcAccumulated}
+                            currentInvested={results.totalInvested}
+                        />
                     )}
 
                     {/* Inflation-Adjusted Returns */}
