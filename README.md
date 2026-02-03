@@ -77,7 +77,7 @@ A comprehensive Bitcoin Dollar Cost Averaging calculator with real-time market d
 ### Installation
 
 ```bash
-git clone https://github.com/yourusername/bitcoin-dca-calculator.git
+git clone https://github.com/9drix9/bitcoindca-calculator.git
 cd bitcoin-dca-calculator
 npm install
 ```
