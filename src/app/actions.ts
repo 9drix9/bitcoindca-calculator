@@ -228,27 +228,34 @@ export async function getAssetPriceHistory(symbol: string, from: number, to: num
     try {
         const period1 = Math.floor(from / 1000);
         const period2 = Math.floor(to / 1000);
-        const url = `https://query1.finance.yahoo.com/v7/finance/download/${encodeURIComponent(symbol)}?period1=${period1}&period2=${period2}&interval=1d&events=history`;
+
+        // Use Yahoo Finance v8 chart API (more reliable than v7 download)
+        const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?period1=${period1}&period2=${period2}&interval=1d`;
 
         const response = await fetch(url, {
-            headers: { 'User-Agent': 'Mozilla/5.0 (compatible; BitcoinDcaBot/1.0)' },
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            },
             next: { revalidate: 3600 }
         });
 
         if (!response.ok) return null;
 
-        const csv = await response.text();
-        const lines = csv.trim().split('\n');
-        if (lines.length < 2) return null;
+        const json = await response.json();
+        const result = json?.chart?.result?.[0];
+        if (!result) return null;
+
+        const timestamps = result.timestamp;
+        const closes = result.indicators?.quote?.[0]?.close;
+
+        if (!timestamps || !closes || timestamps.length === 0) return null;
 
         const data: [number, number][] = [];
-        for (let i = 1; i < lines.length; i++) {
-            const cols = lines[i].split(',');
-            if (cols.length < 5) continue;
-            const dateTs = new Date(cols[0]).getTime();
-            const close = parseFloat(cols[4]);
-            if (!isNaN(dateTs) && !isNaN(close) && close > 0) {
-                data.push([dateTs, close]);
+        for (let i = 0; i < timestamps.length; i++) {
+            const ts = timestamps[i] * 1000; // Convert to milliseconds
+            const close = closes[i];
+            if (ts && close && !isNaN(close) && close > 0) {
+                data.push([ts, close]);
             }
         }
 

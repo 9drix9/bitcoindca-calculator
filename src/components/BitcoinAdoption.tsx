@@ -29,6 +29,7 @@ const ADOPTION_PERCENT = 4.5;
 
 export const BitcoinAdoption = () => {
     const [mounted, setMounted] = useState(false);
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Required to prevent recharts SSR hydration mismatch
     useEffect(() => { setMounted(true); }, []);
 
     return (

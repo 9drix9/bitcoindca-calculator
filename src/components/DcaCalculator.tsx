@@ -649,7 +649,7 @@ export const DcaCalculator = () => {
                     )}
 
                     {/* Asset Comparison */}
-                    {priceMode === 'api' && (sp500Data !== null || goldData !== null || comparisonLoading) && (
+                    {priceMode === 'api' && (
                         <AssetComparison btcResult={btcAssetResult} sp500Result={sp500Result} goldResult={goldResult} loading={comparisonLoading} />
                     )}
 
