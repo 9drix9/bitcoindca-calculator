@@ -27,8 +27,6 @@ const FutureProjection = dynamic(() => import('./FutureProjection').then(m => m.
 import { TrendingUp, TrendingDown, DollarSign, Activity, Repeat, Download, Share2 } from 'lucide-react';
 import clsx from 'clsx';
 
-const BTC_MAX_SUPPLY = 21_000_000;
-
 const CURRENCIES: CurrencyConfig[] = [
     { code: 'USD', symbol: '$', rate: 1, label: 'USD ($)' },
     { code: 'EUR', symbol: '€', rate: 0.92, label: 'EUR (€)' },
