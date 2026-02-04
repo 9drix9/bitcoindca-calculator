@@ -435,7 +435,7 @@ export const DcaCalculator = () => {
                             <input
                                 type="number"
                                 value={manualPrice}
-                                onChange={(e) => setManualPrice(Math.max(0, Number(e.target.value)))}
+                                onChange={(e) => setManualPrice(Math.max(1, Number(e.target.value)))}
                                 className="w-full px-3 py-2 text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500 outline-none transition-all"
                             />
                         </div>

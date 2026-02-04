@@ -16,11 +16,28 @@ const STORAGE_KEY = 'btc-dca-cost-basis-positions';
 
 const generateId = () => Math.random().toString(36).substring(2, 9);
 
+const isValidPosition = (p: unknown): p is CostBasisPosition => {
+    if (!p || typeof p !== 'object') return false;
+    const pos = p as Record<string, unknown>;
+    return typeof pos.id === 'string' &&
+           typeof pos.label === 'string' &&
+           typeof pos.startDate === 'string' &&
+           typeof pos.endDate === 'string' &&
+           typeof pos.amount === 'number' &&
+           typeof pos.frequency === 'string' &&
+           typeof pos.feePercentage === 'number';
+};
+
 const loadPositions = (): CostBasisPosition[] => {
     if (typeof window === 'undefined') return [];
     try {
         const stored = localStorage.getItem(STORAGE_KEY);
-        if (stored) return JSON.parse(stored);
+        if (stored) {
+            const parsed = JSON.parse(stored);
+            if (Array.isArray(parsed)) {
+                return parsed.filter(isValidPosition);
+            }
+        }
     } catch { /* ignore */ }
     return [];
 };
