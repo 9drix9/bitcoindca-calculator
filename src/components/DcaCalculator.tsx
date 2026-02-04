@@ -152,8 +152,7 @@ export const DcaCalculator = () => {
                 ]);
                 setPriceData(history);
                 setLivePrice(current);
-            } catch (err) {
-                console.error(err);
+            } catch {
                 setError(`Failed to fetch live prices from ${provider}. Switched to manual mode.`);
             } finally {
                 setLoading(false);
@@ -257,6 +256,7 @@ export const DcaCalculator = () => {
     }, [cpiData, results.currentValue, results.totalInvested]);
 
     const isProfit = results.profit >= 0;
+    const isFutureEndDate = new Date(endDate) > today;
 
     const handleExportCsv = useCallback(() => {
         if (results.breakdown.length === 0) return;
@@ -509,14 +509,17 @@ export const DcaCalculator = () => {
                 <>
                     {/* Result Cards */}
                     <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-                        <ResultCard label="Total Invested" value={formatCurrency(results.totalInvested, currencyConfig)} />
                         <ResultCard
-                            label={unit === 'BTC' ? "BTC Accumulated" : "Sats Accumulated"}
+                            label={isFutureEndDate ? "Total to Invest" : "Total Invested"}
+                            value={formatCurrency(results.totalInvested, currencyConfig)}
+                        />
+                        <ResultCard
+                            label={unit === 'BTC' ? (isFutureEndDate ? "BTC to Accumulate" : "BTC Accumulated") : (isFutureEndDate ? "Sats to Accumulate" : "Sats Accumulated")}
                             value={unit === 'BTC'
                                 ? `${results.btcAccumulated.toFixed(8)} ₿`
                                 : `${Math.floor(results.btcAccumulated * 100_000_000).toLocaleString()} sats`
                             }
-                            subValue={`Avg: ${formatCurrency(results.averageCost, currencyConfig)}`}
+                            subValue={isFutureEndDate ? "at current prices" : `Avg: ${formatCurrency(results.averageCost, currencyConfig)}`}
                             action={
                                 <button
                                     onClick={() => setUnit(prev => prev === 'BTC' ? 'SATS' : 'BTC')}
@@ -528,7 +531,7 @@ export const DcaCalculator = () => {
                             }
                         />
                         <ResultCard
-                            label="Current Value"
+                            label={isFutureEndDate ? "Value at Current Price" : "Current Value"}
                             value={formatCurrency(results.currentValue, currencyConfig)}
                             subValue={priceMode === 'api' && livePrice ? `@ ${formatCurrency(livePrice, currencyConfig)}` : undefined}
                             subValueColor="text-amber-600 dark:text-amber-400 font-medium"
@@ -536,11 +539,11 @@ export const DcaCalculator = () => {
                             icon={<Activity className="w-4 h-4 sm:w-5 sm:h-5 text-amber-500 shrink-0" />}
                         />
                         <ResultCard
-                            label="Profit / Loss"
+                            label={isFutureEndDate ? "Projected Gain" : "Profit / Loss"}
                             value={`${profitPrefix}${formatCurrency(Math.abs(results.profit), currencyConfig)}`}
                             valueColor={isProfit ? 'text-green-500' : 'text-red-500'}
                             icon={isProfit ? <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5 text-green-500 shrink-0" /> : <TrendingDown className="w-4 h-4 sm:w-5 sm:h-5 text-red-500 shrink-0" />}
-                            subValue={`${results.roi.toFixed(1)}% ROI`}
+                            subValue={isFutureEndDate ? "if price stays same" : `${results.roi.toFixed(1)}% ROI`}
                             subValueColor={isProfit ? 'text-green-600' : 'text-red-600'}
                         />
                     </div>

@@ -45,8 +45,8 @@ export const ShareMyStack = ({
             link.download = `my-btc-stack-${new Date().toISOString().split('T')[0]}.png`;
             link.href = dataUrl;
             link.click();
-        } catch (err) {
-            console.error('Share card export failed:', err);
+        } catch {
+            // Share card export failed silently
         } finally {
             setDownloading(false);
         }
