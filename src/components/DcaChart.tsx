@@ -187,8 +187,8 @@ export const DcaChart = ({ data, unit = 'BTC', m2Data }: DcaChartProps) => {
             link.download = `bitcoin-dca-chart-${format(new Date(), 'yyyy-MM-dd')}.png`;
             link.href = dataUrl;
             link.click();
-        } catch (err) {
-            console.error('Chart export failed:', err);
+        } catch {
+            // Chart export failed silently
         }
     }, []);
 

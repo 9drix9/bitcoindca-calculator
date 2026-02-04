@@ -34,6 +34,7 @@ A comprehensive Bitcoin Dollar Cost Averaging calculator with real-time market d
 - **Sat/USD Converter** — Bidirectional satoshi-to-fiat converter with live price
 
 ### Advanced Financial Tools
+- **Future Projection** — When end date is in the future, shows projected returns with conservative (15%), moderate (30%), and aggressive (50%) growth scenarios, plus custom target price mode
 - **FIRE Calculator** — Years until financial independence using the 4% withdrawal rule across three appreciation scenarios (conservative 10%, moderate 25%, aggressive 50%)
 - **Savings Account Comparison** — Side-by-side comparison of BTC DCA vs traditional savings with editable APY
 - **Cost Basis Tracker** — Track multiple DCA positions with independent date ranges, amounts, and fees (persisted in localStorage)
@@ -41,10 +42,12 @@ A comprehensive Bitcoin Dollar Cost Averaging calculator with real-time market d
 - **Stacking Goal Tracker** — Progress toward custom BTC accumulation targets
 - **Price Prediction Scenarios** — Project portfolio value at user-defined future BTC prices
 - **Lump Sum Comparison** — What if you had invested the total amount on day one instead?
-- **Exchange Fee Impact** — Visualize how different fee tiers erode returns over time
+- **Exchange Fee Comparison** — Compare fees across major exchanges (Coinbase, Kraken, Binance, Cash App, Strike, Swan, River) with your specific investment pattern
+- **Opportunity Cost Calculator** — "What If You Skipped..." shows what daily habits (coffee, streaming, eating out, smoking) would be worth if invested in Bitcoin over 5 years
 - **Inflation-Adjusted Returns** — CPI-adjusted real returns using FRED data
 
 ### Educational Content
+- **Features Guide Page** — Comprehensive `/features` page explaining every tool and widget in simple, beginner-friendly terms
 - **Why Bitcoin Page** — Dedicated `/why-bitcoin` page explaining Bitcoin's value proposition across four pillars: user adoption, network effects, cost of mining, and exiting fiat. Includes a satoshi explainer with price-level table. Static page with Article JSON-LD for rich search results
 - **Bitcoin Adoption Tracker** — Interactive chart comparing Bitcoin's adoption curve to early internet growth, with global owner estimates and Metcalfe's Law context
 - **Rotating Bitcoin Quotes** — Curated quotes from Satoshi Nakamoto, Michael Saylor, Milton Friedman, and others
@@ -53,7 +56,8 @@ A comprehensive Bitcoin Dollar Cost Averaging calculator with real-time market d
 ### Other
 - **Share My Stack** — Generate and download a shareable portfolio summary image
 - **Dark Mode** — System-aware theme toggle with localStorage persistence
-- **PWA Ready** — Web app manifest for add-to-homescreen
+- **PWA Ready** — Web app manifest with PNG icons for iOS and Android home screen
+- **Vercel Analytics** — Built-in analytics and speed insights integration
 - **Ad Placements** — Three ad slots with lazy-loaded iframes
 - **Cookie Consent** — GDPR-compliant consent banner
 
@@ -129,6 +133,8 @@ src/
     robots.ts             # Robots.txt configuration
     globals.css           # Tailwind CSS entry point
     opengraph-image.tsx   # Dynamic OG image (edge runtime)
+    features/
+      page.tsx            # Features guide page
     why-bitcoin/
       page.tsx            # "Why Bitcoin" educational page with Article JSON-LD
       opengraph-image.tsx # Page-specific OG image
@@ -141,6 +147,7 @@ src/
     DcaChart.tsx          # Recharts ComposedChart with overlays
     EducationalContent.tsx
     BitcoinAdoption.tsx   # Adoption curve chart (dynamically imported)
+    FutureProjection.tsx  # Future returns projection (when end date > today)
     AdSlot.tsx            # Lazy-loaded ad iframe wrapper
     ThemeToggle.tsx
     CookieConsent.tsx
@@ -160,6 +167,8 @@ src/
     # Advanced tools
     UnitBiasCalculator.tsx
     SavingsComparison.tsx
+    OpportunityCostCalculator.tsx
+    ExchangeFeeComparison.tsx
     FireCalculator.tsx
     CostBasisTracker.tsx
   types/
@@ -168,6 +177,8 @@ src/
     dca.ts                # Core DCA calculation logic
     csv.ts                # CSV export helpers
     urlParams.ts          # URL state encoding/decoding
+scripts/
+  generate-icons.js       # PWA icon generator (PNG from SVG)
 ```
 
 ## External APIs
@@ -209,6 +220,8 @@ Also works with any Node.js hosting that supports Next.js 16.
 | lucide-react | 0.562 |
 | clsx | 2 |
 | html-to-image | 1.11 (lazy-loaded) |
+| @vercel/analytics | 1.6 |
+| @vercel/speed-insights | 1.3 |
 
 ## License
 
