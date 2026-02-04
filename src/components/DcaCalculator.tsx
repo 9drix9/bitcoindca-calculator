@@ -729,7 +729,7 @@ export const DcaCalculator = () => {
             )}
 
             {/* Mid-content Ad */}
-            <AdSlot unitId="2426252" className="min-h-[100px] flex justify-center" />
+            <AdSlot className="min-h-[100px] flex justify-center" />
         </div>
     );
 };
