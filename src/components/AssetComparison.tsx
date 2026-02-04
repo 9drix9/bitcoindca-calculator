@@ -34,11 +34,13 @@ const AssetCard = ({
     style,
     unavailable,
     formatCurrency,
+    formatCompact,
 }: {
     result: AssetDcaResult | null;
     style: typeof cardStyles.btc;
     unavailable?: boolean;
     formatCurrency: (value: number) => string;
+    formatCompact: (value: number) => string;
 }) => {
     if (unavailable || !result) {
         return (
@@ -56,18 +58,21 @@ const AssetCard = ({
     return (
         <div className={clsx('p-3 sm:p-4 rounded-lg border', style.bg, style.border)}>
             <div className={clsx('text-xs sm:text-sm font-medium mb-1', style.label)}>{result.label}</div>
-            <div className="text-lg sm:text-2xl font-bold text-slate-900 dark:text-white">
-                {formatCurrency(result.currentValue)}
+            {/* Mobile: compact format, Desktop: full format */}
+            <div className="text-lg sm:text-2xl font-bold text-slate-900 dark:text-white truncate">
+                <span className="sm:hidden">{formatCompact(result.currentValue)}</span>
+                <span className="hidden sm:inline">{formatCurrency(result.currentValue)}</span>
             </div>
-            <div className={clsx('text-xs sm:text-sm mt-0.5', isProfit ? 'text-green-600' : 'text-red-600')}>
-                {isProfit ? '+' : '-'}{formatCurrency(Math.abs(result.profit))} ({result.roi.toFixed(1)}%)
+            <div className={clsx('text-xs sm:text-sm mt-0.5 truncate', isProfit ? 'text-green-600' : 'text-red-600')}>
+                <span className="sm:hidden">{isProfit ? '+' : '-'}{formatCompact(Math.abs(result.profit))} ({result.roi.toFixed(1)}%)</span>
+                <span className="hidden sm:inline">{isProfit ? '+' : '-'}{formatCurrency(Math.abs(result.profit))} ({result.roi.toFixed(1)}%)</span>
             </div>
         </div>
     );
 };
 
 export const AssetComparison = ({ btcResult, sp500Result, goldResult, loading }: AssetComparisonProps) => {
-    const { formatCurrency } = useCurrency();
+    const { formatCurrency, formatCompact } = useCurrency();
 
     if (loading) {
         return (
@@ -86,9 +91,9 @@ export const AssetComparison = ({ btcResult, sp500Result, goldResult, loading }:
         <div className="bg-white dark:bg-slate-900 p-4 sm:p-6 rounded-xl border border-slate-200 dark:border-slate-800">
             <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 text-slate-800 dark:text-slate-100">BTC vs Other Assets (DCA)</h3>
             <div className="grid grid-cols-3 gap-2 sm:gap-4">
-                <AssetCard result={btcResult} style={cardStyles.btc} formatCurrency={formatCurrency} />
-                <AssetCard result={sp500Result} style={cardStyles.sp500} unavailable={!sp500Result} formatCurrency={formatCurrency} />
-                <AssetCard result={goldResult} style={cardStyles.gold} unavailable={!goldResult} formatCurrency={formatCurrency} />
+                <AssetCard result={btcResult} style={cardStyles.btc} formatCurrency={formatCurrency} formatCompact={formatCompact} />
+                <AssetCard result={sp500Result} style={cardStyles.sp500} unavailable={!sp500Result} formatCurrency={formatCurrency} formatCompact={formatCompact} />
+                <AssetCard result={goldResult} style={cardStyles.gold} unavailable={!goldResult} formatCurrency={formatCurrency} formatCompact={formatCompact} />
             </div>
         </div>
     );
