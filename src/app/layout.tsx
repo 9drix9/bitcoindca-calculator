@@ -67,6 +67,8 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+        <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+        <link rel="icon" type="image/png" sizes="32x32" href="/favicon.ico" />
         <link rel="preconnect" href="https://mempool.space" />
         <link rel="preconnect" href="https://api.alternative.me" />
         <link rel="dns-prefetch" href="https://api.coingecko.com" />
