@@ -136,7 +136,7 @@ export default async function Home() {
             <LightningWidget initialData={lightningData} />
             <DominanceWidget initialData={dominanceData} />
             <SatConverterWidget />
-            <AdSlot unitId="2426251" />
+            <AdSlot />
           </div>
         </div>
 
