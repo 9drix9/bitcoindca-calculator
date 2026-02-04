@@ -565,11 +565,23 @@ export const DcaCalculator = () => {
                     {/* Result Explainer */}
                     {purchaseCount > 0 && (
                         <p className="text-center text-xs sm:text-sm text-slate-500 dark:text-slate-400 leading-relaxed max-w-2xl mx-auto">
-                            If you had invested {currencyConfig.symbol}{amount.toLocaleString()} every {frequency === 'daily' ? 'day' : frequency === 'biweekly' ? 'two weeks' : frequency.replace('ly', '')} from{' '}
-                            {format(new Date(startDate), 'MMM yyyy')} to {format(new Date(endDate), 'MMM yyyy')}, you would have spent{' '}
-                            {formatCurrency(results.totalInvested, currencyConfig)} and your Bitcoin would now be worth{' '}
-                            <span className="font-medium text-slate-700 dark:text-slate-200">{formatCurrency(results.currentValue, currencyConfig)}</span>{' '}
-                            &mdash; a <span className={clsx("font-medium", isProfit ? "text-green-600 dark:text-green-400" : "text-red-500")}>{results.roi.toFixed(1)}% return</span>.
+                            {new Date(endDate) > today ? (
+                                <>
+                                    If you invest {currencyConfig.symbol}{amount.toLocaleString()} every {frequency === 'daily' ? 'day' : frequency === 'biweekly' ? 'two weeks' : frequency.replace('ly', '')} from{' '}
+                                    {format(new Date(startDate), 'MMM yyyy')} to {format(new Date(endDate), 'MMM yyyy')}, you will spend{' '}
+                                    {formatCurrency(results.totalInvested, currencyConfig)} and accumulate{' '}
+                                    <span className="font-medium text-slate-700 dark:text-slate-200">{results.btcAccumulated < 1 ? results.btcAccumulated.toFixed(6) : results.btcAccumulated.toFixed(4)} BTC</span>{' '}
+                                    (at current prices: {formatCurrency(results.currentValue, currencyConfig)}).
+                                </>
+                            ) : (
+                                <>
+                                    If you had invested {currencyConfig.symbol}{amount.toLocaleString()} every {frequency === 'daily' ? 'day' : frequency === 'biweekly' ? 'two weeks' : frequency.replace('ly', '')} from{' '}
+                                    {format(new Date(startDate), 'MMM yyyy')} to {format(new Date(endDate), 'MMM yyyy')}, you would have spent{' '}
+                                    {formatCurrency(results.totalInvested, currencyConfig)} and your Bitcoin would now be worth{' '}
+                                    <span className="font-medium text-slate-700 dark:text-slate-200">{formatCurrency(results.currentValue, currencyConfig)}</span>{' '}
+                                    &mdash; a <span className={clsx("font-medium", isProfit ? "text-green-600 dark:text-green-400" : "text-red-500")}>{results.roi.toFixed(1)}% return</span>.
+                                </>
+                            )}
                         </p>
                     )}
 
