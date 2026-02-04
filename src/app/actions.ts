@@ -171,7 +171,9 @@ export async function getBitcoinPriceHistory(from: number, to: number, provider:
             if (!response.ok) throw new Error(`API Error: ${response.status}`);
 
             const json = await response.json();
-            if (json.error && json.error.length > 0) throw new Error(`API Error: ${json.error.join(', ')}`);
+            if (json && Array.isArray(json.error) && json.error.length > 0) {
+                throw new Error(`API Error: ${json.error.join(', ')}`);
+            }
 
             const result = json.result;
             const pairKey = Object.keys(result).find(k => k !== 'last');
@@ -566,10 +568,13 @@ export async function getCurrentBitcoinPrice(provider: 'kraken' | 'coinbase' = '
         if (provider === 'coinbase') {
             return parseFloat(json.price);
         } else {
-            if (json.error && json.error.length > 0) throw new Error(`API Error: ${json.error.join(', ')}`);
-            const result = json.result;
+            if (json && Array.isArray(json.error) && json.error.length > 0) {
+                throw new Error(`API Error: ${json.error.join(', ')}`);
+            }
+            const result = json?.result;
+            if (!result) throw new Error('Invalid response from Kraken');
             const pairKey = Object.keys(result)[0];
-            return parseFloat(result[pairKey].c[0]);
+            return parseFloat(result[pairKey]?.c?.[0] ?? '0');
         }
     } catch (error) {
         throw error;

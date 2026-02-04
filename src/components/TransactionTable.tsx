@@ -40,6 +40,8 @@ export const TransactionTable = ({ breakdown, unit = 'BTC' }: TransactionTablePr
         <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
             <button
                 onClick={() => setOpen(!open)}
+                aria-expanded={open}
+                aria-label={`${open ? 'Hide' : 'Show'} transaction history`}
                 className="w-full flex items-center justify-between p-4 sm:p-5 text-left hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
             >
                 <h3 className="text-sm sm:text-lg font-semibold text-slate-800 dark:text-slate-100">
