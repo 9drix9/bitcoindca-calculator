@@ -104,6 +104,9 @@ export default function RootLayout({
                   <div className="w-8 h-8 bg-amber-500 rounded-full flex items-center justify-center text-white font-bold text-sm shrink-0 group-hover:scale-105 transition-transform" aria-hidden="true">₿</div>
                   <span className="text-lg sm:text-xl font-bold bg-gradient-to-r from-amber-500 to-orange-600 bg-clip-text text-transparent">Bitcoin DCA</span>
                 </Link>
+                <Link href="/features" className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 hover:text-amber-600 dark:hover:text-amber-400 transition-colors">
+                  Features
+                </Link>
                 <Link href="/why-bitcoin" className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 hover:text-amber-600 dark:hover:text-amber-400 transition-colors">
                   Why Bitcoin
                 </Link>
@@ -139,6 +142,9 @@ export default function RootLayout({
                 <div className="space-y-2">
                   <h4 className="text-xs font-semibold text-slate-800 dark:text-white uppercase tracking-wider">Learn</h4>
                   <div className="flex flex-col gap-1.5">
+                    <Link href="/features" className="text-sm text-slate-500 dark:text-slate-400 hover:text-amber-600 dark:hover:text-amber-400 transition-colors">
+                      Features Guide
+                    </Link>
                     <Link href="/why-bitcoin" className="text-sm text-slate-500 dark:text-slate-400 hover:text-amber-600 dark:hover:text-amber-400 transition-colors">
                       Why Bitcoin
                     </Link>
