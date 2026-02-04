@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { getPurchasingPowerData } from '@/app/actions';
+import { useCurrency } from '@/context/CurrencyContext';
 
 interface PurchasingPowerData {
     cpiStart: number;
@@ -17,6 +18,7 @@ interface PurchasingPowerWidgetProps {
 const fmt = (n: number) => new Intl.NumberFormat('en-US').format(n);
 
 export const PurchasingPowerWidget = ({ initialData }: PurchasingPowerWidgetProps) => {
+    const { currencyConfig } = useCurrency();
     const [data, setData] = useState<PurchasingPowerData | null>(initialData);
 
     useEffect(() => {
@@ -39,25 +41,26 @@ export const PurchasingPowerWidget = ({ initialData }: PurchasingPowerWidgetProp
     if (!data) return null;
 
     const inflationFactor = data.cpiNow / data.cpiStart;
-    const fiatNeeded = Math.round(100 * inflationFactor);
+    const baseAmount = 100 * currencyConfig.rate;
+    const fiatNeeded = Math.round(baseAmount * inflationFactor);
     const purchasingPowerLoss = Math.round((1 - 1 / inflationFactor) * 100);
-    const btcValue = Math.round(100 * (data.btcPriceNow / data.btcPriceStart));
+    const btcValue = Math.round(baseAmount * (data.btcPriceNow / data.btcPriceStart));
     const btcGainPct = Math.round(((data.btcPriceNow / data.btcPriceStart) - 1) * 100);
 
     return (
         <div className="bg-white dark:bg-slate-900 rounded-xl p-4 border border-slate-200 dark:border-slate-800">
             <h4 className="font-semibold text-slate-800 dark:text-white mb-3 text-xs sm:text-sm">
-                $100 in 2015
+                {currencyConfig.symbol}{Math.round(baseAmount)} in 2015
             </h4>
 
             <div className="grid grid-cols-2 gap-2">
                 {/* Fiat side */}
                 <div className="rounded-lg bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800/50 p-2.5 text-center">
                     <div className="text-[10px] sm:text-xs text-red-600 dark:text-red-400 font-medium mb-0.5">
-                        US Dollar
+                        {currencyConfig.code}
                     </div>
                     <div className="text-sm sm:text-lg font-bold text-slate-900 dark:text-white">
-                        ${fiatNeeded}
+                        {currencyConfig.symbol}{fmt(fiatNeeded)}
                     </div>
                     <div className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400">
                         needed today
@@ -73,7 +76,7 @@ export const PurchasingPowerWidget = ({ initialData }: PurchasingPowerWidgetProp
                         Bitcoin
                     </div>
                     <div className="text-sm sm:text-lg font-bold text-slate-900 dark:text-white">
-                        ${fmt(btcValue)}
+                        {currencyConfig.symbol}{fmt(btcValue)}
                     </div>
                     <div className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400">
                         value today
@@ -85,7 +88,7 @@ export const PurchasingPowerWidget = ({ initialData }: PurchasingPowerWidgetProp
             </div>
 
             <p className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 mt-2.5 leading-relaxed">
-                $100 of fiat lost purchasing power to inflation, while $100 of Bitcoin appreciated significantly.
+                {currencyConfig.symbol}{Math.round(baseAmount)} of fiat lost purchasing power to inflation, while {currencyConfig.symbol}{Math.round(baseAmount)} of Bitcoin appreciated significantly.
             </p>
 
             <div className="mt-2 pt-2 border-t border-slate-100 dark:border-slate-800">

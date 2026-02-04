@@ -6,11 +6,20 @@ import './globals.css';
 import { Analytics } from '@vercel/analytics/next';
 import { SpeedInsights } from '@vercel/speed-insights/next';
 import { ThemeToggle } from '@/components/ThemeToggle';
-import { CookieConsent } from '@/components/CookieConsent';
-import { BtcDonationButton } from '@/components/BtcDonationButton';
+import { Providers } from '@/components/Providers';
+import dynamic from 'next/dynamic';
 import clsx from 'clsx';
 
-const inter = Inter({ subsets: ['latin'], display: 'swap' });
+// Lazy load non-critical components
+const CookieConsent = dynamic(() => import('@/components/CookieConsent').then(m => m.CookieConsent));
+const BtcDonationButton = dynamic(() => import('@/components/BtcDonationButton').then(m => m.BtcDonationButton));
+
+const inter = Inter({
+  subsets: ['latin'],
+  display: 'swap',
+  preload: true,
+  fallback: ['system-ui', 'sans-serif'],
+});
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_BASE_URL || 'https://btcdollarcostaverage.com'),
@@ -92,6 +101,7 @@ export default function RootLayout({
         />
       </head>
       <body className={clsx(inter.className, "bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-50 antialiased")}>
+        <Providers>
         <div className="min-h-screen flex flex-col">
           <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-[100] focus:px-4 focus:py-2 focus:bg-amber-500 focus:text-white focus:rounded-lg focus:text-sm focus:font-semibold">
             Skip to main content
@@ -181,6 +191,7 @@ export default function RootLayout({
 
           <CookieConsent />
         </div>
+        </Providers>
         <Analytics />
         <SpeedInsights />
       </body>

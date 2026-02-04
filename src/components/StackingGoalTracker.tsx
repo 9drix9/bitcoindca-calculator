@@ -2,6 +2,7 @@
 
 import { useMemo } from 'react';
 import { CheckCircle2 } from 'lucide-react';
+import { useCurrency } from '@/context/CurrencyContext';
 import clsx from 'clsx';
 
 interface StackingGoalTrackerProps {
@@ -34,6 +35,8 @@ export const StackingGoalTracker = ({
     frequency,
     unit,
 }: StackingGoalTrackerProps) => {
+    const { formatCurrency } = useCurrency();
+
     const projection = useMemo(() => {
         if (purchaseCount < 2 || btcAccumulated <= 0 || totalInvested <= 0) return null;
 
@@ -103,7 +106,7 @@ export const StackingGoalTracker = ({
             {projection && (
                 <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-slate-100 dark:border-slate-800">
                     <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-                        At <span className="font-medium text-amber-600 dark:text-amber-400">${amount}/{frequency}</span>,
+                        At <span className="font-medium text-amber-600 dark:text-amber-400">{formatCurrency(amount)}/{frequency}</span>,
                         you&apos;ll reach{' '}
                         <span className="font-medium text-amber-600 dark:text-amber-400">{formatBtcLabel(projection.target, unit)}</span>
                         {' '}in ~<span className="font-medium text-amber-600 dark:text-amber-400">

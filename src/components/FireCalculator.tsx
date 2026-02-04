@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import { Frequency, AppreciationScenario } from '@/types';
+import { useCurrency } from '@/context/CurrencyContext';
 import clsx from 'clsx';
 
 const SCENARIOS: AppreciationScenario[] = [
@@ -36,6 +37,7 @@ export const FireCalculator = ({
     amount,
     frequency,
 }: FireCalculatorProps) => {
+    const { currencyConfig, formatCurrency } = useCurrency();
     const [targetWithdrawal, setTargetWithdrawal] = useState<number>(50000);
 
     const scenarioResults = useMemo(() => {
@@ -88,7 +90,7 @@ export const FireCalculator = ({
                 <div className="space-y-2">
                     <label className="text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300">Annual Withdrawal Target</label>
                     <div className="relative">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 dark:text-slate-400">$</span>
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 dark:text-slate-400">{currencyConfig.symbol}</span>
                         <input
                             type="number"
                             value={targetWithdrawal}
@@ -97,16 +99,16 @@ export const FireCalculator = ({
                         />
                     </div>
                     <div className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400">
-                        FIRE Number: ${(targetWithdrawal / WITHDRAWAL_RATE).toLocaleString(undefined, { maximumFractionDigits: 0 })} (4% rule)
+                        FIRE Number: {formatCurrency(targetWithdrawal / WITHDRAWAL_RATE)} (4% rule)
                     </div>
                 </div>
                 <div className="space-y-2">
                     <div className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">Current Stack Value</div>
                     <div className="text-lg sm:text-2xl font-bold text-amber-600 dark:text-amber-400">
-                        ${currentStackValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                        {formatCurrency(currentStackValue)}
                     </div>
                     <div className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400">
-                        {btcAccumulated.toFixed(8)} BTC @ ${livePrice.toLocaleString()}
+                        {btcAccumulated.toFixed(8)} BTC @ {formatCurrency(livePrice)}
                     </div>
                 </div>
             </div>
@@ -138,7 +140,7 @@ export const FireCalculator = ({
             </div>
 
             <div className="mt-3 text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 text-center">
-                Assumes continued DCA of ${getContributionsPerYear(amount, frequency).toLocaleString()}/yr and 4% safe withdrawal rate
+                Assumes continued DCA of {formatCurrency(getContributionsPerYear(amount, frequency))}/yr and 4% safe withdrawal rate
             </div>
         </div>
     );

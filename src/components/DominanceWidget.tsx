@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { getBitcoinDominance } from '@/app/actions';
+import { useCurrency } from '@/context/CurrencyContext';
 
 interface DominanceData {
     dominancePercent: number;
@@ -13,15 +14,17 @@ interface DominanceWidgetProps {
     initialData: DominanceData | null;
 }
 
-const formatMarketCap = (value: number): string => {
-    if (value >= 1e12) return `$${(value / 1e12).toFixed(2)}T`;
-    if (value >= 1e9) return `$${(value / 1e9).toFixed(1)}B`;
-    if (value >= 1e6) return `$${(value / 1e6).toFixed(1)}M`;
-    return `$${value.toLocaleString()}`;
-};
-
 export const DominanceWidget = ({ initialData }: DominanceWidgetProps) => {
+    const { currencyConfig } = useCurrency();
     const [data, setData] = useState<DominanceData | null>(initialData);
+
+    const formatMarketCap = (value: number): string => {
+        const sym = currencyConfig.symbol;
+        if (value >= 1e12) return `${sym}${(value / 1e12).toFixed(2)}T`;
+        if (value >= 1e9) return `${sym}${(value / 1e9).toFixed(1)}B`;
+        if (value >= 1e6) return `${sym}${(value / 1e6).toFixed(1)}M`;
+        return `${sym}${value.toLocaleString()}`;
+    };
 
     useEffect(() => {
         let mounted = true;

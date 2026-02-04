@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react';
 import { DcaBreakdownItem } from '@/types';
 import { format } from 'date-fns';
 import { ChevronDown } from 'lucide-react';
+import { useCurrency } from '@/context/CurrencyContext';
 import clsx from 'clsx';
 
 interface TransactionTableProps {
@@ -12,6 +13,7 @@ interface TransactionTableProps {
 }
 
 export const TransactionTable = ({ breakdown, unit = 'BTC' }: TransactionTableProps) => {
+    const { formatCurrency } = useCurrency();
     const [open, setOpen] = useState(false);
 
     const isSats = unit === 'SATS';
@@ -84,10 +86,10 @@ export const TransactionTable = ({ breakdown, unit = 'BTC' }: TransactionTablePr
                                         </span>
                                     </td>
                                     <td className="px-3 sm:px-4 py-2 text-right whitespace-nowrap text-slate-600 dark:text-slate-400 tabular-nums">
-                                        ${item.price.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                                        {formatCurrency(item.price)}
                                     </td>
                                     <td className="px-3 sm:px-4 py-2 text-right whitespace-nowrap text-slate-600 dark:text-slate-400 tabular-nums">
-                                        ${item.invested.toLocaleString()}
+                                        {formatCurrency(item.invested)}
                                     </td>
                                     <td className="px-3 sm:px-4 py-2 text-right whitespace-nowrap font-mono text-slate-600 dark:text-slate-400 tabular-nums">
                                         {formatBtcValue(item.accumulated)}
@@ -96,7 +98,7 @@ export const TransactionTable = ({ breakdown, unit = 'BTC' }: TransactionTablePr
                                         {formatBtcValue(item.totalAccumulated)}
                                     </td>
                                     <td className="px-3 sm:px-4 py-2 text-right whitespace-nowrap font-medium text-slate-700 dark:text-slate-300 tabular-nums">
-                                        ${item.portfolioValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                                        {formatCurrency(item.portfolioValue)}
                                     </td>
                                 </tr>
                             ))}
