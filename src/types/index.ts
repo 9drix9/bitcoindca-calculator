@@ -73,15 +73,6 @@ export interface CalculatorSearchParams {
     manualPrice?: string;
 }
 
-export type CurrencyCode = 'USD' | 'EUR' | 'GBP' | 'CAD' | 'AUD' | 'JPY';
-
-export interface CurrencyConfig {
-    code: CurrencyCode;
-    symbol: string;
-    rate: number; // rate relative to USD (1 USD = rate units)
-    label: string;
-}
-
 export interface CostBasisPosition {
     id: string;
     label: string;

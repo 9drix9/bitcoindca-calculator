@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { format, subYears, subMonths, startOfToday, differenceInMonths } from 'date-fns';
-import { Frequency, PriceMode, ResultCardProps, AssetDcaResult, CurrencyCode, CurrencyConfig } from '@/types';
+import { Frequency, PriceMode, ResultCardProps, AssetDcaResult } from '@/types';
+import { useCurrency, CurrencyCode } from '@/context/CurrencyContext';
 import { calculateDca, calculateLumpSum, calculateAssetDca } from '@/utils/dca';
 import { getBitcoinPriceHistory, getCurrentBitcoinPrice, getAssetPriceHistory, getCpiData, getM2Data } from '@/app/actions';
 import { generateCsvContent, downloadCsv } from '@/utils/csv';
@@ -12,7 +13,7 @@ import { SkeletonCard, SkeletonChart } from './Skeleton';
 import { AdSlot } from './AdSlot';
 
 // Lazy-load result sub-components — none render until after a calculation
-const DcaChart = dynamic(() => import('./DcaChart').then(m => m.DcaChart));
+const DcaChart = dynamic(() => import('./DcaChart').then(m => m.DcaChart), { ssr: false });
 const TransactionTable = dynamic(() => import('./TransactionTable').then(m => m.TransactionTable));
 const AssetComparison = dynamic(() => import('./AssetComparison').then(m => m.AssetComparison));
 const ExchangeFeeComparison = dynamic(() => import('./ExchangeFeeComparison').then(m => m.ExchangeFeeComparison));
@@ -26,23 +27,6 @@ const CostBasisTracker = dynamic(() => import('./CostBasisTracker').then(m => m.
 const FutureProjection = dynamic(() => import('./FutureProjection').then(m => m.FutureProjection));
 import { TrendingUp, TrendingDown, DollarSign, Activity, Repeat, Download, Share2 } from 'lucide-react';
 import clsx from 'clsx';
-
-const CURRENCIES: CurrencyConfig[] = [
-    { code: 'USD', symbol: '$', rate: 1, label: 'USD ($)' },
-    { code: 'EUR', symbol: '€', rate: 0.92, label: 'EUR (€)' },
-    { code: 'GBP', symbol: '£', rate: 0.79, label: 'GBP (£)' },
-    { code: 'CAD', symbol: 'C$', rate: 1.36, label: 'CAD (C$)' },
-    { code: 'AUD', symbol: 'A$', rate: 1.53, label: 'AUD (A$)' },
-    { code: 'JPY', symbol: '¥', rate: 149.5, label: 'JPY (¥)' },
-];
-
-const formatCurrency = (usdValue: number, config: CurrencyConfig): string => {
-    const converted = usdValue * config.rate;
-    if (config.code === 'JPY') {
-        return `${config.symbol}${Math.round(converted).toLocaleString()}`;
-    }
-    return `${config.symbol}${converted.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
-};
 
 type Preset = { label: string; amount: number; frequency: Frequency; yearsBack?: number; monthsBack?: number; startDate?: string };
 
@@ -67,6 +51,7 @@ const PRESET_GROUPS: { title: string; presets: Preset[] }[] = [
 ];
 
 export const DcaCalculator = () => {
+    const { currency, setCurrency, currencyConfig, currencies, formatCurrency } = useCurrency();
     const [today, setToday] = useState(() => startOfToday());
     const oneYearAgo = subYears(today, 1);
 
@@ -98,10 +83,7 @@ export const DcaCalculator = () => {
     const [goldData, setGoldData] = useState<[number, number][] | null>(null);
     const [comparisonLoading, setComparisonLoading] = useState(false);
     const [cpiData, setCpiData] = useState<[number, number][] | null>(null);
-    const [currency, setCurrency] = useState<CurrencyCode>('USD');
     const [m2Data, setM2Data] = useState<[number, number][] | null>(null);
-
-    const currencyConfig = useMemo(() => CURRENCIES.find(c => c.code === currency) || CURRENCIES[0], [currency]);
 
     const applyPreset = useCallback((preset: Preset) => {
         const now = startOfToday();
@@ -367,7 +349,7 @@ export const DcaCalculator = () => {
                             onChange={(e) => setCurrency(e.target.value as CurrencyCode)}
                             className="w-full px-3 py-2 text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500 outline-none transition-all"
                         >
-                            {CURRENCIES.map(c => (
+                            {currencies.map(c => (
                                 <option key={c.code} value={c.code}>{c.label}</option>
                             ))}
                         </select>
@@ -464,7 +446,7 @@ export const DcaCalculator = () => {
                 <div className="mt-5 pt-4 border-t border-slate-100 dark:border-slate-800 flex flex-wrap justify-between items-center gap-3">
                     <div className="flex items-center gap-2">
                         <span className="text-xs sm:text-sm text-slate-500">Projected</span>
-                        <span className="text-base sm:text-lg font-bold text-slate-800 dark:text-white">{formatCurrency(results.totalInvested, currencyConfig)}</span>
+                        <span className="text-base sm:text-lg font-bold text-slate-800 dark:text-white">{formatCurrency(results.totalInvested)}</span>
                     </div>
                     <div className="flex items-center gap-1">
                         <button
@@ -511,7 +493,7 @@ export const DcaCalculator = () => {
                     <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
                         <ResultCard
                             label={isFutureEndDate ? "Total to Invest" : "Total Invested"}
-                            value={formatCurrency(results.totalInvested, currencyConfig)}
+                            value={formatCurrency(results.totalInvested)}
                         />
                         <ResultCard
                             label={unit === 'BTC' ? (isFutureEndDate ? "BTC to Accumulate" : "BTC Accumulated") : (isFutureEndDate ? "Sats to Accumulate" : "Sats Accumulated")}
@@ -519,7 +501,7 @@ export const DcaCalculator = () => {
                                 ? `${results.btcAccumulated.toFixed(8)} ₿`
                                 : `${Math.floor(results.btcAccumulated * 100_000_000).toLocaleString()} sats`
                             }
-                            subValue={isFutureEndDate ? "at current prices" : `Avg: ${formatCurrency(results.averageCost, currencyConfig)}`}
+                            subValue={isFutureEndDate ? "at current prices" : `Avg: ${formatCurrency(results.averageCost)}`}
                             action={
                                 <button
                                     onClick={() => setUnit(prev => prev === 'BTC' ? 'SATS' : 'BTC')}
@@ -532,15 +514,15 @@ export const DcaCalculator = () => {
                         />
                         <ResultCard
                             label={isFutureEndDate ? "Value at Current Price" : "Current Value"}
-                            value={formatCurrency(results.currentValue, currencyConfig)}
-                            subValue={priceMode === 'api' && livePrice ? `@ ${formatCurrency(livePrice, currencyConfig)}` : undefined}
+                            value={formatCurrency(results.currentValue)}
+                            subValue={priceMode === 'api' && livePrice ? `@ ${formatCurrency(livePrice)}` : undefined}
                             subValueColor="text-amber-600 dark:text-amber-400 font-medium"
                             highlight={true}
                             icon={<Activity className="w-4 h-4 sm:w-5 sm:h-5 text-amber-500 shrink-0" />}
                         />
                         <ResultCard
                             label={isFutureEndDate ? "Projected Gain" : "Profit / Loss"}
-                            value={`${profitPrefix}${formatCurrency(Math.abs(results.profit), currencyConfig)}`}
+                            value={`${profitPrefix}${formatCurrency(Math.abs(results.profit))}`}
                             valueColor={isProfit ? 'text-green-500' : 'text-red-500'}
                             icon={isProfit ? <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5 text-green-500 shrink-0" /> : <TrendingDown className="w-4 h-4 sm:w-5 sm:h-5 text-red-500 shrink-0" />}
                             subValue={isFutureEndDate ? "if price stays same" : `${results.roi.toFixed(1)}% ROI`}
@@ -572,16 +554,16 @@ export const DcaCalculator = () => {
                                 <>
                                     If you invest {currencyConfig.symbol}{amount.toLocaleString()} every {frequency === 'daily' ? 'day' : frequency === 'biweekly' ? 'two weeks' : frequency.replace('ly', '')} from{' '}
                                     {format(new Date(startDate), 'MMM yyyy')} to {format(new Date(endDate), 'MMM yyyy')}, you will spend{' '}
-                                    {formatCurrency(results.totalInvested, currencyConfig)} and accumulate{' '}
+                                    {formatCurrency(results.totalInvested)} and accumulate{' '}
                                     <span className="font-medium text-slate-700 dark:text-slate-200">{results.btcAccumulated < 1 ? results.btcAccumulated.toFixed(6) : results.btcAccumulated.toFixed(4)} BTC</span>{' '}
-                                    (at current prices: {formatCurrency(results.currentValue, currencyConfig)}).
+                                    (at current prices: {formatCurrency(results.currentValue)}).
                                 </>
                             ) : (
                                 <>
                                     If you had invested {currencyConfig.symbol}{amount.toLocaleString()} every {frequency === 'daily' ? 'day' : frequency === 'biweekly' ? 'two weeks' : frequency.replace('ly', '')} from{' '}
                                     {format(new Date(startDate), 'MMM yyyy')} to {format(new Date(endDate), 'MMM yyyy')}, you would have spent{' '}
-                                    {formatCurrency(results.totalInvested, currencyConfig)} and your Bitcoin would now be worth{' '}
-                                    <span className="font-medium text-slate-700 dark:text-slate-200">{formatCurrency(results.currentValue, currencyConfig)}</span>{' '}
+                                    {formatCurrency(results.totalInvested)} and your Bitcoin would now be worth{' '}
+                                    <span className="font-medium text-slate-700 dark:text-slate-200">{formatCurrency(results.currentValue)}</span>{' '}
                                     &mdash; a <span className={clsx("font-medium", isProfit ? "text-green-600 dark:text-green-400" : "text-red-500")}>{results.roi.toFixed(1)}% return</span>.
                                 </>
                             )}
@@ -609,7 +591,7 @@ export const DcaCalculator = () => {
                                 <div>
                                     <div className="text-slate-500 dark:text-slate-400 mb-0.5">Real Value</div>
                                     <div className="font-semibold text-slate-800 dark:text-white">
-                                        {formatCurrency(inflationStats.adjustedValue, currencyConfig)}
+                                        {formatCurrency(inflationStats.adjustedValue)}
                                     </div>
                                 </div>
                                 <div>
@@ -635,16 +617,16 @@ export const DcaCalculator = () => {
                             <div className="grid grid-cols-2 gap-3 sm:gap-6">
                                 <div className="p-3 sm:p-4 rounded-lg bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/50">
                                     <div className="text-xs sm:text-sm font-medium text-amber-700 dark:text-amber-400 mb-1">DCA Strategy</div>
-                                    <div className="text-lg sm:text-2xl font-bold text-slate-900 dark:text-white">{formatCurrency(results.currentValue, currencyConfig)}</div>
+                                    <div className="text-lg sm:text-2xl font-bold text-slate-900 dark:text-white">{formatCurrency(results.currentValue)}</div>
                                     <div className={clsx("text-xs sm:text-sm mt-1", results.profit >= 0 ? "text-green-600" : "text-red-600")}>
-                                        {results.profit >= 0 ? '+' : '-'}{formatCurrency(Math.abs(results.profit), currencyConfig)} ({results.roi.toFixed(1)}%)
+                                        {results.profit >= 0 ? '+' : '-'}{formatCurrency(Math.abs(results.profit))} ({results.roi.toFixed(1)}%)
                                     </div>
                                 </div>
                                 <div className="p-3 sm:p-4 rounded-lg bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800/50">
                                     <div className="text-xs sm:text-sm font-medium text-blue-700 dark:text-blue-400 mb-1">Lump Sum</div>
-                                    <div className="text-lg sm:text-2xl font-bold text-slate-900 dark:text-white">{formatCurrency(lumpSumResult.currentValue, currencyConfig)}</div>
+                                    <div className="text-lg sm:text-2xl font-bold text-slate-900 dark:text-white">{formatCurrency(lumpSumResult.currentValue)}</div>
                                     <div className={clsx("text-xs sm:text-sm mt-1", lumpSumResult.profit >= 0 ? "text-green-600" : "text-red-600")}>
-                                        {lumpSumResult.profit >= 0 ? '+' : '-'}{formatCurrency(Math.abs(lumpSumResult.profit), currencyConfig)} ({lumpSumResult.roi.toFixed(1)}%)
+                                        {lumpSumResult.profit >= 0 ? '+' : '-'}{formatCurrency(Math.abs(lumpSumResult.profit))} ({lumpSumResult.roi.toFixed(1)}%)
                                     </div>
                                 </div>
                             </div>
@@ -754,6 +736,7 @@ const ResultCard = ({ label, value, subValue, highlight, valueColor, icon, subVa
 );
 
 const PricePredictionScenario = ({ btcAmount, totalInvested }: { btcAmount: number, totalInvested: number }) => {
+    const { currencyConfig, formatCurrency } = useCurrency();
     const [targetPrice, setTargetPrice] = useState<number>(100000);
 
     const projectedValue = btcAmount * targetPrice;
@@ -771,7 +754,7 @@ const PricePredictionScenario = ({ btcAmount, totalInvested }: { btcAmount: numb
                 <div className="space-y-3">
                     <label className="text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300">If Bitcoin Price Hits...</label>
                     <div className="relative">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 dark:text-slate-400">$</span>
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 dark:text-slate-400">{currencyConfig.symbol}</span>
                         <input
                             type="number"
                             value={targetPrice}
@@ -786,7 +769,7 @@ const PricePredictionScenario = ({ btcAmount, totalInvested }: { btcAmount: numb
                                 onClick={() => setTargetPrice(price)}
                                 className="px-2.5 py-1 text-[11px] sm:text-xs font-medium rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 dark:bg-slate-700/80 dark:hover:bg-slate-600 dark:text-slate-300 transition-colors"
                             >
-                                ${price >= 1000000 ? `${price / 1000000}M` : `${price / 1000}k`}
+                                {currencyConfig.symbol}{price >= 1000000 ? `${price / 1000000}M` : `${price / 1000}k`}
                             </button>
                         ))}
                     </div>
@@ -795,12 +778,12 @@ const PricePredictionScenario = ({ btcAmount, totalInvested }: { btcAmount: numb
                 <div className="space-y-3 bg-slate-50 dark:bg-slate-800/50 p-4 sm:p-5 rounded-xl border border-slate-200 dark:border-slate-700/50">
                     <div className="flex justify-between items-end border-b border-slate-200 dark:border-slate-700 pb-3">
                         <span className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">Portfolio Value</span>
-                        <span className="text-xl sm:text-3xl font-bold text-green-600 dark:text-green-400">${projectedValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
+                        <span className="text-xl sm:text-3xl font-bold text-green-600 dark:text-green-400">{formatCurrency(projectedValue)}</span>
                     </div>
                     <div className="flex justify-between items-center">
                         <span className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">Profit</span>
                         <span className={clsx("text-sm sm:text-lg font-semibold", projectedProfit >= 0 ? "text-green-600 dark:text-green-300" : "text-red-500 dark:text-red-400")}>
-                            {projectedProfit >= 0 ? '+' : ''}${projectedProfit.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                            {projectedProfit >= 0 ? '+' : ''}{formatCurrency(projectedProfit)}
                         </span>
                     </div>
                     <div className="flex justify-between items-center">

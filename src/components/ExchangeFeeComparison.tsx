@@ -1,5 +1,6 @@
 'use client';
 
+import { useCurrency } from '@/context/CurrencyContext';
 import clsx from 'clsx';
 
 interface ExchangeFeeComparisonProps {
@@ -17,6 +18,8 @@ const EXCHANGES = [
 ];
 
 export const ExchangeFeeComparison = ({ totalInvested, purchaseCount }: ExchangeFeeComparisonProps) => {
+    const { formatCurrency } = useCurrency();
+
     if (totalInvested <= 0 || purchaseCount <= 0) return null;
 
     const maxFeeRate = Math.max(...EXCHANGES.map(e => e.feeRate));
@@ -25,7 +28,7 @@ export const ExchangeFeeComparison = ({ totalInvested, purchaseCount }: Exchange
         <div className="bg-white dark:bg-slate-900 p-4 sm:p-6 rounded-xl border border-slate-200 dark:border-slate-800">
             <h3 className="text-base sm:text-lg font-semibold text-slate-800 dark:text-slate-100 mb-0.5">Exchange Fee Comparison</h3>
             <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mb-3 sm:mb-4">
-                Fees on ${totalInvested.toLocaleString()} across {purchaseCount} purchases
+                Fees on {formatCurrency(totalInvested)} across {purchaseCount} purchases
             </p>
 
             <div className="overflow-x-auto -mx-4 sm:mx-0">
@@ -69,13 +72,13 @@ export const ExchangeFeeComparison = ({ totalInvested, purchaseCount }: Exchange
                                         "px-3 sm:px-4 py-2 text-right whitespace-nowrap",
                                         isZeroFee ? "text-green-600 dark:text-green-400" : isHighest ? "text-red-500" : "text-slate-600 dark:text-slate-400"
                                     )}>
-                                        ${totalFees.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                                        {formatCurrency(totalFees)}
                                     </td>
                                     <td className="px-3 sm:px-4 py-2 text-right whitespace-nowrap text-slate-600 dark:text-slate-400">
-                                        ${netInvested.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                                        {formatCurrency(netInvested)}
                                     </td>
                                     <td className="px-3 sm:px-4 py-2 text-right whitespace-nowrap text-slate-600 dark:text-slate-400">
-                                        ${feePerPurchase.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                                        {formatCurrency(feePerPurchase)}
                                     </td>
                                 </tr>
                             );

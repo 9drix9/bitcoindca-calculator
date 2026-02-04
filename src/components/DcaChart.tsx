@@ -16,6 +16,7 @@ import {
 import { DcaBreakdownItem, HistoricalEvent } from '@/types';
 import { format } from 'date-fns';
 import { Camera } from 'lucide-react';
+import { useCurrency } from '@/context/CurrencyContext';
 
 interface DcaChartProps {
     data: DcaBreakdownItem[];
@@ -43,12 +44,6 @@ const HISTORICAL_EVENTS: HistoricalEvent[] = [
 
 const GENESIS_DATE = new Date('2009-01-03T00:00:00Z');
 
-const formatYAxis = (value: number): string => {
-    if (value >= 1_000_000) return `$${(value / 1_000_000).toFixed(1)}M`;
-    if (value >= 1_000) return `$${(value / 1_000).toFixed(0)}k`;
-    return `$${value.toFixed(0)}`;
-};
-
 const computePowerLawPrice = (dateStr: string): number | null => {
     const date = new Date(dateStr);
     const daysSinceGenesis = (date.getTime() - GENESIS_DATE.getTime()) / (1000 * 60 * 60 * 24);
@@ -59,12 +54,20 @@ const computePowerLawPrice = (dateStr: string): number | null => {
 };
 
 export const DcaChart = ({ data, unit = 'BTC', m2Data }: DcaChartProps) => {
+    const { currencyConfig } = useCurrency();
     const chartRef = useRef<HTMLDivElement>(null);
     const [showPowerLaw, setShowPowerLaw] = useState(false);
     const [showM2, setShowM2] = useState(false);
     const [showEvents, setShowEvents] = useState(false);
 
     const isSats = unit === 'SATS';
+
+    const formatYAxis = (value: number): string => {
+        const sym = currencyConfig.symbol;
+        if (value >= 1_000_000) return `${sym}${(value / 1_000_000).toFixed(1)}M`;
+        if (value >= 1_000) return `${sym}${(value / 1_000).toFixed(0)}k`;
+        return `${sym}${value.toFixed(0)}`;
+    };
 
     const halvingLines = useMemo(() => {
         if (!data || data.length < 2) return [];
@@ -196,19 +199,20 @@ export const DcaChart = ({ data, unit = 'BTC', m2Data }: DcaChartProps) => {
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const tooltipFormatter = (value: any, name: any) => {
+        const sym = currencyConfig.symbol;
         if (name === 'price' || name === 'BTC Price') {
-            return [`$${Number(value).toLocaleString()}`, 'BTC Price'];
+            return [`${sym}${Number(value).toLocaleString()}`, 'BTC Price'];
         }
         if (name === 'powerLaw' || name === 'Power Law') {
-            return [`$${Number(value).toLocaleString(undefined, { maximumFractionDigits: 0 })}`, 'Power Law'];
+            return [`${sym}${Number(value).toLocaleString(undefined, { maximumFractionDigits: 0 })}`, 'Power Law'];
         }
         if (name === 'm2Normalized' || name === 'M2 Supply') {
-            return [`$${Number(value).toLocaleString(undefined, { maximumFractionDigits: 0 })}`, 'M2 Supply (normalized)'];
+            return [`${sym}${Number(value).toLocaleString(undefined, { maximumFractionDigits: 0 })}`, 'M2 Supply (normalized)'];
         }
         if ((name === 'accumulated' || name === 'BTC Bought') && isSats) {
             return [`${Math.floor(Number(value) * 100_000_000).toLocaleString()} sats`, 'Sats Bought'];
         }
-        return [`$${Number(value).toLocaleString()}`, name];
+        return [`${sym}${Number(value).toLocaleString()}`, name];
     };
 
     return (

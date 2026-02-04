@@ -3,6 +3,7 @@
 import { useState, useMemo } from 'react';
 import { addDays, addWeeks, addMonths, isAfter, startOfDay, format, differenceInDays } from 'date-fns';
 import { Frequency } from '@/types';
+import { useCurrency } from '@/context/CurrencyContext';
 import { Calendar, Sparkles } from 'lucide-react';
 import clsx from 'clsx';
 
@@ -33,6 +34,7 @@ export const FutureProjection = ({
     currentBtc,
     currentInvested,
 }: FutureProjectionProps) => {
+    const { currencyConfig, formatCurrency } = useCurrency();
     const [mode, setMode] = useState<'price' | 'growth'>('growth');
     const [targetPrice, setTargetPrice] = useState<number>(150000);
 
@@ -127,7 +129,6 @@ export const FutureProjection = ({
                 : 0,
         }];
 
-    const formatCurrency = (n: number) => n.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
     const formatBtc = (n: number) => n < 1 ? n.toFixed(6) : n.toFixed(4);
 
     return (
@@ -179,7 +180,7 @@ export const FutureProjection = ({
                 <div className="mb-4">
                     <label className="text-xs text-slate-500 dark:text-slate-400 mb-1 block">If BTC reaches...</label>
                     <div className="relative">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 dark:text-slate-400">$</span>
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 dark:text-slate-400">{currencyConfig.symbol}</span>
                         <input
                             type="number"
                             value={targetPrice}

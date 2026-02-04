@@ -3,6 +3,7 @@
 import { useState, useMemo } from 'react';
 import { Frequency } from '@/types';
 import { addDays, addWeeks, addMonths, isAfter, startOfDay } from 'date-fns';
+import { useCurrency } from '@/context/CurrencyContext';
 import clsx from 'clsx';
 
 interface SavingsComparisonProps {
@@ -24,6 +25,7 @@ export const SavingsComparison = ({
     startDate,
     endDate,
 }: SavingsComparisonProps) => {
+    const { formatCurrency } = useCurrency();
     const [apy, setApy] = useState<number>(4.5);
 
     const savingsResult = useMemo(() => {
@@ -95,7 +97,7 @@ export const SavingsComparison = ({
                         : "bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700"
                 )}>
                     <div className="text-xs sm:text-sm font-medium text-amber-700 dark:text-amber-400 mb-1">Bitcoin DCA</div>
-                    <div className="text-lg sm:text-2xl font-bold text-slate-900 dark:text-white">${btcCurrentValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
+                    <div className="text-lg sm:text-2xl font-bold text-slate-900 dark:text-white">{formatCurrency(btcCurrentValue)}</div>
                     <div className={clsx("text-xs sm:text-sm mt-1", btcRoi >= 0 ? "text-green-600" : "text-red-600")}>
                         {btcRoi >= 0 ? '+' : ''}{btcRoi.toFixed(1)}% ROI
                     </div>
@@ -108,7 +110,7 @@ export const SavingsComparison = ({
                         : "bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700"
                 )}>
                     <div className="text-xs sm:text-sm font-medium text-blue-700 dark:text-blue-400 mb-1">Savings ({apy}% APY)</div>
-                    <div className="text-lg sm:text-2xl font-bold text-slate-900 dark:text-white">${savingsResult.balance.toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
+                    <div className="text-lg sm:text-2xl font-bold text-slate-900 dark:text-white">{formatCurrency(savingsResult.balance)}</div>
                     <div className={clsx("text-xs sm:text-sm mt-1", savingsResult.roi >= 0 ? "text-green-600" : "text-red-600")}>
                         {savingsResult.roi >= 0 ? '+' : ''}{savingsResult.roi.toFixed(1)}% ROI
                     </div>
@@ -117,9 +119,9 @@ export const SavingsComparison = ({
 
             <div className="mt-3 text-center text-xs sm:text-sm text-slate-500 dark:text-slate-400">
                 {btcWins ? (
-                    <span>Bitcoin outperforms by <span className="font-semibold text-green-600 dark:text-green-400">${difference.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span></span>
+                    <span>Bitcoin outperforms by <span className="font-semibold text-green-600 dark:text-green-400">{formatCurrency(difference)}</span></span>
                 ) : (
-                    <span>Savings account outperforms by <span className="font-semibold text-blue-600 dark:text-blue-400">${difference.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span></span>
+                    <span>Savings account outperforms by <span className="font-semibold text-blue-600 dark:text-blue-400">{formatCurrency(difference)}</span></span>
                 )}
             </div>
         </div>

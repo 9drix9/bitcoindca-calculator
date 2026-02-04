@@ -3,6 +3,7 @@
 import { useState, useMemo } from 'react';
 import { calculateDca } from '@/utils/dca';
 import { subYears, startOfToday } from 'date-fns';
+import { useCurrency } from '@/context/CurrencyContext';
 
 interface OpportunityCostCalculatorProps {
     priceData: [number, number][];
@@ -19,6 +20,7 @@ const HABITS: Habit[] = [
 ];
 
 export const OpportunityCostCalculator = ({ priceData, livePrice }: OpportunityCostCalculatorProps) => {
+    const { currencyConfig, formatCurrency } = useCurrency();
     const [selected, setSelected] = useState<string>('Coffee');
     const [customAmount, setCustomAmount] = useState<number>(5);
 
@@ -96,7 +98,7 @@ export const OpportunityCostCalculator = ({ priceData, livePrice }: OpportunityC
             {/* Custom input */}
             {selected === 'Custom' && (
                 <div className="flex items-center gap-2 mb-4 fade-in">
-                    <span className="text-sm text-slate-500">$</span>
+                    <span className="text-sm text-slate-500">{currencyConfig.symbol}</span>
                     <input
                         type="number"
                         min={0.01}
@@ -115,13 +117,13 @@ export const OpportunityCostCalculator = ({ priceData, livePrice }: OpportunityC
                     <div className="bg-white/60 dark:bg-slate-800/60 rounded-xl p-3 text-center">
                         <div className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 mb-0.5">Total Spent</div>
                         <div className="text-sm sm:text-lg font-bold text-slate-800 dark:text-white">
-                            ${results.totalSpent.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                            {formatCurrency(results.totalSpent)}
                         </div>
                     </div>
                     <div className="bg-white/60 dark:bg-slate-800/60 rounded-xl p-3 text-center">
                         <div className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 mb-0.5">BTC Value Today</div>
                         <div className="text-sm sm:text-lg font-bold text-green-600 dark:text-green-400">
-                            ${results.btcValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                            {formatCurrency(results.btcValue)}
                         </div>
                     </div>
                     <div className="bg-white/60 dark:bg-slate-800/60 rounded-xl p-3 text-center">

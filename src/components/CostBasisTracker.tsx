@@ -3,6 +3,7 @@
 import { useState, useMemo, useCallback } from 'react';
 import { CostBasisPosition, Frequency, PriceMode } from '@/types';
 import { calculateDca } from '@/utils/dca';
+import { useCurrency } from '@/context/CurrencyContext';
 import clsx from 'clsx';
 
 interface CostBasisTrackerProps {
@@ -31,6 +32,7 @@ const savePositions = (positions: CostBasisPosition[]) => {
 };
 
 export const CostBasisTracker = ({ priceData, livePrice, priceMode }: CostBasisTrackerProps) => {
+    const { formatCurrency } = useCurrency();
     const [positions, setPositions] = useState<CostBasisPosition[]>(() => loadPositions());
     const [showForm, setShowForm] = useState(false);
 
@@ -218,9 +220,9 @@ export const CostBasisTracker = ({ priceData, livePrice, priceMode }: CostBasisT
                                             <div className="font-medium text-slate-800 dark:text-white">{position.label}</div>
                                             <div className="text-[10px] text-slate-500 dark:text-slate-400">{position.startDate} to {position.endDate}</div>
                                         </td>
-                                        <td className="py-2 pr-2 text-right font-mono text-slate-700 dark:text-slate-300">${result.totalInvested.toLocaleString(undefined, { maximumFractionDigits: 0 })}</td>
+                                        <td className="py-2 pr-2 text-right font-mono text-slate-700 dark:text-slate-300">{formatCurrency(result.totalInvested)}</td>
                                         <td className="py-2 pr-2 text-right font-mono text-slate-700 dark:text-slate-300">{result.btcAccumulated.toFixed(6)}</td>
-                                        <td className="py-2 pr-2 text-right font-mono text-slate-700 dark:text-slate-300">${result.currentValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}</td>
+                                        <td className="py-2 pr-2 text-right font-mono text-slate-700 dark:text-slate-300">{formatCurrency(result.currentValue)}</td>
                                         <td className={clsx("py-2 pr-2 text-right font-mono font-medium", result.roi >= 0 ? "text-green-600" : "text-red-600")}>
                                             {result.roi >= 0 ? '+' : ''}{result.roi.toFixed(1)}%
                                         </td>
@@ -240,9 +242,9 @@ export const CostBasisTracker = ({ priceData, livePrice, priceMode }: CostBasisT
                                 <tfoot>
                                     <tr className="font-semibold border-t-2 border-slate-300 dark:border-slate-600">
                                         <td className="pt-2 pr-2 text-slate-800 dark:text-white">Combined</td>
-                                        <td className="pt-2 pr-2 text-right font-mono text-slate-800 dark:text-white">${totals.totalInvested.toLocaleString(undefined, { maximumFractionDigits: 0 })}</td>
+                                        <td className="pt-2 pr-2 text-right font-mono text-slate-800 dark:text-white">{formatCurrency(totals.totalInvested)}</td>
                                         <td className="pt-2 pr-2 text-right font-mono text-slate-800 dark:text-white">{totals.totalBtc.toFixed(6)}</td>
-                                        <td className="pt-2 pr-2 text-right font-mono text-slate-800 dark:text-white">${totals.totalValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}</td>
+                                        <td className="pt-2 pr-2 text-right font-mono text-slate-800 dark:text-white">{formatCurrency(totals.totalValue)}</td>
                                         <td className={clsx("pt-2 pr-2 text-right font-mono", totals.roi >= 0 ? "text-green-600" : "text-red-600")}>
                                             {totals.roi >= 0 ? '+' : ''}{totals.roi.toFixed(1)}%
                                         </td>
@@ -255,7 +257,7 @@ export const CostBasisTracker = ({ priceData, livePrice, priceMode }: CostBasisT
 
                     {positionResults.length > 0 && (
                         <div className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 pt-1">
-                            Avg. Cost Basis: ${totals.avgCost.toLocaleString(undefined, { maximumFractionDigits: 0 })} per BTC
+                            Avg. Cost Basis: {formatCurrency(totals.avgCost)} per BTC
                         </div>
                     )}
                 </div>

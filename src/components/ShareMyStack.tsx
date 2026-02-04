@@ -2,6 +2,7 @@
 
 import { useRef, useCallback, useState } from 'react';
 import { Download } from 'lucide-react';
+import { useCurrency } from '@/context/CurrencyContext';
 
 interface ShareMyStackProps {
     totalInvested: number;
@@ -22,6 +23,7 @@ export const ShareMyStack = ({
     startDate,
     endDate,
 }: ShareMyStackProps) => {
+    const { formatCurrency } = useCurrency();
     const cardRef = useRef<HTMLDivElement>(null);
     const [downloading, setDownloading] = useState(false);
 
@@ -87,11 +89,11 @@ export const ShareMyStack = ({
                     <div className="grid grid-cols-2 gap-3.5 mb-4">
                         <div>
                             <div className="text-[10px] text-slate-500 dark:text-slate-400 mb-0.5 uppercase tracking-wide">Total Invested</div>
-                            <div className="text-lg font-bold">${totalInvested.toLocaleString()}</div>
+                            <div className="text-lg font-bold">{formatCurrency(totalInvested)}</div>
                         </div>
                         <div>
                             <div className="text-[10px] text-slate-500 dark:text-slate-400 mb-0.5 uppercase tracking-wide">Current Value</div>
-                            <div className="text-lg font-bold text-amber-600 dark:text-amber-400">${currentValue.toLocaleString()}</div>
+                            <div className="text-lg font-bold text-amber-600 dark:text-amber-400">{formatCurrency(currentValue)}</div>
                         </div>
                         <div>
                             <div className="text-[10px] text-slate-500 dark:text-slate-400 mb-0.5 uppercase tracking-wide">ROI</div>
