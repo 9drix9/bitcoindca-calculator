@@ -1,31 +1,22 @@
+import { DcaCalculator } from '@/components/DcaCalculator';
 import { HowItWorks } from '@/components/HowItWorks';
+import { EducationalContent } from '@/components/EducationalContent';
+import { FearGreedWidget } from '@/components/FearGreedWidget';
+import { MempoolFeeWidget } from '@/components/MempoolFeeWidget';
+import { HalvingCountdownWidget } from '@/components/HalvingCountdownWidget';
+import { HashRateWidget } from '@/components/HashRateWidget';
+import { SupplyScarcityWidget } from '@/components/SupplyScarcityWidget';
+import { LightningWidget } from '@/components/LightningWidget';
+import { DominanceWidget } from '@/components/DominanceWidget';
+import { SatConverterWidget } from '@/components/SatConverterWidget';
+import { PurchasingPowerWidget } from '@/components/PurchasingPowerWidget';
+import { LiveBlocksWidget } from '@/components/LiveBlocksWidget';
+import { AdSlot } from '@/components/AdSlot';
 import dynamic from 'next/dynamic';
 
-// First sidebar widget - load early but not blocking
-const HalvingCountdownWidget = dynamic(() => import('@/components/HalvingCountdownWidget').then(m => m.HalvingCountdownWidget));
-
-// Critical path - load immediately
-const DcaCalculator = dynamic(() => import('@/components/DcaCalculator').then(m => m.DcaCalculator), {
-  loading: () => <div className="h-[600px] bg-slate-100 dark:bg-slate-800/50 rounded-xl animate-pulse" />,
-});
-
-// Below fold - lazy load
-const EducationalContent = dynamic(() => import('@/components/EducationalContent').then(m => m.EducationalContent));
 const BitcoinAdoption = dynamic(() => import('@/components/BitcoinAdoption').then(m => m.BitcoinAdoption), {
   loading: () => <div className="h-[400px] bg-slate-100 dark:bg-slate-800/50 rounded-xl animate-pulse" />,
 });
-
-// Sidebar widgets - lazy load (below fold on mobile)
-const FearGreedWidget = dynamic(() => import('@/components/FearGreedWidget').then(m => m.FearGreedWidget));
-const MempoolFeeWidget = dynamic(() => import('@/components/MempoolFeeWidget').then(m => m.MempoolFeeWidget));
-const HashRateWidget = dynamic(() => import('@/components/HashRateWidget').then(m => m.HashRateWidget));
-const SupplyScarcityWidget = dynamic(() => import('@/components/SupplyScarcityWidget').then(m => m.SupplyScarcityWidget));
-const LightningWidget = dynamic(() => import('@/components/LightningWidget').then(m => m.LightningWidget));
-const DominanceWidget = dynamic(() => import('@/components/DominanceWidget').then(m => m.DominanceWidget));
-const SatConverterWidget = dynamic(() => import('@/components/SatConverterWidget').then(m => m.SatConverterWidget));
-const PurchasingPowerWidget = dynamic(() => import('@/components/PurchasingPowerWidget').then(m => m.PurchasingPowerWidget));
-const LiveBlocksWidget = dynamic(() => import('@/components/LiveBlocksWidget').then(m => m.LiveBlocksWidget));
-const AdSlot = dynamic(() => import('@/components/AdSlot').then(m => m.AdSlot));
 import {
   getMempoolFees,
   getFearGreedIndex,

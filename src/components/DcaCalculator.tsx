@@ -13,7 +13,7 @@ import { SkeletonCard, SkeletonChart } from './Skeleton';
 import { AdSlot } from './AdSlot';
 
 // Lazy-load result sub-components — none render until after a calculation
-const DcaChart = dynamic(() => import('./DcaChart').then(m => m.DcaChart), { ssr: false });
+const DcaChart = dynamic(() => import('./DcaChart').then(m => m.DcaChart));
 const TransactionTable = dynamic(() => import('./TransactionTable').then(m => m.TransactionTable));
 const AssetComparison = dynamic(() => import('./AssetComparison').then(m => m.AssetComparison));
 const ExchangeFeeComparison = dynamic(() => import('./ExchangeFeeComparison').then(m => m.ExchangeFeeComparison));

@@ -6,20 +6,12 @@ import './globals.css';
 import { Analytics } from '@vercel/analytics/next';
 import { SpeedInsights } from '@vercel/speed-insights/next';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import { CookieConsent } from '@/components/CookieConsent';
+import { BtcDonationButton } from '@/components/BtcDonationButton';
 import { Providers } from '@/components/Providers';
-import dynamic from 'next/dynamic';
 import clsx from 'clsx';
 
-// Lazy load non-critical components
-const CookieConsent = dynamic(() => import('@/components/CookieConsent').then(m => m.CookieConsent));
-const BtcDonationButton = dynamic(() => import('@/components/BtcDonationButton').then(m => m.BtcDonationButton));
-
-const inter = Inter({
-  subsets: ['latin'],
-  display: 'swap',
-  preload: true,
-  fallback: ['system-ui', 'sans-serif'],
-});
+const inter = Inter({ subsets: ['latin'], display: 'swap' });
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_BASE_URL || 'https://btcdollarcostaverage.com'),
