@@ -26,6 +26,7 @@ interface CurrencyContextType {
     currencies: CurrencyConfig[];
     setCurrency: (code: CurrencyCode) => void;
     formatCurrency: (usdValue: number, maximumFractionDigits?: number) => string;
+    formatCompact: (usdValue: number) => string;
     convertFromUsd: (usdValue: number) => number;
 }
 
@@ -55,6 +56,25 @@ export const CurrencyProvider = ({ children }: { children: ReactNode }) => {
         [currencyConfig]
     );
 
+    const formatCompact = useCallback(
+        (usdValue: number) => {
+            const converted = usdValue * currencyConfig.rate;
+            const abs = Math.abs(converted);
+            const sign = converted < 0 ? '-' : '';
+            if (abs >= 1_000_000_000) {
+                return `${sign}${currencyConfig.symbol}${(abs / 1_000_000_000).toFixed(1)}B`;
+            }
+            if (abs >= 1_000_000) {
+                return `${sign}${currencyConfig.symbol}${(abs / 1_000_000).toFixed(1)}M`;
+            }
+            if (abs >= 10_000) {
+                return `${sign}${currencyConfig.symbol}${(abs / 1_000).toFixed(1)}K`;
+            }
+            return `${sign}${currencyConfig.symbol}${Math.round(abs).toLocaleString()}`;
+        },
+        [currencyConfig]
+    );
+
     const value = useMemo(
         () => ({
             currency,
@@ -62,9 +82,10 @@ export const CurrencyProvider = ({ children }: { children: ReactNode }) => {
             currencies: CURRENCIES,
             setCurrency,
             formatCurrency,
+            formatCompact,
             convertFromUsd,
         }),
-        [currency, currencyConfig, formatCurrency, convertFromUsd]
+        [currency, currencyConfig, formatCurrency, formatCompact, convertFromUsd]
     );
 
     return (

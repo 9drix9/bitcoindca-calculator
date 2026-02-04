@@ -51,7 +51,7 @@ const PRESET_GROUPS: { title: string; presets: Preset[] }[] = [
 ];
 
 export const DcaCalculator = () => {
-    const { currency, setCurrency, currencyConfig, currencies, formatCurrency } = useCurrency();
+    const { currency, setCurrency, currencyConfig, currencies, formatCurrency, formatCompact } = useCurrency();
     const [today, setToday] = useState(() => startOfToday());
     const oneYearAgo = subYears(today, 1);
 
@@ -307,6 +307,7 @@ export const DcaCalculator = () => {
                                 type="number"
                                 value={amount}
                                 onChange={(e) => setAmount(Math.max(0, Number(e.target.value)))}
+                                onFocus={(e) => e.target.select()}
                                 className="w-full pl-7 pr-3 py-2 text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500 outline-none transition-all"
                             />
                         </div>
@@ -337,6 +338,7 @@ export const DcaCalculator = () => {
                             max={50}
                             value={feePercentage}
                             onChange={handleFeeChange}
+                            onFocus={(e) => e.target.select()}
                             className="w-full px-3 py-2 text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500 outline-none transition-all"
                         />
                     </div>
@@ -436,6 +438,7 @@ export const DcaCalculator = () => {
                                 type="number"
                                 value={manualPrice}
                                 onChange={(e) => setManualPrice(Math.max(1, Number(e.target.value)))}
+                                onFocus={(e) => e.target.select()}
                                 className="w-full px-3 py-2 text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500 outline-none transition-all"
                             />
                         </div>
@@ -590,8 +593,9 @@ export const DcaCalculator = () => {
                             <div className="grid grid-cols-3 gap-2 sm:gap-4 text-center text-xs sm:text-sm">
                                 <div>
                                     <div className="text-slate-500 dark:text-slate-400 mb-0.5">Real Value</div>
-                                    <div className="font-semibold text-slate-800 dark:text-white">
-                                        {formatCurrency(inflationStats.adjustedValue)}
+                                    <div className="font-semibold text-slate-800 dark:text-white truncate">
+                                        <span className="sm:hidden">{formatCompact(inflationStats.adjustedValue)}</span>
+                                        <span className="hidden sm:inline">{formatCurrency(inflationStats.adjustedValue)}</span>
                                     </div>
                                 </div>
                                 <div>
@@ -617,16 +621,24 @@ export const DcaCalculator = () => {
                             <div className="grid grid-cols-2 gap-3 sm:gap-6">
                                 <div className="p-3 sm:p-4 rounded-lg bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/50">
                                     <div className="text-xs sm:text-sm font-medium text-amber-700 dark:text-amber-400 mb-1">DCA Strategy</div>
-                                    <div className="text-lg sm:text-2xl font-bold text-slate-900 dark:text-white">{formatCurrency(results.currentValue)}</div>
-                                    <div className={clsx("text-xs sm:text-sm mt-1", results.profit >= 0 ? "text-green-600" : "text-red-600")}>
-                                        {results.profit >= 0 ? '+' : '-'}{formatCurrency(Math.abs(results.profit))} ({results.roi.toFixed(1)}%)
+                                    <div className="text-lg sm:text-2xl font-bold text-slate-900 dark:text-white truncate">
+                                        <span className="sm:hidden">{formatCompact(results.currentValue)}</span>
+                                        <span className="hidden sm:inline">{formatCurrency(results.currentValue)}</span>
+                                    </div>
+                                    <div className={clsx("text-xs sm:text-sm mt-1 truncate", results.profit >= 0 ? "text-green-600" : "text-red-600")}>
+                                        <span className="sm:hidden">{results.profit >= 0 ? '+' : '-'}{formatCompact(Math.abs(results.profit))} ({results.roi.toFixed(1)}%)</span>
+                                        <span className="hidden sm:inline">{results.profit >= 0 ? '+' : '-'}{formatCurrency(Math.abs(results.profit))} ({results.roi.toFixed(1)}%)</span>
                                     </div>
                                 </div>
                                 <div className="p-3 sm:p-4 rounded-lg bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800/50">
                                     <div className="text-xs sm:text-sm font-medium text-blue-700 dark:text-blue-400 mb-1">Lump Sum</div>
-                                    <div className="text-lg sm:text-2xl font-bold text-slate-900 dark:text-white">{formatCurrency(lumpSumResult.currentValue)}</div>
-                                    <div className={clsx("text-xs sm:text-sm mt-1", lumpSumResult.profit >= 0 ? "text-green-600" : "text-red-600")}>
-                                        {lumpSumResult.profit >= 0 ? '+' : '-'}{formatCurrency(Math.abs(lumpSumResult.profit))} ({lumpSumResult.roi.toFixed(1)}%)
+                                    <div className="text-lg sm:text-2xl font-bold text-slate-900 dark:text-white truncate">
+                                        <span className="sm:hidden">{formatCompact(lumpSumResult.currentValue)}</span>
+                                        <span className="hidden sm:inline">{formatCurrency(lumpSumResult.currentValue)}</span>
+                                    </div>
+                                    <div className={clsx("text-xs sm:text-sm mt-1 truncate", lumpSumResult.profit >= 0 ? "text-green-600" : "text-red-600")}>
+                                        <span className="sm:hidden">{lumpSumResult.profit >= 0 ? '+' : '-'}{formatCompact(Math.abs(lumpSumResult.profit))} ({lumpSumResult.roi.toFixed(1)}%)</span>
+                                        <span className="hidden sm:inline">{lumpSumResult.profit >= 0 ? '+' : '-'}{formatCurrency(Math.abs(lumpSumResult.profit))} ({lumpSumResult.roi.toFixed(1)}%)</span>
                                     </div>
                                 </div>
                             </div>
@@ -736,7 +748,7 @@ const ResultCard = ({ label, value, subValue, highlight, valueColor, icon, subVa
 );
 
 const PricePredictionScenario = ({ btcAmount, totalInvested }: { btcAmount: number, totalInvested: number }) => {
-    const { currencyConfig, formatCurrency } = useCurrency();
+    const { currencyConfig, formatCurrency, formatCompact } = useCurrency();
     const [targetPrice, setTargetPrice] = useState<number>(100000);
 
     const projectedValue = btcAmount * targetPrice;
@@ -759,6 +771,7 @@ const PricePredictionScenario = ({ btcAmount, totalInvested }: { btcAmount: numb
                             type="number"
                             value={targetPrice}
                             onChange={(e) => setTargetPrice(Math.max(0, Number(e.target.value)))}
+                            onFocus={(e) => e.target.select()}
                             className="w-full pl-7 pr-3 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900/50 text-lg font-bold focus:ring-2 focus:ring-green-500 outline-none transition-all"
                         />
                     </div>
@@ -778,12 +791,16 @@ const PricePredictionScenario = ({ btcAmount, totalInvested }: { btcAmount: numb
                 <div className="space-y-3 bg-slate-50 dark:bg-slate-800/50 p-4 sm:p-5 rounded-xl border border-slate-200 dark:border-slate-700/50">
                     <div className="flex justify-between items-end border-b border-slate-200 dark:border-slate-700 pb-3">
                         <span className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">Portfolio Value</span>
-                        <span className="text-xl sm:text-3xl font-bold text-green-600 dark:text-green-400">{formatCurrency(projectedValue)}</span>
+                        <span className="text-xl sm:text-3xl font-bold text-green-600 dark:text-green-400 truncate ml-2">
+                            <span className="sm:hidden">{formatCompact(projectedValue)}</span>
+                            <span className="hidden sm:inline">{formatCurrency(projectedValue)}</span>
+                        </span>
                     </div>
                     <div className="flex justify-between items-center">
                         <span className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">Profit</span>
-                        <span className={clsx("text-sm sm:text-lg font-semibold", projectedProfit >= 0 ? "text-green-600 dark:text-green-300" : "text-red-500 dark:text-red-400")}>
-                            {projectedProfit >= 0 ? '+' : ''}{formatCurrency(projectedProfit)}
+                        <span className={clsx("text-sm sm:text-lg font-semibold truncate ml-2", projectedProfit >= 0 ? "text-green-600 dark:text-green-300" : "text-red-500 dark:text-red-400")}>
+                            <span className="sm:hidden">{projectedProfit >= 0 ? '+' : ''}{formatCompact(projectedProfit)}</span>
+                            <span className="hidden sm:inline">{projectedProfit >= 0 ? '+' : ''}{formatCurrency(projectedProfit)}</span>
                         </span>
                     </div>
                     <div className="flex justify-between items-center">

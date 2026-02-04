@@ -158,6 +158,7 @@ export const CostBasisTracker = ({ priceData, livePrice, priceMode }: CostBasisT
                                 type="number"
                                 value={formAmount}
                                 onChange={(e) => setFormAmount(Math.max(0, Number(e.target.value)))}
+                                onFocus={(e) => e.target.select()}
                                 className="w-full px-2.5 py-1.5 text-sm rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 outline-none focus:border-amber-500"
                             />
                         </div>
@@ -201,6 +202,7 @@ export const CostBasisTracker = ({ priceData, livePrice, priceMode }: CostBasisT
                                 max={50}
                                 value={formFee}
                                 onChange={(e) => setFormFee(Math.min(50, Math.max(0, Number(e.target.value))))}
+                                onFocus={(e) => e.target.select()}
                                 className="w-full px-2.5 py-1.5 text-sm rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 outline-none focus:border-amber-500"
                             />
                         </div>

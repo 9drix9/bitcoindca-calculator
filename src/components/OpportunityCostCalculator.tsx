@@ -20,7 +20,7 @@ const HABITS: Habit[] = [
 ];
 
 export const OpportunityCostCalculator = ({ priceData, livePrice }: OpportunityCostCalculatorProps) => {
-    const { currencyConfig, formatCurrency } = useCurrency();
+    const { currencyConfig, formatCurrency, formatCompact } = useCurrency();
     const [selected, setSelected] = useState<string>('Coffee');
     const [customAmount, setCustomAmount] = useState<number>(5);
 
@@ -105,6 +105,7 @@ export const OpportunityCostCalculator = ({ priceData, livePrice }: OpportunityC
                         step={0.01}
                         value={customAmount}
                         onChange={e => setCustomAmount(Math.max(0.01, Number(e.target.value)))}
+                        onFocus={e => e.target.select()}
                         className="w-24 px-3 py-1.5 text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500 outline-none"
                     />
                     <span className="text-sm text-slate-500">/day</span>
@@ -116,14 +117,16 @@ export const OpportunityCostCalculator = ({ priceData, livePrice }: OpportunityC
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                     <div className="bg-white/60 dark:bg-slate-800/60 rounded-xl p-3 text-center">
                         <div className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 mb-0.5">Total Spent</div>
-                        <div className="text-sm sm:text-lg font-bold text-slate-800 dark:text-white">
-                            {formatCurrency(results.totalSpent)}
+                        <div className="text-sm sm:text-lg font-bold text-slate-800 dark:text-white truncate">
+                            <span className="sm:hidden">{formatCompact(results.totalSpent)}</span>
+                            <span className="hidden sm:inline">{formatCurrency(results.totalSpent)}</span>
                         </div>
                     </div>
                     <div className="bg-white/60 dark:bg-slate-800/60 rounded-xl p-3 text-center">
                         <div className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 mb-0.5">BTC Value Today</div>
-                        <div className="text-sm sm:text-lg font-bold text-green-600 dark:text-green-400">
-                            {formatCurrency(results.btcValue)}
+                        <div className="text-sm sm:text-lg font-bold text-green-600 dark:text-green-400 truncate">
+                            <span className="sm:hidden">{formatCompact(results.btcValue)}</span>
+                            <span className="hidden sm:inline">{formatCurrency(results.btcValue)}</span>
                         </div>
                     </div>
                     <div className="bg-white/60 dark:bg-slate-800/60 rounded-xl p-3 text-center">
@@ -134,7 +137,7 @@ export const OpportunityCostCalculator = ({ priceData, livePrice }: OpportunityC
                     </div>
                     <div className="bg-white/60 dark:bg-slate-800/60 rounded-xl p-3 text-center">
                         <div className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 mb-0.5">Sats Stacked</div>
-                        <div className="text-sm sm:text-lg font-bold text-slate-800 dark:text-white">
+                        <div className="text-sm sm:text-lg font-bold text-slate-800 dark:text-white truncate">
                             {results.sats.toLocaleString()}
                         </div>
                     </div>

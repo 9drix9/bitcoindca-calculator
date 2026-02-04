@@ -34,7 +34,7 @@ export const FutureProjection = ({
     currentBtc,
     currentInvested,
 }: FutureProjectionProps) => {
-    const { currencyConfig, formatCurrency } = useCurrency();
+    const { currencyConfig, formatCurrency, formatCompact } = useCurrency();
     const [mode, setMode] = useState<'price' | 'growth'>('growth');
     const [targetPrice, setTargetPrice] = useState<number>(150000);
 
@@ -185,6 +185,7 @@ export const FutureProjection = ({
                             type="number"
                             value={targetPrice}
                             onChange={(e) => setTargetPrice(Math.max(0, Number(e.target.value)))}
+                            onFocus={(e) => e.target.select()}
                             className="w-full pl-7 pr-3 py-2 rounded-lg border border-purple-200 dark:border-purple-700 bg-white dark:bg-slate-800 text-sm font-mono focus:ring-2 focus:ring-purple-500 outline-none"
                         />
                     </div>
@@ -210,14 +211,18 @@ export const FutureProjection = ({
                             </span>
                         </div>
 
-                        <div className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white mb-1">
-                            {formatCurrency(scenario.projectedValue)}
+                        <div className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white mb-1 truncate">
+                            <span className="sm:hidden">{formatCompact(scenario.projectedValue)}</span>
+                            <span className="hidden sm:inline">{formatCurrency(scenario.projectedValue)}</span>
                         </div>
 
                         <div className="space-y-0.5 text-[10px] sm:text-xs text-slate-500 dark:text-slate-400">
                             <div className="flex justify-between">
                                 <span>Projected BTC Price</span>
-                                <span className="font-mono">{formatCurrency(scenario.projectedPrice)}</span>
+                                <span className="font-mono truncate ml-1">
+                                    <span className="sm:hidden">{formatCompact(scenario.projectedPrice)}</span>
+                                    <span className="hidden sm:inline">{formatCurrency(scenario.projectedPrice)}</span>
+                                </span>
                             </div>
                             <div className="flex justify-between">
                                 <span>Total BTC</span>
@@ -225,7 +230,10 @@ export const FutureProjection = ({
                             </div>
                             <div className="flex justify-between">
                                 <span>Total Invested</span>
-                                <span className="font-mono">{formatCurrency(totalProjectedInvestment)}</span>
+                                <span className="font-mono truncate ml-1">
+                                    <span className="sm:hidden">{formatCompact(totalProjectedInvestment)}</span>
+                                    <span className="hidden sm:inline">{formatCurrency(totalProjectedInvestment)}</span>
+                                </span>
                             </div>
                             <div className="flex justify-between pt-1 border-t border-slate-200 dark:border-slate-700 mt-1">
                                 <span>Projected ROI</span>

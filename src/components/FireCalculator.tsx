@@ -37,7 +37,7 @@ export const FireCalculator = ({
     amount,
     frequency,
 }: FireCalculatorProps) => {
-    const { currencyConfig, formatCurrency } = useCurrency();
+    const { currencyConfig, formatCurrency, formatCompact } = useCurrency();
     const [targetWithdrawal, setTargetWithdrawal] = useState<number>(50000);
 
     const scenarioResults = useMemo(() => {
@@ -95,6 +95,7 @@ export const FireCalculator = ({
                             type="number"
                             value={targetWithdrawal}
                             onChange={(e) => setTargetWithdrawal(Math.max(0, Number(e.target.value)))}
+                            onFocus={(e) => e.target.select()}
                             className="w-full pl-7 pr-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900/50 text-sm font-mono focus:ring-2 focus:ring-green-500 outline-none"
                         />
                     </div>
@@ -104,11 +105,13 @@ export const FireCalculator = ({
                 </div>
                 <div className="space-y-2">
                     <div className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">Current Stack Value</div>
-                    <div className="text-lg sm:text-2xl font-bold text-amber-600 dark:text-amber-400">
-                        {formatCurrency(currentStackValue)}
+                    <div className="text-lg sm:text-2xl font-bold text-amber-600 dark:text-amber-400 truncate">
+                        <span className="sm:hidden">{formatCompact(currentStackValue)}</span>
+                        <span className="hidden sm:inline">{formatCurrency(currentStackValue)}</span>
                     </div>
-                    <div className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400">
-                        {btcAccumulated.toFixed(8)} BTC @ {formatCurrency(livePrice)}
+                    <div className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 truncate">
+                        <span className="sm:hidden">{btcAccumulated.toFixed(4)} BTC @ {formatCompact(livePrice)}</span>
+                        <span className="hidden sm:inline">{btcAccumulated.toFixed(8)} BTC @ {formatCurrency(livePrice)}</span>
                     </div>
                 </div>
             </div>
