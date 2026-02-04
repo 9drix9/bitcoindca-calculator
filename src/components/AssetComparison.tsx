@@ -63,8 +63,9 @@ const AssetCard = ({
                 <span className="sm:hidden">{formatCompact(result.currentValue)}</span>
                 <span className="hidden sm:inline">{formatCurrency(result.currentValue)}</span>
             </div>
-            <div className={clsx('text-xs sm:text-sm mt-0.5 truncate', isProfit ? 'text-green-600' : 'text-red-600')}>
-                <span className="sm:hidden">{isProfit ? '+' : '-'}{formatCompact(Math.abs(result.profit))} ({result.roi.toFixed(1)}%)</span>
+            <div className={clsx('text-xs sm:text-sm mt-0.5', isProfit ? 'text-green-600' : 'text-red-600')}>
+                {/* Mobile: just ROI %, Desktop: profit amount + ROI % */}
+                <span className="sm:hidden">{isProfit ? '+' : ''}{result.roi.toFixed(1)}%</span>
                 <span className="hidden sm:inline">{isProfit ? '+' : '-'}{formatCurrency(Math.abs(result.profit))} ({result.roi.toFixed(1)}%)</span>
             </div>
         </div>
