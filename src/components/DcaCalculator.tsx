@@ -499,27 +499,15 @@ export const DcaCalculator = () => {
                     <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
                         <ResultCard
                             label={isFutureEndDate ? "Total to Invest" : "Total Invested"}
-                            value={<>
-                                <span className="sm:hidden">{formatCompact(results.totalInvested)}</span>
-                                <span className="hidden sm:inline">{formatCurrency(results.totalInvested)}</span>
-                            </>}
+                            value={formatCurrency(results.totalInvested)}
                         />
                         <ResultCard
                             label={unit === 'BTC' ? (isFutureEndDate ? "BTC to Accumulate" : "BTC Accumulated") : (isFutureEndDate ? "Sats to Accumulate" : "Sats Accumulated")}
                             value={unit === 'BTC'
-                                ? <>
-                                    <span className="sm:hidden">{results.btcAccumulated.toFixed(4)} ₿</span>
-                                    <span className="hidden sm:inline">{results.btcAccumulated.toFixed(8)} ₿</span>
-                                </>
-                                : <>
-                                    <span className="sm:hidden">{Math.floor(results.btcAccumulated * 100_000_000) >= 1000000 ? `${(results.btcAccumulated * 100_000_000 / 1000000).toFixed(1)}M` : Math.floor(results.btcAccumulated * 100_000_000).toLocaleString()}</span>
-                                    <span className="hidden sm:inline">{Math.floor(results.btcAccumulated * 100_000_000).toLocaleString()} sats</span>
-                                </>
+                                ? `${results.btcAccumulated.toFixed(8)} ₿`
+                                : `${Math.floor(results.btcAccumulated * 100_000_000).toLocaleString()} sats`
                             }
-                            subValue={isFutureEndDate ? "at current prices" : <>
-                                <span className="sm:hidden">Avg: {formatCompact(results.averageCost)}</span>
-                                <span className="hidden sm:inline">Avg: {formatCurrency(results.averageCost)}</span>
-                            </>}
+                            subValue={isFutureEndDate ? "at current prices" : `Avg: ${formatCurrency(results.averageCost)}`}
                             action={
                                 <button
                                     onClick={() => setUnit(prev => prev === 'BTC' ? 'SATS' : 'BTC')}
@@ -532,24 +520,15 @@ export const DcaCalculator = () => {
                         />
                         <ResultCard
                             label={isFutureEndDate ? "Value at Current Price" : "Current Value"}
-                            value={<>
-                                <span className="sm:hidden">{formatCompact(results.currentValue)}</span>
-                                <span className="hidden sm:inline">{formatCurrency(results.currentValue)}</span>
-                            </>}
-                            subValue={priceMode === 'api' && livePrice ? <>
-                                <span className="sm:hidden">@ {formatCompact(livePrice)}</span>
-                                <span className="hidden sm:inline">@ {formatCurrency(livePrice)}</span>
-                            </> : undefined}
+                            value={formatCurrency(results.currentValue)}
+                            subValue={priceMode === 'api' && livePrice ? `@ ${formatCurrency(livePrice)}` : undefined}
                             subValueColor="text-amber-600 dark:text-amber-400 font-medium"
                             highlight={true}
                             icon={<Activity className="w-4 h-4 sm:w-5 sm:h-5 text-amber-500 shrink-0" />}
                         />
                         <ResultCard
                             label={isFutureEndDate ? "Projected Gain" : "Profit / Loss"}
-                            value={<>
-                                <span className="sm:hidden">{profitPrefix}{formatCompact(Math.abs(results.profit))}</span>
-                                <span className="hidden sm:inline">{profitPrefix}{formatCurrency(Math.abs(results.profit))}</span>
-                            </>}
+                            value={`${profitPrefix}${formatCurrency(Math.abs(results.profit))}`}
                             valueColor={isProfit ? 'text-green-500' : 'text-red-500'}
                             icon={isProfit ? <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5 text-green-500 shrink-0" /> : <TrendingDown className="w-4 h-4 sm:w-5 sm:h-5 text-red-500 shrink-0" />}
                             subValue={isFutureEndDate ? "if price stays same" : `${results.roi.toFixed(1)}% ROI`}
