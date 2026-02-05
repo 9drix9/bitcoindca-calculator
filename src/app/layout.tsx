@@ -112,6 +112,9 @@ export default function RootLayout({
                 <Link href="/why-bitcoin" className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 hover:text-amber-600 dark:hover:text-amber-400 transition-colors">
                   Why Bitcoin
                 </Link>
+                <Link href="/self-custody" className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 hover:text-amber-600 dark:hover:text-amber-400 transition-colors">
+                  Self-Custody
+                </Link>
               </nav>
               <ThemeToggle />
             </div>
@@ -149,6 +152,9 @@ export default function RootLayout({
                     </Link>
                     <Link href="/why-bitcoin" className="text-sm text-slate-500 dark:text-slate-400 hover:text-amber-600 dark:hover:text-amber-400 transition-colors">
                       Why Bitcoin
+                    </Link>
+                    <Link href="/self-custody" className="text-sm text-slate-500 dark:text-slate-400 hover:text-amber-600 dark:hover:text-amber-400 transition-colors">
+                      Self-Custody
                     </Link>
                   </div>
                 </div>
