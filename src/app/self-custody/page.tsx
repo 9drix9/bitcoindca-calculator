@@ -5,7 +5,7 @@ import { WalletImage } from '@/components/WalletImage';
 
 export const metadata: Metadata = {
   title: 'Why Self-Custody Matters | Bitcoin DCA Calculator',
-  description: 'Learn why self-custody is essential for Bitcoin holders. Understand hardware wallets, the risks of exchanges, and how to secure your Bitcoin with Cypherock, Ledger, and Blockstream Jade.',
+  description: 'Learn why self-custody is essential for Bitcoin holders. Understand hardware wallets, the risks of exchanges, and how to secure your Bitcoin with Cypherock, Ledger, Blockstream Jade, Coldcard, and SeedSigner.',
   openGraph: {
     title: 'Why Self-Custody Matters | Protect Your Bitcoin',
     description: 'Not your keys, not your coins. Learn how to properly secure your Bitcoin with hardware wallets.',
@@ -34,6 +34,7 @@ const WALLETS = [
     color: 'violet',
     image: '/wallets/cypherock.png',
     bestFor: 'Best for: Eliminating single points of failure',
+    affiliate: true,
   },
   {
     name: 'Ledger',
@@ -45,6 +46,7 @@ const WALLETS = [
     color: 'amber',
     image: '/wallets/ledger.png',
     bestFor: 'Best for: Beginners & mobile users',
+    affiliate: true,
   },
   {
     name: 'Blockstream Jade',
@@ -56,6 +58,31 @@ const WALLETS = [
     color: 'green',
     image: '/wallets/blockstream-jade.png',
     bestFor: 'Best for: Privacy & open-source advocates',
+    affiliate: true,
+  },
+  {
+    name: 'Coldcard',
+    tagline: 'Maximum security, Bitcoin only',
+    description: 'Coldcard is built exclusively for Bitcoin and is trusted by some of the most security-conscious Bitcoiners in the world. It supports fully air-gapped operation via MicroSD card, so it never needs to connect to a computer. Made in Canada with a dual secure element design.',
+    features: ['Bitcoin-only (no altcoin distractions)', 'Fully air-gapped via MicroSD', 'Dual secure element chips', 'Open-source firmware', 'Advanced features: multisig, BIP-85, seed XOR'],
+    price: 'From $157.94',
+    href: 'https://coldcard.com/',
+    color: 'blue',
+    image: '/wallets/coldcard.png',
+    bestFor: 'Best for: Security maximalists & advanced users',
+    affiliate: false,
+  },
+  {
+    name: 'SeedSigner',
+    tagline: 'DIY, stateless & air-gapped',
+    description: 'SeedSigner is a completely open-source, do-it-yourself Bitcoin signing device built from off-the-shelf parts (Raspberry Pi Zero, camera, and screen). It\'s stateless — it never stores your keys, so there\'s nothing to steal if someone finds it. Perfect for the DIY-minded Bitcoiner who wants full transparency.',
+    features: ['100% open-source hardware & software', 'Stateless — never stores private keys', 'Air-gapped via QR codes only', 'Build it yourself from commodity parts', 'Bitcoin-only, no unnecessary features'],
+    price: '~$50 (DIY build)',
+    href: 'https://seedsigner.com/',
+    color: 'cyan',
+    image: '/wallets/seedsigner.png',
+    bestFor: 'Best for: DIY enthusiasts & maximum transparency',
+    affiliate: false,
   },
 ];
 
@@ -106,6 +133,22 @@ const walletColorClasses = {
     button: 'bg-green-600 hover:bg-green-700',
     accent: 'text-green-600 dark:text-green-400',
     check: 'text-green-500',
+  },
+  blue: {
+    bg: 'bg-blue-50 dark:bg-blue-950/20',
+    border: 'border-blue-200 dark:border-blue-800/50',
+    badge: 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-400',
+    button: 'bg-blue-600 hover:bg-blue-700',
+    accent: 'text-blue-600 dark:text-blue-400',
+    check: 'text-blue-500',
+  },
+  cyan: {
+    bg: 'bg-cyan-50 dark:bg-cyan-950/20',
+    border: 'border-cyan-200 dark:border-cyan-800/50',
+    badge: 'bg-cyan-100 dark:bg-cyan-900/40 text-cyan-700 dark:text-cyan-400',
+    button: 'bg-cyan-600 hover:bg-cyan-700',
+    accent: 'text-cyan-600 dark:text-cyan-400',
+    check: 'text-cyan-500',
   },
 };
 
@@ -245,7 +288,7 @@ export default function SelfCustodyPage() {
         <div className="text-center space-y-2">
           <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white">Recommended Hardware Wallets</h2>
           <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300">
-            These are three of the most trusted hardware wallets in the Bitcoin community.
+            These are some of the most trusted hardware wallets in the Bitcoin community.
           </p>
         </div>
 
@@ -265,7 +308,13 @@ export default function SelfCustodyPage() {
                         <WalletImage
                           src={wallet.image}
                           alt={wallet.name}
-                          fallbackEmoji={wallet.color === 'violet' ? '\u{1F510}' : wallet.color === 'amber' ? '\u{1F512}' : '\u{1F6E1}\uFE0F'}
+                          fallbackEmoji={
+                            wallet.color === 'violet' ? '\u{1F510}' :
+                            wallet.color === 'amber' ? '\u{1F512}' :
+                            wallet.color === 'blue' ? '\u{2744}\uFE0F' :
+                            wallet.color === 'cyan' ? '\u{1F331}' :
+                            '\u{1F6E1}\uFE0F'
+                          }
                         />
                       </div>
                     </div>
@@ -300,10 +349,10 @@ export default function SelfCustodyPage() {
                       <a
                         href={wallet.href}
                         target="_blank"
-                        rel="noopener noreferrer sponsored"
+                        rel={wallet.affiliate ? 'noopener noreferrer sponsored' : 'noopener noreferrer'}
                         className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm sm:text-base font-semibold text-white ${colors.button} transition-colors shadow-sm`}
                       >
-                        Shop {wallet.name}
+                        {wallet.affiliate ? `Shop ${wallet.name}` : `Visit ${wallet.name}`}
                         <ExternalLink className="w-4 h-4" />
                       </a>
                     </div>
@@ -315,7 +364,7 @@ export default function SelfCustodyPage() {
         </div>
 
         <p className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 text-center italic">
-          Affiliate disclosure: The links above are affiliate links. We may earn a commission at no extra cost to you. This helps support the development of this free calculator.
+          Affiliate disclosure: Some links above are affiliate links (Cypherock, Ledger, Blockstream Jade). We may earn a commission at no extra cost to you. This helps support the development of this free calculator. Coldcard and SeedSigner links are not affiliate links.
         </p>
       </section>
 
@@ -397,7 +446,7 @@ export default function SelfCustodyPage() {
         <div className="flex items-start gap-3">
           <AlertTriangle className="w-5 h-5 text-slate-500 dark:text-slate-400 shrink-0 mt-0.5" />
           <p className="text-[11px] sm:text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
-            <strong>Disclaimer:</strong> This page contains affiliate links. If you purchase through these links, we may earn a commission at no additional cost to you. This page is for educational purposes only and does not constitute financial advice. Always do your own research before purchasing any hardware wallet or making investment decisions.
+            <strong>Disclaimer:</strong> Some links on this page are affiliate links (Cypherock, Ledger, Blockstream Jade). If you purchase through those links, we may earn a commission at no additional cost to you. This page is for educational purposes only and does not constitute financial advice. Always do your own research before purchasing any hardware wallet or making investment decisions.
           </p>
         </div>
       </section>
