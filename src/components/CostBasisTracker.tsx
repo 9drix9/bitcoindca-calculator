@@ -6,6 +6,7 @@ import { calculateDca } from '@/utils/dca';
 import { useCurrency } from '@/context/CurrencyContext';
 import clsx from 'clsx';
 
+
 interface CostBasisTrackerProps {
     priceData: [number, number][];
     livePrice: number | null;
@@ -49,7 +50,7 @@ const savePositions = (positions: CostBasisPosition[]) => {
 };
 
 export const CostBasisTracker = ({ priceData, livePrice, priceMode }: CostBasisTrackerProps) => {
-    const { formatCurrency } = useCurrency();
+    const { formatCurrency, currencyConfig } = useCurrency();
     const [positions, setPositions] = useState<CostBasisPosition[]>(() => loadPositions());
     const [showForm, setShowForm] = useState(false);
 
@@ -153,7 +154,7 @@ export const CostBasisTracker = ({ priceData, livePrice, priceMode }: CostBasisT
                             />
                         </div>
                         <div className="space-y-1">
-                            <label className="text-xs text-slate-500 dark:text-slate-400">Amount (USD)</label>
+                            <label className="text-xs text-slate-500 dark:text-slate-400">Amount ({currencyConfig.code})</label>
                             <input
                                 type="number"
                                 value={formAmount}

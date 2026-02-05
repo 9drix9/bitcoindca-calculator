@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo, useCallback, useDeferredValue } from 'react';
+import { useState, useEffect, useMemo, useCallback, useDeferredValue, useRef } from 'react';
 import { format, subYears, subMonths, startOfToday, differenceInMonths } from 'date-fns';
 import { Frequency, PriceMode, ResultCardProps, AssetDcaResult } from '@/types';
 import { useCurrency, CurrencyCode } from '@/context/CurrencyContext';
@@ -82,6 +82,7 @@ export const DcaCalculator = () => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [shareMessage, setShareMessage] = useState<string | null>(null);
+    const shareTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const [sp500Data, setSp500Data] = useState<[number, number][] | null>(null);
     const [goldData, setGoldData] = useState<[number, number][] | null>(null);
     const [comparisonLoading, setComparisonLoading] = useState(false);
@@ -252,14 +253,14 @@ export const DcaCalculator = () => {
     const handleShare = useCallback(async () => {
         const paramStr = encodeParams({ amount, frequency, startDate, endDate, feePercentage, priceMode, provider, manualPrice });
         const url = `${window.location.origin}${window.location.pathname}?${paramStr}`;
+        if (shareTimerRef.current) clearTimeout(shareTimerRef.current);
         try {
             await navigator.clipboard.writeText(url);
             setShareMessage('Link copied to clipboard!');
-            setTimeout(() => setShareMessage(null), 2000);
         } catch {
             setShareMessage('Failed to copy link');
-            setTimeout(() => setShareMessage(null), 2000);
         }
+        shareTimerRef.current = setTimeout(() => setShareMessage(null), 2000);
     }, [amount, frequency, startDate, endDate, feePercentage, priceMode, provider, manualPrice]);
 
     const handleFeeChange = (e: React.ChangeEvent<HTMLInputElement>) => {

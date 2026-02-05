@@ -10,13 +10,13 @@ interface OpportunityCostCalculatorProps {
     livePrice: number | null;
 }
 
-type Habit = { label: string; dailyCost: number; description: string };
+type Habit = { label: string; dailyCost: number; descriptionKey: 'day' | 'mo' | 'week'; displayAmount: number };
 
 const HABITS: Habit[] = [
-    { label: 'Coffee', dailyCost: 5, description: '$5/day' },
-    { label: 'Streaming', dailyCost: 0.5, description: '$15/mo' },
-    { label: 'Eating Out', dailyCost: 5.71, description: '$40/week' },
-    { label: 'Smoking', dailyCost: 10, description: '$10/day' },
+    { label: 'Coffee', dailyCost: 5, descriptionKey: 'day', displayAmount: 5 },
+    { label: 'Streaming', dailyCost: 0.5, descriptionKey: 'mo', displayAmount: 15 },
+    { label: 'Eating Out', dailyCost: 5.71, descriptionKey: 'week', displayAmount: 40 },
+    { label: 'Smoking', dailyCost: 10, descriptionKey: 'day', displayAmount: 10 },
 ];
 
 export const OpportunityCostCalculator = ({ priceData, livePrice }: OpportunityCostCalculatorProps) => {
@@ -80,7 +80,7 @@ export const OpportunityCostCalculator = ({ priceData, livePrice }: OpportunityC
                                 : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-amber-400'
                         }`}
                     >
-                        {h.label} <span className="text-[10px] opacity-75">({h.description})</span>
+                        {h.label} <span className="text-[10px] opacity-75">({currencyConfig.symbol}{Math.round(h.displayAmount * currencyConfig.rate)}/{h.descriptionKey})</span>
                     </button>
                 ))}
                 <button
