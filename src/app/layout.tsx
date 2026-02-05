@@ -74,6 +74,7 @@ export default function RootLayout({
         <link rel="preconnect" href="https://api.alternative.me" />
         <link rel="dns-prefetch" href="https://api.coingecko.com" />
         <link rel="dns-prefetch" href="https://blockchain.info" />
+        <link rel="dns-prefetch" href="https://api.kraken.com" />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{

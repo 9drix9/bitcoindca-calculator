@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import { DcaCalculator } from '@/components/DcaCalculator';
 import { HowItWorks } from '@/components/HowItWorks';
 import { EducationalContent } from '@/components/EducationalContent';
@@ -12,6 +13,7 @@ import { SatConverterWidget } from '@/components/SatConverterWidget';
 import { PurchasingPowerWidget } from '@/components/PurchasingPowerWidget';
 import { LiveBlocksWidget } from '@/components/LiveBlocksWidget';
 import { AdSlot } from '@/components/AdSlot';
+import { SkeletonCard } from '@/components/Skeleton';
 import dynamic from 'next/dynamic';
 
 const BitcoinAdoption = dynamic(() => import('@/components/BitcoinAdoption').then(m => m.BitcoinAdoption), {
@@ -62,7 +64,17 @@ const faqJsonLd = {
   }))
 };
 
-export default async function Home() {
+function SidebarSkeleton() {
+  return (
+    <div className="space-y-4 lg:sticky lg:top-20">
+      {Array.from({ length: 6 }).map((_, i) => (
+        <SkeletonCard key={i} />
+      ))}
+    </div>
+  );
+}
+
+async function Sidebar() {
   const [mempoolFees, fearGreed, blockHeight, hashRateData, circulatingSupply, lightningData, dominanceData, purchasingPowerData, recentBlocks] = await Promise.all([
     getMempoolFees(),
     getFearGreedIndex(),
@@ -75,6 +87,24 @@ export default async function Home() {
     getRecentBlocks(),
   ]);
 
+  return (
+    <div className="space-y-4 lg:sticky lg:top-20">
+      <HalvingCountdownWidget initialHeight={blockHeight} />
+      <LiveBlocksWidget initialData={recentBlocks} />
+      <FearGreedWidget initialData={fearGreed} />
+      <MempoolFeeWidget initialData={mempoolFees} />
+      <HashRateWidget initialData={hashRateData} />
+      <SupplyScarcityWidget initialSupply={circulatingSupply} blockHeight={blockHeight} />
+      <PurchasingPowerWidget initialData={purchasingPowerData} />
+      <LightningWidget initialData={lightningData} />
+      <DominanceWidget initialData={dominanceData} />
+      <SatConverterWidget />
+      <AdSlot />
+    </div>
+  );
+}
+
+export default function Home() {
   return (
     <>
       <script
@@ -124,20 +154,10 @@ export default async function Home() {
             </section>
           </div>
 
-          {/* Sidebar */}
-          <div className="space-y-4 lg:sticky lg:top-20">
-            <HalvingCountdownWidget initialHeight={blockHeight} />
-            <LiveBlocksWidget initialData={recentBlocks} />
-            <FearGreedWidget initialData={fearGreed} />
-            <MempoolFeeWidget initialData={mempoolFees} />
-            <HashRateWidget initialData={hashRateData} />
-            <SupplyScarcityWidget initialSupply={circulatingSupply} blockHeight={blockHeight} />
-            <PurchasingPowerWidget initialData={purchasingPowerData} />
-            <LightningWidget initialData={lightningData} />
-            <DominanceWidget initialData={dominanceData} />
-            <SatConverterWidget />
-            <AdSlot />
-          </div>
+          {/* Sidebar - streams in after main content renders */}
+          <Suspense fallback={<SidebarSkeleton />}>
+            <Sidebar />
+          </Suspense>
         </div>
 
       </div>
