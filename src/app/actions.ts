@@ -105,7 +105,7 @@ export async function getBitcoinPriceHistory(from: number, to: number, provider:
             // 2. Fetch chunks with limited concurrency to avoid 429s
             const fetchChunk = async (chunk: { start: string, end: string }) => {
                 const url = `https://api.exchange.coinbase.com/products/BTC-USD/candles?granularity=86400&start=${chunk.start}&end=${chunk.end}`;
-                const res = await fetch(url, { headers: { 'User-Agent': 'BitcoinDcaBot/1.0' }, next: { revalidate: COINBASE_CACHE_DURATION } });
+                const res = await fetchWithTimeout(url, { headers: { 'User-Agent': 'BitcoinDcaBot/1.0' }, next: { revalidate: COINBASE_CACHE_DURATION } }, 15_000);
                 if (!res.ok) return [];
                 const json = await res.json();
                 return Array.isArray(json) ? json : [];
@@ -212,6 +212,7 @@ export async function getBitcoinPriceHistory(from: number, to: number, provider:
         return dailyPrices;
 
     } catch (error) {
+        console.error(`[getBitcoinPriceHistory] ${provider} failed:`, error);
         throw error;
     }
 }
@@ -577,6 +578,7 @@ export async function getCurrentBitcoinPrice(provider: 'kraken' | 'coinbase' = '
             return parseFloat(result[pairKey]?.c?.[0] ?? '0');
         }
     } catch (error) {
+        console.error(`[getCurrentBitcoinPrice] ${provider} failed:`, error);
         throw error;
     }
 }
