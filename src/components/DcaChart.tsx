@@ -69,53 +69,8 @@ export const DcaChart = memo(function DcaChart({ data, unit = 'BTC', m2Data }: D
         return `${sym}${value.toFixed(0)}`;
     };
 
-    const halvingLines = useMemo(() => {
-        if (!data || data.length < 2) return [];
-        const firstDate = new Date(data[0].date).getTime();
-        const lastDate = new Date(data[data.length - 1].date).getTime();
-        return HALVING_DATES
-            .filter(h => {
-                const hTs = new Date(h.date).getTime();
-                return hTs >= firstDate && hTs <= lastDate;
-            })
-            .map(h => {
-                const hTs = new Date(h.date).getTime();
-                let closestIdx = 0;
-                let closestDist = Infinity;
-                for (let i = 0; i < data.length; i++) {
-                    const dist = Math.abs(new Date(data[i].date).getTime() - hTs);
-                    if (dist < closestDist) {
-                        closestDist = dist;
-                        closestIdx = i;
-                    }
-                }
-                return { ...h, snappedDate: data[closestIdx].date };
-            });
-    }, [data]);
-
-    const eventLines = useMemo(() => {
-        if (!showEvents || !data || data.length < 2) return [];
-        const firstDate = new Date(data[0].date).getTime();
-        const lastDate = new Date(data[data.length - 1].date).getTime();
-        return HISTORICAL_EVENTS
-            .filter(e => {
-                const eTs = new Date(e.date).getTime();
-                return eTs >= firstDate && eTs <= lastDate;
-            })
-            .map(e => {
-                const eTs = new Date(e.date).getTime();
-                let closestIdx = 0;
-                let closestDist = Infinity;
-                for (let i = 0; i < data.length; i++) {
-                    const dist = Math.abs(new Date(data[i].date).getTime() - eTs);
-                    if (dist < closestDist) {
-                        closestDist = dist;
-                        closestIdx = i;
-                    }
-                }
-                return { ...e, snappedDate: data[closestIdx].date };
-            });
-    }, [data, showEvents]);
+    // NOTE: halvingLines and eventLines are computed after chartData (below)
+    // so they snap to dates that actually exist in the (possibly downsampled) chart.
 
     // Build sorted M2 array for efficient lookup
     const m2Sorted = useMemo(() => {
@@ -193,6 +148,55 @@ export const DcaChart = memo(function DcaChart({ data, unit = 'BTC', m2Data }: D
             return extended;
         });
     }, [data, showPowerLaw, showM2, m2Sorted]);
+
+    // Snap halving/event lines to chartData dates so they work with downsampled data on mobile
+    const halvingLines = useMemo(() => {
+        if (!chartData || chartData.length < 2) return [];
+        const firstDate = new Date(chartData[0].date as string).getTime();
+        const lastDate = new Date(chartData[chartData.length - 1].date as string).getTime();
+        return HALVING_DATES
+            .filter(h => {
+                const hTs = new Date(h.date).getTime();
+                return hTs >= firstDate && hTs <= lastDate;
+            })
+            .map(h => {
+                const hTs = new Date(h.date).getTime();
+                let closestIdx = 0;
+                let closestDist = Infinity;
+                for (let i = 0; i < chartData.length; i++) {
+                    const dist = Math.abs(new Date(chartData[i].date as string).getTime() - hTs);
+                    if (dist < closestDist) {
+                        closestDist = dist;
+                        closestIdx = i;
+                    }
+                }
+                return { ...h, snappedDate: chartData[closestIdx].date as string };
+            });
+    }, [chartData]);
+
+    const eventLines = useMemo(() => {
+        if (!showEvents || !chartData || chartData.length < 2) return [];
+        const firstDate = new Date(chartData[0].date as string).getTime();
+        const lastDate = new Date(chartData[chartData.length - 1].date as string).getTime();
+        return HISTORICAL_EVENTS
+            .filter(e => {
+                const eTs = new Date(e.date).getTime();
+                return eTs >= firstDate && eTs <= lastDate;
+            })
+            .map(e => {
+                const eTs = new Date(e.date).getTime();
+                let closestIdx = 0;
+                let closestDist = Infinity;
+                for (let i = 0; i < chartData.length; i++) {
+                    const dist = Math.abs(new Date(chartData[i].date as string).getTime() - eTs);
+                    if (dist < closestDist) {
+                        closestDist = dist;
+                        closestIdx = i;
+                    }
+                }
+                return { ...e, snappedDate: chartData[closestIdx].date as string };
+            });
+    }, [chartData, showEvents]);
 
     const handleExport = useCallback(async () => {
         if (!chartRef.current) return;
