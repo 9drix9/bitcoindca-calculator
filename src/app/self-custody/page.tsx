@@ -61,6 +61,18 @@ const WALLETS = [
     affiliate: true,
   },
   {
+    name: 'Trezor',
+    tagline: 'The original hardware wallet',
+    description: 'Trezor pioneered the hardware wallet industry in 2014 and remains one of the most trusted names in Bitcoin security. Every line of code is open-source and publicly auditable. With a simple interface and strong track record, Trezor is a great choice for anyone stepping into self-custody.',
+    features: ['Fully open-source firmware & software', 'Touchscreen (Model T & Safe 5)', 'Supports Bitcoin + 9,000+ assets', 'Shamir Backup option (Model T & Safe 5)', 'Proven 10+ year track record'],
+    price: 'From $59',
+    href: 'https://affil.trezor.io/aff_c?offer_id=238&aff_id=36991',
+    color: 'emerald',
+    image: '/wallets/trezor.png',
+    bestFor: 'Best for: Open-source trust & ease of use',
+    affiliate: true,
+  },
+  {
     name: 'Ledger',
     tagline: 'The most popular hardware wallet',
     description: 'Ledger devices have secured millions of users worldwide. With Ledger Live, you can manage your Bitcoin, check your balance, and send transactions all from a single app. Their secure element chip is certified by independent security labs.',
@@ -70,6 +82,18 @@ const WALLETS = [
     color: 'amber',
     image: '/wallets/ledger.png',
     bestFor: 'Best for: Beginners & mobile users',
+    affiliate: true,
+  },
+  {
+    name: 'BitBox02',
+    tagline: 'Swiss-made, minimalist & secure',
+    description: 'Built in Switzerland by Shift Crypto, the BitBox02 is a compact, no-nonsense hardware wallet with a strong focus on privacy and simplicity. It comes in a Bitcoin-only edition that strips away everything unnecessary, reducing the attack surface to a minimum.',
+    features: ['Bitcoin-only edition available', 'Fully open-source firmware', 'USB-C with built-in touch sensors', 'MicroSD backup (no writing down seed words)', 'Swiss quality & privacy-focused design'],
+    price: 'From $139',
+    href: 'https://shop.bitbox.swiss/?ref=pnuwdpiq',
+    color: 'slate',
+    image: '/wallets/bitbox.png',
+    bestFor: 'Best for: Minimalists & privacy-conscious users',
     affiliate: true,
   },
   {
@@ -90,7 +114,7 @@ const STEPS = [
   {
     step: 1,
     title: 'Choose a hardware wallet',
-    description: 'Pick one from our recommendations below. All five are reputable, well-reviewed, and purpose-built for securing Bitcoin.',
+    description: 'Pick one from our recommendations below. All seven are reputable, well-reviewed, and purpose-built for securing Bitcoin.',
   },
   {
     step: 2,
@@ -149,6 +173,22 @@ const walletColorClasses = {
     button: 'bg-cyan-600 hover:bg-cyan-700',
     accent: 'text-cyan-600 dark:text-cyan-400',
     check: 'text-cyan-500',
+  },
+  emerald: {
+    bg: 'bg-emerald-50 dark:bg-emerald-950/20',
+    border: 'border-emerald-200 dark:border-emerald-800/50',
+    badge: 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-400',
+    button: 'bg-emerald-600 hover:bg-emerald-700',
+    accent: 'text-emerald-600 dark:text-emerald-400',
+    check: 'text-emerald-500',
+  },
+  slate: {
+    bg: 'bg-slate-50 dark:bg-slate-950/20',
+    border: 'border-slate-200 dark:border-slate-800/50',
+    badge: 'bg-slate-100 dark:bg-slate-900/40 text-slate-700 dark:text-slate-400',
+    button: 'bg-slate-600 hover:bg-slate-700',
+    accent: 'text-slate-600 dark:text-slate-400',
+    check: 'text-slate-500',
   },
 };
 
@@ -313,6 +353,8 @@ export default function SelfCustodyPage() {
                             wallet.color === 'amber' ? '\u{1F512}' :
                             wallet.color === 'blue' ? '\u{2744}\uFE0F' :
                             wallet.color === 'cyan' ? '\u{1F331}' :
+                            wallet.color === 'emerald' ? '\u{1F9F0}' :
+                            wallet.color === 'slate' ? '\u{1F4E6}' :
                             '\u{1F6E1}\uFE0F'
                           }
                         />
@@ -364,7 +406,7 @@ export default function SelfCustodyPage() {
         </div>
 
         <p className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 text-center italic">
-          Affiliate disclosure: Some links above are affiliate links (Cypherock, Ledger, Blockstream Jade). We may earn a commission at no extra cost to you. This helps support the development of this free calculator. Coldcard and SeedSigner links are not affiliate links.
+          Affiliate disclosure: Some links above are affiliate links (Trezor, Ledger, BitBox02, Blockstream Jade, Cypherock). We may earn a commission at no extra cost to you. This helps support the development of this free calculator. SeedSigner and Coldcard links are not affiliate links.
         </p>
       </section>
 
@@ -446,7 +488,7 @@ export default function SelfCustodyPage() {
         <div className="flex items-start gap-3">
           <AlertTriangle className="w-5 h-5 text-slate-500 dark:text-slate-400 shrink-0 mt-0.5" />
           <p className="text-[11px] sm:text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
-            <strong>Disclaimer:</strong> Some links on this page are affiliate links (Cypherock, Ledger, Blockstream Jade). If you purchase through those links, we may earn a commission at no additional cost to you. This page is for educational purposes only and does not constitute financial advice. Always do your own research before purchasing any hardware wallet or making investment decisions.
+            <strong>Disclaimer:</strong> Some links on this page are affiliate links (Trezor, Ledger, BitBox02, Blockstream Jade, Cypherock). If you purchase through those links, we may earn a commission at no additional cost to you. This page is for educational purposes only and does not constitute financial advice. Always do your own research before purchasing any hardware wallet or making investment decisions.
           </p>
         </div>
       </section>
