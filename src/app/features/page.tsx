@@ -28,6 +28,7 @@ import {
     ArrowRight,
     CheckCircle2,
     Boxes,
+    Shield,
 } from 'lucide-react';
 
 export const metadata: Metadata = {
@@ -417,7 +418,7 @@ export default function FeaturesPage() {
                     title="Educational Resources"
                     subtitle="Learn more about Bitcoin and why people are investing."
                 />
-                <div className="grid sm:grid-cols-2 gap-4">
+                <div className="grid sm:grid-cols-3 gap-4">
                     <Link href="/why-bitcoin" className="group">
                         <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5 h-full hover:border-amber-300 dark:hover:border-amber-700 transition-colors">
                             <div className="flex items-center justify-between mb-3">
@@ -429,6 +430,20 @@ export default function FeaturesPage() {
                             <h3 className="font-semibold text-slate-800 dark:text-white mb-2">Why Bitcoin?</h3>
                             <p className="text-sm text-slate-600 dark:text-slate-400">
                                 Understand where Bitcoin&apos;s value comes from: user adoption, network effects, mining costs, and the case for exiting fiat currency.
+                            </p>
+                        </div>
+                    </Link>
+                    <Link href="/self-custody" className="group">
+                        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5 h-full hover:border-amber-300 dark:hover:border-amber-700 transition-colors">
+                            <div className="flex items-center justify-between mb-3">
+                                <div className="w-10 h-10 rounded-lg bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 flex items-center justify-center">
+                                    <Shield className="w-5 h-5" />
+                                </div>
+                                <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-amber-500 transition-colors" />
+                            </div>
+                            <h3 className="font-semibold text-slate-800 dark:text-white mb-2">Self-Custody Guide</h3>
+                            <p className="text-sm text-slate-600 dark:text-slate-400">
+                                Learn why holding your own keys matters, how hardware wallets work, and how to secure your Bitcoin the right way.
                             </p>
                         </div>
                     </Link>
