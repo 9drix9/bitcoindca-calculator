@@ -35,8 +35,8 @@ export interface DcaBreakdownItem {
 
 export interface ResultCardProps {
     label: string;
-    value: React.ReactNode;
-    subValue?: React.ReactNode;
+    value: string;
+    subValue?: string;
     highlight?: boolean;
     valueColor?: string;
     icon?: React.ReactNode;
