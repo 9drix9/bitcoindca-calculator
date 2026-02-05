@@ -102,10 +102,10 @@ export default function RootLayout({
           {/* Header */}
           <header className="border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 sm:bg-white/80 sm:dark:bg-slate-950/80 sm:backdrop-blur-md sticky top-0 z-50">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-14 sm:h-16 flex items-center justify-between">
-              <nav aria-label="Main navigation" className="flex items-center gap-4 sm:gap-6">
+              <nav aria-label="Main navigation" className="flex items-center gap-2.5 sm:gap-6">
                 <Link href="/" className="flex items-center gap-2 group">
                   <div className="w-8 h-8 bg-amber-500 rounded-full flex items-center justify-center text-white font-bold text-sm shrink-0 group-hover:scale-105 transition-transform" aria-hidden="true">₿</div>
-                  <span className="text-lg sm:text-xl font-bold bg-gradient-to-r from-amber-500 to-orange-600 bg-clip-text text-transparent">Bitcoin DCA</span>
+                  <span className="hidden sm:inline text-xl font-bold bg-gradient-to-r from-amber-500 to-orange-600 bg-clip-text text-transparent">Bitcoin DCA</span>
                 </Link>
                 <Link href="/features" className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 hover:text-amber-600 dark:hover:text-amber-400 transition-colors">
                   Features
