@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, memo } from 'react';
 import { DcaBreakdownItem } from '@/types';
 import { format } from 'date-fns';
 import { ChevronDown } from 'lucide-react';
@@ -12,7 +12,7 @@ interface TransactionTableProps {
     unit?: 'BTC' | 'SATS';
 }
 
-export const TransactionTable = ({ breakdown, unit = 'BTC' }: TransactionTableProps) => {
+export const TransactionTable = memo(function TransactionTable({ breakdown, unit = 'BTC' }: TransactionTableProps) {
     const { formatCurrency } = useCurrency();
     const [open, setOpen] = useState(false);
 
@@ -110,4 +110,4 @@ export const TransactionTable = ({ breakdown, unit = 'BTC' }: TransactionTablePr
             )}
         </div>
     );
-};
+});

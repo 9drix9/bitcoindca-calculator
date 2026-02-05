@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useRef, useCallback, useState } from 'react';
+import { useMemo, useRef, useCallback, useState, useEffect, memo } from 'react';
 import {
     ResponsiveContainer,
     Area,
@@ -53,12 +53,17 @@ const computePowerLawPrice = (dateStr: string): number | null => {
     return price;
 };
 
-export const DcaChart = ({ data, unit = 'BTC', m2Data }: DcaChartProps) => {
+export const DcaChart = memo(function DcaChart({ data, unit = 'BTC', m2Data }: DcaChartProps) {
     const { currencyConfig } = useCurrency();
     const chartRef = useRef<HTMLDivElement>(null);
     const [showPowerLaw, setShowPowerLaw] = useState(false);
     const [showM2, setShowM2] = useState(false);
     const [showEvents, setShowEvents] = useState(false);
+    const [isMobile, setIsMobile] = useState(false);
+
+    useEffect(() => {
+        setIsMobile(window.innerWidth < 640);
+    }, []);
 
     const isSats = unit === 'SATS';
 
@@ -128,10 +133,26 @@ export const DcaChart = ({ data, unit = 'BTC', m2Data }: DcaChartProps) => {
     const chartData = useMemo(() => {
         if (!data || data.length === 0) return [];
 
+        // Downsample on mobile to reduce SVG nodes
+        let sourceData = data;
+        if (isMobile && data.length >= 200) {
+            const maxPoints = 100;
+            const step = Math.ceil(data.length / maxPoints);
+            const sampled: typeof data = [];
+            for (let i = 0; i < data.length; i += step) {
+                sampled.push(data[i]);
+            }
+            // Always include the last point
+            if (sampled[sampled.length - 1] !== data[data.length - 1]) {
+                sampled.push(data[data.length - 1]);
+            }
+            sourceData = sampled;
+        }
+
         // Determine max portfolio value for M2 normalization
         let maxPortfolioValue = 0;
         if (showM2 && m2Sorted) {
-            for (const item of data) {
+            for (const item of sourceData) {
                 if (item.portfolioValue > maxPortfolioValue) maxPortfolioValue = item.portfolioValue;
             }
         }
@@ -149,7 +170,7 @@ export const DcaChart = ({ data, unit = 'BTC', m2Data }: DcaChartProps) => {
         // Use index pointer for O(n+m) M2 lookup instead of O(n*m)
         let m2Idx = 0;
 
-        return data.map(item => {
+        return sourceData.map(item => {
             const extended: Record<string, unknown> = { ...item };
 
             if (showPowerLaw) {
@@ -175,7 +196,7 @@ export const DcaChart = ({ data, unit = 'BTC', m2Data }: DcaChartProps) => {
 
             return extended;
         });
-    }, [data, showPowerLaw, showM2, m2Sorted]);
+    }, [data, isMobile, showPowerLaw, showM2, m2Sorted]);
 
     const handleExport = useCallback(async () => {
         if (!chartRef.current) return;
@@ -348,4 +369,4 @@ export const DcaChart = ({ data, unit = 'BTC', m2Data }: DcaChartProps) => {
             </div>
         </div>
     );
-};
+});
