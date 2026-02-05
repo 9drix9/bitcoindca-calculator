@@ -199,13 +199,13 @@ export const DcaCalculator = () => {
 
     const sp500Result: AssetDcaResult | null = useMemo(() => {
         if (!sp500Data) return null;
-        return calculateAssetDca(amountUsd, frequency, new Date(startDate), new Date(endDate), feePercentage, sp500Data, '^GSPC', 'S&P 500');
-    }, [sp500Data, amountUsd, frequency, startDate, endDate, feePercentage]);
+        return calculateAssetDca(amountUsd, frequency, new Date(startDate), new Date(endDate), deferredFee, sp500Data, '^GSPC', 'S&P 500');
+    }, [sp500Data, amountUsd, frequency, startDate, endDate, deferredFee]);
 
     const goldResult: AssetDcaResult | null = useMemo(() => {
         if (!goldData) return null;
-        return calculateAssetDca(amountUsd, frequency, new Date(startDate), new Date(endDate), feePercentage, goldData, 'GC=F', 'Gold');
-    }, [goldData, amountUsd, frequency, startDate, endDate, feePercentage]);
+        return calculateAssetDca(amountUsd, frequency, new Date(startDate), new Date(endDate), deferredFee, goldData, 'GC=F', 'Gold');
+    }, [goldData, amountUsd, frequency, startDate, endDate, deferredFee]);
 
     const btcAssetResult: AssetDcaResult = useMemo(() => ({
         asset: 'BTC', label: 'Bitcoin', totalInvested: results.totalInvested, currentValue: results.currentValue,
@@ -604,7 +604,7 @@ export const DcaCalculator = () => {
                             frequency={frequency}
                             startDate={startDate}
                             endDate={endDate}
-                            feePercentage={feePercentage}
+                            feePercentage={deferredFee}
                             currentPrice={livePrice}
                             currentBtc={results.btcAccumulated}
                             currentInvested={results.totalInvested}

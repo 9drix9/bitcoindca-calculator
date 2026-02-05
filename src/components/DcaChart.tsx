@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useRef, useCallback, useState, useEffect, memo } from 'react';
+import { useMemo, useRef, useCallback, useState, memo } from 'react';
 import {
     ResponsiveContainer,
     Area,
@@ -59,11 +59,6 @@ export const DcaChart = memo(function DcaChart({ data, unit = 'BTC', m2Data }: D
     const [showPowerLaw, setShowPowerLaw] = useState(false);
     const [showM2, setShowM2] = useState(false);
     const [showEvents, setShowEvents] = useState(false);
-    const [isMobile, setIsMobile] = useState(false);
-
-    useEffect(() => {
-        setIsMobile(window.innerWidth < 640);
-    }, []);
 
     const isSats = unit === 'SATS';
 
@@ -135,7 +130,8 @@ export const DcaChart = memo(function DcaChart({ data, unit = 'BTC', m2Data }: D
 
         // Downsample on mobile to reduce SVG nodes
         let sourceData = data;
-        if (isMobile && data.length >= 200) {
+        const mobile = typeof window !== 'undefined' && window.innerWidth < 640;
+        if (mobile && data.length >= 200) {
             const maxPoints = 100;
             const step = Math.ceil(data.length / maxPoints);
             const sampled: typeof data = [];
@@ -196,7 +192,7 @@ export const DcaChart = memo(function DcaChart({ data, unit = 'BTC', m2Data }: D
 
             return extended;
         });
-    }, [data, isMobile, showPowerLaw, showM2, m2Sorted]);
+    }, [data, showPowerLaw, showM2, m2Sorted]);
 
     const handleExport = useCallback(async () => {
         if (!chartRef.current) return;
