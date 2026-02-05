@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useDeferredValue } from 'react';
 import { format, subYears, subMonths, startOfToday, differenceInMonths } from 'date-fns';
 import { Frequency, PriceMode, ResultCardProps, AssetDcaResult } from '@/types';
 import { useCurrency, CurrencyCode } from '@/context/CurrencyContext';
@@ -66,12 +66,15 @@ export const DcaCalculator = () => {
     }, [today]);
 
     const [amount, setAmount] = useState<number>(100);
+    const deferredAmount = useDeferredValue(amount);
     const [frequency, setFrequency] = useState<Frequency>('weekly');
     const [startDate, setStartDate] = useState<string>(format(oneYearAgo, 'yyyy-MM-dd'));
     const [endDate, setEndDate] = useState<string>(format(today, 'yyyy-MM-dd'));
     const [feePercentage, setFeePercentage] = useState<number>(0.5);
+    const deferredFee = useDeferredValue(feePercentage);
     const [priceMode, setPriceMode] = useState<PriceMode>('api');
     const [manualPrice, setManualPrice] = useState<number>(50000);
+    const deferredManualPrice = useDeferredValue(manualPrice);
     const [provider, setProvider] = useState<'kraken' | 'coinbase'>('kraken');
     const [unit, setUnit] = useState<'BTC' | 'SATS'>('BTC');
     const [priceData, setPriceData] = useState<[number, number][]>([]);
@@ -180,14 +183,14 @@ export const DcaCalculator = () => {
         return () => clearTimeout(timer);
     }, [startDate, endDate, priceMode, dateError]);
 
-    const amountUsd = useMemo(() => amount / currencyConfig.rate, [amount, currencyConfig.rate]);
+    const amountUsd = useMemo(() => deferredAmount / currencyConfig.rate, [deferredAmount, currencyConfig.rate]);
 
     const results = useMemo(() => {
         if (dateError) {
             return { totalInvested: 0, btcAccumulated: 0, averageCost: 0, currentValue: 0, profit: 0, roi: 0, breakdown: [] };
         }
-        return calculateDca({ amount: amountUsd, frequency, startDate: new Date(startDate), endDate: new Date(endDate), feePercentage, priceMode, manualPrice }, priceData, priceMode === 'api' ? livePrice : undefined);
-    }, [amountUsd, frequency, startDate, endDate, feePercentage, priceMode, manualPrice, priceData, livePrice, dateError]);
+        return calculateDca({ amount: amountUsd, frequency, startDate: new Date(startDate), endDate: new Date(endDate), feePercentage: deferredFee, priceMode, manualPrice: deferredManualPrice }, priceData, priceMode === 'api' ? livePrice : undefined);
+    }, [amountUsd, frequency, startDate, endDate, deferredFee, priceMode, deferredManualPrice, priceData, livePrice, dateError]);
 
     const lumpSumResult = useMemo(() => {
         if (priceMode !== 'api' || !priceData.length || !livePrice || dateError) return null;
