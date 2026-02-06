@@ -212,6 +212,11 @@ export default function RootLayout({
             gtag('config', 'AW-17927251983');
           `}
         </Script>
+        <Script id="google-ads-conversion" strategy="afterInteractive">
+          {`
+            gtag('event', 'ads_conversion_Sign_up_1', {});
+          `}
+        </Script>
       </body>
     </html>
   );
