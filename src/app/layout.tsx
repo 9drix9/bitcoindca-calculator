@@ -116,6 +116,9 @@ export default function RootLayout({
                 <Link href="/self-custody" className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 hover:text-amber-600 dark:hover:text-amber-400 transition-colors">
                   Self-Custody
                 </Link>
+                <Link href="/mining" className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 hover:text-amber-600 dark:hover:text-amber-400 transition-colors">
+                  Mining
+                </Link>
               </nav>
               <ThemeToggle />
             </div>
@@ -156,6 +159,9 @@ export default function RootLayout({
                     </Link>
                     <Link href="/self-custody" className="text-sm text-slate-500 dark:text-slate-400 hover:text-amber-600 dark:hover:text-amber-400 transition-colors">
                       Self-Custody
+                    </Link>
+                    <Link href="/mining" className="text-sm text-slate-500 dark:text-slate-400 hover:text-amber-600 dark:hover:text-amber-400 transition-colors">
+                      Mining Guide
                     </Link>
                   </div>
                 </div>
