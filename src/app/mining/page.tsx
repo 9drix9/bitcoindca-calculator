@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Pickaxe, Zap, Clock, TrendingUp, BarChart3, Cpu, AlertTriangle, ArrowRight, CheckCircle2, ExternalLink } from 'lucide-react';
 import { WalletImage } from '@/components/WalletImage';
+import { getBlockHeight } from '@/app/actions';
 
 export const metadata: Metadata = {
     title: 'How Bitcoin Mining Works (Simple Explanation) | Bitcoin DCA Calculator',
@@ -49,18 +50,18 @@ const articleJsonLd = {
 };
 
 const HALVING_DATA = [
-    { halving: 'Start', block: 0, date: 'Jan 3, 2009', reward: '50 BTC', supplyAfter: '0', past: true },
-    { halving: '1st', block: 210000, date: 'Nov 28, 2012', reward: '25 BTC', supplyAfter: '10.5M', past: true },
-    { halving: '2nd', block: 420000, date: 'Jul 9, 2016', reward: '12.5 BTC', supplyAfter: '15.75M', past: true },
-    { halving: '3rd', block: 630000, date: 'May 11, 2020', reward: '6.25 BTC', supplyAfter: '18.375M', past: true },
-    { halving: '4th', block: 840000, date: 'Apr 20, 2024', reward: '3.125 BTC', supplyAfter: '19.6875M', past: true },
-    { halving: '5th', block: 1050000, date: '~2028', reward: '1.5625 BTC', supplyAfter: '20.34M', past: false },
-    { halving: '6th', block: 1260000, date: '~2032', reward: '0.78125 BTC', supplyAfter: '20.67M', past: false },
-    { halving: '7th', block: 1470000, date: '~2036', reward: '0.390625 BTC', supplyAfter: '20.84M', past: false },
-    { halving: '8th', block: 1680000, date: '~2040', reward: '0.1953125 BTC', supplyAfter: '20.92M', past: false },
-    { halving: '9th', block: 1890000, date: '~2044', reward: '0.09765625 BTC', supplyAfter: '20.96M', past: false },
-    { halving: '10th', block: 2100000, date: '~2048', reward: '0.04882813 BTC', supplyAfter: '20.98M', past: false },
-    { halving: 'Last', block: 6720000, date: '~2140', reward: '0', supplyAfter: '21M', past: false },
+    { halving: 'Start', block: 0, date: 'Jan 3, 2009', reward: '50 BTC', supplyAfter: '0' },
+    { halving: '1st', block: 210000, date: 'Nov 28, 2012', reward: '25 BTC', supplyAfter: '10.5M' },
+    { halving: '2nd', block: 420000, date: 'Jul 9, 2016', reward: '12.5 BTC', supplyAfter: '15.75M' },
+    { halving: '3rd', block: 630000, date: 'May 11, 2020', reward: '6.25 BTC', supplyAfter: '18.375M' },
+    { halving: '4th', block: 840000, date: 'Apr 20, 2024', reward: '3.125 BTC', supplyAfter: '19.6875M' },
+    { halving: '5th', block: 1050000, date: '~2028', reward: '1.5625 BTC', supplyAfter: '20.34M' },
+    { halving: '6th', block: 1260000, date: '~2032', reward: '0.78125 BTC', supplyAfter: '20.67M' },
+    { halving: '7th', block: 1470000, date: '~2036', reward: '0.390625 BTC', supplyAfter: '20.84M' },
+    { halving: '8th', block: 1680000, date: '~2040', reward: '0.1953125 BTC', supplyAfter: '20.92M' },
+    { halving: '9th', block: 1890000, date: '~2044', reward: '0.09765625 BTC', supplyAfter: '20.96M' },
+    { halving: '10th', block: 2100000, date: '~2048', reward: '0.04882813 BTC', supplyAfter: '20.98M' },
+    { halving: 'Last', block: 6720000, date: '~2140', reward: '0', supplyAfter: '21M' },
 ];
 
 const GOMINING_DATA = {
@@ -82,7 +83,10 @@ const orangeColorClasses = {
     check: 'text-orange-500',
 };
 
-export default function MiningPage() {
+export default async function MiningPage() {
+    // Fetch current block height to determine which halvings have occurred
+    const currentBlockHeight = await getBlockHeight() ?? 0;
+
     return (
         <>
             <script
@@ -197,20 +201,23 @@ export default function MiningPage() {
                                     </tr>
                                 </thead>
                                 <tbody className="text-slate-700 dark:text-slate-300">
-                                    {HALVING_DATA.map((row, idx) => (
-                                        <tr
-                                            key={row.halving}
-                                            className={`border-t border-slate-200 dark:border-slate-700/50 ${row.past ? '' : 'text-slate-400 dark:text-slate-500'}`}
-                                        >
-                                            <td className="py-2 pr-3 font-medium">
-                                                {row.halving}
-                                                {row.past && idx > 0 && <span className="ml-1 text-green-500">&#10003;</span>}
-                                            </td>
-                                            <td className="py-2 pr-3">{row.date}</td>
-                                            <td className="py-2 pr-3 font-mono text-xs">{row.reward}</td>
-                                            <td className="py-2 font-mono text-xs">{row.supplyAfter}</td>
-                                        </tr>
-                                    ))}
+                                    {HALVING_DATA.map((row, idx) => {
+                                        const isPast = currentBlockHeight >= row.block;
+                                        return (
+                                            <tr
+                                                key={row.halving}
+                                                className={`border-t border-slate-200 dark:border-slate-700/50 ${isPast ? '' : 'text-slate-400 dark:text-slate-500'}`}
+                                            >
+                                                <td className="py-2 pr-3 font-medium">
+                                                    {row.halving}
+                                                    {isPast && idx > 0 && <span className="ml-1 text-green-500">&#10003;</span>}
+                                                </td>
+                                                <td className="py-2 pr-3">{row.date}</td>
+                                                <td className="py-2 pr-3 font-mono text-xs">{row.reward}</td>
+                                                <td className="py-2 font-mono text-xs">{row.supplyAfter}</td>
+                                            </tr>
+                                        );
+                                    })}
                                 </tbody>
                             </table>
                         </div>
