@@ -54,7 +54,7 @@ const WALLETS = [
     description: 'Built by the team behind Bitcoin\'s Liquid Network, Jade offers a fully air-gapped signing experience via camera-based QR codes. It\'s fully open-source, so anyone can audit the code. One of the most affordable ways to start self-custody.',
     features: ['Fully open-source hardware & software', 'Air-gapped via QR codes (no cables needed)', 'Camera for QR-based signing', 'Built-in battery & Bluetooth', 'Bitcoin & Liquid Network support'],
     price: 'From $64.99',
-    href: 'https://store.blockstream.com/?code=kRIZlFIlEIHU',
+    href: 'https://oshi.link/ETC6DL',
     color: 'green',
     image: '/wallets/blockstream-jade.png',
     bestFor: 'Best for: Privacy & open-source advocates',
