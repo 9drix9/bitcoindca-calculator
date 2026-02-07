@@ -552,6 +552,44 @@ export async function getRecentBlocks(): Promise<{
     }
 }
 
+export async function getCurrentBitcoinPriceWithChange(provider: 'kraken' | 'coinbase' = 'kraken'): Promise<{ price: number; open24h: number }> {
+    try {
+        let url = '';
+        if (provider === 'coinbase') {
+            url = 'https://api.exchange.coinbase.com/products/BTC-USD/ticker';
+        } else {
+            url = 'https://api.kraken.com/0/public/Ticker?pair=XBTUSD';
+        }
+
+        const response = await fetch(url, { headers: { 'User-Agent': 'BitcoinDcaBot/1.0' }, next: { revalidate: 30 } });
+
+        if (!response.ok) throw new Error(`API Error: ${response.status}`);
+        const json = await response.json();
+
+        if (provider === 'coinbase') {
+            return {
+                price: parseFloat(json.price),
+                open24h: parseFloat(json.open_24h ?? json.price),
+            };
+        } else {
+            if (json && Array.isArray(json.error) && json.error.length > 0) {
+                throw new Error(`API Error: ${json.error.join(', ')}`);
+            }
+            const result = json?.result;
+            if (!result) throw new Error('Invalid response from Kraken');
+            const pairKey = Object.keys(result)[0];
+            const ticker = result[pairKey];
+            return {
+                price: parseFloat(ticker?.c?.[0] ?? '0'),
+                open24h: parseFloat(ticker?.o ?? '0'),
+            };
+        }
+    } catch (error) {
+        console.error(`[getCurrentBitcoinPriceWithChange] ${provider} failed:`, error);
+        throw error;
+    }
+}
+
 export async function getCurrentBitcoinPrice(provider: 'kraken' | 'coinbase' = 'kraken'): Promise<number> {
     try {
         let url = '';

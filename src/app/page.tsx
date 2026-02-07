@@ -12,6 +12,7 @@ import { DominanceWidget } from '@/components/DominanceWidget';
 import { SatConverterWidget } from '@/components/SatConverterWidget';
 import { PurchasingPowerWidget } from '@/components/PurchasingPowerWidget';
 import { LiveBlocksWidget } from '@/components/LiveBlocksWidget';
+import { LivePriceTicker } from '@/components/LivePriceTicker';
 import { AdSlot } from '@/components/AdSlot';
 import { SkeletonCard } from '@/components/Skeleton';
 import dynamic from 'next/dynamic';
@@ -121,6 +122,7 @@ export default function Home() {
           <p className="text-base sm:text-lg text-slate-600 dark:text-slate-300 max-w-xl mx-auto">
             See how much you would have today if you started investing $50 a week in Bitcoin 5 years ago.
           </p>
+          <LivePriceTicker />
         </section>
 
         {/* How It Works */}
