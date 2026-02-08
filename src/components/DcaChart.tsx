@@ -1,36 +1,29 @@
 'use client';
 
-import { useEffect, useRef, useMemo, useState, useCallback, memo } from 'react';
+import { useMemo, useRef, useCallback, useState, memo } from 'react';
 import {
-    createChart,
-    createSeriesMarkers,
-    createTextWatermark,
-    AreaSeries,
-    LineSeries,
-    ColorType,
-    CrosshairMode,
-    LineStyle,
-    LineType,
-    type IChartApi,
-    type ISeriesApi,
-    type UTCTimestamp,
-    type SeriesMarker,
-    type Time,
-    type MouseEventParams,
-} from 'lightweight-charts';
+    ResponsiveContainer,
+    Area,
+    XAxis,
+    YAxis,
+    CartesianGrid,
+    Tooltip,
+    Legend,
+    ReferenceLine,
+    Line,
+    ComposedChart
+} from 'recharts';
 import { DcaBreakdownItem, HistoricalEvent } from '@/types';
 import { format } from 'date-fns';
-import { Camera, Maximize2, X } from 'lucide-react';
+import { Camera } from 'lucide-react';
 import { useCurrency } from '@/context/CurrencyContext';
 
-// ── Props ──────────────────────────────────────────────────────────────
 interface DcaChartProps {
     data: DcaBreakdownItem[];
     unit?: 'BTC' | 'SATS';
     m2Data?: [number, number][] | null;
 }
 
-// ── Constants ──────────────────────────────────────────────────────────
 const HALVING_DATES: { date: string; label: string }[] = [
     { date: '2012-11-28', label: 'Halving 1' },
     { date: '2016-07-09', label: 'Halving 2' },
@@ -51,558 +44,167 @@ const HISTORICAL_EVENTS: HistoricalEvent[] = [
 
 const GENESIS_DATE = new Date('2009-01-03T00:00:00Z');
 
-const TIME_RANGES = ['YTD', '1Y', '3Y', '5Y', 'All'] as const;
-type TimeRange = (typeof TIME_RANGES)[number];
-
-// ── Helpers ────────────────────────────────────────────────────────────
-function toTimestamp(dateStr: string): UTCTimestamp {
-    return (new Date(dateStr).getTime() / 1000) as UTCTimestamp;
-}
-
-function computePowerLawPrice(dateStr: string): number | null {
+const computePowerLawPrice = (dateStr: string): number | null => {
     const date = new Date(dateStr);
     const daysSinceGenesis = (date.getTime() - GENESIS_DATE.getTime()) / (1000 * 60 * 60 * 24);
     if (daysSinceGenesis <= 0) return null;
     const logDays = Math.log10(daysSinceGenesis);
-    return Math.pow(10, 5.82 * logDays - 17.01);
-}
+    const price = Math.pow(10, 5.82 * logDays - 17.01);
+    return price;
+};
 
-function isDark(): boolean {
-    if (typeof document === 'undefined') return false;
-    return document.documentElement.classList.contains('dark');
-}
-
-function getIsMobile(): boolean {
-    if (typeof window === 'undefined') return false;
-    return window.matchMedia('(max-width: 767px)').matches
-        || window.matchMedia('(pointer: coarse)').matches;
-}
-
-// ── Scale IDs ──────────────────────────────────────────────────────────
-const SCALE_LEFT = 'left';
-const SCALE_RIGHT = 'right';
-const SCALE_OVERLAY = 'overlay';
-
-// ── Component ──────────────────────────────────────────────────────────
 export const DcaChart = memo(function DcaChart({ data, unit = 'BTC', m2Data }: DcaChartProps) {
     const { currencyConfig } = useCurrency();
-    const wrapperRef = useRef<HTMLDivElement>(null);
-    const chartAreaRef = useRef<HTMLDivElement>(null);
-    const chartContainerRef = useRef<HTMLDivElement>(null);
-    const chartApiRef = useRef<IChartApi | null>(null);
-    const tooltipRef = useRef<HTMLDivElement>(null);
-
+    const chartRef = useRef<HTMLDivElement>(null);
     const [showPowerLaw, setShowPowerLaw] = useState(false);
     const [showM2, setShowM2] = useState(false);
     const [showEvents, setShowEvents] = useState(false);
-    const [showBtcPrice, setShowBtcPrice] = useState(false);
-    const [isMobile, setIsMobile] = useState(false);
-    const [showHint, setShowHint] = useState(false);
-    const [activeRange, setActiveRange] = useState<TimeRange>('All');
-    const [isFullscreen, setIsFullscreen] = useState(false);
-    const hintShownRef = useRef(false);
-    const portfolioDataRef = useRef<{ time: UTCTimestamp; value: number }[]>([]);
 
-    const sym = currencyConfig.symbol;
+    const isSats = unit === 'SATS';
 
-    // Detect mobile on mount
-    useEffect(() => {
-        setIsMobile(getIsMobile());
-    }, []);
+    const formatYAxis = (value: number): string => {
+        const sym = currencyConfig.symbol;
+        if (value >= 1_000_000) return `${sym}${(value / 1_000_000).toFixed(1)}M`;
+        if (value >= 1_000) return `${sym}${(value / 1_000).toFixed(0)}k`;
+        return `${sym}${value.toFixed(0)}`;
+    };
 
-    // On mobile: BTC Price off by default; on desktop: on by default
-    const isMobileInitialized = useRef(false);
-    useEffect(() => {
-        if (isMobileInitialized.current) return;
-        isMobileInitialized.current = true;
-        setShowBtcPrice(!getIsMobile());
-    }, []);
+    // NOTE: halvingLines and eventLines are computed after chartData (below)
+    // so they snap to dates that actually exist in the (possibly downsampled) chart.
 
-    // ── Build series data ──────────────────────────────────────────────
+    // Build sorted M2 array for efficient lookup
     const m2Sorted = useMemo(() => {
         if (!m2Data || m2Data.length === 0) return null;
-        return [...m2Data].sort((a, b) => a[0] - b[0]);
+        // m2Data is already [timestamp, value][], ensure sorted by timestamp
+        const sorted = [...m2Data].sort((a, b) => a[0] - b[0]);
+        return sorted;
     }, [m2Data]);
 
-    const {
-        portfolioData,
-        investedData,
-        priceData,
-        powerLawData,
-        m2NormData,
-        dateRange,
-    } = useMemo(() => {
-        if (!data || data.length === 0)
-            return { portfolioData: [], investedData: [], priceData: [], powerLawData: [], m2NormData: [], dateRange: null };
+    const chartData = useMemo(() => {
+        if (!data || data.length === 0) return [];
 
-        const portfolio: { time: UTCTimestamp; value: number }[] = [];
-        const invested: { time: UTCTimestamp; value: number }[] = [];
-        const price: { time: UTCTimestamp; value: number }[] = [];
-        const powerLaw: { time: UTCTimestamp; value: number }[] = [];
-        const m2Norm: { time: UTCTimestamp; value: number }[] = [];
+        // Downsample on mobile to reduce SVG nodes
+        let sourceData = data;
+        const mobile = typeof window !== 'undefined' && window.innerWidth < 640;
+        if (mobile && data.length >= 200) {
+            const maxPoints = 100;
+            const step = Math.ceil(data.length / maxPoints);
+            const sampled: typeof data = [];
+            for (let i = 0; i < data.length; i += step) {
+                sampled.push(data[i]);
+            }
+            // Always include the last point
+            if (sampled[sampled.length - 1] !== data[data.length - 1]) {
+                sampled.push(data[data.length - 1]);
+            }
+            sourceData = sampled;
+        }
 
-        let minM2 = Infinity, maxM2 = 0;
-        let minPrice = Infinity, maxPrice = 0;
-        if (m2Sorted) {
+        // Determine max portfolio value for M2 normalization
+        let maxPortfolioValue = 0;
+        if (showM2 && m2Sorted) {
+            for (const item of sourceData) {
+                if (item.portfolioValue > maxPortfolioValue) maxPortfolioValue = item.portfolioValue;
+            }
+        }
+
+        // Find min/max M2 values
+        let minM2 = Infinity;
+        let maxM2 = 0;
+        if (showM2 && m2Sorted) {
             for (const [, val] of m2Sorted) {
                 if (val < minM2) minM2 = val;
                 if (val > maxM2) maxM2 = val;
             }
-            for (const item of data) {
-                if (item.price < minPrice) minPrice = item.price;
-                if (item.price > maxPrice) maxPrice = item.price;
-            }
         }
 
+        // Use index pointer for O(n+m) M2 lookup instead of O(n*m)
         let m2Idx = 0;
 
-        for (const item of data) {
-            const t = toTimestamp(item.date);
-            portfolio.push({ time: t, value: item.portfolioValue });
-            invested.push({ time: t, value: item.totalInvested });
-            price.push({ time: t, value: item.price });
+        return sourceData.map(item => {
+            const extended: Record<string, unknown> = { ...item };
 
-            const pl = computePowerLawPrice(item.date);
-            if (pl !== null) {
-                powerLaw.push({ time: t, value: pl });
+            if (showPowerLaw) {
+                extended.powerLaw = computePowerLawPrice(item.date);
             }
 
-            if (m2Sorted && m2Sorted.length > 0 && maxM2 > minM2 && maxPrice > minPrice) {
+            if (showM2 && m2Sorted && m2Sorted.length > 0 && maxM2 > minM2 && maxPortfolioValue > 0) {
                 const dateTs = new Date(item.date).getTime();
-                while (m2Idx < m2Sorted.length - 1 && m2Sorted[m2Idx + 1][0] <= dateTs) m2Idx++;
+                // Advance pointer to closest M2 data point
+                while (m2Idx < m2Sorted.length - 1 && m2Sorted[m2Idx + 1][0] <= dateTs) {
+                    m2Idx++;
+                }
+                // Check if next point is closer than current
                 let closestVal = m2Sorted[m2Idx][1];
                 if (m2Idx < m2Sorted.length - 1) {
-                    const dC = Math.abs(m2Sorted[m2Idx][0] - dateTs);
-                    const dN = Math.abs(m2Sorted[m2Idx + 1][0] - dateTs);
-                    if (dN < dC) closestVal = m2Sorted[m2Idx + 1][1];
+                    const distCurrent = Math.abs(m2Sorted[m2Idx][0] - dateTs);
+                    const distNext = Math.abs(m2Sorted[m2Idx + 1][0] - dateTs);
+                    if (distNext < distCurrent) closestVal = m2Sorted[m2Idx + 1][1];
                 }
-                const normalized = minPrice + ((closestVal - minM2) / (maxM2 - minM2)) * (maxPrice - minPrice);
-                m2Norm.push({ time: t, value: normalized });
+                // Normalize M2 to left Y-axis scale (0 to maxPortfolioValue)
+                extended.m2Normalized = ((closestVal - minM2) / (maxM2 - minM2)) * maxPortfolioValue;
             }
-        }
 
-        return {
-            portfolioData: portfolio,
-            investedData: invested,
-            priceData: price,
-            powerLawData: powerLaw,
-            m2NormData: m2Norm,
-            dateRange: data.length >= 2
-                ? { first: new Date(data[0].date).getTime(), last: new Date(data[data.length - 1].date).getTime() }
-                : null,
-        };
-    }, [data, m2Sorted]);
+            return extended;
+        });
+    }, [data, showPowerLaw, showM2, m2Sorted]);
 
-    // ── Invested data lookup map (for mobile tooltip ROI) ─────────────
-    const investedMap = useMemo(() => {
-        const map = new Map<number, number>();
-        for (const item of investedData) {
-            map.set(item.time as number, item.value);
-        }
-        return map;
-    }, [investedData]);
-
-    // Keep ref in sync for stable callbacks
-    portfolioDataRef.current = portfolioData;
-
-    // ── Summary stats ─────────────────────────────────────────────────
-    const summaryStats = useMemo(() => {
-        if (portfolioData.length < 2 || investedData.length < 2) return null;
-        const lastPortfolio = portfolioData[portfolioData.length - 1].value;
-        const lastInvested = investedData[investedData.length - 1].value;
-        const gain = lastPortfolio - lastInvested;
-        const roi = lastInvested > 0 ? (gain / lastInvested) * 100 : 0;
-        return { gain, roi };
-    }, [portfolioData, investedData]);
-
-    // ── Build markers ──────────────────────────────────────────────────
-    const markers = useMemo(() => {
-        if (!dateRange) return [];
-        const result: SeriesMarker<Time>[] = [];
-        const mobile = getIsMobile();
-
-        for (const h of HALVING_DATES) {
-            const ts = new Date(h.date).getTime();
-            if (ts >= dateRange.first && ts <= dateRange.last) {
-                result.push({
-                    time: toTimestamp(h.date),
-                    position: 'aboveBar',
-                    color: '#a855f7',
-                    shape: 'arrowDown',
-                    text: mobile ? '' : h.label,
-                });
-            }
-        }
-
-        if (showEvents) {
-            for (const e of HISTORICAL_EVENTS) {
-                const ts = new Date(e.date).getTime();
-                if (ts >= dateRange.first && ts <= dateRange.last) {
-                    result.push({
-                        time: toTimestamp(e.date),
-                        position: 'aboveBar',
-                        color: e.color,
-                        shape: 'circle',
-                        text: mobile ? '' : e.label,
-                    });
+    // Snap halving/event lines to chartData dates so they work with downsampled data on mobile
+    const halvingLines = useMemo(() => {
+        if (!chartData || chartData.length < 2) return [];
+        const firstDate = new Date(chartData[0].date as string).getTime();
+        const lastDate = new Date(chartData[chartData.length - 1].date as string).getTime();
+        return HALVING_DATES
+            .filter(h => {
+                const hTs = new Date(h.date).getTime();
+                return hTs >= firstDate && hTs <= lastDate;
+            })
+            .map(h => {
+                const hTs = new Date(h.date).getTime();
+                let closestIdx = 0;
+                let closestDist = Infinity;
+                for (let i = 0; i < chartData.length; i++) {
+                    const dist = Math.abs(new Date(chartData[i].date as string).getTime() - hTs);
+                    if (dist < closestDist) {
+                        closestDist = dist;
+                        closestIdx = i;
+                    }
                 }
-            }
-        }
-
-        result.sort((a, b) => (a.time as number) - (b.time as number));
-        return result;
-    }, [dateRange, showEvents]);
-
-    // ── Time range handler ─────────────────────────────────────────────
-    const handleRangeChange = useCallback((range: TimeRange) => {
-        setActiveRange(range);
-        const chart = chartApiRef.current;
-        const pData = portfolioDataRef.current;
-        if (!chart || pData.length === 0) return;
-
-        if (range === 'All') {
-            chart.timeScale().fitContent();
-            return;
-        }
-
-        const lastTime = pData[pData.length - 1].time as number;
-        const lastDate = new Date(lastTime * 1000);
-        let fromDate: Date;
-
-        if (range === 'YTD') {
-            fromDate = new Date(lastDate.getFullYear(), 0, 1);
-        } else {
-            const years = parseInt(range);
-            fromDate = new Date(lastDate);
-            fromDate.setFullYear(fromDate.getFullYear() - years);
-        }
-
-        const fromTimestamp = (fromDate.getTime() / 1000) as UTCTimestamp;
-        const firstAvailable = pData[0].time as number;
-        const effectiveFrom = Math.max(fromTimestamp, firstAvailable) as UTCTimestamp;
-
-        chart.timeScale().setVisibleRange({
-            from: effectiveFrom,
-            to: lastTime as UTCTimestamp,
-        });
-    }, []);
-
-    // ── Chart lifecycle ────────────────────────────────────────────────
-    useEffect(() => {
-        const area = chartAreaRef.current;
-        const container = chartContainerRef.current;
-        const tooltip = tooltipRef.current;
-        if (!area || !container || !tooltip || portfolioData.length === 0) return;
-
-        const dark = isDark();
-        const mobile = getIsMobile();
-
-        const chart = createChart(container, {
-            width: area.clientWidth,
-            height: area.clientHeight,
-            layout: {
-                background: { type: ColorType.Solid, color: 'transparent' },
-                textColor: dark ? '#cbd5e1' : '#64748b',
-                fontSize: mobile ? 10 : 11,
-            },
-            grid: {
-                vertLines: {
-                    visible: !mobile,
-                    color: dark ? 'rgba(51,65,85,0.5)' : 'rgba(226,232,240,0.8)',
-                    style: LineStyle.Dotted,
-                },
-                horzLines: {
-                    color: dark ? 'rgba(51,65,85,0.5)' : 'rgba(226,232,240,0.8)',
-                    style: LineStyle.Solid,
-                    visible: !mobile,
-                },
-            },
-            crosshair: {
-                mode: CrosshairMode.Magnet,
-                vertLine: { labelVisible: false },
-                horzLine: { visible: false, labelVisible: false },
-            },
-            rightPriceScale: {
-                visible: mobile ? false : true,
-                borderVisible: false,
-                scaleMargins: { top: 0.15, bottom: 0.05 },
-            },
-            leftPriceScale: {
-                visible: true,
-                borderVisible: false,
-                scaleMargins: { top: 0.15, bottom: 0.05 },
-            },
-            timeScale: {
-                borderVisible: false,
-                timeVisible: false,
-                fixLeftEdge: true,
-                fixRightEdge: true,
-            },
-            handleScale: {
-                axisPressedMouseMove: { time: true, price: false },
-                pinch: true,
-                mouseWheel: true,
-            },
-            handleScroll: {
-                horzTouchDrag: true,
-                vertTouchDrag: false,
-                pressedMouseMove: true,
-                mouseWheel: true,
-            },
-            kineticScroll: {
-                touch: true,
-                mouse: false,
-            },
-        });
-
-        chartApiRef.current = chart;
-
-        // ── Canvas watermark ──────────────────────────────────────────
-        const mainPane = chart.panes()[0];
-        createTextWatermark(mainPane, {
-            lines: [
-                {
-                    text: 'btcdollarcostaverage.com',
-                    color: dark ? 'rgba(100,116,139,0.15)' : 'rgba(148,163,184,0.15)',
-                    fontSize: 14,
-                    fontStyle: 'normal',
-                },
-            ],
-        });
-
-        // ── Portfolio Value (area, left scale) ─────────────────────────
-        const portfolioSeries = chart.addSeries(AreaSeries, {
-            priceScaleId: SCALE_LEFT,
-            lineColor: '#f59e0b',
-            topColor: mobile ? 'rgba(245,158,11,0.25)' : 'rgba(245,158,11,0.4)',
-            bottomColor: 'rgba(245,158,11,0.0)',
-            relativeGradient: true,
-            lineWidth: mobile ? 1 : 2,
-            lineType: LineType.Curved,
-            crosshairMarkerVisible: true,
-            crosshairMarkerRadius: mobile ? 3 : 4,
-            priceLineVisible: false,
-            lastValueVisible: false,
-        });
-        portfolioSeries.setData(portfolioData);
-
-        // ── Total Invested (line, left scale) — visible on all screens
-        const investedSeries = chart.addSeries(LineSeries, {
-            priceScaleId: SCALE_LEFT,
-            color: mobile ? 'rgba(100,116,139,0.4)' : '#64748b',
-            lineWidth: 1,
-            lineType: LineType.Curved,
-            crosshairMarkerVisible: false,
-            priceLineVisible: false,
-            lastValueVisible: false,
-        });
-        investedSeries.setData(investedData);
-
-        // ── BTC Price (line, right on desktop / overlay on mobile) ────
-        let priceSeries: ISeriesApi<'Line'> | null = null;
-        if (showBtcPrice) {
-            priceSeries = chart.addSeries(LineSeries, {
-                priceScaleId: mobile ? SCALE_OVERLAY : SCALE_RIGHT,
-                color: '#10b981',
-                lineWidth: mobile ? 1 : 2,
-                lineStyle: LineStyle.Dashed,
-                lineType: LineType.Curved,
-                crosshairMarkerVisible: false,
-                priceLineVisible: false,
-                lastValueVisible: false,
+                return { ...h, snappedDate: chartData[closestIdx].date as string };
             });
-            priceSeries.setData(priceData);
-            if (mobile) {
-                chart.priceScale(SCALE_OVERLAY).applyOptions({ visible: false });
-            }
-        }
+    }, [chartData]);
 
-        // ── Power Law (overlay hidden scale) — desktop only ──────────
-        let powerLawSeries: ISeriesApi<'Line'> | null = null;
-        if (!mobile && showPowerLaw && powerLawData.length > 0) {
-            const plScaleId = showBtcPrice ? 'overlay-pl' : SCALE_OVERLAY;
-            powerLawSeries = chart.addSeries(LineSeries, {
-                priceScaleId: plScaleId,
-                color: '#8b5cf6',
-                lineWidth: 1,
-                lineStyle: LineStyle.Dashed,
-                lineType: LineType.Curved,
-                crosshairMarkerVisible: false,
-                priceLineVisible: false,
-                lastValueVisible: false,
+    const eventLines = useMemo(() => {
+        if (!showEvents || !chartData || chartData.length < 2) return [];
+        const firstDate = new Date(chartData[0].date as string).getTime();
+        const lastDate = new Date(chartData[chartData.length - 1].date as string).getTime();
+        return HISTORICAL_EVENTS
+            .filter(e => {
+                const eTs = new Date(e.date).getTime();
+                return eTs >= firstDate && eTs <= lastDate;
+            })
+            .map(e => {
+                const eTs = new Date(e.date).getTime();
+                let closestIdx = 0;
+                let closestDist = Infinity;
+                for (let i = 0; i < chartData.length; i++) {
+                    const dist = Math.abs(new Date(chartData[i].date as string).getTime() - eTs);
+                    if (dist < closestDist) {
+                        closestDist = dist;
+                        closestIdx = i;
+                    }
+                }
+                return { ...e, snappedDate: chartData[closestIdx].date as string };
             });
-            powerLawSeries.setData(powerLawData);
-            chart.priceScale(plScaleId).applyOptions({ visible: false });
-        }
+    }, [chartData, showEvents]);
 
-        // ── M2 Supply (right scale, normalized) — desktop only ───────
-        let m2Series: ISeriesApi<'Line'> | null = null;
-        if (!mobile && showM2 && m2NormData.length > 0) {
-            m2Series = chart.addSeries(LineSeries, {
-                priceScaleId: SCALE_RIGHT,
-                color: '#06b6d4',
-                lineWidth: 1,
-                lineStyle: LineStyle.LargeDashed,
-                lineType: LineType.Curved,
-                crosshairMarkerVisible: false,
-                priceLineVisible: false,
-                lastValueVisible: false,
-            });
-            m2Series.setData(m2NormData);
-        }
-
-        // ── Markers (halvings + events) on portfolio series ──────────
-        let markersHandle: { detach: () => void } | null = null;
-        if (markers.length > 0) {
-            markersHandle = createSeriesMarkers(portfolioSeries, markers);
-        }
-
-        // ── Tooltip via crosshair ────────────────────────────────────
-        const handleCrosshair = (param: MouseEventParams<Time>) => {
-            if (!param.time || !param.point || param.point.x < 0 || param.point.y < 0) {
-                tooltip.style.display = 'none';
-                return;
-            }
-
-            const pv = param.seriesData.get(portfolioSeries);
-
-            if (!pv || !('value' in pv)) {
-                tooltip.style.display = 'none';
-                return;
-            }
-
-            const dateMs = (param.time as number) * 1000;
-            const dateStr = format(new Date(dateMs), 'MMM d, yyyy');
-            const portfolioVal = (pv as { value: number }).value;
-
-            let html = `<div class="lw-tooltip-date">${dateStr}</div>`;
-            html += `<div class="lw-tooltip-row"><span style="color:#f59e0b">\u25cf</span> Portfolio: <b>${sym}${portfolioVal.toLocaleString(undefined, { maximumFractionDigits: 0 })}</b></div>`;
-
-            // Invested — get from series data or fallback to map
-            let investedVal: number | null = null;
-            const iv = param.seriesData.get(investedSeries);
-            if (iv && 'value' in iv) {
-                investedVal = (iv as { value: number }).value;
-                html += `<div class="lw-tooltip-row"><span style="color:#64748b">\u25cf</span> Invested: <b>${sym}${investedVal.toLocaleString(undefined, { maximumFractionDigits: 0 })}</b></div>`;
-            } else {
-                // Fallback for mobile: look up from map
-                const mapVal = investedMap.get(param.time as number);
-                if (mapVal !== undefined) {
-                    investedVal = mapVal;
-                    html += `<div class="lw-tooltip-row"><span style="color:#64748b">\u25cf</span> Invested: <b>${sym}${investedVal.toLocaleString(undefined, { maximumFractionDigits: 0 })}</b></div>`;
-                }
-            }
-
-            // ROI / Gain-Loss
-            if (investedVal !== null && investedVal > 0) {
-                const gain = portfolioVal - investedVal;
-                const roi = (gain / investedVal) * 100;
-                const isPositive = gain >= 0;
-                const color = isPositive ? '#22c55e' : '#ef4444';
-                const sign = isPositive ? '+' : '';
-                html += `<div class="lw-tooltip-separator"></div>`;
-                html += `<div class="lw-tooltip-row" style="color:${color};font-weight:600">${sign}${sym}${Math.abs(gain).toLocaleString(undefined, { maximumFractionDigits: 0 })} (${sign}${roi.toFixed(1)}%)</div>`;
-            }
-
-            if (priceSeries) {
-                const pr = param.seriesData.get(priceSeries);
-                if (pr && 'value' in pr) {
-                    html += `<div class="lw-tooltip-row"><span style="color:#10b981">\u25cf</span> BTC: <b>${sym}${(pr as { value: number }).value.toLocaleString()}</b></div>`;
-                }
-            }
-            if (!mobile && showPowerLaw && powerLawSeries) {
-                const plv = param.seriesData.get(powerLawSeries);
-                if (plv && 'value' in plv) {
-                    html += `<div class="lw-tooltip-row"><span style="color:#8b5cf6">\u25cf</span> Power Law: <b>${sym}${(plv as { value: number }).value.toLocaleString(undefined, { maximumFractionDigits: 0 })}</b></div>`;
-                }
-            }
-
-            tooltip.innerHTML = html;
-            tooltip.style.display = 'block';
-
-            const areaRect = area.getBoundingClientRect();
-
-            if (mobile) {
-                // Mobile: anchor tooltip to top-center
-                const tooltipW = tooltip.offsetWidth;
-                tooltip.style.left = `${(areaRect.width - tooltipW) / 2}px`;
-                tooltip.style.top = '8px';
-            } else {
-                // Desktop: follow cursor
-                const tooltipW = tooltip.offsetWidth;
-                const tooltipH = tooltip.offsetHeight;
-                let left = param.point.x + 12;
-                let top = param.point.y - tooltipH / 2;
-
-                if (left + tooltipW > areaRect.width) left = param.point.x - tooltipW - 12;
-                if (top < 0) top = 0;
-                if (top + tooltipH > areaRect.height) top = areaRect.height - tooltipH;
-
-                tooltip.style.left = `${left}px`;
-                tooltip.style.top = `${top}px`;
-            }
-        };
-
-        chart.subscribeCrosshairMove(handleCrosshair);
-
-        // ── Tap-to-show tooltip + hint (mobile) ────────────────────
-        let tapDismissTimer: ReturnType<typeof setTimeout> | undefined;
-        let hintTimer: ReturnType<typeof setTimeout> | undefined;
-
-        if (mobile && !hintShownRef.current) {
-            hintShownRef.current = true;
-            setShowHint(true);
-            hintTimer = setTimeout(() => setShowHint(false), 4000);
-        }
-
-        const handleClick = (param: MouseEventParams<Time>) => {
-            setShowHint(false);
-            handleCrosshair(param);
-            if (mobile) {
-                clearTimeout(tapDismissTimer);
-                if (param.time) {
-                    tapDismissTimer = setTimeout(() => {
-                        tooltip.style.display = 'none';
-                    }, 4000);
-                }
-            }
-        };
-        chart.subscribeClick(handleClick);
-
-        // ── Resize observer ──────────────────────────────────────────
-        const ro = new ResizeObserver((entries) => {
-            for (const entry of entries) {
-                const { width, height } = entry.contentRect;
-                if (width > 0 && height > 0) {
-                    chart.resize(width, height);
-                }
-            }
-        });
-        ro.observe(area);
-
-        chart.timeScale().fitContent();
-
-        // ── Cleanup ──────────────────────────────────────────────────
-        return () => {
-            clearTimeout(tapDismissTimer);
-            clearTimeout(hintTimer);
-            ro.disconnect();
-            chart.unsubscribeClick(handleClick);
-            chart.unsubscribeCrosshairMove(handleCrosshair);
-            if (markersHandle) markersHandle.detach();
-            chart.remove();
-            chartApiRef.current = null;
-        };
-    }, [portfolioData, investedData, priceData, powerLawData, m2NormData, showPowerLaw, showM2, showBtcPrice, markers, sym, isMobile, investedMap]);
-
-    // ── Export ──────────────────────────────────────────────────────────
     const handleExport = useCallback(async () => {
-        if (!wrapperRef.current) return;
+        if (!chartRef.current) return;
         try {
             const { toPng } = await import('html-to-image');
-            const dataUrl = await toPng(wrapperRef.current, {
+            const dataUrl = await toPng(chartRef.current, {
                 pixelRatio: 2,
-                backgroundColor: isDark() ? '#0f172a' : '#ffffff',
+                backgroundColor: '#0f172a',
                 skipFonts: true,
             });
             const link = document.createElement('a');
@@ -614,84 +216,64 @@ export const DcaChart = memo(function DcaChart({ data, unit = 'BTC', m2Data }: D
         }
     }, []);
 
-    // ── Fullscreen toggle ──────────────────────────────────────────────
-    const toggleFullscreen = useCallback(() => {
-        setIsFullscreen(prev => !prev);
-    }, []);
-
     if (!data || data.length === 0) return null;
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const tooltipFormatter = (value: any, name: any) => {
+        const sym = currencyConfig.symbol;
+        if (name === 'price' || name === 'BTC Price') {
+            return [`${sym}${Number(value).toLocaleString()}`, 'BTC Price'];
+        }
+        if (name === 'powerLaw' || name === 'Power Law') {
+            return [`${sym}${Number(value).toLocaleString(undefined, { maximumFractionDigits: 0 })}`, 'Power Law'];
+        }
+        if (name === 'm2Normalized' || name === 'M2 Supply') {
+            return [`${sym}${Number(value).toLocaleString(undefined, { maximumFractionDigits: 0 })}`, 'M2 Supply (normalized)'];
+        }
+        if ((name === 'accumulated' || name === 'BTC Bought') && isSats) {
+            return [`${Math.floor(Number(value) * 100_000_000).toLocaleString()} sats`, 'Sats Bought'];
+        }
+        return [`${sym}${Number(value).toLocaleString()}`, name];
+    };
 
     return (
         <div
-            ref={wrapperRef}
-            className={`chart-shell w-full bg-white dark:bg-slate-900 overflow-hidden flex flex-col ${
-                isFullscreen
-                    ? 'fixed inset-0 z-50 rounded-none p-4'
-                    : 'relative h-[300px] sm:h-[420px] rounded-2xl p-3 sm:p-4 shadow-md border border-slate-200 dark:border-slate-700'
-            }`}
+            ref={chartRef}
+            className="w-full h-[300px] sm:h-[420px] bg-white dark:bg-slate-900 rounded-xl p-3 sm:p-4 shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden relative flex flex-col"
         >
             {/* Header */}
-            <div className="flex items-center justify-between mb-2 sm:mb-3 gap-2 shrink-0">
-                <h3 className="text-sm sm:text-lg font-semibold text-slate-800 dark:text-slate-100 truncate">
-                    Performance Over Time
-                </h3>
+            <div className="flex items-center justify-between mb-2 sm:mb-4 gap-2 shrink-0">
+                <h3 className="text-sm sm:text-lg font-semibold text-slate-800 dark:text-slate-100 truncate">Performance Over Time</h3>
                 <div className="flex items-center gap-1 sm:gap-2 shrink-0 flex-wrap justify-end">
-                    {/* Mobile: BTC Price toggle + Events */}
-                    {isMobile && (
-                        <label className="flex items-center gap-1 text-[10px] text-slate-500 dark:text-slate-400 cursor-pointer select-none whitespace-nowrap py-1 px-1.5 active:bg-slate-100 dark:active:bg-slate-800 rounded">
+                    <label className="flex items-center gap-1 sm:gap-1.5 text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 cursor-pointer select-none whitespace-nowrap">
+                        <input
+                            type="checkbox"
+                            checked={showPowerLaw}
+                            onChange={(e) => setShowPowerLaw(e.target.checked)}
+                            className="rounded border-slate-300 dark:border-slate-600 text-violet-500 focus:ring-violet-500 w-3 h-3 sm:w-3.5 sm:h-3.5"
+                        />
+                        Power Law
+                    </label>
+                    {m2Data && m2Data.length > 0 && (
+                        <label className="flex items-center gap-1 sm:gap-1.5 text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 cursor-pointer select-none whitespace-nowrap">
                             <input
                                 type="checkbox"
-                                checked={showBtcPrice}
-                                onChange={(e) => setShowBtcPrice(e.target.checked)}
-                                className="rounded border-slate-300 dark:border-slate-600 text-emerald-500 focus:ring-emerald-500 w-4 h-4"
+                                checked={showM2}
+                                onChange={(e) => setShowM2(e.target.checked)}
+                                className="rounded border-slate-300 dark:border-slate-600 text-green-500 focus:ring-green-500 w-3 h-3 sm:w-3.5 sm:h-3.5"
                             />
-                            BTC Price
+                            M2 Supply
                         </label>
                     )}
-                    {/* Desktop: Power Law, M2, Events */}
-                    {!isMobile && (
-                        <>
-                            <label className="flex items-center gap-1 sm:gap-1.5 text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 cursor-pointer select-none whitespace-nowrap">
-                                <input
-                                    type="checkbox"
-                                    checked={showPowerLaw}
-                                    onChange={(e) => setShowPowerLaw(e.target.checked)}
-                                    className="rounded border-slate-300 dark:border-slate-600 text-violet-500 focus:ring-violet-500 w-3 h-3 sm:w-3.5 sm:h-3.5"
-                                />
-                                Power Law
-                            </label>
-                            {m2Data && m2Data.length > 0 && (
-                                <label className="flex items-center gap-1 sm:gap-1.5 text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 cursor-pointer select-none whitespace-nowrap">
-                                    <input
-                                        type="checkbox"
-                                        checked={showM2}
-                                        onChange={(e) => setShowM2(e.target.checked)}
-                                        className="rounded border-slate-300 dark:border-slate-600 text-cyan-500 focus:ring-cyan-500 w-3 h-3 sm:w-3.5 sm:h-3.5"
-                                    />
-                                    M2 Supply
-                                </label>
-                            )}
-                        </>
-                    )}
-                    <label className="flex items-center gap-1 sm:gap-1.5 text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 cursor-pointer select-none whitespace-nowrap py-1 px-1.5 active:bg-slate-100 dark:active:bg-slate-800 rounded">
+                    <label className="flex items-center gap-1 sm:gap-1.5 text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 cursor-pointer select-none whitespace-nowrap">
                         <input
                             type="checkbox"
                             checked={showEvents}
                             onChange={(e) => setShowEvents(e.target.checked)}
-                            className={`rounded border-slate-300 dark:border-slate-600 text-blue-500 focus:ring-blue-500 ${isMobile ? 'w-4 h-4' : 'w-3 h-3 sm:w-3.5 sm:h-3.5'}`}
+                            className="rounded border-slate-300 dark:border-slate-600 text-blue-500 focus:ring-blue-500 w-3 h-3 sm:w-3.5 sm:h-3.5"
                         />
                         Events
                     </label>
-                    {isMobile && (
-                        <button
-                            onClick={toggleFullscreen}
-                            className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-slate-500 dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
-                            aria-label={isFullscreen ? 'Exit fullscreen' : 'Fullscreen chart'}
-                            title={isFullscreen ? 'Exit fullscreen' : 'Fullscreen chart'}
-                        >
-                            {isFullscreen ? <X className="w-4 h-4" /> : <Maximize2 className="w-3.5 h-3.5" />}
-                        </button>
-                    )}
                     <button
                         onClick={handleExport}
                         className="p-1.5 sm:p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-slate-500 dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
@@ -703,63 +285,87 @@ export const DcaChart = memo(function DcaChart({ data, unit = 'BTC', m2Data }: D
                 </div>
             </div>
 
-            {/* Legend */}
-            <div className="flex items-center gap-3 mb-1 shrink-0 flex-wrap text-[10px] sm:text-xs text-slate-500 dark:text-slate-400">
-                <span className="flex items-center gap-1"><span className="w-2.5 h-0.5 bg-amber-500 inline-block rounded" /> Portfolio</span>
-                <span className="flex items-center gap-1"><span className="w-2.5 h-0.5 bg-slate-500 inline-block rounded" style={isMobile ? { opacity: 0.4 } : undefined} /> Invested</span>
-                {showBtcPrice && <span className="flex items-center gap-1"><span className="w-2.5 h-0.5 bg-emerald-500 inline-block rounded" /> BTC Price</span>}
-                {!isMobile && showPowerLaw && <span className="flex items-center gap-1"><span className="w-2.5 h-0.5 bg-violet-500 inline-block rounded" /> Power Law</span>}
-                {!isMobile && showM2 && <span className="flex items-center gap-1"><span className="w-2.5 h-0.5 bg-cyan-500 inline-block rounded" /> M2 Supply</span>}
+            <div className="flex-1 min-h-0">
+            <ResponsiveContainer width="100%" height="100%">
+                <ComposedChart data={chartData} margin={{ top: 5, right: 5, left: -10, bottom: 5 }}>
+                    <defs>
+                        <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.8} />
+                            <stop offset="95%" stopColor="#f59e0b" stopOpacity={0} />
+                        </linearGradient>
+                        <linearGradient id="colorInvested" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#64748b" stopOpacity={0.8} />
+                            <stop offset="95%" stopColor="#64748b" stopOpacity={0} />
+                        </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                    <XAxis
+                        dataKey="date"
+                        tickFormatter={(str) => format(new Date(str), 'MMM yy')}
+                        minTickGap={40}
+                        stroke="#94a3b8"
+                        fontSize={10}
+                        tick={{ fontSize: 10 }}
+                    />
+                    <YAxis
+                        yAxisId="left"
+                        stroke="#94a3b8"
+                        fontSize={10}
+                        width={40}
+                        tickFormatter={formatYAxis}
+                        tick={{ fontSize: 10 }}
+                    />
+                    <YAxis
+                        yAxisId="right"
+                        orientation="right"
+                        stroke="#94a3b8"
+                        fontSize={10}
+                        width={40}
+                        tickFormatter={formatYAxis}
+                        tick={{ fontSize: 10 }}
+                    />
+                    <Tooltip
+                        labelFormatter={(label) => format(new Date(label), 'MMM d, yyyy')}
+                        formatter={tooltipFormatter}
+                        contentStyle={{ backgroundColor: '#1e293b', borderColor: '#334155', color: '#f8fafc', fontSize: '11px', borderRadius: '8px', padding: '8px 12px' }}
+                    />
+                    <Legend verticalAlign="top" height={28} iconSize={8} wrapperStyle={{ top: -4, fontSize: '10px' }} />
+                    {halvingLines.map((h) => (
+                        <ReferenceLine
+                            key={h.date}
+                            x={h.snappedDate}
+                            yAxisId="left"
+                            stroke="#a855f7"
+                            strokeDasharray="4 4"
+                            strokeWidth={1.5}
+                            label={{ value: h.label, position: 'top', fill: '#a855f7', fontSize: 9 }}
+                        />
+                    ))}
+                    {eventLines.map((e) => (
+                        <ReferenceLine
+                            key={e.date}
+                            x={e.snappedDate}
+                            yAxisId="left"
+                            stroke={e.color}
+                            strokeDasharray="3 3"
+                            strokeWidth={1}
+                            label={{ value: e.label, position: 'insideTopRight', fill: e.color, fontSize: 8 }}
+                        />
+                    ))}
+                    <Area yAxisId="left" type="monotone" dataKey="portfolioValue" name="Portfolio Value" stroke="#f59e0b" strokeWidth={2} fillOpacity={1} fill="url(#colorValue)" isAnimationActive={false} />
+                    <Area yAxisId="left" type="monotone" dataKey="totalInvested" name="Total Invested" stroke="#64748b" strokeWidth={1.5} fillOpacity={0.5} fill="url(#colorInvested)" isAnimationActive={false} />
+                    <Area yAxisId="right" type="monotone" dataKey="price" name="BTC Price" stroke="#10b981" strokeWidth={1.5} fillOpacity={0.1} strokeDasharray="5 5" fill="#10b981" isAnimationActive={false} />
+                    {showPowerLaw && (
+                        <Line yAxisId="right" type="monotone" dataKey="powerLaw" name="Power Law" stroke="#8b5cf6" strokeWidth={1.5} strokeDasharray="4 4" dot={false} isAnimationActive={false} />
+                    )}
+                    {showM2 && (
+                        <Line yAxisId="left" type="monotone" dataKey="m2Normalized" name="M2 Supply" stroke="#22c55e" strokeWidth={1.5} strokeDasharray="6 3" dot={false} isAnimationActive={false} />
+                    )}
+                </ComposedChart>
+            </ResponsiveContainer>
             </div>
-
-            {/* Time range buttons */}
-            <div className="flex items-center gap-1 sm:gap-1.5 mb-1.5 shrink-0 flex-wrap">
-                {TIME_RANGES.map((range) => (
-                    <button
-                        key={range}
-                        onClick={() => handleRangeChange(range)}
-                        className={`px-2 sm:px-2.5 py-0.5 text-[10px] sm:text-xs font-medium rounded-full transition-colors ${
-                            activeRange === range
-                                ? 'bg-amber-500 text-white'
-                                : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
-                        }`}
-                    >
-                        {range}
-                    </button>
-                ))}
-                {/* Summary strip */}
-                {summaryStats && (
-                    <div className="ml-auto flex items-center gap-2 sm:gap-3 text-[10px] sm:text-xs font-medium">
-                        <span className={summaryStats.gain >= 0 ? 'text-green-500' : 'text-red-500'}>
-                            {summaryStats.gain >= 0 ? '+' : ''}{sym}{Math.abs(summaryStats.gain).toLocaleString(undefined, { maximumFractionDigits: 0 })}
-                        </span>
-                        <span className={`px-1.5 py-0.5 rounded ${summaryStats.roi >= 0 ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500'}`}>
-                            {summaryStats.roi >= 0 ? '+' : ''}{summaryStats.roi.toFixed(1)}%
-                        </span>
-                    </div>
-                )}
-            </div>
-
-            {/* Chart area */}
-            <div ref={chartAreaRef} className="flex-1 min-h-0 relative">
-                <div
-                    ref={chartContainerRef}
-                    className="absolute inset-0"
-                    style={{ touchAction: 'none' }}
-                />
-                <div
-                    ref={tooltipRef}
-                    className="lw-tooltip"
-                    style={{ display: 'none' }}
-                />
-                {showHint && (
-                    <div className="absolute inset-0 flex items-center justify-center z-20 pointer-events-none">
-                        <div className="bg-slate-800/80 backdrop-blur-sm text-slate-200 text-xs px-4 py-2.5 rounded-xl text-center leading-relaxed shadow-lg">
-                            Tap for details<br />
-                            Pinch to zoom &middot; Drag to pan
-                        </div>
-                    </div>
-                )}
+            <div className="absolute bottom-0.5 right-2 text-[9px] text-slate-400/40 dark:text-slate-600/40 select-none pointer-events-none">
+                btcdollarcostaverage.com
             </div>
         </div>
     );
