@@ -6,10 +6,10 @@ import './globals.css';
 
 import { Analytics } from '@vercel/analytics/next';
 import { SpeedInsights } from '@vercel/speed-insights/next';
-import { ThemeToggle } from '@/components/ThemeToggle';
 import { CookieConsent } from '@/components/CookieConsent';
 import { BtcDonationButton } from '@/components/BtcDonationButton';
 import { Providers } from '@/components/Providers';
+import { ResponsiveNav } from '@/components/nav/ResponsiveNav';
 import clsx from 'clsx';
 
 const inter = Inter({ subsets: ['latin'], display: 'swap' });
@@ -100,33 +100,11 @@ export default function RootLayout({
           <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-[100] focus:px-4 focus:py-2 focus:bg-amber-500 focus:text-white focus:rounded-lg focus:text-sm focus:font-semibold">
             Skip to main content
           </a>
-          {/* Header */}
-          <header className="border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 sm:bg-white/80 sm:dark:bg-slate-950/80 sm:backdrop-blur-md sticky top-0 z-50">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-14 sm:h-16 flex items-center justify-between">
-              <nav aria-label="Main navigation" className="flex items-center gap-2.5 sm:gap-6">
-                <Link href="/" className="flex items-center gap-2 group">
-                  <div className="w-8 h-8 bg-amber-500 rounded-full flex items-center justify-center text-white font-bold text-sm shrink-0 group-hover:scale-105 transition-transform" aria-hidden="true">₿</div>
-                  <span className="hidden sm:inline text-xl font-bold bg-gradient-to-r from-amber-500 to-orange-600 bg-clip-text text-transparent">Bitcoin DCA</span>
-                </Link>
-                <Link href="/features" className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 hover:text-amber-600 dark:hover:text-amber-400 transition-colors">
-                  Features
-                </Link>
-                <Link href="/why-bitcoin" className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 hover:text-amber-600 dark:hover:text-amber-400 transition-colors">
-                  Why Bitcoin
-                </Link>
-                <Link href="/self-custody" className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 hover:text-amber-600 dark:hover:text-amber-400 transition-colors">
-                  Self-Custody
-                </Link>
-                <Link href="/mining" className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 hover:text-amber-600 dark:hover:text-amber-400 transition-colors">
-                  Mining
-                </Link>
-              </nav>
-              <ThemeToggle />
-            </div>
-          </header>
+          {/* Navigation */}
+          <ResponsiveNav />
 
-          {/* Main */}
-          <main id="main-content" className="flex-grow">
+          {/* Main — pb-20 on mobile prevents bottom nav from covering content */}
+          <main id="main-content" className="flex-grow pb-20 md:pb-0">
             {children}
           </main>
 
