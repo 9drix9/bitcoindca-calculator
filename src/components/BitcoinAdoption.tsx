@@ -110,6 +110,7 @@ export const BitcoinAdoption = () => {
                     <div className="text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 mb-2">
                         Adoption Curves: Internet vs Bitcoin
                     </div>
+                    <div className="chart-shell">
                     {mounted ? (
                         <ResponsiveContainer width="100%" height={180}>
                             <AreaChart data={INTERNET_ADOPTION} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
@@ -169,6 +170,7 @@ export const BitcoinAdoption = () => {
                     ) : (
                         <div className="h-[180px] bg-slate-50 dark:bg-slate-800/50 rounded-lg animate-pulse" />
                     )}
+                    </div>
                     <div className="flex justify-center gap-4 mt-1 text-[10px] sm:text-xs text-slate-500 dark:text-slate-400">
                         <span className="flex items-center gap-1">
                             <span className="w-2.5 h-2.5 rounded-full bg-blue-500 inline-block" /> Internet
