@@ -17,8 +17,7 @@ export function MobileBottomNav() {
   return (
     <nav
       aria-label="Mobile navigation"
-      className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-white dark:bg-slate-950"
-      style={{ paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 12px)' }}
+      className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-white dark:bg-slate-950 bottom-nav-safe-area"
     >
       <div className="grid grid-cols-4 h-16">
         {tabs.map(({ href, label, icon: Icon }) => {
