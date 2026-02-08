@@ -239,7 +239,7 @@ export const DcaChart = memo(function DcaChart({ data, unit = 'BTC', m2Data }: D
     return (
         <div
             ref={chartRef}
-            className="w-full h-[300px] sm:h-[420px] bg-white dark:bg-slate-900 rounded-xl p-3 sm:p-4 shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden relative flex flex-col"
+            className="w-full h-[300px] sm:h-[420px] bg-white dark:bg-slate-900 rounded-xl p-3 sm:p-4 shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden relative flex flex-col select-none touch-manipulation"
         >
             {/* Header */}
             <div className="flex items-center justify-between mb-2 sm:mb-4 gap-2 shrink-0">

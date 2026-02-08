@@ -20,9 +20,17 @@
   border-radius: 4px;
 }
 
-/* Remove focus outline for charts */
-.recharts-wrapper:focus {
+/* Remove focus outline, tap highlight, and selection on charts */
+.recharts-wrapper,
+.recharts-wrapper *,
+.recharts-surface,
+.recharts-surface * {
   outline: none !important;
+  -webkit-tap-highlight-color: transparent !important;
+  -webkit-touch-callout: none !important;
+  -webkit-user-select: none !important;
+  user-select: none !important;
+  tap-highlight-color: transparent !important;
 }
 
 /* Fade-in animation used by conditional sections */
