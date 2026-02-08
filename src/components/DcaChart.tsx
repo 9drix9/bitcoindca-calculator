@@ -94,6 +94,8 @@ export const DcaChart = memo(function DcaChart({ data, unit = 'BTC', m2Data }: D
     const [showEvents, setShowEvents] = useState(false);
     const [showBtcPrice, setShowBtcPrice] = useState(false);
     const [isMobile, setIsMobile] = useState(false);
+    const [showHint, setShowHint] = useState(false);
+    const hintShownRef = useRef(false);
 
     const sym = currencyConfig.symbol;
 
@@ -436,6 +438,33 @@ export const DcaChart = memo(function DcaChart({ data, unit = 'BTC', m2Data }: D
 
         chart.subscribeCrosshairMove(handleCrosshair);
 
+        // ── Tap-to-show tooltip + hint (mobile) ────────────────────
+        let tapDismissTimer: ReturnType<typeof setTimeout> | undefined;
+        let hintTimer: ReturnType<typeof setTimeout> | undefined;
+
+        // Show usage hint on first mobile render
+        if (mobile && !hintShownRef.current) {
+            hintShownRef.current = true;
+            setShowHint(true);
+            hintTimer = setTimeout(() => setShowHint(false), 4000);
+        }
+
+        // On tap, show tooltip (mobile requires this — crosshair only fires on long-press)
+        const handleClick = (param: MouseEventParams<Time>) => {
+            setShowHint(false);
+            handleCrosshair(param);
+            // Auto-dismiss tooltip after 4s on mobile
+            if (mobile) {
+                clearTimeout(tapDismissTimer);
+                if (param.time) {
+                    tapDismissTimer = setTimeout(() => {
+                        tooltip.style.display = 'none';
+                    }, 4000);
+                }
+            }
+        };
+        chart.subscribeClick(handleClick);
+
         // ── Resize observer (watches the layout div, not the chart container) ──
         const ro = new ResizeObserver((entries) => {
             for (const entry of entries) {
@@ -449,7 +478,10 @@ export const DcaChart = memo(function DcaChart({ data, unit = 'BTC', m2Data }: D
 
         // ── Cleanup ──────────────────────────────────────────────────
         return () => {
+            clearTimeout(tapDismissTimer);
+            clearTimeout(hintTimer);
             ro.disconnect();
+            chart.unsubscribeClick(handleClick);
             chart.unsubscribeCrosshairMove(handleCrosshair);
             if (markersHandle) markersHandle.detach();
             chart.remove();
@@ -567,6 +599,15 @@ export const DcaChart = memo(function DcaChart({ data, unit = 'BTC', m2Data }: D
                     className="lw-tooltip"
                     style={{ display: 'none' }}
                 />
+                {/* Mobile hint — shown once on first render, dismissed on tap or after 4s */}
+                {showHint && (
+                    <div className="absolute inset-0 flex items-center justify-center z-20 pointer-events-none">
+                        <div className="bg-slate-800/80 backdrop-blur-sm text-slate-200 text-xs px-4 py-2.5 rounded-xl text-center leading-relaxed shadow-lg">
+                            Tap for details<br />
+                            Pinch to zoom &middot; Drag to pan
+                        </div>
+                    </div>
+                )}
             </div>
 
             <div className="absolute bottom-0.5 right-2 text-[9px] text-slate-400/40 dark:text-slate-600/40 select-none pointer-events-none">
