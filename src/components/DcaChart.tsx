@@ -84,7 +84,8 @@ const SCALE_OVERLAY = 'overlay';
 export const DcaChart = memo(function DcaChart({ data, unit = 'BTC', m2Data }: DcaChartProps) {
     const { currencyConfig } = useCurrency();
     const wrapperRef = useRef<HTMLDivElement>(null);
-    const chartContainerRef = useRef<HTMLDivElement>(null);
+    const chartAreaRef = useRef<HTMLDivElement>(null);   // layout sizing div (flex-1)
+    const chartContainerRef = useRef<HTMLDivElement>(null); // clean div passed to createChart
     const chartApiRef = useRef<IChartApi | null>(null);
     const tooltipRef = useRef<HTMLDivElement>(null);
 
@@ -224,16 +225,17 @@ export const DcaChart = memo(function DcaChart({ data, unit = 'BTC', m2Data }: D
 
     // ── Chart lifecycle ────────────────────────────────────────────────
     useEffect(() => {
+        const area = chartAreaRef.current;
         const container = chartContainerRef.current;
         const tooltip = tooltipRef.current;
-        if (!container || !tooltip || portfolioData.length === 0) return;
+        if (!area || !container || !tooltip || portfolioData.length === 0) return;
 
         const dark = isDark();
         const mobile = getIsMobile();
 
         const chart = createChart(container, {
-            width: container.clientWidth,
-            height: container.clientHeight,
+            width: area.clientWidth,
+            height: area.clientHeight,
             layout: {
                 background: { type: ColorType.Solid, color: 'transparent' },
                 textColor: dark ? '#94a3b8' : '#64748b',
@@ -418,15 +420,15 @@ export const DcaChart = memo(function DcaChart({ data, unit = 'BTC', m2Data }: D
             tooltip.innerHTML = html;
             tooltip.style.display = 'block';
 
-            const chartRect = container.getBoundingClientRect();
+            const areaRect = area.getBoundingClientRect();
             const tooltipW = tooltip.offsetWidth;
             const tooltipH = tooltip.offsetHeight;
             let left = param.point.x + 12;
             let top = param.point.y - tooltipH / 2;
 
-            if (left + tooltipW > chartRect.width) left = param.point.x - tooltipW - 12;
+            if (left + tooltipW > areaRect.width) left = param.point.x - tooltipW - 12;
             if (top < 0) top = 0;
-            if (top + tooltipH > chartRect.height) top = chartRect.height - tooltipH;
+            if (top + tooltipH > areaRect.height) top = areaRect.height - tooltipH;
 
             tooltip.style.left = `${left}px`;
             tooltip.style.top = `${top}px`;
@@ -434,14 +436,14 @@ export const DcaChart = memo(function DcaChart({ data, unit = 'BTC', m2Data }: D
 
         chart.subscribeCrosshairMove(handleCrosshair);
 
-        // ── Resize observer ──────────────────────────────────────────
+        // ── Resize observer (watches the layout div, not the chart container) ──
         const ro = new ResizeObserver((entries) => {
             for (const entry of entries) {
                 const { width, height } = entry.contentRect;
                 chart.resize(width, height);
             }
         });
-        ro.observe(container);
+        ro.observe(area);
 
         chart.timeScale().fitContent();
 
@@ -551,13 +553,19 @@ export const DcaChart = memo(function DcaChart({ data, unit = 'BTC', m2Data }: D
                 {!isMobile && showM2 && <span className="flex items-center gap-1"><span className="w-2.5 h-0.5 bg-green-500 inline-block rounded" /> M2 Supply</span>}
             </div>
 
-            {/* Chart container */}
-            <div ref={chartContainerRef} className="flex-1 min-h-0 relative">
-                {/* Tooltip overlay */}
+            {/* Chart area — layout sizing wrapper */}
+            <div ref={chartAreaRef} className="flex-1 min-h-0 relative">
+                {/* Chart container — clean empty div for lightweight-charts */}
+                <div
+                    ref={chartContainerRef}
+                    className="absolute inset-0"
+                    style={{ touchAction: 'none' }}
+                />
+                {/* Tooltip — sibling to chart container, never inside it */}
                 <div
                     ref={tooltipRef}
                     className="lw-tooltip"
-                    style={{ display: 'none', pointerEvents: 'none' }}
+                    style={{ display: 'none' }}
                 />
             </div>
 
