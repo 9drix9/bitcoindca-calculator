@@ -54,6 +54,11 @@
   gap: 4px;
 }
 
+/* Hide lightweight-charts TradingView attribution */
+.chart-shell a[href*="tradingview"] {
+  display: none !important;
+}
+
 /* Fade-in animation used by conditional sections */
 .fade-in {
   animation: fadeIn 0.2s ease-out;
@@ -123,12 +128,11 @@ input[type="number"]::-webkit-outer-spin-button {
 
 /* ── Mobile chart: clean touch interaction ── */
 @media (max-width: 767px), (pointer: coarse) {
-  .chart-shell,
-  .chart-shell * {
-    -webkit-tap-highlight-color: transparent !important;
-    -webkit-touch-callout: none !important;
-    -webkit-user-select: none !important;
-    user-select: none !important;
+  .chart-shell {
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
   }
 
   .chart-shell :focus,
@@ -136,10 +140,6 @@ input[type="number"]::-webkit-outer-spin-button {
   .chart-shell :focus-within {
     outline: none !important;
     box-shadow: none !important;
-  }
-
-  .chart-shell canvas {
-    touch-action: pan-x pan-y;
   }
 }
 

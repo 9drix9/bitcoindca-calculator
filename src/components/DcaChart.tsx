@@ -64,21 +64,21 @@ function computePowerLawPrice(dateStr: string): number | null {
     return Math.pow(10, 5.82 * logDays - 17.01);
 }
 
-function formatCompact(value: number, sym: string): string {
-    if (value >= 1_000_000) return `${sym}${(value / 1_000_000).toFixed(1)}M`;
-    if (value >= 1_000) return `${sym}${(value / 1_000).toFixed(0)}k`;
-    return `${sym}${value.toFixed(0)}`;
-}
-
 function isDark(): boolean {
     if (typeof document === 'undefined') return false;
     return document.documentElement.classList.contains('dark');
 }
 
+function getIsMobile(): boolean {
+    if (typeof window === 'undefined') return false;
+    return window.matchMedia('(max-width: 767px)').matches
+        || window.matchMedia('(pointer: coarse)').matches;
+}
+
 // ── Scale IDs ──────────────────────────────────────────────────────────
 const SCALE_LEFT = 'left';
 const SCALE_RIGHT = 'right';
-const SCALE_OVERLAY = 'overlay'; // hidden scale for power-law / M2
+const SCALE_OVERLAY = 'overlay';
 
 // ── Component ──────────────────────────────────────────────────────────
 export const DcaChart = memo(function DcaChart({ data, unit = 'BTC', m2Data }: DcaChartProps) {
@@ -91,8 +91,23 @@ export const DcaChart = memo(function DcaChart({ data, unit = 'BTC', m2Data }: D
     const [showPowerLaw, setShowPowerLaw] = useState(false);
     const [showM2, setShowM2] = useState(false);
     const [showEvents, setShowEvents] = useState(false);
+    const [showBtcPrice, setShowBtcPrice] = useState(false);
+    const [isMobile, setIsMobile] = useState(false);
 
     const sym = currencyConfig.symbol;
+
+    // Detect mobile on mount
+    useEffect(() => {
+        setIsMobile(getIsMobile());
+    }, []);
+
+    // On mobile: BTC Price off by default; on desktop: on by default
+    const isMobileInitialized = useRef(false);
+    useEffect(() => {
+        if (isMobileInitialized.current) return;
+        isMobileInitialized.current = true;
+        setShowBtcPrice(!getIsMobile());
+    }, []);
 
     // ── Build series data ──────────────────────────────────────────────
     const m2Sorted = useMemo(() => {
@@ -117,7 +132,6 @@ export const DcaChart = memo(function DcaChart({ data, unit = 'BTC', m2Data }: D
         const powerLaw: { time: UTCTimestamp; value: number }[] = [];
         const m2Norm: { time: UTCTimestamp; value: number }[] = [];
 
-        // M2 normalization: scale to BTC price range
         let minM2 = Infinity, maxM2 = 0;
         let minPrice = Infinity, maxPrice = 0;
         if (m2Sorted) {
@@ -153,7 +167,6 @@ export const DcaChart = memo(function DcaChart({ data, unit = 'BTC', m2Data }: D
                     const dN = Math.abs(m2Sorted[m2Idx + 1][0] - dateTs);
                     if (dN < dC) closestVal = m2Sorted[m2Idx + 1][1];
                 }
-                // Normalize M2 into BTC price range so it rides the right scale
                 const normalized = minPrice + ((closestVal - minM2) / (maxM2 - minM2)) * (maxPrice - minPrice);
                 m2Norm.push({ time: t, value: normalized });
             }
@@ -175,6 +188,7 @@ export const DcaChart = memo(function DcaChart({ data, unit = 'BTC', m2Data }: D
     const markers = useMemo(() => {
         if (!dateRange) return [];
         const result: SeriesMarker<Time>[] = [];
+        const mobile = getIsMobile();
 
         for (const h of HALVING_DATES) {
             const ts = new Date(h.date).getTime();
@@ -184,7 +198,7 @@ export const DcaChart = memo(function DcaChart({ data, unit = 'BTC', m2Data }: D
                     position: 'aboveBar',
                     color: '#a855f7',
                     shape: 'arrowDown',
-                    text: h.label,
+                    text: mobile ? '' : h.label,
                 });
             }
         }
@@ -198,7 +212,7 @@ export const DcaChart = memo(function DcaChart({ data, unit = 'BTC', m2Data }: D
                         position: 'aboveBar',
                         color: e.color,
                         shape: 'circle',
-                        text: e.label,
+                        text: mobile ? '' : e.label,
                     });
                 }
             }
@@ -215,6 +229,7 @@ export const DcaChart = memo(function DcaChart({ data, unit = 'BTC', m2Data }: D
         if (!container || !tooltip || portfolioData.length === 0) return;
 
         const dark = isDark();
+        const mobile = getIsMobile();
 
         const chart = createChart(container, {
             width: container.clientWidth,
@@ -222,11 +237,15 @@ export const DcaChart = memo(function DcaChart({ data, unit = 'BTC', m2Data }: D
             layout: {
                 background: { type: ColorType.Solid, color: 'transparent' },
                 textColor: dark ? '#94a3b8' : '#64748b',
-                fontSize: 11,
+                fontSize: mobile ? 10 : 11,
             },
             grid: {
                 vertLines: { visible: false },
-                horzLines: { color: dark ? '#1e293b' : '#f1f5f9', style: LineStyle.Solid },
+                horzLines: {
+                    color: dark ? '#1e293b' : '#f1f5f9',
+                    style: LineStyle.Solid,
+                    visible: !mobile || false,
+                },
             },
             crosshair: {
                 mode: CrosshairMode.Magnet,
@@ -234,7 +253,7 @@ export const DcaChart = memo(function DcaChart({ data, unit = 'BTC', m2Data }: D
                 horzLine: { visible: false, labelVisible: false },
             },
             rightPriceScale: {
-                visible: true,
+                visible: mobile ? false : true,
                 borderVisible: false,
                 scaleMargins: { top: 0.15, bottom: 0.05 },
             },
@@ -249,8 +268,21 @@ export const DcaChart = memo(function DcaChart({ data, unit = 'BTC', m2Data }: D
                 fixLeftEdge: true,
                 fixRightEdge: true,
             },
-            handleScale: { axisPressedMouseMove: { time: true, price: false } },
-            handleScroll: { vertTouchDrag: false },
+            handleScale: {
+                axisPressedMouseMove: { time: true, price: false },
+                pinch: true,
+                mouseWheel: true,
+            },
+            handleScroll: {
+                horzTouchDrag: true,
+                vertTouchDrag: false,
+                pressedMouseMove: true,
+                mouseWheel: true,
+            },
+            kineticScroll: {
+                touch: true,
+                mouse: false,
+            },
         });
 
         chartApiRef.current = chart;
@@ -259,47 +291,57 @@ export const DcaChart = memo(function DcaChart({ data, unit = 'BTC', m2Data }: D
         const portfolioSeries = chart.addSeries(AreaSeries, {
             priceScaleId: SCALE_LEFT,
             lineColor: '#f59e0b',
-            topColor: 'rgba(245,158,11,0.4)',
+            topColor: mobile ? 'rgba(245,158,11,0.25)' : 'rgba(245,158,11,0.4)',
             bottomColor: 'rgba(245,158,11,0.0)',
-            lineWidth: 2,
+            lineWidth: mobile ? 1 : 2,
             lineType: LineType.Curved,
             crosshairMarkerVisible: true,
-            crosshairMarkerRadius: 4,
+            crosshairMarkerRadius: mobile ? 3 : 4,
             priceLineVisible: false,
             lastValueVisible: false,
         });
         portfolioSeries.setData(portfolioData);
 
-        // ── Total Invested (line, left scale) ──────────────────────────
-        const investedSeries = chart.addSeries(LineSeries, {
-            priceScaleId: SCALE_LEFT,
-            color: '#64748b',
-            lineWidth: 1,
-            lineType: LineType.Curved,
-            crosshairMarkerVisible: false,
-            priceLineVisible: false,
-            lastValueVisible: false,
-        });
-        investedSeries.setData(investedData);
+        // ── Total Invested (line, left scale) — hidden on mobile ─────
+        let investedSeries: ISeriesApi<'Line'> | null = null;
+        if (!mobile) {
+            investedSeries = chart.addSeries(LineSeries, {
+                priceScaleId: SCALE_LEFT,
+                color: '#64748b',
+                lineWidth: 1,
+                lineType: LineType.Curved,
+                crosshairMarkerVisible: false,
+                priceLineVisible: false,
+                lastValueVisible: false,
+            });
+            investedSeries.setData(investedData);
+        }
 
-        // ── BTC Price (line, right scale) ──────────────────────────────
-        const priceSeries = chart.addSeries(LineSeries, {
-            priceScaleId: SCALE_RIGHT,
-            color: '#10b981',
-            lineWidth: 2,
-            lineStyle: LineStyle.Dashed,
-            lineType: LineType.Curved,
-            crosshairMarkerVisible: false,
-            priceLineVisible: false,
-            lastValueVisible: false,
-        });
-        priceSeries.setData(priceData);
+        // ── BTC Price (line, right on desktop / left on mobile) ──────
+        let priceSeries: ISeriesApi<'Line'> | null = null;
+        if (showBtcPrice) {
+            priceSeries = chart.addSeries(LineSeries, {
+                priceScaleId: mobile ? SCALE_OVERLAY : SCALE_RIGHT,
+                color: '#10b981',
+                lineWidth: mobile ? 1 : 2,
+                lineStyle: LineStyle.Dashed,
+                lineType: LineType.Curved,
+                crosshairMarkerVisible: false,
+                priceLineVisible: false,
+                lastValueVisible: false,
+            });
+            priceSeries.setData(priceData);
+            if (mobile) {
+                chart.priceScale(SCALE_OVERLAY).applyOptions({ visible: false });
+            }
+        }
 
-        // ── Power Law (line, right scale, hidden label) ────────────────
+        // ── Power Law (overlay hidden scale) — desktop only ──────────
         let powerLawSeries: ISeriesApi<'Line'> | null = null;
-        if (showPowerLaw && powerLawData.length > 0) {
+        if (!mobile && showPowerLaw && powerLawData.length > 0) {
+            const plScaleId = showBtcPrice ? 'overlay-pl' : SCALE_OVERLAY;
             powerLawSeries = chart.addSeries(LineSeries, {
-                priceScaleId: SCALE_OVERLAY,
+                priceScaleId: plScaleId,
                 color: '#8b5cf6',
                 lineWidth: 1,
                 lineStyle: LineStyle.Dashed,
@@ -309,13 +351,12 @@ export const DcaChart = memo(function DcaChart({ data, unit = 'BTC', m2Data }: D
                 lastValueVisible: false,
             });
             powerLawSeries.setData(powerLawData);
-            // Hide the overlay price scale
-            chart.priceScale(SCALE_OVERLAY).applyOptions({ visible: false });
+            chart.priceScale(plScaleId).applyOptions({ visible: false });
         }
 
-        // ── M2 Supply (line, right scale, normalized to BTC price range)
+        // ── M2 Supply (right scale, normalized) — desktop only ───────
         let m2Series: ISeriesApi<'Line'> | null = null;
-        if (showM2 && m2NormData.length > 0) {
+        if (!mobile && showM2 && m2NormData.length > 0) {
             m2Series = chart.addSeries(LineSeries, {
                 priceScaleId: SCALE_RIGHT,
                 color: '#22c55e',
@@ -329,13 +370,13 @@ export const DcaChart = memo(function DcaChart({ data, unit = 'BTC', m2Data }: D
             m2Series.setData(m2NormData);
         }
 
-        // ── Markers (halvings + events) on portfolio series ────────────
+        // ── Markers (halvings + events) on portfolio series ──────────
         let markersHandle: { detach: () => void } | null = null;
         if (markers.length > 0) {
             markersHandle = createSeriesMarkers(portfolioSeries, markers);
         }
 
-        // ── Tooltip via crosshair ──────────────────────────────────────
+        // ── Tooltip via crosshair ────────────────────────────────────
         const handleCrosshair = (param: MouseEventParams<Time>) => {
             if (!param.time || !param.point || param.point.x < 0 || param.point.y < 0) {
                 tooltip.style.display = 'none';
@@ -343,8 +384,6 @@ export const DcaChart = memo(function DcaChart({ data, unit = 'BTC', m2Data }: D
             }
 
             const pv = param.seriesData.get(portfolioSeries);
-            const iv = param.seriesData.get(investedSeries);
-            const pr = param.seriesData.get(priceSeries);
 
             if (!pv || !('value' in pv)) {
                 tooltip.style.display = 'none';
@@ -355,34 +394,37 @@ export const DcaChart = memo(function DcaChart({ data, unit = 'BTC', m2Data }: D
             const dateStr = format(new Date(dateMs), 'MMM d, yyyy');
 
             let html = `<div class="lw-tooltip-date">${dateStr}</div>`;
-            html += `<div class="lw-tooltip-row"><span style="color:#f59e0b">●</span> Portfolio: <b>${sym}${(pv as { value: number }).value.toLocaleString(undefined, { maximumFractionDigits: 0 })}</b></div>`;
-            if (iv && 'value' in iv) {
-                html += `<div class="lw-tooltip-row"><span style="color:#64748b">●</span> Invested: <b>${sym}${(iv as { value: number }).value.toLocaleString(undefined, { maximumFractionDigits: 0 })}</b></div>`;
-            }
-            if (pr && 'value' in pr) {
-                html += `<div class="lw-tooltip-row"><span style="color:#10b981">●</span> BTC: <b>${sym}${(pr as { value: number }).value.toLocaleString()}</b></div>`;
-            }
+            html += `<div class="lw-tooltip-row"><span style="color:#f59e0b">\u25cf</span> Portfolio: <b>${sym}${(pv as { value: number }).value.toLocaleString(undefined, { maximumFractionDigits: 0 })}</b></div>`;
 
-            if (showPowerLaw && powerLawSeries) {
+            if (investedSeries) {
+                const iv = param.seriesData.get(investedSeries);
+                if (iv && 'value' in iv) {
+                    html += `<div class="lw-tooltip-row"><span style="color:#64748b">\u25cf</span> Invested: <b>${sym}${(iv as { value: number }).value.toLocaleString(undefined, { maximumFractionDigits: 0 })}</b></div>`;
+                }
+            }
+            if (priceSeries) {
+                const pr = param.seriesData.get(priceSeries);
+                if (pr && 'value' in pr) {
+                    html += `<div class="lw-tooltip-row"><span style="color:#10b981">\u25cf</span> BTC: <b>${sym}${(pr as { value: number }).value.toLocaleString()}</b></div>`;
+                }
+            }
+            if (!mobile && showPowerLaw && powerLawSeries) {
                 const plv = param.seriesData.get(powerLawSeries);
                 if (plv && 'value' in plv) {
-                    html += `<div class="lw-tooltip-row"><span style="color:#8b5cf6">●</span> Power Law: <b>${sym}${(plv as { value: number }).value.toLocaleString(undefined, { maximumFractionDigits: 0 })}</b></div>`;
+                    html += `<div class="lw-tooltip-row"><span style="color:#8b5cf6">\u25cf</span> Power Law: <b>${sym}${(plv as { value: number }).value.toLocaleString(undefined, { maximumFractionDigits: 0 })}</b></div>`;
                 }
             }
 
             tooltip.innerHTML = html;
             tooltip.style.display = 'block';
 
-            // Position tooltip
             const chartRect = container.getBoundingClientRect();
             const tooltipW = tooltip.offsetWidth;
             const tooltipH = tooltip.offsetHeight;
             let left = param.point.x + 12;
             let top = param.point.y - tooltipH / 2;
 
-            // Flip to left side if overflowing right
             if (left + tooltipW > chartRect.width) left = param.point.x - tooltipW - 12;
-            // Clamp vertical
             if (top < 0) top = 0;
             if (top + tooltipH > chartRect.height) top = chartRect.height - tooltipH;
 
@@ -392,7 +434,7 @@ export const DcaChart = memo(function DcaChart({ data, unit = 'BTC', m2Data }: D
 
         chart.subscribeCrosshairMove(handleCrosshair);
 
-        // ── Resize observer ────────────────────────────────────────────
+        // ── Resize observer ──────────────────────────────────────────
         const ro = new ResizeObserver((entries) => {
             for (const entry of entries) {
                 const { width, height } = entry.contentRect;
@@ -401,10 +443,9 @@ export const DcaChart = memo(function DcaChart({ data, unit = 'BTC', m2Data }: D
         });
         ro.observe(container);
 
-        // Fit content on first render
         chart.timeScale().fitContent();
 
-        // ── Cleanup ────────────────────────────────────────────────────
+        // ── Cleanup ──────────────────────────────────────────────────
         return () => {
             ro.disconnect();
             chart.unsubscribeCrosshairMove(handleCrosshair);
@@ -412,7 +453,7 @@ export const DcaChart = memo(function DcaChart({ data, unit = 'BTC', m2Data }: D
             chart.remove();
             chartApiRef.current = null;
         };
-    }, [portfolioData, investedData, priceData, powerLawData, m2NormData, showPowerLaw, showM2, markers, sym]);
+    }, [portfolioData, investedData, priceData, powerLawData, m2NormData, showPowerLaw, showM2, showBtcPrice, markers, sym, isMobile]);
 
     // ── Export ──────────────────────────────────────────────────────────
     const handleExport = useCallback(async () => {
@@ -444,25 +485,42 @@ export const DcaChart = memo(function DcaChart({ data, unit = 'BTC', m2Data }: D
             <div className="flex items-center justify-between mb-2 sm:mb-3 gap-2 shrink-0">
                 <h3 className="text-sm sm:text-lg font-semibold text-slate-800 dark:text-slate-100 truncate">Performance Over Time</h3>
                 <div className="flex items-center gap-1 sm:gap-2 shrink-0 flex-wrap justify-end">
-                    <label className="flex items-center gap-1 sm:gap-1.5 text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 cursor-pointer select-none whitespace-nowrap">
-                        <input
-                            type="checkbox"
-                            checked={showPowerLaw}
-                            onChange={(e) => setShowPowerLaw(e.target.checked)}
-                            className="rounded border-slate-300 dark:border-slate-600 text-violet-500 focus:ring-violet-500 w-3 h-3 sm:w-3.5 sm:h-3.5"
-                        />
-                        Power Law
-                    </label>
-                    {m2Data && m2Data.length > 0 && (
-                        <label className="flex items-center gap-1 sm:gap-1.5 text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 cursor-pointer select-none whitespace-nowrap">
+                    {/* Mobile: BTC Price toggle + Events */}
+                    {isMobile && (
+                        <label className="flex items-center gap-1 text-[10px] text-slate-500 dark:text-slate-400 cursor-pointer select-none whitespace-nowrap">
                             <input
                                 type="checkbox"
-                                checked={showM2}
-                                onChange={(e) => setShowM2(e.target.checked)}
-                                className="rounded border-slate-300 dark:border-slate-600 text-green-500 focus:ring-green-500 w-3 h-3 sm:w-3.5 sm:h-3.5"
+                                checked={showBtcPrice}
+                                onChange={(e) => setShowBtcPrice(e.target.checked)}
+                                className="rounded border-slate-300 dark:border-slate-600 text-emerald-500 focus:ring-emerald-500 w-3 h-3"
                             />
-                            M2 Supply
+                            BTC Price
                         </label>
+                    )}
+                    {/* Desktop: Power Law, M2, Events */}
+                    {!isMobile && (
+                        <>
+                            <label className="flex items-center gap-1 sm:gap-1.5 text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 cursor-pointer select-none whitespace-nowrap">
+                                <input
+                                    type="checkbox"
+                                    checked={showPowerLaw}
+                                    onChange={(e) => setShowPowerLaw(e.target.checked)}
+                                    className="rounded border-slate-300 dark:border-slate-600 text-violet-500 focus:ring-violet-500 w-3 h-3 sm:w-3.5 sm:h-3.5"
+                                />
+                                Power Law
+                            </label>
+                            {m2Data && m2Data.length > 0 && (
+                                <label className="flex items-center gap-1 sm:gap-1.5 text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 cursor-pointer select-none whitespace-nowrap">
+                                    <input
+                                        type="checkbox"
+                                        checked={showM2}
+                                        onChange={(e) => setShowM2(e.target.checked)}
+                                        className="rounded border-slate-300 dark:border-slate-600 text-green-500 focus:ring-green-500 w-3 h-3 sm:w-3.5 sm:h-3.5"
+                                    />
+                                    M2 Supply
+                                </label>
+                            )}
+                        </>
                     )}
                     <label className="flex items-center gap-1 sm:gap-1.5 text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 cursor-pointer select-none whitespace-nowrap">
                         <input
@@ -484,13 +542,13 @@ export const DcaChart = memo(function DcaChart({ data, unit = 'BTC', m2Data }: D
                 </div>
             </div>
 
-            {/* Legend */}
+            {/* Legend — only show visible series */}
             <div className="flex items-center gap-3 mb-1 shrink-0 flex-wrap text-[10px] sm:text-xs text-slate-500 dark:text-slate-400">
                 <span className="flex items-center gap-1"><span className="w-2.5 h-0.5 bg-amber-500 inline-block rounded" /> Portfolio</span>
-                <span className="flex items-center gap-1"><span className="w-2.5 h-0.5 bg-slate-500 inline-block rounded" /> Invested</span>
-                <span className="flex items-center gap-1"><span className="w-2.5 h-0.5 bg-emerald-500 inline-block rounded border-dashed" /> BTC Price</span>
-                {showPowerLaw && <span className="flex items-center gap-1"><span className="w-2.5 h-0.5 bg-violet-500 inline-block rounded" /> Power Law</span>}
-                {showM2 && <span className="flex items-center gap-1"><span className="w-2.5 h-0.5 bg-green-500 inline-block rounded" /> M2 Supply</span>}
+                {!isMobile && <span className="flex items-center gap-1"><span className="w-2.5 h-0.5 bg-slate-500 inline-block rounded" /> Invested</span>}
+                {showBtcPrice && <span className="flex items-center gap-1"><span className="w-2.5 h-0.5 bg-emerald-500 inline-block rounded" /> BTC Price</span>}
+                {!isMobile && showPowerLaw && <span className="flex items-center gap-1"><span className="w-2.5 h-0.5 bg-violet-500 inline-block rounded" /> Power Law</span>}
+                {!isMobile && showM2 && <span className="flex items-center gap-1"><span className="w-2.5 h-0.5 bg-green-500 inline-block rounded" /> M2 Supply</span>}
             </div>
 
             {/* Chart container */}
@@ -499,7 +557,7 @@ export const DcaChart = memo(function DcaChart({ data, unit = 'BTC', m2Data }: D
                 <div
                     ref={tooltipRef}
                     className="lw-tooltip"
-                    style={{ display: 'none' }}
+                    style={{ display: 'none', pointerEvents: 'none' }}
                 />
             </div>
 
