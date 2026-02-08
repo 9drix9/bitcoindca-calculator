@@ -101,6 +101,7 @@ export const DcaChart = memo(function DcaChart({ data, unit = 'BTC', m2Data }: D
     const [activeRange, setActiveRange] = useState<TimeRange>('All');
     const [isFullscreen, setIsFullscreen] = useState(false);
     const hintShownRef = useRef(false);
+    const portfolioDataRef = useRef<{ time: UTCTimestamp; value: number }[]>([]);
 
     const sym = currencyConfig.symbol;
 
@@ -201,6 +202,9 @@ export const DcaChart = memo(function DcaChart({ data, unit = 'BTC', m2Data }: D
         return map;
     }, [investedData]);
 
+    // Keep ref in sync for stable callbacks
+    portfolioDataRef.current = portfolioData;
+
     // ── Summary stats ─────────────────────────────────────────────────
     const summaryStats = useMemo(() => {
         if (portfolioData.length < 2 || investedData.length < 2) return null;
@@ -253,14 +257,15 @@ export const DcaChart = memo(function DcaChart({ data, unit = 'BTC', m2Data }: D
     const handleRangeChange = useCallback((range: TimeRange) => {
         setActiveRange(range);
         const chart = chartApiRef.current;
-        if (!chart || portfolioData.length === 0) return;
+        const pData = portfolioDataRef.current;
+        if (!chart || pData.length === 0) return;
 
         if (range === 'All') {
             chart.timeScale().fitContent();
             return;
         }
 
-        const lastTime = portfolioData[portfolioData.length - 1].time as number;
+        const lastTime = pData[pData.length - 1].time as number;
         const lastDate = new Date(lastTime * 1000);
         let fromDate: Date;
 
@@ -273,14 +278,14 @@ export const DcaChart = memo(function DcaChart({ data, unit = 'BTC', m2Data }: D
         }
 
         const fromTimestamp = (fromDate.getTime() / 1000) as UTCTimestamp;
-        const firstAvailable = portfolioData[0].time as number;
+        const firstAvailable = pData[0].time as number;
         const effectiveFrom = Math.max(fromTimestamp, firstAvailable) as UTCTimestamp;
 
         chart.timeScale().setVisibleRange({
             from: effectiveFrom,
             to: lastTime as UTCTimestamp,
         });
-    }, [portfolioData]);
+    }, []);
 
     // ── Chart lifecycle ────────────────────────────────────────────────
     useEffect(() => {
@@ -568,18 +573,14 @@ export const DcaChart = memo(function DcaChart({ data, unit = 'BTC', m2Data }: D
         const ro = new ResizeObserver((entries) => {
             for (const entry of entries) {
                 const { width, height } = entry.contentRect;
-                chart.resize(width, height);
+                if (width > 0 && height > 0) {
+                    chart.resize(width, height);
+                }
             }
         });
         ro.observe(area);
 
         chart.timeScale().fitContent();
-
-        // Apply saved range if not 'All'
-        if (activeRange !== 'All') {
-            // Delay slightly to let chart render first
-            setTimeout(() => handleRangeChange(activeRange), 50);
-        }
 
         // ── Cleanup ──────────────────────────────────────────────────
         return () => {
@@ -592,7 +593,7 @@ export const DcaChart = memo(function DcaChart({ data, unit = 'BTC', m2Data }: D
             chart.remove();
             chartApiRef.current = null;
         };
-    }, [portfolioData, investedData, priceData, powerLawData, m2NormData, showPowerLaw, showM2, showBtcPrice, markers, sym, isMobile, investedMap, activeRange, handleRangeChange]);
+    }, [portfolioData, investedData, priceData, powerLawData, m2NormData, showPowerLaw, showM2, showBtcPrice, markers, sym, isMobile, investedMap]);
 
     // ── Export ──────────────────────────────────────────────────────────
     const handleExport = useCallback(async () => {
@@ -623,16 +624,16 @@ export const DcaChart = memo(function DcaChart({ data, unit = 'BTC', m2Data }: D
     return (
         <div
             ref={wrapperRef}
-            className={`chart-shell w-full bg-white dark:bg-slate-900 overflow-hidden relative flex flex-col ${
+            className={`chart-shell w-full bg-white dark:bg-slate-900 overflow-hidden flex flex-col ${
                 isFullscreen
-                    ? 'fixed inset-0 z-50 rounded-none p-4 h-full'
-                    : 'h-[300px] sm:h-[420px] rounded-2xl p-3 sm:p-4 shadow-md border border-slate-200 dark:border-slate-700'
+                    ? 'fixed inset-0 z-50 rounded-none p-4'
+                    : 'relative h-[300px] sm:h-[420px] rounded-2xl p-3 sm:p-4 shadow-md border border-slate-200 dark:border-slate-700'
             }`}
         >
             {/* Header */}
             <div className="flex items-center justify-between mb-2 sm:mb-3 gap-2 shrink-0">
                 <h3 className="text-sm sm:text-lg font-semibold text-slate-800 dark:text-slate-100 truncate">
-                    {isFullscreen ? 'Performance Over Time' : 'Performance Over Time'}
+                    Performance Over Time
                 </h3>
                 <div className="flex items-center gap-1 sm:gap-2 shrink-0 flex-wrap justify-end">
                     {/* Mobile: BTC Price toggle + Events */}
