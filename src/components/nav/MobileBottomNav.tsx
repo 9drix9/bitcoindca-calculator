@@ -18,16 +18,16 @@ export function MobileBottomNav() {
     <nav
       aria-label="Mobile navigation"
       className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-white dark:bg-slate-950"
-      style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
+      style={{ paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 12px)' }}
     >
-      <div className="grid grid-cols-4">
+      <div className="grid grid-cols-4 h-16">
         {tabs.map(({ href, label, icon: Icon }) => {
           const isActive = pathname === href;
           return (
             <Link
               key={href}
               href={href}
-              className={`flex flex-col items-center justify-center gap-1 h-16 text-[11px] font-medium transition-colors border-t-2 ${
+              className={`flex flex-col items-center justify-center gap-1 text-[11px] font-medium transition-colors border-t-2 ${
                 isActive
                   ? 'border-amber-500 text-amber-600 dark:text-amber-400'
                   : 'border-slate-200 dark:border-slate-800 text-slate-400 dark:text-slate-500'
