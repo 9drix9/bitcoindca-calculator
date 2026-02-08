@@ -92,13 +92,23 @@ input[type="number"]::-webkit-outer-spin-button {
   }
 }
 
-/* Bottom nav safe-area spacing — mobile only */
+/* ── Mobile bottom nav safe-area ── */
 :root {
   --bottom-nav-h: 64px;
 }
 
+/* Nav bar: push icons/labels above the home-indicator / gesture bar.
+   First line is the fallback for browsers without max()/env(). */
+.bottom-nav-safe-area {
+  padding-bottom: 12px;
+  padding-bottom: max(env(safe-area-inset-bottom), 12px);
+}
+
+/* Page content clearance so nothing hides behind the fixed nav.
+   76px = 64 nav + 12 baseline; calc line upgrades on capable browsers. */
 @media (max-width: 767px) {
   #main-content {
-    padding-bottom: calc(var(--bottom-nav-h) + max(env(safe-area-inset-bottom, 0px), 12px));
+    padding-bottom: 76px;
+    padding-bottom: calc(var(--bottom-nav-h) + max(env(safe-area-inset-bottom), 12px));
   }
 }
