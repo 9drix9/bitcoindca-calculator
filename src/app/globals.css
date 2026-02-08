@@ -30,15 +30,19 @@
   position: absolute;
   z-index: 10;
   pointer-events: none;
-  padding: 8px 12px;
-  border-radius: 8px;
+  padding: 10px 14px;
+  border-radius: 10px;
   font-size: 11px;
-  line-height: 1.5;
+  line-height: 1.6;
   white-space: nowrap;
-  background: rgba(30, 41, 59, 0.95);
+  background: rgba(30, 41, 59, 0.85);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   color: #f8fafc;
-  border: 1px solid #334155;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(71, 85, 105, 0.5);
+  box-shadow:
+    0 4px 16px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 
 .lw-tooltip-date {
@@ -52,6 +56,12 @@
   display: flex;
   align-items: center;
   gap: 4px;
+}
+
+.lw-tooltip-separator {
+  height: 1px;
+  background: rgba(148, 163, 184, 0.2);
+  margin: 4px 0;
 }
 
 /* Hide lightweight-charts TradingView attribution */

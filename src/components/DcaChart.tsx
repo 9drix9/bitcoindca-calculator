@@ -4,6 +4,7 @@ import { useEffect, useRef, useMemo, useState, useCallback, memo } from 'react';
 import {
     createChart,
     createSeriesMarkers,
+    createTextWatermark,
     AreaSeries,
     LineSeries,
     ColorType,
@@ -19,7 +20,7 @@ import {
 } from 'lightweight-charts';
 import { DcaBreakdownItem, HistoricalEvent } from '@/types';
 import { format } from 'date-fns';
-import { Camera } from 'lucide-react';
+import { Camera, Maximize2, X } from 'lucide-react';
 import { useCurrency } from '@/context/CurrencyContext';
 
 // ── Props ──────────────────────────────────────────────────────────────
@@ -50,8 +51,10 @@ const HISTORICAL_EVENTS: HistoricalEvent[] = [
 
 const GENESIS_DATE = new Date('2009-01-03T00:00:00Z');
 
+const TIME_RANGES = ['YTD', '1Y', '3Y', '5Y', 'All'] as const;
+type TimeRange = (typeof TIME_RANGES)[number];
+
 // ── Helpers ────────────────────────────────────────────────────────────
-/** Single source of truth: date-string → lightweight-charts UTCTimestamp (seconds) */
 function toTimestamp(dateStr: string): UTCTimestamp {
     return (new Date(dateStr).getTime() / 1000) as UTCTimestamp;
 }
@@ -84,8 +87,8 @@ const SCALE_OVERLAY = 'overlay';
 export const DcaChart = memo(function DcaChart({ data, unit = 'BTC', m2Data }: DcaChartProps) {
     const { currencyConfig } = useCurrency();
     const wrapperRef = useRef<HTMLDivElement>(null);
-    const chartAreaRef = useRef<HTMLDivElement>(null);   // layout sizing div (flex-1)
-    const chartContainerRef = useRef<HTMLDivElement>(null); // clean div passed to createChart
+    const chartAreaRef = useRef<HTMLDivElement>(null);
+    const chartContainerRef = useRef<HTMLDivElement>(null);
     const chartApiRef = useRef<IChartApi | null>(null);
     const tooltipRef = useRef<HTMLDivElement>(null);
 
@@ -95,6 +98,8 @@ export const DcaChart = memo(function DcaChart({ data, unit = 'BTC', m2Data }: D
     const [showBtcPrice, setShowBtcPrice] = useState(false);
     const [isMobile, setIsMobile] = useState(false);
     const [showHint, setShowHint] = useState(false);
+    const [activeRange, setActiveRange] = useState<TimeRange>('All');
+    const [isFullscreen, setIsFullscreen] = useState(false);
     const hintShownRef = useRef(false);
 
     const sym = currencyConfig.symbol;
@@ -187,6 +192,25 @@ export const DcaChart = memo(function DcaChart({ data, unit = 'BTC', m2Data }: D
         };
     }, [data, m2Sorted]);
 
+    // ── Invested data lookup map (for mobile tooltip ROI) ─────────────
+    const investedMap = useMemo(() => {
+        const map = new Map<number, number>();
+        for (const item of investedData) {
+            map.set(item.time as number, item.value);
+        }
+        return map;
+    }, [investedData]);
+
+    // ── Summary stats ─────────────────────────────────────────────────
+    const summaryStats = useMemo(() => {
+        if (portfolioData.length < 2 || investedData.length < 2) return null;
+        const lastPortfolio = portfolioData[portfolioData.length - 1].value;
+        const lastInvested = investedData[investedData.length - 1].value;
+        const gain = lastPortfolio - lastInvested;
+        const roi = lastInvested > 0 ? (gain / lastInvested) * 100 : 0;
+        return { gain, roi };
+    }, [portfolioData, investedData]);
+
     // ── Build markers ──────────────────────────────────────────────────
     const markers = useMemo(() => {
         if (!dateRange) return [];
@@ -225,6 +249,39 @@ export const DcaChart = memo(function DcaChart({ data, unit = 'BTC', m2Data }: D
         return result;
     }, [dateRange, showEvents]);
 
+    // ── Time range handler ─────────────────────────────────────────────
+    const handleRangeChange = useCallback((range: TimeRange) => {
+        setActiveRange(range);
+        const chart = chartApiRef.current;
+        if (!chart || portfolioData.length === 0) return;
+
+        if (range === 'All') {
+            chart.timeScale().fitContent();
+            return;
+        }
+
+        const lastTime = portfolioData[portfolioData.length - 1].time as number;
+        const lastDate = new Date(lastTime * 1000);
+        let fromDate: Date;
+
+        if (range === 'YTD') {
+            fromDate = new Date(lastDate.getFullYear(), 0, 1);
+        } else {
+            const years = parseInt(range);
+            fromDate = new Date(lastDate);
+            fromDate.setFullYear(fromDate.getFullYear() - years);
+        }
+
+        const fromTimestamp = (fromDate.getTime() / 1000) as UTCTimestamp;
+        const firstAvailable = portfolioData[0].time as number;
+        const effectiveFrom = Math.max(fromTimestamp, firstAvailable) as UTCTimestamp;
+
+        chart.timeScale().setVisibleRange({
+            from: effectiveFrom,
+            to: lastTime as UTCTimestamp,
+        });
+    }, [portfolioData]);
+
     // ── Chart lifecycle ────────────────────────────────────────────────
     useEffect(() => {
         const area = chartAreaRef.current;
@@ -240,15 +297,19 @@ export const DcaChart = memo(function DcaChart({ data, unit = 'BTC', m2Data }: D
             height: area.clientHeight,
             layout: {
                 background: { type: ColorType.Solid, color: 'transparent' },
-                textColor: dark ? '#94a3b8' : '#64748b',
+                textColor: dark ? '#cbd5e1' : '#64748b',
                 fontSize: mobile ? 10 : 11,
             },
             grid: {
-                vertLines: { visible: false },
+                vertLines: {
+                    visible: !mobile,
+                    color: dark ? 'rgba(51,65,85,0.5)' : 'rgba(226,232,240,0.8)',
+                    style: LineStyle.Dotted,
+                },
                 horzLines: {
-                    color: dark ? '#1e293b' : '#f1f5f9',
+                    color: dark ? 'rgba(51,65,85,0.5)' : 'rgba(226,232,240,0.8)',
                     style: LineStyle.Solid,
-                    visible: !mobile || false,
+                    visible: !mobile,
                 },
             },
             crosshair: {
@@ -291,12 +352,26 @@ export const DcaChart = memo(function DcaChart({ data, unit = 'BTC', m2Data }: D
 
         chartApiRef.current = chart;
 
+        // ── Canvas watermark ──────────────────────────────────────────
+        const mainPane = chart.panes()[0];
+        createTextWatermark(mainPane, {
+            lines: [
+                {
+                    text: 'btcdollarcostaverage.com',
+                    color: dark ? 'rgba(100,116,139,0.15)' : 'rgba(148,163,184,0.15)',
+                    fontSize: 14,
+                    fontStyle: 'normal',
+                },
+            ],
+        });
+
         // ── Portfolio Value (area, left scale) ─────────────────────────
         const portfolioSeries = chart.addSeries(AreaSeries, {
             priceScaleId: SCALE_LEFT,
             lineColor: '#f59e0b',
             topColor: mobile ? 'rgba(245,158,11,0.25)' : 'rgba(245,158,11,0.4)',
             bottomColor: 'rgba(245,158,11,0.0)',
+            relativeGradient: true,
             lineWidth: mobile ? 1 : 2,
             lineType: LineType.Curved,
             crosshairMarkerVisible: true,
@@ -306,22 +381,19 @@ export const DcaChart = memo(function DcaChart({ data, unit = 'BTC', m2Data }: D
         });
         portfolioSeries.setData(portfolioData);
 
-        // ── Total Invested (line, left scale) — hidden on mobile ─────
-        let investedSeries: ISeriesApi<'Line'> | null = null;
-        if (!mobile) {
-            investedSeries = chart.addSeries(LineSeries, {
-                priceScaleId: SCALE_LEFT,
-                color: '#64748b',
-                lineWidth: 1,
-                lineType: LineType.Curved,
-                crosshairMarkerVisible: false,
-                priceLineVisible: false,
-                lastValueVisible: false,
-            });
-            investedSeries.setData(investedData);
-        }
+        // ── Total Invested (line, left scale) — visible on all screens
+        const investedSeries = chart.addSeries(LineSeries, {
+            priceScaleId: SCALE_LEFT,
+            color: mobile ? 'rgba(100,116,139,0.4)' : '#64748b',
+            lineWidth: 1,
+            lineType: LineType.Curved,
+            crosshairMarkerVisible: false,
+            priceLineVisible: false,
+            lastValueVisible: false,
+        });
+        investedSeries.setData(investedData);
 
-        // ── BTC Price (line, right on desktop / left on mobile) ──────
+        // ── BTC Price (line, right on desktop / overlay on mobile) ────
         let priceSeries: ISeriesApi<'Line'> | null = null;
         if (showBtcPrice) {
             priceSeries = chart.addSeries(LineSeries, {
@@ -363,7 +435,7 @@ export const DcaChart = memo(function DcaChart({ data, unit = 'BTC', m2Data }: D
         if (!mobile && showM2 && m2NormData.length > 0) {
             m2Series = chart.addSeries(LineSeries, {
                 priceScaleId: SCALE_RIGHT,
-                color: '#22c55e',
+                color: '#06b6d4',
                 lineWidth: 1,
                 lineStyle: LineStyle.LargeDashed,
                 lineType: LineType.Curved,
@@ -396,16 +468,37 @@ export const DcaChart = memo(function DcaChart({ data, unit = 'BTC', m2Data }: D
 
             const dateMs = (param.time as number) * 1000;
             const dateStr = format(new Date(dateMs), 'MMM d, yyyy');
+            const portfolioVal = (pv as { value: number }).value;
 
             let html = `<div class="lw-tooltip-date">${dateStr}</div>`;
-            html += `<div class="lw-tooltip-row"><span style="color:#f59e0b">\u25cf</span> Portfolio: <b>${sym}${(pv as { value: number }).value.toLocaleString(undefined, { maximumFractionDigits: 0 })}</b></div>`;
+            html += `<div class="lw-tooltip-row"><span style="color:#f59e0b">\u25cf</span> Portfolio: <b>${sym}${portfolioVal.toLocaleString(undefined, { maximumFractionDigits: 0 })}</b></div>`;
 
-            if (investedSeries) {
-                const iv = param.seriesData.get(investedSeries);
-                if (iv && 'value' in iv) {
-                    html += `<div class="lw-tooltip-row"><span style="color:#64748b">\u25cf</span> Invested: <b>${sym}${(iv as { value: number }).value.toLocaleString(undefined, { maximumFractionDigits: 0 })}</b></div>`;
+            // Invested — get from series data or fallback to map
+            let investedVal: number | null = null;
+            const iv = param.seriesData.get(investedSeries);
+            if (iv && 'value' in iv) {
+                investedVal = (iv as { value: number }).value;
+                html += `<div class="lw-tooltip-row"><span style="color:#64748b">\u25cf</span> Invested: <b>${sym}${investedVal.toLocaleString(undefined, { maximumFractionDigits: 0 })}</b></div>`;
+            } else {
+                // Fallback for mobile: look up from map
+                const mapVal = investedMap.get(param.time as number);
+                if (mapVal !== undefined) {
+                    investedVal = mapVal;
+                    html += `<div class="lw-tooltip-row"><span style="color:#64748b">\u25cf</span> Invested: <b>${sym}${investedVal.toLocaleString(undefined, { maximumFractionDigits: 0 })}</b></div>`;
                 }
             }
+
+            // ROI / Gain-Loss
+            if (investedVal !== null && investedVal > 0) {
+                const gain = portfolioVal - investedVal;
+                const roi = (gain / investedVal) * 100;
+                const isPositive = gain >= 0;
+                const color = isPositive ? '#22c55e' : '#ef4444';
+                const sign = isPositive ? '+' : '';
+                html += `<div class="lw-tooltip-separator"></div>`;
+                html += `<div class="lw-tooltip-row" style="color:${color};font-weight:600">${sign}${sym}${Math.abs(gain).toLocaleString(undefined, { maximumFractionDigits: 0 })} (${sign}${roi.toFixed(1)}%)</div>`;
+            }
+
             if (priceSeries) {
                 const pr = param.seriesData.get(priceSeries);
                 if (pr && 'value' in pr) {
@@ -423,17 +516,26 @@ export const DcaChart = memo(function DcaChart({ data, unit = 'BTC', m2Data }: D
             tooltip.style.display = 'block';
 
             const areaRect = area.getBoundingClientRect();
-            const tooltipW = tooltip.offsetWidth;
-            const tooltipH = tooltip.offsetHeight;
-            let left = param.point.x + 12;
-            let top = param.point.y - tooltipH / 2;
 
-            if (left + tooltipW > areaRect.width) left = param.point.x - tooltipW - 12;
-            if (top < 0) top = 0;
-            if (top + tooltipH > areaRect.height) top = areaRect.height - tooltipH;
+            if (mobile) {
+                // Mobile: anchor tooltip to top-center
+                const tooltipW = tooltip.offsetWidth;
+                tooltip.style.left = `${(areaRect.width - tooltipW) / 2}px`;
+                tooltip.style.top = '8px';
+            } else {
+                // Desktop: follow cursor
+                const tooltipW = tooltip.offsetWidth;
+                const tooltipH = tooltip.offsetHeight;
+                let left = param.point.x + 12;
+                let top = param.point.y - tooltipH / 2;
 
-            tooltip.style.left = `${left}px`;
-            tooltip.style.top = `${top}px`;
+                if (left + tooltipW > areaRect.width) left = param.point.x - tooltipW - 12;
+                if (top < 0) top = 0;
+                if (top + tooltipH > areaRect.height) top = areaRect.height - tooltipH;
+
+                tooltip.style.left = `${left}px`;
+                tooltip.style.top = `${top}px`;
+            }
         };
 
         chart.subscribeCrosshairMove(handleCrosshair);
@@ -442,18 +544,15 @@ export const DcaChart = memo(function DcaChart({ data, unit = 'BTC', m2Data }: D
         let tapDismissTimer: ReturnType<typeof setTimeout> | undefined;
         let hintTimer: ReturnType<typeof setTimeout> | undefined;
 
-        // Show usage hint on first mobile render
         if (mobile && !hintShownRef.current) {
             hintShownRef.current = true;
             setShowHint(true);
             hintTimer = setTimeout(() => setShowHint(false), 4000);
         }
 
-        // On tap, show tooltip (mobile requires this — crosshair only fires on long-press)
         const handleClick = (param: MouseEventParams<Time>) => {
             setShowHint(false);
             handleCrosshair(param);
-            // Auto-dismiss tooltip after 4s on mobile
             if (mobile) {
                 clearTimeout(tapDismissTimer);
                 if (param.time) {
@@ -465,7 +564,7 @@ export const DcaChart = memo(function DcaChart({ data, unit = 'BTC', m2Data }: D
         };
         chart.subscribeClick(handleClick);
 
-        // ── Resize observer (watches the layout div, not the chart container) ──
+        // ── Resize observer ──────────────────────────────────────────
         const ro = new ResizeObserver((entries) => {
             for (const entry of entries) {
                 const { width, height } = entry.contentRect;
@@ -475,6 +574,12 @@ export const DcaChart = memo(function DcaChart({ data, unit = 'BTC', m2Data }: D
         ro.observe(area);
 
         chart.timeScale().fitContent();
+
+        // Apply saved range if not 'All'
+        if (activeRange !== 'All') {
+            // Delay slightly to let chart render first
+            setTimeout(() => handleRangeChange(activeRange), 50);
+        }
 
         // ── Cleanup ──────────────────────────────────────────────────
         return () => {
@@ -487,7 +592,7 @@ export const DcaChart = memo(function DcaChart({ data, unit = 'BTC', m2Data }: D
             chart.remove();
             chartApiRef.current = null;
         };
-    }, [portfolioData, investedData, priceData, powerLawData, m2NormData, showPowerLaw, showM2, showBtcPrice, markers, sym, isMobile]);
+    }, [portfolioData, investedData, priceData, powerLawData, m2NormData, showPowerLaw, showM2, showBtcPrice, markers, sym, isMobile, investedMap, activeRange, handleRangeChange]);
 
     // ── Export ──────────────────────────────────────────────────────────
     const handleExport = useCallback(async () => {
@@ -496,7 +601,7 @@ export const DcaChart = memo(function DcaChart({ data, unit = 'BTC', m2Data }: D
             const { toPng } = await import('html-to-image');
             const dataUrl = await toPng(wrapperRef.current, {
                 pixelRatio: 2,
-                backgroundColor: '#0f172a',
+                backgroundColor: isDark() ? '#0f172a' : '#ffffff',
                 skipFonts: true,
             });
             const link = document.createElement('a');
@@ -508,25 +613,36 @@ export const DcaChart = memo(function DcaChart({ data, unit = 'BTC', m2Data }: D
         }
     }, []);
 
+    // ── Fullscreen toggle ──────────────────────────────────────────────
+    const toggleFullscreen = useCallback(() => {
+        setIsFullscreen(prev => !prev);
+    }, []);
+
     if (!data || data.length === 0) return null;
 
     return (
         <div
             ref={wrapperRef}
-            className="chart-shell w-full h-[300px] sm:h-[420px] bg-white dark:bg-slate-900 rounded-xl p-3 sm:p-4 shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden relative flex flex-col"
+            className={`chart-shell w-full bg-white dark:bg-slate-900 overflow-hidden relative flex flex-col ${
+                isFullscreen
+                    ? 'fixed inset-0 z-50 rounded-none p-4 h-full'
+                    : 'h-[300px] sm:h-[420px] rounded-2xl p-3 sm:p-4 shadow-md border border-slate-200 dark:border-slate-700'
+            }`}
         >
             {/* Header */}
             <div className="flex items-center justify-between mb-2 sm:mb-3 gap-2 shrink-0">
-                <h3 className="text-sm sm:text-lg font-semibold text-slate-800 dark:text-slate-100 truncate">Performance Over Time</h3>
+                <h3 className="text-sm sm:text-lg font-semibold text-slate-800 dark:text-slate-100 truncate">
+                    {isFullscreen ? 'Performance Over Time' : 'Performance Over Time'}
+                </h3>
                 <div className="flex items-center gap-1 sm:gap-2 shrink-0 flex-wrap justify-end">
                     {/* Mobile: BTC Price toggle + Events */}
                     {isMobile && (
-                        <label className="flex items-center gap-1 text-[10px] text-slate-500 dark:text-slate-400 cursor-pointer select-none whitespace-nowrap">
+                        <label className="flex items-center gap-1 text-[10px] text-slate-500 dark:text-slate-400 cursor-pointer select-none whitespace-nowrap py-1 px-1.5 active:bg-slate-100 dark:active:bg-slate-800 rounded">
                             <input
                                 type="checkbox"
                                 checked={showBtcPrice}
                                 onChange={(e) => setShowBtcPrice(e.target.checked)}
-                                className="rounded border-slate-300 dark:border-slate-600 text-emerald-500 focus:ring-emerald-500 w-3 h-3"
+                                className="rounded border-slate-300 dark:border-slate-600 text-emerald-500 focus:ring-emerald-500 w-4 h-4"
                             />
                             BTC Price
                         </label>
@@ -549,22 +665,32 @@ export const DcaChart = memo(function DcaChart({ data, unit = 'BTC', m2Data }: D
                                         type="checkbox"
                                         checked={showM2}
                                         onChange={(e) => setShowM2(e.target.checked)}
-                                        className="rounded border-slate-300 dark:border-slate-600 text-green-500 focus:ring-green-500 w-3 h-3 sm:w-3.5 sm:h-3.5"
+                                        className="rounded border-slate-300 dark:border-slate-600 text-cyan-500 focus:ring-cyan-500 w-3 h-3 sm:w-3.5 sm:h-3.5"
                                     />
                                     M2 Supply
                                 </label>
                             )}
                         </>
                     )}
-                    <label className="flex items-center gap-1 sm:gap-1.5 text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 cursor-pointer select-none whitespace-nowrap">
+                    <label className="flex items-center gap-1 sm:gap-1.5 text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 cursor-pointer select-none whitespace-nowrap py-1 px-1.5 active:bg-slate-100 dark:active:bg-slate-800 rounded">
                         <input
                             type="checkbox"
                             checked={showEvents}
                             onChange={(e) => setShowEvents(e.target.checked)}
-                            className="rounded border-slate-300 dark:border-slate-600 text-blue-500 focus:ring-blue-500 w-3 h-3 sm:w-3.5 sm:h-3.5"
+                            className={`rounded border-slate-300 dark:border-slate-600 text-blue-500 focus:ring-blue-500 ${isMobile ? 'w-4 h-4' : 'w-3 h-3 sm:w-3.5 sm:h-3.5'}`}
                         />
                         Events
                     </label>
+                    {isMobile && (
+                        <button
+                            onClick={toggleFullscreen}
+                            className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-slate-500 dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+                            aria-label={isFullscreen ? 'Exit fullscreen' : 'Fullscreen chart'}
+                            title={isFullscreen ? 'Exit fullscreen' : 'Fullscreen chart'}
+                        >
+                            {isFullscreen ? <X className="w-4 h-4" /> : <Maximize2 className="w-3.5 h-3.5" />}
+                        </button>
+                    )}
                     <button
                         onClick={handleExport}
                         className="p-1.5 sm:p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-slate-500 dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
@@ -576,30 +702,55 @@ export const DcaChart = memo(function DcaChart({ data, unit = 'BTC', m2Data }: D
                 </div>
             </div>
 
-            {/* Legend — only show visible series */}
+            {/* Legend */}
             <div className="flex items-center gap-3 mb-1 shrink-0 flex-wrap text-[10px] sm:text-xs text-slate-500 dark:text-slate-400">
                 <span className="flex items-center gap-1"><span className="w-2.5 h-0.5 bg-amber-500 inline-block rounded" /> Portfolio</span>
-                {!isMobile && <span className="flex items-center gap-1"><span className="w-2.5 h-0.5 bg-slate-500 inline-block rounded" /> Invested</span>}
+                <span className="flex items-center gap-1"><span className="w-2.5 h-0.5 bg-slate-500 inline-block rounded" style={isMobile ? { opacity: 0.4 } : undefined} /> Invested</span>
                 {showBtcPrice && <span className="flex items-center gap-1"><span className="w-2.5 h-0.5 bg-emerald-500 inline-block rounded" /> BTC Price</span>}
                 {!isMobile && showPowerLaw && <span className="flex items-center gap-1"><span className="w-2.5 h-0.5 bg-violet-500 inline-block rounded" /> Power Law</span>}
-                {!isMobile && showM2 && <span className="flex items-center gap-1"><span className="w-2.5 h-0.5 bg-green-500 inline-block rounded" /> M2 Supply</span>}
+                {!isMobile && showM2 && <span className="flex items-center gap-1"><span className="w-2.5 h-0.5 bg-cyan-500 inline-block rounded" /> M2 Supply</span>}
             </div>
 
-            {/* Chart area — layout sizing wrapper */}
+            {/* Time range buttons */}
+            <div className="flex items-center gap-1 sm:gap-1.5 mb-1.5 shrink-0 flex-wrap">
+                {TIME_RANGES.map((range) => (
+                    <button
+                        key={range}
+                        onClick={() => handleRangeChange(range)}
+                        className={`px-2 sm:px-2.5 py-0.5 text-[10px] sm:text-xs font-medium rounded-full transition-colors ${
+                            activeRange === range
+                                ? 'bg-amber-500 text-white'
+                                : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
+                        }`}
+                    >
+                        {range}
+                    </button>
+                ))}
+                {/* Summary strip */}
+                {summaryStats && (
+                    <div className="ml-auto flex items-center gap-2 sm:gap-3 text-[10px] sm:text-xs font-medium">
+                        <span className={summaryStats.gain >= 0 ? 'text-green-500' : 'text-red-500'}>
+                            {summaryStats.gain >= 0 ? '+' : ''}{sym}{Math.abs(summaryStats.gain).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                        </span>
+                        <span className={`px-1.5 py-0.5 rounded ${summaryStats.roi >= 0 ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500'}`}>
+                            {summaryStats.roi >= 0 ? '+' : ''}{summaryStats.roi.toFixed(1)}%
+                        </span>
+                    </div>
+                )}
+            </div>
+
+            {/* Chart area */}
             <div ref={chartAreaRef} className="flex-1 min-h-0 relative">
-                {/* Chart container — clean empty div for lightweight-charts */}
                 <div
                     ref={chartContainerRef}
                     className="absolute inset-0"
                     style={{ touchAction: 'none' }}
                 />
-                {/* Tooltip — sibling to chart container, never inside it */}
                 <div
                     ref={tooltipRef}
                     className="lw-tooltip"
                     style={{ display: 'none' }}
                 />
-                {/* Mobile hint — shown once on first render, dismissed on tap or after 4s */}
                 {showHint && (
                     <div className="absolute inset-0 flex items-center justify-center z-20 pointer-events-none">
                         <div className="bg-slate-800/80 backdrop-blur-sm text-slate-200 text-xs px-4 py-2.5 rounded-xl text-center leading-relaxed shadow-lg">
@@ -608,10 +759,6 @@ export const DcaChart = memo(function DcaChart({ data, unit = 'BTC', m2Data }: D
                         </div>
                     </div>
                 )}
-            </div>
-
-            <div className="absolute bottom-0.5 right-2 text-[9px] text-slate-400/40 dark:text-slate-600/40 select-none pointer-events-none">
-                btcdollarcostaverage.com
             </div>
         </div>
     );
