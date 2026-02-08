@@ -17,7 +17,7 @@ export function MobileBottomNav() {
   return (
     <nav
       aria-label="Mobile navigation"
-      className="fixed bottom-0 left-0 right-0 z-50 md:hidden border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950"
+      className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-white dark:bg-slate-950"
       style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
     >
       <div className="grid grid-cols-4">
@@ -27,13 +27,13 @@ export function MobileBottomNav() {
             <Link
               key={href}
               href={href}
-              className={`flex flex-col items-center justify-center gap-0.5 min-h-14 text-[10px] font-medium transition-colors ${
+              className={`flex flex-col items-center justify-center gap-1 h-16 text-[11px] font-medium transition-colors border-t-2 ${
                 isActive
-                  ? 'text-amber-600 dark:text-amber-400'
-                  : 'text-slate-500 dark:text-slate-400'
+                  ? 'border-amber-500 text-amber-600 dark:text-amber-400'
+                  : 'border-slate-200 dark:border-slate-800 text-slate-400 dark:text-slate-500'
               }`}
             >
-              <Icon size={20} strokeWidth={isActive ? 2.5 : 2} />
+              <Icon size={22} strokeWidth={isActive ? 2.5 : 1.75} />
               <span>{label}</span>
             </Link>
           );

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useSyncExternalStore, useCallback } from 'react';
-import { Sun, Moon, Monitor } from 'lucide-react';
+import { Sun, Moon } from 'lucide-react';
 
 type Theme = 'light' | 'dark' | 'system';
 
@@ -48,23 +48,23 @@ export const ThemeToggle = () => {
         }
     }, [theme]);
 
-    const cycle = useCallback(() => {
-        const next: Theme = theme === 'light' ? 'dark' : theme === 'dark' ? 'system' : 'light';
+    const toggle = useCallback(() => {
+        const next: Theme = document.documentElement.classList.contains('dark') ? 'light' : 'dark';
         localStorage.setItem(THEME_KEY, next);
         listeners.forEach(l => l());
-    }, [theme]);
+    }, []);
 
-    const Icon = theme === 'light' ? Sun : theme === 'dark' ? Moon : Monitor;
-    const label = theme === 'light' ? 'Light' : theme === 'dark' ? 'Dark' : 'System';
-
+    // CSS-driven icon swap avoids hydration mismatch — the theme script
+    // adds .dark before React hydrates, so the correct icon shows instantly.
     return (
         <button
-            onClick={cycle}
-            className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-            title={`Theme: ${label}`}
-            aria-label={`Current theme: ${label}. Click to switch.`}
+            onClick={toggle}
+            className="w-10 h-10 flex items-center justify-center rounded-full bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 hover:bg-slate-200 dark:hover:bg-white/10 active:bg-slate-300 dark:active:bg-white/15 transition-colors"
+            title="Toggle theme"
+            aria-label="Toggle theme"
         >
-            <Icon className="w-5 h-5 text-slate-600 dark:text-slate-300" />
+            <Sun className="w-5 h-5 text-amber-400 hidden dark:block" />
+            <Moon className="w-5 h-5 text-slate-600 block dark:hidden" />
         </button>
     );
 };

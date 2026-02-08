@@ -103,8 +103,8 @@ export default function RootLayout({
           {/* Navigation */}
           <ResponsiveNav />
 
-          {/* Main — pb-20 on mobile prevents bottom nav from covering content */}
-          <main id="main-content" className="flex-grow pb-20 md:pb-0">
+          {/* Main — pb-28 on mobile clears 64px tab bar + safe-area inset */}
+          <main id="main-content" className="flex-grow pb-28 md:pb-0">
             {children}
           </main>
 
