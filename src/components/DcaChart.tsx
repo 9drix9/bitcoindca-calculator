@@ -1,29 +1,35 @@
 'use client';
 
-import { useMemo, useRef, useCallback, useState, memo } from 'react';
+import { useEffect, useRef, useMemo, useState, useCallback, memo } from 'react';
 import {
-    ResponsiveContainer,
-    Area,
-    XAxis,
-    YAxis,
-    CartesianGrid,
-    Tooltip,
-    Legend,
-    ReferenceLine,
-    Line,
-    ComposedChart
-} from 'recharts';
+    createChart,
+    createSeriesMarkers,
+    AreaSeries,
+    LineSeries,
+    ColorType,
+    CrosshairMode,
+    LineStyle,
+    LineType,
+    type IChartApi,
+    type ISeriesApi,
+    type UTCTimestamp,
+    type SeriesMarker,
+    type Time,
+    type MouseEventParams,
+} from 'lightweight-charts';
 import { DcaBreakdownItem, HistoricalEvent } from '@/types';
 import { format } from 'date-fns';
 import { Camera } from 'lucide-react';
 import { useCurrency } from '@/context/CurrencyContext';
 
+// ── Props ──────────────────────────────────────────────────────────────
 interface DcaChartProps {
     data: DcaBreakdownItem[];
     unit?: 'BTC' | 'SATS';
     m2Data?: [number, number][] | null;
 }
 
+// ── Constants ──────────────────────────────────────────────────────────
 const HALVING_DATES: { date: string; label: string }[] = [
     { date: '2012-11-28', label: 'Halving 1' },
     { date: '2016-07-09', label: 'Halving 2' },
@@ -44,165 +50,376 @@ const HISTORICAL_EVENTS: HistoricalEvent[] = [
 
 const GENESIS_DATE = new Date('2009-01-03T00:00:00Z');
 
-const computePowerLawPrice = (dateStr: string): number | null => {
+// ── Helpers ────────────────────────────────────────────────────────────
+/** Single source of truth: date-string → lightweight-charts UTCTimestamp (seconds) */
+function toTimestamp(dateStr: string): UTCTimestamp {
+    return (new Date(dateStr).getTime() / 1000) as UTCTimestamp;
+}
+
+function computePowerLawPrice(dateStr: string): number | null {
     const date = new Date(dateStr);
     const daysSinceGenesis = (date.getTime() - GENESIS_DATE.getTime()) / (1000 * 60 * 60 * 24);
     if (daysSinceGenesis <= 0) return null;
     const logDays = Math.log10(daysSinceGenesis);
-    const price = Math.pow(10, 5.82 * logDays - 17.01);
-    return price;
-};
+    return Math.pow(10, 5.82 * logDays - 17.01);
+}
 
+function formatCompact(value: number, sym: string): string {
+    if (value >= 1_000_000) return `${sym}${(value / 1_000_000).toFixed(1)}M`;
+    if (value >= 1_000) return `${sym}${(value / 1_000).toFixed(0)}k`;
+    return `${sym}${value.toFixed(0)}`;
+}
+
+function isDark(): boolean {
+    if (typeof document === 'undefined') return false;
+    return document.documentElement.classList.contains('dark');
+}
+
+// ── Scale IDs ──────────────────────────────────────────────────────────
+const SCALE_LEFT = 'left';
+const SCALE_RIGHT = 'right';
+const SCALE_OVERLAY = 'overlay'; // hidden scale for power-law / M2
+
+// ── Component ──────────────────────────────────────────────────────────
 export const DcaChart = memo(function DcaChart({ data, unit = 'BTC', m2Data }: DcaChartProps) {
     const { currencyConfig } = useCurrency();
-    const chartRef = useRef<HTMLDivElement>(null);
+    const wrapperRef = useRef<HTMLDivElement>(null);
+    const chartContainerRef = useRef<HTMLDivElement>(null);
+    const chartApiRef = useRef<IChartApi | null>(null);
+    const tooltipRef = useRef<HTMLDivElement>(null);
+
     const [showPowerLaw, setShowPowerLaw] = useState(false);
     const [showM2, setShowM2] = useState(false);
     const [showEvents, setShowEvents] = useState(false);
 
-    const isSats = unit === 'SATS';
+    const sym = currencyConfig.symbol;
 
-    const formatYAxis = (value: number): string => {
-        const sym = currencyConfig.symbol;
-        if (value >= 1_000_000) return `${sym}${(value / 1_000_000).toFixed(1)}M`;
-        if (value >= 1_000) return `${sym}${(value / 1_000).toFixed(0)}k`;
-        return `${sym}${value.toFixed(0)}`;
-    };
-
-    // NOTE: halvingLines and eventLines are computed after chartData (below)
-    // so they snap to dates that actually exist in the (possibly downsampled) chart.
-
-    // Build sorted M2 array for efficient lookup
+    // ── Build series data ──────────────────────────────────────────────
     const m2Sorted = useMemo(() => {
         if (!m2Data || m2Data.length === 0) return null;
-        // m2Data is already [timestamp, value][], ensure sorted by timestamp
-        const sorted = [...m2Data].sort((a, b) => a[0] - b[0]);
-        return sorted;
+        return [...m2Data].sort((a, b) => a[0] - b[0]);
     }, [m2Data]);
 
-    const chartData = useMemo(() => {
-        if (!data || data.length === 0) return [];
+    const {
+        portfolioData,
+        investedData,
+        priceData,
+        powerLawData,
+        m2NormData,
+        dateRange,
+    } = useMemo(() => {
+        if (!data || data.length === 0)
+            return { portfolioData: [], investedData: [], priceData: [], powerLawData: [], m2NormData: [], dateRange: null };
 
-        // Downsample on mobile to reduce SVG nodes
-        let sourceData = data;
-        const mobile = typeof window !== 'undefined' && window.innerWidth < 640;
-        if (mobile && data.length >= 200) {
-            const maxPoints = 100;
-            const step = Math.ceil(data.length / maxPoints);
-            const sampled: typeof data = [];
-            for (let i = 0; i < data.length; i += step) {
-                sampled.push(data[i]);
-            }
-            // Always include the last point
-            if (sampled[sampled.length - 1] !== data[data.length - 1]) {
-                sampled.push(data[data.length - 1]);
-            }
-            sourceData = sampled;
-        }
+        const portfolio: { time: UTCTimestamp; value: number }[] = [];
+        const invested: { time: UTCTimestamp; value: number }[] = [];
+        const price: { time: UTCTimestamp; value: number }[] = [];
+        const powerLaw: { time: UTCTimestamp; value: number }[] = [];
+        const m2Norm: { time: UTCTimestamp; value: number }[] = [];
 
-        // Determine max portfolio value for M2 normalization
-        let maxPortfolioValue = 0;
-        if (showM2 && m2Sorted) {
-            for (const item of sourceData) {
-                if (item.portfolioValue > maxPortfolioValue) maxPortfolioValue = item.portfolioValue;
-            }
-        }
-
-        // Find min/max M2 values
-        let minM2 = Infinity;
-        let maxM2 = 0;
-        if (showM2 && m2Sorted) {
+        // M2 normalization: scale to BTC price range
+        let minM2 = Infinity, maxM2 = 0;
+        let minPrice = Infinity, maxPrice = 0;
+        if (m2Sorted) {
             for (const [, val] of m2Sorted) {
                 if (val < minM2) minM2 = val;
                 if (val > maxM2) maxM2 = val;
             }
+            for (const item of data) {
+                if (item.price < minPrice) minPrice = item.price;
+                if (item.price > maxPrice) maxPrice = item.price;
+            }
         }
 
-        // Use index pointer for O(n+m) M2 lookup instead of O(n*m)
         let m2Idx = 0;
 
-        return sourceData.map(item => {
-            const extended: Record<string, unknown> = { ...item };
+        for (const item of data) {
+            const t = toTimestamp(item.date);
+            portfolio.push({ time: t, value: item.portfolioValue });
+            invested.push({ time: t, value: item.totalInvested });
+            price.push({ time: t, value: item.price });
 
-            if (showPowerLaw) {
-                extended.powerLaw = computePowerLawPrice(item.date);
+            const pl = computePowerLawPrice(item.date);
+            if (pl !== null) {
+                powerLaw.push({ time: t, value: pl });
             }
 
-            if (showM2 && m2Sorted && m2Sorted.length > 0 && maxM2 > minM2 && maxPortfolioValue > 0) {
+            if (m2Sorted && m2Sorted.length > 0 && maxM2 > minM2 && maxPrice > minPrice) {
                 const dateTs = new Date(item.date).getTime();
-                // Advance pointer to closest M2 data point
-                while (m2Idx < m2Sorted.length - 1 && m2Sorted[m2Idx + 1][0] <= dateTs) {
-                    m2Idx++;
-                }
-                // Check if next point is closer than current
+                while (m2Idx < m2Sorted.length - 1 && m2Sorted[m2Idx + 1][0] <= dateTs) m2Idx++;
                 let closestVal = m2Sorted[m2Idx][1];
                 if (m2Idx < m2Sorted.length - 1) {
-                    const distCurrent = Math.abs(m2Sorted[m2Idx][0] - dateTs);
-                    const distNext = Math.abs(m2Sorted[m2Idx + 1][0] - dateTs);
-                    if (distNext < distCurrent) closestVal = m2Sorted[m2Idx + 1][1];
+                    const dC = Math.abs(m2Sorted[m2Idx][0] - dateTs);
+                    const dN = Math.abs(m2Sorted[m2Idx + 1][0] - dateTs);
+                    if (dN < dC) closestVal = m2Sorted[m2Idx + 1][1];
                 }
-                // Normalize M2 to left Y-axis scale (0 to maxPortfolioValue)
-                extended.m2Normalized = ((closestVal - minM2) / (maxM2 - minM2)) * maxPortfolioValue;
+                // Normalize M2 into BTC price range so it rides the right scale
+                const normalized = minPrice + ((closestVal - minM2) / (maxM2 - minM2)) * (maxPrice - minPrice);
+                m2Norm.push({ time: t, value: normalized });
+            }
+        }
+
+        return {
+            portfolioData: portfolio,
+            investedData: invested,
+            priceData: price,
+            powerLawData: powerLaw,
+            m2NormData: m2Norm,
+            dateRange: data.length >= 2
+                ? { first: new Date(data[0].date).getTime(), last: new Date(data[data.length - 1].date).getTime() }
+                : null,
+        };
+    }, [data, m2Sorted]);
+
+    // ── Build markers ──────────────────────────────────────────────────
+    const markers = useMemo(() => {
+        if (!dateRange) return [];
+        const result: SeriesMarker<Time>[] = [];
+
+        for (const h of HALVING_DATES) {
+            const ts = new Date(h.date).getTime();
+            if (ts >= dateRange.first && ts <= dateRange.last) {
+                result.push({
+                    time: toTimestamp(h.date),
+                    position: 'aboveBar',
+                    color: '#a855f7',
+                    shape: 'arrowDown',
+                    text: h.label,
+                });
+            }
+        }
+
+        if (showEvents) {
+            for (const e of HISTORICAL_EVENTS) {
+                const ts = new Date(e.date).getTime();
+                if (ts >= dateRange.first && ts <= dateRange.last) {
+                    result.push({
+                        time: toTimestamp(e.date),
+                        position: 'aboveBar',
+                        color: e.color,
+                        shape: 'circle',
+                        text: e.label,
+                    });
+                }
+            }
+        }
+
+        result.sort((a, b) => (a.time as number) - (b.time as number));
+        return result;
+    }, [dateRange, showEvents]);
+
+    // ── Chart lifecycle ────────────────────────────────────────────────
+    useEffect(() => {
+        const container = chartContainerRef.current;
+        const tooltip = tooltipRef.current;
+        if (!container || !tooltip || portfolioData.length === 0) return;
+
+        const dark = isDark();
+
+        const chart = createChart(container, {
+            width: container.clientWidth,
+            height: container.clientHeight,
+            layout: {
+                background: { type: ColorType.Solid, color: 'transparent' },
+                textColor: dark ? '#94a3b8' : '#64748b',
+                fontSize: 11,
+            },
+            grid: {
+                vertLines: { visible: false },
+                horzLines: { color: dark ? '#1e293b' : '#f1f5f9', style: LineStyle.Solid },
+            },
+            crosshair: {
+                mode: CrosshairMode.Magnet,
+                vertLine: { labelVisible: false },
+                horzLine: { visible: false, labelVisible: false },
+            },
+            rightPriceScale: {
+                visible: true,
+                borderVisible: false,
+                scaleMargins: { top: 0.15, bottom: 0.05 },
+            },
+            leftPriceScale: {
+                visible: true,
+                borderVisible: false,
+                scaleMargins: { top: 0.15, bottom: 0.05 },
+            },
+            timeScale: {
+                borderVisible: false,
+                timeVisible: false,
+                fixLeftEdge: true,
+                fixRightEdge: true,
+            },
+            handleScale: { axisPressedMouseMove: { time: true, price: false } },
+            handleScroll: { vertTouchDrag: false },
+        });
+
+        chartApiRef.current = chart;
+
+        // ── Portfolio Value (area, left scale) ─────────────────────────
+        const portfolioSeries = chart.addSeries(AreaSeries, {
+            priceScaleId: SCALE_LEFT,
+            lineColor: '#f59e0b',
+            topColor: 'rgba(245,158,11,0.4)',
+            bottomColor: 'rgba(245,158,11,0.0)',
+            lineWidth: 2,
+            lineType: LineType.Curved,
+            crosshairMarkerVisible: true,
+            crosshairMarkerRadius: 4,
+            priceLineVisible: false,
+            lastValueVisible: false,
+        });
+        portfolioSeries.setData(portfolioData);
+
+        // ── Total Invested (line, left scale) ──────────────────────────
+        const investedSeries = chart.addSeries(LineSeries, {
+            priceScaleId: SCALE_LEFT,
+            color: '#64748b',
+            lineWidth: 1,
+            lineType: LineType.Curved,
+            crosshairMarkerVisible: false,
+            priceLineVisible: false,
+            lastValueVisible: false,
+        });
+        investedSeries.setData(investedData);
+
+        // ── BTC Price (line, right scale) ──────────────────────────────
+        const priceSeries = chart.addSeries(LineSeries, {
+            priceScaleId: SCALE_RIGHT,
+            color: '#10b981',
+            lineWidth: 2,
+            lineStyle: LineStyle.Dashed,
+            lineType: LineType.Curved,
+            crosshairMarkerVisible: false,
+            priceLineVisible: false,
+            lastValueVisible: false,
+        });
+        priceSeries.setData(priceData);
+
+        // ── Power Law (line, right scale, hidden label) ────────────────
+        let powerLawSeries: ISeriesApi<'Line'> | null = null;
+        if (showPowerLaw && powerLawData.length > 0) {
+            powerLawSeries = chart.addSeries(LineSeries, {
+                priceScaleId: SCALE_OVERLAY,
+                color: '#8b5cf6',
+                lineWidth: 1,
+                lineStyle: LineStyle.Dashed,
+                lineType: LineType.Curved,
+                crosshairMarkerVisible: false,
+                priceLineVisible: false,
+                lastValueVisible: false,
+            });
+            powerLawSeries.setData(powerLawData);
+            // Hide the overlay price scale
+            chart.priceScale(SCALE_OVERLAY).applyOptions({ visible: false });
+        }
+
+        // ── M2 Supply (line, right scale, normalized to BTC price range)
+        let m2Series: ISeriesApi<'Line'> | null = null;
+        if (showM2 && m2NormData.length > 0) {
+            m2Series = chart.addSeries(LineSeries, {
+                priceScaleId: SCALE_RIGHT,
+                color: '#22c55e',
+                lineWidth: 1,
+                lineStyle: LineStyle.LargeDashed,
+                lineType: LineType.Curved,
+                crosshairMarkerVisible: false,
+                priceLineVisible: false,
+                lastValueVisible: false,
+            });
+            m2Series.setData(m2NormData);
+        }
+
+        // ── Markers (halvings + events) on portfolio series ────────────
+        let markersHandle: { detach: () => void } | null = null;
+        if (markers.length > 0) {
+            markersHandle = createSeriesMarkers(portfolioSeries, markers);
+        }
+
+        // ── Tooltip via crosshair ──────────────────────────────────────
+        const handleCrosshair = (param: MouseEventParams<Time>) => {
+            if (!param.time || !param.point || param.point.x < 0 || param.point.y < 0) {
+                tooltip.style.display = 'none';
+                return;
             }
 
-            return extended;
+            const pv = param.seriesData.get(portfolioSeries);
+            const iv = param.seriesData.get(investedSeries);
+            const pr = param.seriesData.get(priceSeries);
+
+            if (!pv || !('value' in pv)) {
+                tooltip.style.display = 'none';
+                return;
+            }
+
+            const dateMs = (param.time as number) * 1000;
+            const dateStr = format(new Date(dateMs), 'MMM d, yyyy');
+
+            let html = `<div class="lw-tooltip-date">${dateStr}</div>`;
+            html += `<div class="lw-tooltip-row"><span style="color:#f59e0b">●</span> Portfolio: <b>${sym}${(pv as { value: number }).value.toLocaleString(undefined, { maximumFractionDigits: 0 })}</b></div>`;
+            if (iv && 'value' in iv) {
+                html += `<div class="lw-tooltip-row"><span style="color:#64748b">●</span> Invested: <b>${sym}${(iv as { value: number }).value.toLocaleString(undefined, { maximumFractionDigits: 0 })}</b></div>`;
+            }
+            if (pr && 'value' in pr) {
+                html += `<div class="lw-tooltip-row"><span style="color:#10b981">●</span> BTC: <b>${sym}${(pr as { value: number }).value.toLocaleString()}</b></div>`;
+            }
+
+            if (showPowerLaw && powerLawSeries) {
+                const plv = param.seriesData.get(powerLawSeries);
+                if (plv && 'value' in plv) {
+                    html += `<div class="lw-tooltip-row"><span style="color:#8b5cf6">●</span> Power Law: <b>${sym}${(plv as { value: number }).value.toLocaleString(undefined, { maximumFractionDigits: 0 })}</b></div>`;
+                }
+            }
+
+            tooltip.innerHTML = html;
+            tooltip.style.display = 'block';
+
+            // Position tooltip
+            const chartRect = container.getBoundingClientRect();
+            const tooltipW = tooltip.offsetWidth;
+            const tooltipH = tooltip.offsetHeight;
+            let left = param.point.x + 12;
+            let top = param.point.y - tooltipH / 2;
+
+            // Flip to left side if overflowing right
+            if (left + tooltipW > chartRect.width) left = param.point.x - tooltipW - 12;
+            // Clamp vertical
+            if (top < 0) top = 0;
+            if (top + tooltipH > chartRect.height) top = chartRect.height - tooltipH;
+
+            tooltip.style.left = `${left}px`;
+            tooltip.style.top = `${top}px`;
+        };
+
+        chart.subscribeCrosshairMove(handleCrosshair);
+
+        // ── Resize observer ────────────────────────────────────────────
+        const ro = new ResizeObserver((entries) => {
+            for (const entry of entries) {
+                const { width, height } = entry.contentRect;
+                chart.resize(width, height);
+            }
         });
-    }, [data, showPowerLaw, showM2, m2Sorted]);
+        ro.observe(container);
 
-    // Snap halving/event lines to chartData dates so they work with downsampled data on mobile
-    const halvingLines = useMemo(() => {
-        if (!chartData || chartData.length < 2) return [];
-        const firstDate = new Date(chartData[0].date as string).getTime();
-        const lastDate = new Date(chartData[chartData.length - 1].date as string).getTime();
-        return HALVING_DATES
-            .filter(h => {
-                const hTs = new Date(h.date).getTime();
-                return hTs >= firstDate && hTs <= lastDate;
-            })
-            .map(h => {
-                const hTs = new Date(h.date).getTime();
-                let closestIdx = 0;
-                let closestDist = Infinity;
-                for (let i = 0; i < chartData.length; i++) {
-                    const dist = Math.abs(new Date(chartData[i].date as string).getTime() - hTs);
-                    if (dist < closestDist) {
-                        closestDist = dist;
-                        closestIdx = i;
-                    }
-                }
-                return { ...h, snappedDate: chartData[closestIdx].date as string };
-            });
-    }, [chartData]);
+        // Fit content on first render
+        chart.timeScale().fitContent();
 
-    const eventLines = useMemo(() => {
-        if (!showEvents || !chartData || chartData.length < 2) return [];
-        const firstDate = new Date(chartData[0].date as string).getTime();
-        const lastDate = new Date(chartData[chartData.length - 1].date as string).getTime();
-        return HISTORICAL_EVENTS
-            .filter(e => {
-                const eTs = new Date(e.date).getTime();
-                return eTs >= firstDate && eTs <= lastDate;
-            })
-            .map(e => {
-                const eTs = new Date(e.date).getTime();
-                let closestIdx = 0;
-                let closestDist = Infinity;
-                for (let i = 0; i < chartData.length; i++) {
-                    const dist = Math.abs(new Date(chartData[i].date as string).getTime() - eTs);
-                    if (dist < closestDist) {
-                        closestDist = dist;
-                        closestIdx = i;
-                    }
-                }
-                return { ...e, snappedDate: chartData[closestIdx].date as string };
-            });
-    }, [chartData, showEvents]);
+        // ── Cleanup ────────────────────────────────────────────────────
+        return () => {
+            ro.disconnect();
+            chart.unsubscribeCrosshairMove(handleCrosshair);
+            if (markersHandle) markersHandle.detach();
+            chart.remove();
+            chartApiRef.current = null;
+        };
+    }, [portfolioData, investedData, priceData, powerLawData, m2NormData, showPowerLaw, showM2, markers, sym]);
 
+    // ── Export ──────────────────────────────────────────────────────────
     const handleExport = useCallback(async () => {
-        if (!chartRef.current) return;
+        if (!wrapperRef.current) return;
         try {
             const { toPng } = await import('html-to-image');
-            const dataUrl = await toPng(chartRef.current, {
+            const dataUrl = await toPng(wrapperRef.current, {
                 pixelRatio: 2,
                 backgroundColor: '#0f172a',
                 skipFonts: true,
@@ -218,31 +435,13 @@ export const DcaChart = memo(function DcaChart({ data, unit = 'BTC', m2Data }: D
 
     if (!data || data.length === 0) return null;
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const tooltipFormatter = (value: any, name: any) => {
-        const sym = currencyConfig.symbol;
-        if (name === 'price' || name === 'BTC Price') {
-            return [`${sym}${Number(value).toLocaleString()}`, 'BTC Price'];
-        }
-        if (name === 'powerLaw' || name === 'Power Law') {
-            return [`${sym}${Number(value).toLocaleString(undefined, { maximumFractionDigits: 0 })}`, 'Power Law'];
-        }
-        if (name === 'm2Normalized' || name === 'M2 Supply') {
-            return [`${sym}${Number(value).toLocaleString(undefined, { maximumFractionDigits: 0 })}`, 'M2 Supply (normalized)'];
-        }
-        if ((name === 'accumulated' || name === 'BTC Bought') && isSats) {
-            return [`${Math.floor(Number(value) * 100_000_000).toLocaleString()} sats`, 'Sats Bought'];
-        }
-        return [`${sym}${Number(value).toLocaleString()}`, name];
-    };
-
     return (
         <div
-            ref={chartRef}
-            className="w-full h-[300px] sm:h-[420px] bg-white dark:bg-slate-900 rounded-xl p-3 sm:p-4 shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden relative flex flex-col"
+            ref={wrapperRef}
+            className="chart-shell w-full h-[300px] sm:h-[420px] bg-white dark:bg-slate-900 rounded-xl p-3 sm:p-4 shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden relative flex flex-col"
         >
             {/* Header */}
-            <div className="flex items-center justify-between mb-2 sm:mb-4 gap-2 shrink-0">
+            <div className="flex items-center justify-between mb-2 sm:mb-3 gap-2 shrink-0">
                 <h3 className="text-sm sm:text-lg font-semibold text-slate-800 dark:text-slate-100 truncate">Performance Over Time</h3>
                 <div className="flex items-center gap-1 sm:gap-2 shrink-0 flex-wrap justify-end">
                     <label className="flex items-center gap-1 sm:gap-1.5 text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 cursor-pointer select-none whitespace-nowrap">
@@ -285,85 +484,25 @@ export const DcaChart = memo(function DcaChart({ data, unit = 'BTC', m2Data }: D
                 </div>
             </div>
 
-            <div className="flex-1 min-h-0">
-            <ResponsiveContainer width="100%" height="100%">
-                <ComposedChart data={chartData} margin={{ top: 5, right: 5, left: -10, bottom: 5 }}>
-                    <defs>
-                        <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.8} />
-                            <stop offset="95%" stopColor="#f59e0b" stopOpacity={0} />
-                        </linearGradient>
-                        <linearGradient id="colorInvested" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#64748b" stopOpacity={0.8} />
-                            <stop offset="95%" stopColor="#64748b" stopOpacity={0} />
-                        </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                    <XAxis
-                        dataKey="date"
-                        tickFormatter={(str) => format(new Date(str), 'MMM yy')}
-                        minTickGap={40}
-                        stroke="#94a3b8"
-                        fontSize={10}
-                        tick={{ fontSize: 10 }}
-                    />
-                    <YAxis
-                        yAxisId="left"
-                        stroke="#94a3b8"
-                        fontSize={10}
-                        width={40}
-                        tickFormatter={formatYAxis}
-                        tick={{ fontSize: 10 }}
-                    />
-                    <YAxis
-                        yAxisId="right"
-                        orientation="right"
-                        stroke="#94a3b8"
-                        fontSize={10}
-                        width={40}
-                        tickFormatter={formatYAxis}
-                        tick={{ fontSize: 10 }}
-                    />
-                    <Tooltip
-                        labelFormatter={(label) => format(new Date(label), 'MMM d, yyyy')}
-                        formatter={tooltipFormatter}
-                        contentStyle={{ backgroundColor: '#1e293b', borderColor: '#334155', color: '#f8fafc', fontSize: '11px', borderRadius: '8px', padding: '8px 12px' }}
-                    />
-                    <Legend verticalAlign="top" height={28} iconSize={8} wrapperStyle={{ top: -4, fontSize: '10px' }} />
-                    {halvingLines.map((h) => (
-                        <ReferenceLine
-                            key={h.date}
-                            x={h.snappedDate}
-                            yAxisId="left"
-                            stroke="#a855f7"
-                            strokeDasharray="4 4"
-                            strokeWidth={1.5}
-                            label={{ value: h.label, position: 'top', fill: '#a855f7', fontSize: 9 }}
-                        />
-                    ))}
-                    {eventLines.map((e) => (
-                        <ReferenceLine
-                            key={e.date}
-                            x={e.snappedDate}
-                            yAxisId="left"
-                            stroke={e.color}
-                            strokeDasharray="3 3"
-                            strokeWidth={1}
-                            label={{ value: e.label, position: 'insideTopRight', fill: e.color, fontSize: 8 }}
-                        />
-                    ))}
-                    <Area yAxisId="left" type="monotone" dataKey="portfolioValue" name="Portfolio Value" stroke="#f59e0b" strokeWidth={2} fillOpacity={1} fill="url(#colorValue)" isAnimationActive={false} />
-                    <Area yAxisId="left" type="monotone" dataKey="totalInvested" name="Total Invested" stroke="#64748b" strokeWidth={1.5} fillOpacity={0.5} fill="url(#colorInvested)" isAnimationActive={false} />
-                    <Area yAxisId="right" type="monotone" dataKey="price" name="BTC Price" stroke="#10b981" strokeWidth={1.5} fillOpacity={0.1} strokeDasharray="5 5" fill="#10b981" isAnimationActive={false} />
-                    {showPowerLaw && (
-                        <Line yAxisId="right" type="monotone" dataKey="powerLaw" name="Power Law" stroke="#8b5cf6" strokeWidth={1.5} strokeDasharray="4 4" dot={false} isAnimationActive={false} />
-                    )}
-                    {showM2 && (
-                        <Line yAxisId="left" type="monotone" dataKey="m2Normalized" name="M2 Supply" stroke="#22c55e" strokeWidth={1.5} strokeDasharray="6 3" dot={false} isAnimationActive={false} />
-                    )}
-                </ComposedChart>
-            </ResponsiveContainer>
+            {/* Legend */}
+            <div className="flex items-center gap-3 mb-1 shrink-0 flex-wrap text-[10px] sm:text-xs text-slate-500 dark:text-slate-400">
+                <span className="flex items-center gap-1"><span className="w-2.5 h-0.5 bg-amber-500 inline-block rounded" /> Portfolio</span>
+                <span className="flex items-center gap-1"><span className="w-2.5 h-0.5 bg-slate-500 inline-block rounded" /> Invested</span>
+                <span className="flex items-center gap-1"><span className="w-2.5 h-0.5 bg-emerald-500 inline-block rounded border-dashed" /> BTC Price</span>
+                {showPowerLaw && <span className="flex items-center gap-1"><span className="w-2.5 h-0.5 bg-violet-500 inline-block rounded" /> Power Law</span>}
+                {showM2 && <span className="flex items-center gap-1"><span className="w-2.5 h-0.5 bg-green-500 inline-block rounded" /> M2 Supply</span>}
             </div>
+
+            {/* Chart container */}
+            <div ref={chartContainerRef} className="flex-1 min-h-0 relative">
+                {/* Tooltip overlay */}
+                <div
+                    ref={tooltipRef}
+                    className="lw-tooltip"
+                    style={{ display: 'none' }}
+                />
+            </div>
+
             <div className="absolute bottom-0.5 right-2 text-[9px] text-slate-400/40 dark:text-slate-600/40 select-none pointer-events-none">
                 btcdollarcostaverage.com
             </div>
