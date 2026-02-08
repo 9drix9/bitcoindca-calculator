@@ -91,3 +91,14 @@ input[type="number"]::-webkit-outer-spin-button {
     @apply bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-50;
   }
 }
+
+/* Bottom nav safe-area spacing — mobile only */
+:root {
+  --bottom-nav-h: 64px;
+}
+
+@media (max-width: 767px) {
+  #main-content {
+    padding-bottom: calc(var(--bottom-nav-h) + max(env(safe-area-inset-bottom, 0px), 12px));
+  }
+}

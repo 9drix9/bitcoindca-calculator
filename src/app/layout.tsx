@@ -46,6 +46,7 @@ export const metadata: Metadata = {
 export const viewport = {
   width: 'device-width',
   initialScale: 1,
+  viewportFit: 'cover' as const,
   themeColor: '#f59e0b',
 };
 
@@ -103,8 +104,7 @@ export default function RootLayout({
           {/* Navigation */}
           <ResponsiveNav />
 
-          {/* Main — pb-28 on mobile clears 64px tab bar + safe-area inset */}
-          <main id="main-content" className="flex-grow pb-28 md:pb-0">
+          <main id="main-content" className="flex-grow">
             {children}
           </main>
 
