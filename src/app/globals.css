@@ -31,6 +31,13 @@
   -webkit-user-select: none !important;
   user-select: none !important;
   tap-highlight-color: transparent !important;
+  touch-action: manipulation !important;
+}
+
+/* Extra iOS long-press prevention on the SVG itself */
+.recharts-surface {
+  -webkit-touch-callout: none !important;
+  touch-action: pan-x pan-y !important;
 }
 
 /* Fade-in animation used by conditional sections */
