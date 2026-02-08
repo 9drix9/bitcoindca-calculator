@@ -8,14 +8,13 @@ import {
     YAxis,
     CartesianGrid,
     Tooltip,
-    Legend,
     ReferenceLine,
     Line,
     ComposedChart
 } from 'recharts';
 import { DcaBreakdownItem, HistoricalEvent } from '@/types';
 import { format } from 'date-fns';
-import { Camera } from 'lucide-react';
+import { Camera, Maximize2, X } from 'lucide-react';
 import { useCurrency } from '@/context/CurrencyContext';
 
 interface DcaChartProps {
@@ -53,12 +52,78 @@ const computePowerLawPrice = (dateStr: string): number | null => {
     return price;
 };
 
+function isDark() {
+    if (typeof document === 'undefined') return false;
+    return document.documentElement.classList.contains('dark');
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function CustomTooltip({ active, payload, label }: any) {
+    if (!active || !payload || payload.length === 0) return null;
+
+    const sym = payload[0]?.payload ? '' : '';
+    const dateStr = label ? format(new Date(label), 'MMM d, yyyy') : '';
+
+    let portfolioValue: number | null = null;
+    let totalInvested: number | null = null;
+    let btcPrice: number | null = null;
+    let currSym = '$';
+
+    for (const entry of payload) {
+        if (entry.dataKey === 'portfolioValue') {
+            portfolioValue = entry.value;
+            // Try to get currency symbol from formatted name
+            currSym = entry.payload?._currSym || '$';
+        }
+        if (entry.dataKey === 'totalInvested') totalInvested = entry.value;
+        if (entry.dataKey === 'price') btcPrice = entry.value;
+    }
+
+    const gain = portfolioValue != null && totalInvested != null ? portfolioValue - totalInvested : null;
+    const roi = gain != null && totalInvested != null && totalInvested > 0 ? (gain / totalInvested) * 100 : null;
+    const isPositive = gain != null && gain >= 0;
+
+    return (
+        <div className="chart-tooltip">
+            <div className="text-[10px] text-slate-400 mb-1.5">{dateStr}</div>
+            {portfolioValue != null && (
+                <div className="flex justify-between gap-3 text-[11px]">
+                    <span className="text-slate-400">Portfolio</span>
+                    <span className="text-amber-400 font-medium">{currSym}{portfolioValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
+                </div>
+            )}
+            {totalInvested != null && (
+                <div className="flex justify-between gap-3 text-[11px]">
+                    <span className="text-slate-400">Invested</span>
+                    <span className="text-slate-300 font-medium">{currSym}{totalInvested.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
+                </div>
+            )}
+            {btcPrice != null && (
+                <div className="flex justify-between gap-3 text-[11px]">
+                    <span className="text-slate-400">BTC Price</span>
+                    <span className="text-emerald-400 font-medium">{currSym}{btcPrice.toLocaleString()}</span>
+                </div>
+            )}
+            {gain != null && roi != null && (
+                <>
+                    <div className="border-t border-slate-600/50 my-1.5" />
+                    <div className={`text-[11px] font-semibold ${isPositive ? 'text-emerald-400' : 'text-red-400'}`}>
+                        {isPositive ? '+' : ''}{currSym}{gain.toLocaleString(undefined, { maximumFractionDigits: 0 })} ({isPositive ? '+' : ''}{roi.toFixed(1)}%)
+                    </div>
+                </>
+            )}
+        </div>
+    );
+}
+
 export const DcaChart = memo(function DcaChart({ data, unit = 'BTC', m2Data }: DcaChartProps) {
     const { currencyConfig } = useCurrency();
     const chartRef = useRef<HTMLDivElement>(null);
     const [showPowerLaw, setShowPowerLaw] = useState(false);
     const [showM2, setShowM2] = useState(false);
     const [showEvents, setShowEvents] = useState(false);
+    const [isFullscreen, setIsFullscreen] = useState(false);
+    const [isMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth < 640);
 
     const isSats = unit === 'SATS';
 
@@ -69,13 +134,9 @@ export const DcaChart = memo(function DcaChart({ data, unit = 'BTC', m2Data }: D
         return `${sym}${value.toFixed(0)}`;
     };
 
-    // NOTE: halvingLines and eventLines are computed after chartData (below)
-    // so they snap to dates that actually exist in the (possibly downsampled) chart.
-
     // Build sorted M2 array for efficient lookup
     const m2Sorted = useMemo(() => {
         if (!m2Data || m2Data.length === 0) return null;
-        // m2Data is already [timestamp, value][], ensure sorted by timestamp
         const sorted = [...m2Data].sort((a, b) => a[0] - b[0]);
         return sorted;
     }, [m2Data]);
@@ -93,7 +154,6 @@ export const DcaChart = memo(function DcaChart({ data, unit = 'BTC', m2Data }: D
             for (let i = 0; i < data.length; i += step) {
                 sampled.push(data[i]);
             }
-            // Always include the last point
             if (sampled[sampled.length - 1] !== data[data.length - 1]) {
                 sampled.push(data[data.length - 1]);
             }
@@ -122,7 +182,7 @@ export const DcaChart = memo(function DcaChart({ data, unit = 'BTC', m2Data }: D
         let m2Idx = 0;
 
         return sourceData.map(item => {
-            const extended: Record<string, unknown> = { ...item };
+            const extended: Record<string, unknown> = { ...item, _currSym: currencyConfig.symbol };
 
             if (showPowerLaw) {
                 extended.powerLaw = computePowerLawPrice(item.date);
@@ -130,24 +190,33 @@ export const DcaChart = memo(function DcaChart({ data, unit = 'BTC', m2Data }: D
 
             if (showM2 && m2Sorted && m2Sorted.length > 0 && maxM2 > minM2 && maxPortfolioValue > 0) {
                 const dateTs = new Date(item.date).getTime();
-                // Advance pointer to closest M2 data point
                 while (m2Idx < m2Sorted.length - 1 && m2Sorted[m2Idx + 1][0] <= dateTs) {
                     m2Idx++;
                 }
-                // Check if next point is closer than current
                 let closestVal = m2Sorted[m2Idx][1];
                 if (m2Idx < m2Sorted.length - 1) {
                     const distCurrent = Math.abs(m2Sorted[m2Idx][0] - dateTs);
                     const distNext = Math.abs(m2Sorted[m2Idx + 1][0] - dateTs);
                     if (distNext < distCurrent) closestVal = m2Sorted[m2Idx + 1][1];
                 }
-                // Normalize M2 to left Y-axis scale (0 to maxPortfolioValue)
                 extended.m2Normalized = ((closestVal - minM2) / (maxM2 - minM2)) * maxPortfolioValue;
             }
 
             return extended;
         });
-    }, [data, showPowerLaw, showM2, m2Sorted]);
+    }, [data, showPowerLaw, showM2, m2Sorted, currencyConfig.symbol]);
+
+    // Summary stats
+    const summaryStats = useMemo(() => {
+        if (!chartData || chartData.length < 2) return null;
+        const last = chartData[chartData.length - 1];
+        const portfolio = last.portfolioValue as number;
+        const invested = last.totalInvested as number;
+        if (!portfolio || !invested || invested === 0) return null;
+        const gain = portfolio - invested;
+        const roi = (gain / invested) * 100;
+        return { gain, roi, isPositive: gain >= 0 };
+    }, [chartData]);
 
     // Snap halving/event lines to chartData dates so they work with downsampled data on mobile
     const halvingLines = useMemo(() => {
@@ -204,7 +273,7 @@ export const DcaChart = memo(function DcaChart({ data, unit = 'BTC', m2Data }: D
             const { toPng } = await import('html-to-image');
             const dataUrl = await toPng(chartRef.current, {
                 pixelRatio: 2,
-                backgroundColor: '#0f172a',
+                backgroundColor: isDark() ? '#0f172a' : '#ffffff',
                 skipFonts: true,
             });
             const link = document.createElement('a');
@@ -216,56 +285,67 @@ export const DcaChart = memo(function DcaChart({ data, unit = 'BTC', m2Data }: D
         }
     }, []);
 
+    const handleFullscreenToggle = useCallback(() => {
+        setIsFullscreen(prev => {
+            if (prev && chartRef.current) {
+                // Scroll back to chart position on close
+                setTimeout(() => chartRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50);
+            }
+            return !prev;
+        });
+    }, []);
+
     if (!data || data.length === 0) return null;
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const tooltipFormatter = (value: any, name: any) => {
-        const sym = currencyConfig.symbol;
-        if (name === 'price' || name === 'BTC Price') {
-            return [`${sym}${Number(value).toLocaleString()}`, 'BTC Price'];
-        }
-        if (name === 'powerLaw' || name === 'Power Law') {
-            return [`${sym}${Number(value).toLocaleString(undefined, { maximumFractionDigits: 0 })}`, 'Power Law'];
-        }
-        if (name === 'm2Normalized' || name === 'M2 Supply') {
-            return [`${sym}${Number(value).toLocaleString(undefined, { maximumFractionDigits: 0 })}`, 'M2 Supply (normalized)'];
-        }
-        if ((name === 'accumulated' || name === 'BTC Bought') && isSats) {
-            return [`${Math.floor(Number(value) * 100_000_000).toLocaleString()} sats`, 'Sats Bought'];
-        }
-        return [`${sym}${Number(value).toLocaleString()}`, name];
-    };
+    const dark = isDark();
+    const gridStroke = dark ? '#334155' : '#e2e8f0';
+    const axisStroke = dark ? '#94a3b8' : '#64748b';
+
+    // Legend items - only show active series
+    const legendItems: { color: string; label: string; desktopOnly?: boolean }[] = [
+        { color: '#f59e0b', label: 'Portfolio' },
+        { color: '#64748b', label: 'Invested' },
+        { color: '#10b981', label: 'BTC Price' },
+    ];
+    if (showPowerLaw) legendItems.push({ color: '#8b5cf6', label: 'Power Law', desktopOnly: true });
+    if (showM2) legendItems.push({ color: '#06b6d4', label: 'M2 Supply', desktopOnly: true });
+
+    const wrapperClassName = isFullscreen
+        ? 'fixed inset-0 z-50 p-4 bg-white dark:bg-slate-900 flex flex-col'
+        : 'w-full h-[300px] sm:h-[420px] bg-white dark:bg-slate-900 rounded-2xl p-3 sm:p-4 shadow-md border border-slate-200 dark:border-slate-700 overflow-hidden relative flex flex-col';
 
     return (
         <div
             ref={chartRef}
-            className="w-full h-[300px] sm:h-[420px] bg-white dark:bg-slate-900 rounded-xl p-3 sm:p-4 shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden relative flex flex-col"
+            className={wrapperClassName}
         >
             {/* Header */}
-            <div className="flex items-center justify-between mb-2 sm:mb-4 gap-2 shrink-0">
+            <div className="flex items-center justify-between mb-1 sm:mb-2 gap-2 shrink-0">
                 <h3 className="text-sm sm:text-lg font-semibold text-slate-800 dark:text-slate-100 truncate">Performance Over Time</h3>
                 <div className="flex items-center gap-1 sm:gap-2 shrink-0 flex-wrap justify-end">
-                    <label className="flex items-center gap-1 sm:gap-1.5 text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 cursor-pointer select-none whitespace-nowrap">
-                        <input
-                            type="checkbox"
-                            checked={showPowerLaw}
-                            onChange={(e) => setShowPowerLaw(e.target.checked)}
-                            className="rounded border-slate-300 dark:border-slate-600 text-violet-500 focus:ring-violet-500 w-3 h-3 sm:w-3.5 sm:h-3.5"
-                        />
-                        Power Law
-                    </label>
-                    {m2Data && m2Data.length > 0 && (
-                        <label className="flex items-center gap-1 sm:gap-1.5 text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 cursor-pointer select-none whitespace-nowrap">
+                    {!isMobile && (
+                        <label className="flex items-center gap-1 sm:gap-1.5 text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 cursor-pointer select-none whitespace-nowrap py-1 px-1.5 active:bg-slate-100 dark:active:bg-slate-800 rounded">
+                            <input
+                                type="checkbox"
+                                checked={showPowerLaw}
+                                onChange={(e) => setShowPowerLaw(e.target.checked)}
+                                className="rounded border-slate-300 dark:border-slate-600 text-violet-500 focus:ring-violet-500 w-3 h-3 sm:w-3.5 sm:h-3.5"
+                            />
+                            Power Law
+                        </label>
+                    )}
+                    {!isMobile && m2Data && m2Data.length > 0 && (
+                        <label className="flex items-center gap-1 sm:gap-1.5 text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 cursor-pointer select-none whitespace-nowrap py-1 px-1.5 active:bg-slate-100 dark:active:bg-slate-800 rounded">
                             <input
                                 type="checkbox"
                                 checked={showM2}
                                 onChange={(e) => setShowM2(e.target.checked)}
-                                className="rounded border-slate-300 dark:border-slate-600 text-green-500 focus:ring-green-500 w-3 h-3 sm:w-3.5 sm:h-3.5"
+                                className="rounded border-slate-300 dark:border-slate-600 text-cyan-500 focus:ring-cyan-500 w-3 h-3 sm:w-3.5 sm:h-3.5"
                             />
                             M2 Supply
                         </label>
                     )}
-                    <label className="flex items-center gap-1 sm:gap-1.5 text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 cursor-pointer select-none whitespace-nowrap">
+                    <label className="flex items-center gap-1 sm:gap-1.5 text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 cursor-pointer select-none whitespace-nowrap py-1 px-1.5 active:bg-slate-100 dark:active:bg-slate-800 rounded">
                         <input
                             type="checkbox"
                             checked={showEvents}
@@ -274,6 +354,14 @@ export const DcaChart = memo(function DcaChart({ data, unit = 'BTC', m2Data }: D
                         />
                         Events
                     </label>
+                    <button
+                        onClick={handleFullscreenToggle}
+                        className="p-1.5 sm:p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-slate-500 dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+                        aria-label={isFullscreen ? 'Exit fullscreen' : 'Fullscreen chart'}
+                        title={isFullscreen ? 'Exit fullscreen' : 'Fullscreen chart'}
+                    >
+                        {isFullscreen ? <X className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> : <Maximize2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />}
+                    </button>
                     <button
                         onClick={handleExport}
                         className="p-1.5 sm:p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-slate-500 dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
@@ -285,9 +373,37 @@ export const DcaChart = memo(function DcaChart({ data, unit = 'BTC', m2Data }: D
                 </div>
             </div>
 
+            {/* Summary stats + custom legend */}
+            <div className="flex items-center justify-between mb-1 sm:mb-2 shrink-0 gap-2">
+                {/* Custom legend */}
+                <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+                    {legendItems.map(item => (
+                        <span
+                            key={item.label}
+                            className={`flex items-center gap-1 text-[10px] sm:text-xs text-slate-500 dark:text-slate-400${item.desktopOnly && isMobile ? ' hidden' : ''}`}
+                        >
+                            <span className="w-2 h-2 rounded-full inline-block shrink-0" style={{ backgroundColor: item.color }} />
+                            {item.label}
+                        </span>
+                    ))}
+                </div>
+
+                {/* Summary stats */}
+                {summaryStats && (
+                    <div className="flex items-center gap-2 sm:gap-3 text-[10px] sm:text-xs shrink-0">
+                        <span className={`font-semibold ${summaryStats.isPositive ? 'text-emerald-500' : 'text-red-500'}`}>
+                            {summaryStats.isPositive ? '+' : ''}{currencyConfig.symbol}{summaryStats.gain.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                        </span>
+                        <span className={`font-semibold ${summaryStats.isPositive ? 'text-emerald-500' : 'text-red-500'}`}>
+                            {summaryStats.isPositive ? '+' : ''}{summaryStats.roi.toFixed(1)}%
+                        </span>
+                    </div>
+                )}
+            </div>
+
             <div className="flex-1 min-h-0">
             <ResponsiveContainer width="100%" height="100%">
-                <ComposedChart data={chartData} margin={{ top: 5, right: 5, left: -10, bottom: 5 }}>
+                <ComposedChart data={chartData} margin={{ top: 5, right: isMobile ? -10 : 5, left: -10, bottom: 5 }}>
                     <defs>
                         <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
                             <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.8} />
@@ -298,38 +414,38 @@ export const DcaChart = memo(function DcaChart({ data, unit = 'BTC', m2Data }: D
                             <stop offset="95%" stopColor="#64748b" stopOpacity={0} />
                         </linearGradient>
                     </defs>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={gridStroke} strokeOpacity={0.5} />
                     <XAxis
                         dataKey="date"
                         tickFormatter={(str) => format(new Date(str), 'MMM yy')}
                         minTickGap={40}
-                        stroke="#94a3b8"
+                        stroke={axisStroke}
                         fontSize={10}
                         tick={{ fontSize: 10 }}
                     />
                     <YAxis
                         yAxisId="left"
-                        stroke="#94a3b8"
+                        stroke={axisStroke}
                         fontSize={10}
                         width={40}
                         tickFormatter={formatYAxis}
                         tick={{ fontSize: 10 }}
                     />
-                    <YAxis
-                        yAxisId="right"
-                        orientation="right"
-                        stroke="#94a3b8"
-                        fontSize={10}
-                        width={40}
-                        tickFormatter={formatYAxis}
-                        tick={{ fontSize: 10 }}
-                    />
+                    {!isMobile && (
+                        <YAxis
+                            yAxisId="right"
+                            orientation="right"
+                            stroke={axisStroke}
+                            fontSize={10}
+                            width={40}
+                            tickFormatter={formatYAxis}
+                            tick={{ fontSize: 10 }}
+                        />
+                    )}
                     <Tooltip
-                        labelFormatter={(label) => format(new Date(label), 'MMM d, yyyy')}
-                        formatter={tooltipFormatter}
-                        contentStyle={{ backgroundColor: '#1e293b', borderColor: '#334155', color: '#f8fafc', fontSize: '11px', borderRadius: '8px', padding: '8px 12px' }}
+                        content={<CustomTooltip />}
+                        cursor={{ stroke: dark ? '#475569' : '#cbd5e1', strokeWidth: 1 }}
                     />
-                    <Legend verticalAlign="top" height={28} iconSize={8} wrapperStyle={{ top: -4, fontSize: '10px' }} />
                     {halvingLines.map((h) => (
                         <ReferenceLine
                             key={h.date}
@@ -354,12 +470,12 @@ export const DcaChart = memo(function DcaChart({ data, unit = 'BTC', m2Data }: D
                     ))}
                     <Area yAxisId="left" type="monotone" dataKey="portfolioValue" name="Portfolio Value" stroke="#f59e0b" strokeWidth={2} fillOpacity={1} fill="url(#colorValue)" isAnimationActive={false} />
                     <Area yAxisId="left" type="monotone" dataKey="totalInvested" name="Total Invested" stroke="#64748b" strokeWidth={1.5} fillOpacity={0.5} fill="url(#colorInvested)" isAnimationActive={false} />
-                    <Area yAxisId="right" type="monotone" dataKey="price" name="BTC Price" stroke="#10b981" strokeWidth={1.5} fillOpacity={0.1} strokeDasharray="5 5" fill="#10b981" isAnimationActive={false} />
+                    <Area yAxisId={isMobile ? 'left' : 'right'} type="monotone" dataKey="price" name="BTC Price" stroke="#10b981" strokeWidth={1.5} fillOpacity={0.1} strokeDasharray="5 5" fill="#10b981" isAnimationActive={false} />
                     {showPowerLaw && (
-                        <Line yAxisId="right" type="monotone" dataKey="powerLaw" name="Power Law" stroke="#8b5cf6" strokeWidth={1.5} strokeDasharray="4 4" dot={false} isAnimationActive={false} />
+                        <Line yAxisId={isMobile ? 'left' : 'right'} type="monotone" dataKey="powerLaw" name="Power Law" stroke="#8b5cf6" strokeWidth={1.5} strokeDasharray="4 4" dot={false} isAnimationActive={false} />
                     )}
                     {showM2 && (
-                        <Line yAxisId="left" type="monotone" dataKey="m2Normalized" name="M2 Supply" stroke="#22c55e" strokeWidth={1.5} strokeDasharray="6 3" dot={false} isAnimationActive={false} />
+                        <Line yAxisId="left" type="monotone" dataKey="m2Normalized" name="M2 Supply" stroke="#06b6d4" strokeWidth={1.5} strokeDasharray="6 3" dot={false} isAnimationActive={false} />
                     )}
                 </ComposedChart>
             </ResponsiveContainer>
