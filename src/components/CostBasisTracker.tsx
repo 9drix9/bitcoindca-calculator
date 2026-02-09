@@ -163,22 +163,22 @@ export const CostBasisTracker = ({ priceData, livePrice, priceMode }: CostBasisT
                                 className="w-full px-2.5 py-1.5 text-sm rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 outline-none focus:border-amber-500"
                             />
                         </div>
-                        <div className="space-y-1">
+                        <div className="space-y-1 min-w-0">
                             <label className="text-xs text-slate-500 dark:text-slate-400">Start Date</label>
                             <input
                                 type="date"
                                 value={formStartDate}
                                 onChange={(e) => setFormStartDate(e.target.value)}
-                                className="w-full px-2.5 py-1.5 text-sm rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 outline-none focus:border-amber-500"
+                                className="w-full min-w-0 appearance-none px-2.5 py-1.5 text-sm rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 outline-none focus:border-amber-500"
                             />
                         </div>
-                        <div className="space-y-1">
+                        <div className="space-y-1 min-w-0">
                             <label className="text-xs text-slate-500 dark:text-slate-400">End Date</label>
                             <input
                                 type="date"
                                 value={formEndDate}
                                 onChange={(e) => setFormEndDate(e.target.value)}
-                                className="w-full px-2.5 py-1.5 text-sm rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 outline-none focus:border-amber-500"
+                                className="w-full min-w-0 appearance-none px-2.5 py-1.5 text-sm rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 outline-none focus:border-amber-500"
                             />
                         </div>
                         <div className="space-y-1">
