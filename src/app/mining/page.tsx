@@ -410,7 +410,7 @@ export default async function MiningPage() {
                                         rel="noopener noreferrer sponsored"
                                         className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm sm:text-base font-semibold text-white ${orangeColorClasses.button} transition-colors shadow-sm`}
                                     >
-                                        Learn More About GoMining
+                                        Learn More About GoMining (affiliate)
                                         <ExternalLink className="w-4 h-4" />
                                     </a>
                                 </div>
@@ -483,7 +483,7 @@ export default async function MiningPage() {
                     <div className="flex items-start gap-3">
                         <AlertTriangle className="w-5 h-5 text-slate-500 dark:text-slate-400 shrink-0 mt-0.5" />
                         <p className="text-[11px] sm:text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
-                            <strong>Disclaimer:</strong> The GoMining link on this page is an affiliate link. If you purchase through that link, we may earn a commission at no extra cost to you. This page is for educational purposes only and is not financial advice. Bitcoin and mining investments carry risk. Always do your own research.
+                            <strong>Disclaimer:</strong> The GoMining link on this page is an affiliate link. If you purchase through that link, we may earn a commission at no extra cost to you. This page is for educational purposes only and is not financial advice. Bitcoin and mining investments carry risk. Always do your own research. This site may also display ads; see <a href="/about#ads-and-analytics" className="text-amber-600 dark:text-amber-400 hover:underline">/about</a> for full disclosure.
                         </p>
                     </div>
                 </section>

@@ -10,6 +10,7 @@ const links = [
   { href: '/self-custody', label: 'Self-Custody' },
   { href: '/mining', label: 'Mining' },
   { href: '/features', label: 'Features' },
+  { href: '/about', label: 'About' },
 ] as const;
 
 export function TopNav() {

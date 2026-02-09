@@ -1,4 +1,5 @@
 import { Suspense } from 'react';
+import Link from 'next/link';
 import { HowItWorks } from '@/components/HowItWorks';
 import { EducationalContent } from '@/components/EducationalContent';
 import { FearGreedWidget } from '@/components/FearGreedWidget';
@@ -126,6 +127,12 @@ export default function Home() {
 
         {/* How It Works */}
         <HowItWorks />
+
+        {/* Mission */}
+        <p className="text-center text-xs sm:text-sm text-slate-500 dark:text-slate-400">
+          A free, open-source calculator for long-term Bitcoin thinkers. No accounts, no email capture, no shitcoins.{' '}
+          <Link href="/about" className="text-amber-600 dark:text-amber-400 hover:underline">Learn more &rarr;</Link>
+        </p>
 
         {/* Main Calculator */}
         <LazyDcaCalculator />

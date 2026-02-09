@@ -330,6 +330,9 @@ export default function SelfCustodyPage() {
           <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300">
             These are some of the most trusted hardware wallets in the Bitcoin community.
           </p>
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            Links marked <strong className="text-slate-600 dark:text-slate-300">(affiliate)</strong> support the project at no extra cost to you.
+          </p>
         </div>
 
         <div className="space-y-6">
@@ -394,7 +397,7 @@ export default function SelfCustodyPage() {
                         rel={wallet.affiliate ? 'noopener noreferrer sponsored' : 'noopener noreferrer'}
                         className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm sm:text-base font-semibold text-white ${colors.button} transition-colors shadow-sm`}
                       >
-                        {wallet.affiliate ? `Shop ${wallet.name}` : `Visit ${wallet.name}`}
+                        {wallet.affiliate ? `Shop ${wallet.name} (affiliate)` : `Visit ${wallet.name}`}
                         <ExternalLink className="w-4 h-4" />
                       </a>
                     </div>
@@ -488,7 +491,7 @@ export default function SelfCustodyPage() {
         <div className="flex items-start gap-3">
           <AlertTriangle className="w-5 h-5 text-slate-500 dark:text-slate-400 shrink-0 mt-0.5" />
           <p className="text-[11px] sm:text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
-            <strong>Disclaimer:</strong> Some links on this page are affiliate links (Trezor, Ledger, BitBox02, Blockstream Jade, Cypherock). If you purchase through those links, we may earn a commission at no additional cost to you. This page is for educational purposes only and does not constitute financial advice. Always do your own research before purchasing any hardware wallet or making investment decisions.
+            <strong>Disclaimer:</strong> Some links on this page are affiliate links (Trezor, Ledger, BitBox02, Blockstream Jade, Cypherock). If you purchase through those links, we may earn a commission at no additional cost to you. This page is for educational purposes only and does not constitute financial advice. Always do your own research before purchasing any hardware wallet or making investment decisions. This site may also display ads; see <a href="/about#ads-and-analytics" className="text-amber-600 dark:text-amber-400 hover:underline">/about</a> for full disclosure.
           </p>
         </div>
       </section>
