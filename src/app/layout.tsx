@@ -1,12 +1,12 @@
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import Link from 'next/link';
-import Script from 'next/script';
 import './globals.css';
 
 import { Analytics } from '@vercel/analytics/next';
 import { SpeedInsights } from '@vercel/speed-insights/next';
 import { CookieConsent } from '@/components/CookieConsent';
+import { ConsentGatedScripts } from '@/components/ConsentGatedScripts';
 import { BtcDonationButton } from '@/components/BtcDonationButton';
 import { Providers } from '@/components/Providers';
 import { ResponsiveNav } from '@/components/nav/ResponsiveNav';
@@ -70,6 +70,17 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+        <script dangerouslySetInnerHTML={{ __html: `
+          window.dataLayer = window.dataLayer || [];
+          function gtag(){dataLayer.push(arguments);}
+          gtag('consent', 'default', {
+            'ad_storage': 'denied',
+            'ad_user_data': 'denied',
+            'ad_personalization': 'denied',
+            'analytics_storage': 'denied',
+            'wait_for_update': 500
+          });
+        `}} />
         <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
         <link rel="icon" type="image/png" sizes="32x32" href="/favicon.ico" />
         <link rel="preconnect" href="https://mempool.space" />
@@ -167,7 +178,7 @@ export default function RootLayout({
               </nav>
 
               <div className="border-t border-slate-100 dark:border-slate-800 pt-6 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-500 dark:text-slate-400">
-                <p>&copy; {new Date().getFullYear()} Bitcoin DCA Calculator. Market data from public exchange APIs.</p>
+                <p suppressHydrationWarning>&copy; {new Date().getFullYear()} Bitcoin DCA Calculator. Market data from public exchange APIs.</p>
                 <p className="text-slate-500 dark:text-slate-500">Not financial advice.</p>
               </div>
             </div>
@@ -178,28 +189,7 @@ export default function RootLayout({
         </Providers>
         <Analytics />
         <SpeedInsights />
-        <Script
-          src="https://www.googletagmanager.com/gtag/js?id=AW-17927251983"
-          strategy="afterInteractive"
-        />
-        <Script id="google-ads" strategy="afterInteractive">
-          {`
-            window.dataLayer = window.dataLayer || [];
-            function gtag(){dataLayer.push(arguments);}
-            gtag('js', new Date());
-            gtag('config', 'AW-17927251983');
-          `}
-        </Script>
-        <Script id="google-ads-conversion" strategy="afterInteractive">
-          {`
-            gtag('event', 'ads_conversion_Sign_up_1', {});
-          `}
-        </Script>
-        <Script id="google-ads-pageview" strategy="afterInteractive">
-          {`
-            gtag('event', 'conversion', {'send_to': 'AW-17927251983/1XdmCPrtgfIbEI_QsORC'});
-          `}
-        </Script>
+        <ConsentGatedScripts />
       </body>
     </html>
   );
