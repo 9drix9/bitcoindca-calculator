@@ -195,6 +195,11 @@ export default function RootLayout({
             gtag('event', 'ads_conversion_Sign_up_1', {});
           `}
         </Script>
+        <Script id="google-ads-pageview" strategy="afterInteractive">
+          {`
+            gtag('event', 'conversion', {'send_to': 'AW-17927251983/1XdmCPrtgfIbEI_QsORC'});
+          `}
+        </Script>
       </body>
     </html>
   );
