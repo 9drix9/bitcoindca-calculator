@@ -12,7 +12,9 @@ interface HalvingCountdownWidgetProps {
 
 export const HalvingCountdownWidget = ({ initialHeight }: HalvingCountdownWidgetProps) => {
     const [height, setHeight] = useState<number | null>(initialHeight);
-    const [now, setNow] = useState(() => Date.now());
+    const [now, setNow] = useState(0);
+
+    useEffect(() => { setNow(Date.now()); }, []);
 
     useEffect(() => {
         let mounted = true;
@@ -31,7 +33,7 @@ export const HalvingCountdownWidget = ({ initialHeight }: HalvingCountdownWidget
     }, []);
 
     const stats = useMemo(() => {
-        if (height === null) return null;
+        if (height === null || now === 0) return null;
         const currentEpoch = Math.floor(height / BLOCKS_PER_EPOCH);
         const nextHalvingBlock = (currentEpoch + 1) * BLOCKS_PER_EPOCH;
         const blocksRemaining = nextHalvingBlock - height;

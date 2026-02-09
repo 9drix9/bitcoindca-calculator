@@ -90,7 +90,7 @@ export const BitcoinAdoption = () => {
                         </div>
                     </div>
                     <div className="rounded-xl bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/50 p-3 sm:p-4">
-                        <div className="text-xs sm:text-sm font-medium text-amber-700 dark:text-amber-400 mb-1">
+                        <div suppressHydrationWarning className="text-xs sm:text-sm font-medium text-amber-700 dark:text-amber-400 mb-1">
                             Bitcoin in {new Date().getFullYear()}
                         </div>
                         <div className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">
