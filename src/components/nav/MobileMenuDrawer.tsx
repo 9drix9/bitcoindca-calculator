@@ -3,10 +3,11 @@
 import { useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { X, Sparkles, FileText, Github } from 'lucide-react';
+import { X, Sparkles, FileText, Info, Github } from 'lucide-react';
 
 const drawerLinks = [
   { href: '/features', label: 'Features', icon: Sparkles },
+  { href: '/about', label: 'About', icon: Info },
   { href: '/privacy', label: 'Privacy Policy', icon: FileText },
   { href: '/terms', label: 'Terms of Service', icon: FileText },
 ] as const;

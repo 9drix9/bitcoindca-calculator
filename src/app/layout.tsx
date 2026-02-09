@@ -152,6 +152,9 @@ export default function RootLayout({
                     <Link href="/mining" className="text-sm text-slate-500 dark:text-slate-400 hover:text-amber-600 dark:hover:text-amber-400 transition-colors">
                       Mining Guide
                     </Link>
+                    <Link href="/about" className="text-sm text-slate-500 dark:text-slate-400 hover:text-amber-600 dark:hover:text-amber-400 transition-colors">
+                      About
+                    </Link>
                   </div>
                 </div>
 
@@ -164,6 +167,9 @@ export default function RootLayout({
                     </Link>
                     <Link href="/terms" className="text-sm text-slate-500 dark:text-slate-400 hover:text-amber-600 dark:hover:text-amber-400 transition-colors">
                       Terms of Service
+                    </Link>
+                    <Link href="/about#affiliate-disclosure" className="text-sm text-slate-500 dark:text-slate-400 hover:text-amber-600 dark:hover:text-amber-400 transition-colors">
+                      Ads &amp; Disclosure
                     </Link>
                   </div>
                 </div>
