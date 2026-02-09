@@ -120,7 +120,8 @@ export const DcaCalculator = () => {
     }, []);
 
     const dateError = useMemo(() => {
-        if (startDate && endDate && startDate > endDate) return 'Start date must be before end date';
+        if (!startDate || !endDate) return 'Please select both start and end dates';
+        if (startDate > endDate) return 'Start date must be before end date';
         return null;
     }, [startDate, endDate]);
 
