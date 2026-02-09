@@ -109,7 +109,7 @@ export default function RootLayout({
           </main>
 
           {/* Footer */}
-          <footer className="bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 mt-12">
+          <footer className="bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 mt-12 pb-20 md:pb-0">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10">
               <nav aria-label="Footer navigation" className="grid grid-cols-2 md:grid-cols-4 gap-6 sm:gap-8 mb-8">
                 {/* Brand */}

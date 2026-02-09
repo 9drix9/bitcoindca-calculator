@@ -6,6 +6,9 @@
   .text-balance {
     text-wrap: balance;
   }
+  .contain-layout-paint {
+    contain: layout paint;
+  }
 }
 
 /* Remove tap highlight on mobile */
