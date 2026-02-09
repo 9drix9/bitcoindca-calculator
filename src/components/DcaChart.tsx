@@ -35,10 +35,10 @@ const HALVING_DATES: { date: string; label: string }[] = [
 const HISTORICAL_EVENTS: HistoricalEvent[] = [
     { date: '2014-02-24', label: 'Mt. Gox', color: '#ef4444' },
     { date: '2017-09-04', label: 'China Ban', color: '#f97316' },
-    { date: '2020-03-12', label: 'COVID Crash', color: '#ef4444' },
-    { date: '2021-05-19', label: 'China Ban 2', color: '#f97316' },
-    { date: '2021-09-07', label: 'El Salvador', color: '#22c55e' },
-    { date: '2024-01-10', label: 'ETF Approval', color: '#3b82f6' },
+    { date: '2020-03-12', label: 'COVID', color: '#ef4444' },
+    { date: '2021-05-19', label: 'China 2', color: '#f97316' },
+    { date: '2021-09-07', label: 'El Salv.', color: '#22c55e' },
+    { date: '2024-01-10', label: 'ETF', color: '#3b82f6' },
     { date: '2024-12-05', label: '$100k', color: '#f59e0b' },
 ];
 
@@ -52,6 +52,9 @@ const computePowerLawPrice = (dateStr: string): number | null => {
     const price = Math.pow(10, 5.82 * logDays - 17.01);
     return price;
 };
+
+// Minimum gap in days between visible events to avoid overlap
+const MIN_EVENT_GAP_DAYS = 365;
 
 export const DcaChart = memo(function DcaChart({ data, unit = 'BTC', m2Data }: DcaChartProps) {
     const { currencyConfig } = useCurrency();
@@ -178,7 +181,8 @@ export const DcaChart = memo(function DcaChart({ data, unit = 'BTC', m2Data }: D
         if (!showEvents || !chartData || chartData.length < 2) return [];
         const firstDate = new Date(chartData[0].date as string).getTime();
         const lastDate = new Date(chartData[chartData.length - 1].date as string).getTime();
-        return HISTORICAL_EVENTS
+
+        const candidates = HISTORICAL_EVENTS
             .filter(e => {
                 const eTs = new Date(e.date).getTime();
                 return eTs >= firstDate && eTs <= lastDate;
@@ -194,8 +198,25 @@ export const DcaChart = memo(function DcaChart({ data, unit = 'BTC', m2Data }: D
                         closestIdx = i;
                     }
                 }
-                return { ...e, snappedDate: chartData[closestIdx].date as string };
+                return { ...e, snappedDate: chartData[closestIdx].date as string, ts: eTs };
             });
+
+        // Filter out events that are too close together to be readable
+        const rangeYears = (lastDate - firstDate) / (365.25 * 24 * 60 * 60 * 1000);
+        if (rangeYears > 5 && candidates.length > 3) {
+            const gapMs = MIN_EVENT_GAP_DAYS * 24 * 60 * 60 * 1000;
+            const filtered: typeof candidates = [];
+            let lastTs = -Infinity;
+            for (const ev of candidates) {
+                if (ev.ts - lastTs >= gapMs) {
+                    filtered.push(ev);
+                    lastTs = ev.ts;
+                }
+            }
+            return filtered;
+        }
+
+        return candidates;
     }, [chartData, showEvents]);
 
     const handleExport = useCallback(async () => {
@@ -239,12 +260,12 @@ export const DcaChart = memo(function DcaChart({ data, unit = 'BTC', m2Data }: D
     return (
         <div
             ref={chartRef}
-            className="w-full h-[300px] sm:h-[420px] bg-white dark:bg-slate-900 rounded-xl p-3 sm:p-4 shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden relative flex flex-col select-none touch-manipulation"
+            className="w-full h-[300px] sm:h-[420px] bg-white dark:bg-slate-900 rounded-xl p-3 sm:p-4 shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden relative flex flex-col select-none touch-manipulation contain-layout-paint"
         >
-            {/* Header */}
-            <div className="flex items-center justify-between mb-2 sm:mb-4 gap-2 shrink-0">
-                <h3 className="text-sm sm:text-lg font-semibold text-slate-800 dark:text-slate-100 truncate">Performance Over Time</h3>
-                <div className="flex items-center gap-1 sm:gap-2 shrink-0 flex-wrap justify-end">
+            {/* Header — stacks on mobile to prevent title truncation */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-1 sm:mb-4 gap-1 sm:gap-2 shrink-0">
+                <h3 className="text-sm sm:text-lg font-semibold text-slate-800 dark:text-slate-100">Performance Over Time</h3>
+                <div className="flex items-center gap-1 sm:gap-2 shrink-0 flex-wrap">
                     <label className="flex items-center gap-1 sm:gap-1.5 text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 cursor-pointer select-none whitespace-nowrap">
                         <input
                             type="checkbox"
@@ -341,7 +362,7 @@ export const DcaChart = memo(function DcaChart({ data, unit = 'BTC', m2Data }: D
                             label={{ value: h.label, position: 'top', fill: '#a855f7', fontSize: 9 }}
                         />
                     ))}
-                    {eventLines.map((e) => (
+                    {eventLines.map((e, i) => (
                         <ReferenceLine
                             key={e.date}
                             x={e.snappedDate}
@@ -349,7 +370,7 @@ export const DcaChart = memo(function DcaChart({ data, unit = 'BTC', m2Data }: D
                             stroke={e.color}
                             strokeDasharray="3 3"
                             strokeWidth={1}
-                            label={{ value: e.label, position: 'insideTopRight', fill: e.color, fontSize: 8 }}
+                            label={{ value: e.label, position: i % 2 === 0 ? 'insideTopRight' : 'insideBottomRight', fill: e.color, fontSize: 8 }}
                         />
                     ))}
                     <Area yAxisId="left" type="monotone" dataKey="portfolioValue" name="Portfolio Value" stroke="#f59e0b" strokeWidth={2} fillOpacity={1} fill="url(#colorValue)" isAnimationActive={false} />
