@@ -59,6 +59,16 @@
   }
 }
 
+/* Compositor-friendly pulse for live indicator (opacity-only, no layout) */
+@keyframes pulseDot {
+  0%, 100% { opacity: 0; }
+  50% { opacity: 0.75; }
+}
+.animate-pulse-dot {
+  animation: pulseDot 2s ease-in-out infinite;
+  will-change: opacity;
+}
+
 /* Smooth scrolling — disabled on mobile for better scroll performance */
 @media (prefers-reduced-motion: no-preference) and (min-width: 640px) {
   html {

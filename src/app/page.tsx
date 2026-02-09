@@ -1,5 +1,4 @@
 import { Suspense } from 'react';
-import { DcaCalculator } from '@/components/DcaCalculator';
 import { HowItWorks } from '@/components/HowItWorks';
 import { EducationalContent } from '@/components/EducationalContent';
 import { FearGreedWidget } from '@/components/FearGreedWidget';
@@ -15,11 +14,8 @@ import { LiveBlocksWidget } from '@/components/LiveBlocksWidget';
 import { LivePriceTicker } from '@/components/LivePriceTicker';
 import { AdSlot } from '@/components/AdSlot';
 import { SkeletonCard } from '@/components/Skeleton';
+import { LazyDcaCalculator } from '@/components/LazyDcaCalculator';
 import dynamic from 'next/dynamic';
-
-const BitcoinAdoption = dynamic(() => import('@/components/BitcoinAdoption').then(m => m.BitcoinAdoption), {
-  loading: () => <div className="h-[400px] bg-slate-100 dark:bg-slate-800/50 rounded-xl animate-pulse" />,
-});
 import {
   getMempoolFees,
   getFearGreedIndex,
@@ -31,7 +27,10 @@ import {
   getPurchasingPowerData,
   getRecentBlocks,
 } from '@/app/actions';
-import { ChevronDown } from 'lucide-react';
+
+const BitcoinAdoption = dynamic(() => import('@/components/BitcoinAdoption').then(m => m.BitcoinAdoption), {
+  loading: () => <div className="h-[400px] bg-slate-100 dark:bg-slate-800/50 rounded-xl animate-pulse" />,
+});
 
 const faqItems = [
   {
@@ -129,7 +128,7 @@ export default function Home() {
         <HowItWorks />
 
         {/* Main Calculator */}
-        <DcaCalculator />
+        <LazyDcaCalculator />
 
         {/* Content + Sidebar */}
         <div className="grid lg:grid-cols-3 gap-8 items-start">
@@ -145,7 +144,7 @@ export default function Home() {
                   <details key={i} className="group bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 transition-shadow hover:shadow-sm">
                     <summary className="flex items-center justify-between cursor-pointer p-4 list-none [&::-webkit-details-marker]:hidden">
                       <h4 className="font-semibold text-sm sm:text-base text-slate-800 dark:text-slate-200 pr-4">{item.question}</h4>
-                      <ChevronDown className="w-4 h-4 text-slate-500 dark:text-slate-400 transition-transform duration-200 group-open:rotate-180 shrink-0" aria-hidden="true" />
+                      <svg className="w-4 h-4 text-slate-500 dark:text-slate-400 transition-transform duration-200 group-open:rotate-180 shrink-0" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
                     </summary>
                     <div className="px-4 pb-4 -mt-1">
                       <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">{item.answer}</p>
