@@ -369,7 +369,7 @@ export const DcaCalculator = () => {
                             value={startDate}
                             onChange={(e) => setStartDate(e.target.value)}
                             className={clsx(
-                                "w-full max-w-full box-border px-2 sm:px-3 py-2 text-sm rounded-lg border bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500 outline-none transition-all min-h-[38px]",
+                                "w-full min-w-0 max-w-full appearance-none box-border px-2 sm:px-3 py-2 text-sm rounded-lg border bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500 outline-none transition-all min-h-[38px]",
                                 dateError ? "border-red-400 dark:border-red-600" : "border-slate-200 dark:border-slate-700"
                             )}
                         />
@@ -383,7 +383,7 @@ export const DcaCalculator = () => {
                             value={endDate}
                             onChange={(e) => setEndDate(e.target.value)}
                             className={clsx(
-                                "w-full max-w-full box-border px-2 sm:px-3 py-2 text-sm rounded-lg border bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500 outline-none transition-all min-h-[38px]",
+                                "w-full min-w-0 max-w-full appearance-none box-border px-2 sm:px-3 py-2 text-sm rounded-lg border bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500 outline-none transition-all min-h-[38px]",
                                 dateError ? "border-red-400 dark:border-red-600" : "border-slate-200 dark:border-slate-700"
                             )}
                         />
