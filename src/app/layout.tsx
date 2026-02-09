@@ -9,6 +9,7 @@ import { ConsentGatedScripts } from '@/components/ConsentGatedScripts';
 import { BtcDonationButton } from '@/components/BtcDonationButton';
 import { Providers } from '@/components/Providers';
 import { ResponsiveNav } from '@/components/nav/ResponsiveNav';
+import { PwaInstallPrompt } from '@/components/PwaInstallPrompt';
 import clsx from 'clsx';
 
 const inter = Inter({ subsets: ['latin'], display: 'swap' });
@@ -60,6 +61,14 @@ const themeScript = `
 })();
 `;
 
+const swRegisterScript = `
+if('serviceWorker' in navigator){
+  window.addEventListener('load',function(){
+    navigator.serviceWorker.register('/sw.js');
+  });
+}
+`;
+
 export default function RootLayout({
   children,
 }: {
@@ -80,6 +89,7 @@ export default function RootLayout({
             'wait_for_update': 500
           });
         `}} />
+        <script dangerouslySetInnerHTML={{ __html: swRegisterScript }} />
         <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
         <link rel="icon" type="image/png" sizes="32x32" href="/favicon.ico" />
         <link rel="preconnect" href="https://mempool.space" />
@@ -189,6 +199,7 @@ export default function RootLayout({
             </div>
           </footer>
 
+          <PwaInstallPrompt />
           <CookieConsent />
         </div>
         </Providers>

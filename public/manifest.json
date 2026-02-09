@@ -31,5 +31,26 @@
       "type": "image/png",
       "purpose": "maskable"
     }
-  ]
+  ],
+  "shortcuts": [
+    {
+      "name": "DCA Calculator",
+      "short_name": "Calculator",
+      "url": "/",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Why Bitcoin",
+      "short_name": "Learn",
+      "url": "/why-bitcoin",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Self-Custody Guide",
+      "short_name": "Self-Custody",
+      "url": "/self-custody",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    }
+  ],
+  "categories": ["finance", "education", "utilities"]
 }
