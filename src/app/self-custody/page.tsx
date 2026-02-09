@@ -102,7 +102,7 @@ const WALLETS = [
     description: 'Cypherock uses Shamir Secret Sharing to split your private key across 4 tamper-proof cards and the device itself. Even if you lose one card, your Bitcoin is safe. No seed phrase to write down or worry about.',
     features: ['No seed phrase backup needed', 'Shamir Secret Sharing across 4 cards', 'Open-source firmware', 'Supports 9,000+ assets', 'EAL6+ secure element'],
     price: 'From $99',
-    href: 'https://www.cypherock.com/ref?wt_coupon=9drix910',
+    href: 'https://cypherock.com/store/?ref=BTCDOLLARCOSTAVERAGE',
     color: 'violet',
     image: '/wallets/cypherock.png',
     bestFor: 'Best for: Eliminating single points of failure',
