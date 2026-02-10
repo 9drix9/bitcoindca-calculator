@@ -3,6 +3,14 @@ import type { Metadata } from 'next';
 export const metadata: Metadata = {
     title: 'Terms of Service | Bitcoin DCA Calculator',
     description: 'Terms of service for Bitcoin DCA Calculator. Usage conditions, disclaimers, liability limitations, and intellectual property notices. For educational purposes only.',
+    alternates: {
+        canonical: '/terms',
+    },
+    openGraph: {
+        title: 'Terms of Service | Bitcoin DCA Calculator',
+        description: 'Usage conditions, disclaimers, and liability limitations for Bitcoin DCA Calculator.',
+        type: 'website',
+    },
 };
 
 export default function TermsPage() {
