@@ -26,6 +26,15 @@ export const metadata: Metadata = {
     },
 };
 
+const breadcrumbJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+        { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://btcdollarcostaverage.com" },
+        { "@type": "ListItem", "position": 2, "name": "Mining Guide", "item": "https://btcdollarcostaverage.com/mining" },
+    ],
+};
+
 const articleJsonLd = {
     "@context": "https://schema.org",
     "@type": "Article",
@@ -111,6 +120,10 @@ export default async function MiningPage() {
 
     return (
         <>
+            <script
+                type="application/ld+json"
+                dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
+            />
             <script
                 type="application/ld+json"
                 dangerouslySetInnerHTML={{ __html: JSON.stringify(articleJsonLd) }}

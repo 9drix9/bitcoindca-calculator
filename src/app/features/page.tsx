@@ -79,8 +79,22 @@ const SectionHeader = ({ title, subtitle }: { title: string; subtitle: string })
     </div>
 );
 
+const breadcrumbJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+        { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://btcdollarcostaverage.com" },
+        { "@type": "ListItem", "position": 2, "name": "Features Guide", "item": "https://btcdollarcostaverage.com/features" },
+    ],
+};
+
 export default function FeaturesPage() {
     return (
+        <>
+        <script
+            type="application/ld+json"
+            dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
+        />
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
             {/* Hero */}
             <section className="text-center mb-12 sm:mb-16">
@@ -500,5 +514,6 @@ export default function FeaturesPage() {
                 Past performance does not guarantee future results. Always do your own research before investing.
             </p>
         </div>
+        </>
     );
 }

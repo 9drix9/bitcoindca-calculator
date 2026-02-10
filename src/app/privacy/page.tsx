@@ -3,6 +3,14 @@ import type { Metadata } from 'next';
 export const metadata: Metadata = {
     title: 'Privacy Policy | Bitcoin DCA Calculator',
     description: 'Privacy policy for Bitcoin DCA Calculator. Learn how we handle your data, cookies, third-party advertising, and analytics. No personal financial data is collected or stored.',
+    alternates: {
+        canonical: '/privacy',
+    },
+    openGraph: {
+        title: 'Privacy Policy | Bitcoin DCA Calculator',
+        description: 'Learn how Bitcoin DCA Calculator handles your data. No personal financial data is collected or stored.',
+        type: 'website',
+    },
 };
 
 export default function PrivacyPage() {

@@ -192,9 +192,70 @@ const walletColorClasses = {
   },
 };
 
+const breadcrumbJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://btcdollarcostaverage.com" },
+    { "@type": "ListItem", "position": 2, "name": "Self-Custody Guide", "item": "https://btcdollarcostaverage.com/self-custody" },
+  ],
+};
+
+const howToJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "HowTo",
+  "name": "How to Set Up Bitcoin Self-Custody",
+  "description": "A step-by-step guide to securing your Bitcoin with a hardware wallet. Learn how to take full control of your private keys.",
+  "step": STEPS.map((s) => ({
+    "@type": "HowToStep",
+    "position": s.step,
+    "name": s.title,
+    "text": s.description,
+  })),
+};
+
+const faqJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "What if I lose my hardware wallet?",
+      "acceptedAnswer": { "@type": "Answer", "text": "Your Bitcoin isn't stored \"on\" the device. It's on the blockchain. The device just holds your private key. As long as you have your recovery phrase backed up, you can restore your wallet on a brand new device." }
+    },
+    {
+      "@type": "Question",
+      "name": "What if the hardware wallet company goes out of business?",
+      "acceptedAnswer": { "@type": "Answer", "text": "Your recovery phrase follows an open standard (BIP-39). You can restore your keys on any compatible wallet from any manufacturer. You're never locked in to one company." }
+    },
+    {
+      "@type": "Question",
+      "name": "Is self-custody worth it for small amounts?",
+      "acceptedAnswer": { "@type": "Answer", "text": "A common rule of thumb: if you hold more Bitcoin than you'd be comfortable losing, move it to self-custody. For many people, that threshold is around $500-$1,000. Hardware wallets cost $65-$100." }
+    },
+    {
+      "@type": "Question",
+      "name": "Can't I just use a software wallet on my phone?",
+      "acceptedAnswer": { "@type": "Answer", "text": "Software wallets are better than leaving Bitcoin on an exchange, but your phone is connected to the internet and can be compromised. A hardware wallet keeps your keys completely offline, which is the gold standard for security." }
+    },
+  ],
+};
+
 export default function SelfCustodyPage() {
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 space-y-12 sm:space-y-16">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(howToJsonLd) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
+      />
 
       {/* Hero */}
       <section className="text-center space-y-4 sm:space-y-5">

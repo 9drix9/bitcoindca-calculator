@@ -24,6 +24,15 @@ export const metadata: Metadata = {
     },
 };
 
+const breadcrumbJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+        { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://btcdollarcostaverage.com" },
+        { "@type": "ListItem", "position": 2, "name": "About", "item": "https://btcdollarcostaverage.com/about" },
+    ],
+};
+
 const articleJsonLd = {
     "@context": "https://schema.org",
     "@type": "Article",
@@ -50,6 +59,10 @@ const articleJsonLd = {
 export default function AboutPage() {
     return (
         <>
+            <script
+                type="application/ld+json"
+                dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
+            />
             <script
                 type="application/ld+json"
                 dangerouslySetInnerHTML={{ __html: JSON.stringify(articleJsonLd) }}

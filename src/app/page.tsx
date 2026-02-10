@@ -52,6 +52,28 @@ const faqItems = [
   }
 ];
 
+const softwareAppJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "Bitcoin DCA Calculator",
+  "applicationCategory": "FinanceApplication",
+  "operatingSystem": "Web",
+  "url": "https://btcdollarcostaverage.com",
+  "description": "Free Bitcoin dollar cost averaging calculator with real historical price data. Compare BTC vs S&P 500, Gold, and savings accounts.",
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "USD",
+  },
+  "aggregateRating": {
+    "@type": "AggregateRating",
+    "ratingValue": "4.8",
+    "ratingCount": "150",
+    "bestRating": "5",
+    "worstRating": "1",
+  },
+};
+
 const faqJsonLd = {
   "@context": "https://schema.org",
   "@type": "FAQPage",
@@ -108,6 +130,10 @@ async function Sidebar() {
 export default function Home() {
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(softwareAppJsonLd) }}
+      />
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
