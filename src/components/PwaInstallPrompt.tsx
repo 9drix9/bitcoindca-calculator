@@ -71,7 +71,7 @@ export function PwaInstallPrompt() {
   if (dismissed || (!deferredPrompt && !showIosPrompt)) return null;
 
   return (
-    <div className="fixed bottom-16 md:bottom-0 left-0 right-0 z-40 p-3 sm:p-4 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-700 shadow-[0_-4px_20px_rgba(0,0,0,0.08)] dark:shadow-[0_-4px_20px_rgba(0,0,0,0.3)]">
+    <div className="fixed left-0 right-0 z-40 p-3 sm:p-4 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-700 shadow-[0_-4px_20px_rgba(0,0,0,0.08)] dark:shadow-[0_-4px_20px_rgba(0,0,0,0.3)] bottom-[calc(4rem+max(env(safe-area-inset-bottom),12px))] md:bottom-0">
       <div className="max-w-4xl mx-auto">
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 bg-amber-500 rounded-lg flex items-center justify-center text-white font-bold text-sm shrink-0">
