@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 
 interface AdSlotProps {
     unitId?: string;
@@ -8,45 +8,30 @@ interface AdSlotProps {
 }
 
 export const AdSlot = ({ unitId = '2426249', className = '' }: AdSlotProps) => {
-    const [visible, setVisible] = useState(false);
     const ref = useRef<HTMLDivElement>(null);
+    const loaded = useRef(false);
 
     useEffect(() => {
         const el = ref.current;
         if (!el) return;
+
         const observer = new IntersectionObserver(
             ([entry]) => {
-                if (entry.isIntersecting) {
-                    setVisible(true);
+                if (entry.isIntersecting && !loaded.current) {
+                    loaded.current = true;
                     observer.disconnect();
+
+                    const script = document.createElement('script');
+                    script.src = `//acceptable.a-ads.com/${unitId}/?size=Adaptive`;
+                    script.async = true;
+                    el.appendChild(script);
                 }
             },
             { rootMargin: '200px' }
         );
         observer.observe(el);
         return () => observer.disconnect();
-    }, []);
+    }, [unitId]);
 
-    return (
-        <div ref={ref} className={`w-full relative ${className}`}>
-            {visible && (
-                <iframe
-                    data-aa={unitId}
-                    src={`//acceptable.a-ads.com/${unitId}/?size=Adaptive`}
-                    title="Advertisement"
-                    loading="lazy"
-                    suppressHydrationWarning
-                    style={{
-                        border: 0,
-                        padding: 0,
-                        width: '100%',
-                        height: 'auto',
-                        overflow: 'hidden',
-                        display: 'block',
-                        margin: '0 auto',
-                    }}
-                />
-            )}
-        </div>
-    );
+    return <div ref={ref} className={`w-full relative ${className}`} />;
 };
