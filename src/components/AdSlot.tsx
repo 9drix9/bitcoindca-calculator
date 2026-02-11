@@ -7,7 +7,7 @@ interface AdSlotProps {
 
 export const AdSlot = ({ unitId = '2426249', className = '' }: AdSlotProps) => {
     return (
-        <div className={`w-full relative ${className}`} style={{ zIndex: 99998 }}>
+        <div className={`w-full relative ${className}`}>
             <iframe
                 data-aa={unitId}
                 src={`//acceptable.a-ads.com/${unitId}/?size=Adaptive`}
