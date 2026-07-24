@@ -1,5 +1,5 @@
 import { DcaBreakdownItem } from '@/types';
-import { format } from 'date-fns';
+import { formatUtc } from '@/utils/dates';
 
 function escapeCsvField(value: string): string {
     // Prevent CSV injection: prefix formula-triggering characters with a single quote
@@ -13,16 +13,20 @@ function escapeCsvField(value: string): string {
     return value;
 }
 
-export function generateCsvContent(breakdown: DcaBreakdownItem[]): string {
-    const headers = ['Date', 'BTC Price', 'Amount Invested', 'BTC Bought', 'Cumulative Invested', 'Cumulative BTC', 'Portfolio Value'];
+export function generateCsvContent(
+    breakdown: DcaBreakdownItem[],
+    currency: { code: string; rate: number } = { code: 'USD', rate: 1 },
+): string {
+    const c = currency.code;
+    const headers = ['Date', `BTC Price (${c})`, `Amount Invested (${c})`, 'BTC Bought', `Cumulative Invested (${c})`, 'Cumulative BTC', `Portfolio Value (${c})`];
     const rows = breakdown.map(item => [
-        escapeCsvField(format(new Date(item.date), 'yyyy-MM-dd')),
-        escapeCsvField(item.price.toFixed(2)),
-        escapeCsvField(item.invested.toFixed(2)),
+        escapeCsvField(formatUtc(item.date, 'isoDay')),
+        escapeCsvField((item.price * currency.rate).toFixed(2)),
+        escapeCsvField((item.invested * currency.rate).toFixed(2)),
         escapeCsvField(item.accumulated.toFixed(8)),
-        escapeCsvField(item.totalInvested.toFixed(2)),
+        escapeCsvField((item.totalInvested * currency.rate).toFixed(2)),
         escapeCsvField(item.totalAccumulated.toFixed(8)),
-        escapeCsvField(item.portfolioValue.toFixed(2)),
+        escapeCsvField((item.portfolioValue * currency.rate).toFixed(2)),
     ].join(','));
 
     return [headers.join(','), ...rows].join('\n');

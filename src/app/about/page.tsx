@@ -3,14 +3,14 @@ import Link from 'next/link';
 import { Target, Eye, Link as LinkIcon, BarChart3, ShieldX, Code, User } from 'lucide-react';
 
 export const metadata: Metadata = {
-    title: 'About | Bitcoin DCA Calculator',
+    title: 'About',
     description: 'Who built this Bitcoin DCA calculator, why it exists, and what it stands for. Free, open-source, Bitcoin-only education with full transparency on affiliate links and ads.',
     keywords: ['bitcoin dca calculator about', 'bitcoin education', 'open source bitcoin', 'bitcoin dca tool'],
     alternates: {
         canonical: '/about',
     },
     openGraph: {
-        title: 'About This Project | Bitcoin DCA Calculator',
+        title: 'About This Project',
         description: 'A free, open-source Bitcoin DCA calculator. No accounts, no email capture, no shitcoins. Learn who built it and why.',
         type: 'article',
         siteName: 'Bitcoin DCA Calculator',
@@ -18,7 +18,7 @@ export const metadata: Metadata = {
     },
     twitter: {
         card: 'summary_large_image',
-        title: 'About This Project | Bitcoin DCA Calculator',
+        title: 'About This Project',
         description: 'A free, open-source Bitcoin DCA calculator. No accounts, no email capture, no shitcoins.',
         creator: '@9drix9',
     },
@@ -53,7 +53,9 @@ const articleJsonLd = {
         "@id": "https://btcdollarcostaverage.com/about"
     },
     "datePublished": "2025-01-01",
-    "dateModified": new Date().toISOString().split('T')[0],
+    // Static date — update when the content actually changes (build-date freshness
+    // is a spam-adjacent signal). Keep in sync with sitemap.ts.
+    "dateModified": "2026-07-24",
 };
 
 export default function AboutPage() {

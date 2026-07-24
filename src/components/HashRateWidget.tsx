@@ -1,7 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { Cpu } from 'lucide-react';
 import { getHashRateDifficulty } from '@/app/actions';
+import { Card, CardHeader, StatRow } from '@/components/ui/Card';
 
 interface HashRateData {
     hashrate: number;
@@ -14,6 +16,8 @@ interface HashRateData {
 interface HashRateWidgetProps {
     initialData: HashRateData | null;
 }
+
+const POLL_MS = 60_000;
 
 const formatHashrate = (h: number): string => {
     const ehps = h / 1e18;
@@ -32,51 +36,58 @@ const formatDifficulty = (d: number): string => {
 
 export const HashRateWidget = ({ initialData }: HashRateWidgetProps) => {
     const [data, setData] = useState<HashRateData | null>(initialData);
+    const hadInitialData = useRef(initialData !== null);
 
     useEffect(() => {
         let mounted = true;
+        // SSR data is seconds old at hydration; only fetch immediately when it is missing.
+        let lastFetched = hadInitialData.current ? Date.now() : 0;
+
         const refresh = async () => {
+            lastFetched = Date.now();
             try {
                 const fresh = await getHashRateDifficulty();
                 if (mounted && fresh) setData(fresh);
             } catch { /* keep last known */ }
         };
-        refresh();
-        const interval = setInterval(refresh, 60_000);
-        return () => { mounted = false; clearInterval(interval); };
+
+        if (!hadInitialData.current) refresh();
+
+        const interval = setInterval(() => {
+            if (!document.hidden) refresh();
+        }, POLL_MS);
+        const onVisibilityChange = () => {
+            if (!document.hidden && Date.now() - lastFetched >= POLL_MS) refresh();
+        };
+        document.addEventListener('visibilitychange', onVisibilityChange);
+
+        return () => {
+            mounted = false;
+            clearInterval(interval);
+            document.removeEventListener('visibilitychange', onVisibilityChange);
+        };
     }, []);
 
-    if (!data) return null;
-
-    const isNegativeAdj = data.adjustmentPercent < 0;
+    const isNegativeAdj = data !== null && data.adjustmentPercent < 0;
 
     return (
-        <div className="bg-white dark:bg-slate-900 rounded-xl p-4 border border-slate-200 dark:border-slate-800">
-            <h4 className="font-semibold text-slate-800 dark:text-white mb-3 text-xs sm:text-sm flex items-center gap-1.5">
-                <span className="text-amber-500">&#9874;</span>
-                Hash Rate &amp; Difficulty
-            </h4>
+        <Card className="p-4">
+            <CardHeader icon={<Cpu className="w-4 h-4" />} title="Hash Rate & Difficulty" className="mb-3" />
 
-            <div className="space-y-2 text-xs sm:text-sm">
-                <div className="flex justify-between">
-                    <span className="text-slate-500 dark:text-slate-400">Hashrate</span>
-                    <span className="font-mono font-semibold text-slate-800 dark:text-white">{formatHashrate(data.hashrate)}</span>
+            {data ? (
+                <div className="space-y-2">
+                    <StatRow label="Hashrate" value={formatHashrate(data.hashrate)} />
+                    <StatRow label="Difficulty" value={formatDifficulty(data.difficulty)} />
+                    <StatRow
+                        label="Next Adjustment"
+                        value={`${data.adjustmentPercent > 0 ? '+' : ''}${data.adjustmentPercent.toFixed(2)}%`}
+                        valueClassName={isNegativeAdj ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}
+                    />
+                    <StatRow label="Blocks Until Retarget" value={data.blocksUntilAdjustment.toLocaleString()} />
                 </div>
-                <div className="flex justify-between">
-                    <span className="text-slate-500 dark:text-slate-400">Difficulty</span>
-                    <span className="font-mono font-semibold text-slate-800 dark:text-white">{formatDifficulty(data.difficulty)}</span>
-                </div>
-                <div className="flex justify-between">
-                    <span className="text-slate-500 dark:text-slate-400">Next Adjustment</span>
-                    <span className={`font-mono font-semibold ${isNegativeAdj ? 'text-green-500' : 'text-red-500'}`}>
-                        {data.adjustmentPercent > 0 ? '+' : ''}{data.adjustmentPercent.toFixed(2)}%
-                    </span>
-                </div>
-                <div className="flex justify-between">
-                    <span className="text-slate-500 dark:text-slate-400">Blocks Until Retarget</span>
-                    <span className="font-mono font-medium text-slate-800 dark:text-white">{data.blocksUntilAdjustment.toLocaleString()}</span>
-                </div>
-            </div>
-        </div>
+            ) : (
+                <p className="text-xs text-slate-500 dark:text-slate-400">Data unavailable</p>
+            )}
+        </Card>
     );
 };

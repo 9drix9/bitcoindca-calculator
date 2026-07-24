@@ -2,9 +2,10 @@
 
 import { useState, useMemo, memo } from 'react';
 import { DcaBreakdownItem } from '@/types';
-import { format } from 'date-fns';
 import { ChevronDown } from 'lucide-react';
 import { useCurrency } from '@/context/CurrencyContext';
+import { formatUtc } from '@/utils/dates';
+import { Card } from '@/components/ui/Card';
 import clsx from 'clsx';
 
 interface TransactionTableProps {
@@ -12,15 +13,24 @@ interface TransactionTableProps {
     unit?: 'BTC' | 'SATS';
 }
 
+// Long ranges render at most this many rows until the user asks for all of them.
+const INITIAL_ROWS = 200;
+
+const thClass =
+    'sticky top-0 z-10 bg-slate-50 dark:bg-slate-800 px-3 sm:px-4 py-2.5 font-medium whitespace-nowrap';
+
 export const TransactionTable = memo(function TransactionTable({ breakdown, unit = 'BTC' }: TransactionTableProps) {
-    const { formatCurrency } = useCurrency();
+    const { formatCurrency, formatBtc, formatSats } = useCurrency();
     const [open, setOpen] = useState(false);
+    const [showAll, setShowAll] = useState(false);
 
     const isSats = unit === 'SATS';
+    const formatAmount = isSats ? formatSats : formatBtc;
 
     const { bestIdx, worstIdx } = useMemo(() => {
         if (!breakdown || breakdown.length < 2) return { bestIdx: -1, worstIdx: -1 };
-        let minIdx = 0, maxIdx = 0;
+        let minIdx = 0,
+            maxIdx = 0;
         for (let i = 1; i < breakdown.length; i++) {
             if (breakdown[i].price < breakdown[minIdx].price) minIdx = i;
             if (breakdown[i].price > breakdown[maxIdx].price) maxIdx = i;
@@ -31,83 +41,107 @@ export const TransactionTable = memo(function TransactionTable({ breakdown, unit
 
     if (!breakdown || breakdown.length === 0) return null;
 
-    const formatBtcValue = (btc: number) => {
-        if (isSats) return Math.floor(btc * 100_000_000).toLocaleString();
-        return btc.toFixed(8);
-    };
+    const rows = showAll ? breakdown : breakdown.slice(0, INITIAL_ROWS);
+    const hiddenCount = breakdown.length - rows.length;
 
     return (
-        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+        <Card className="overflow-hidden">
             <button
+                type="button"
                 onClick={() => setOpen(!open)}
                 aria-expanded={open}
                 aria-label={`${open ? 'Hide' : 'Show'} transaction history`}
-                className="w-full flex items-center justify-between p-4 sm:p-5 text-left hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
+                className="flex w-full items-center justify-between p-4 text-left transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/50 sm:p-5"
             >
-                <h3 className="text-sm sm:text-lg font-semibold text-slate-800 dark:text-slate-100">
-                    Transaction History <span className="text-slate-500 dark:text-slate-400 font-normal">({breakdown.length})</span>
+                <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100 sm:text-lg">
+                    Transaction History{' '}
+                    <span className="font-normal text-slate-500 dark:text-slate-400 tabular-nums">
+                        ({breakdown.length.toLocaleString()})
+                    </span>
                 </h3>
-                <ChevronDown className={clsx(
-                    "w-4 h-4 text-slate-500 dark:text-slate-400 transition-transform duration-200 shrink-0",
-                    open && "rotate-180"
-                )} />
+                <ChevronDown
+                    className={clsx(
+                        'h-4 w-4 shrink-0 text-slate-500 transition-transform duration-200 dark:text-slate-400',
+                        open && 'rotate-180',
+                    )}
+                />
             </button>
 
             {open && (
-                <div className="overflow-x-auto border-t border-slate-200 dark:border-slate-800">
-                    <table className="w-full text-xs sm:text-sm min-w-[560px]">
-                        <thead>
-                            <tr className="bg-slate-50 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400">
-                                <th className="text-left px-3 sm:px-4 py-2.5 font-medium whitespace-nowrap">Date</th>
-                                <th className="text-right px-3 sm:px-4 py-2.5 font-medium whitespace-nowrap">BTC Price</th>
-                                <th className="text-right px-3 sm:px-4 py-2.5 font-medium whitespace-nowrap">Invested</th>
-                                <th className="text-right px-3 sm:px-4 py-2.5 font-medium whitespace-nowrap">{isSats ? 'Sats Bought' : 'BTC Bought'}</th>
-                                <th className="text-right px-3 sm:px-4 py-2.5 font-medium whitespace-nowrap">{isSats ? 'Total Sats' : 'Total BTC'}</th>
-                                <th className="text-right px-3 sm:px-4 py-2.5 font-medium whitespace-nowrap">Value</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                            {breakdown.map((item, i) => (
-                                <tr key={i} className={clsx(
-                                    "transition-colors",
-                                    i === bestIdx
-                                        ? "bg-green-50 dark:bg-green-950/20 hover:bg-green-100 dark:hover:bg-green-950/30"
-                                        : i === worstIdx
-                                            ? "bg-red-50 dark:bg-red-950/20 hover:bg-red-100 dark:hover:bg-red-950/30"
-                                            : "hover:bg-slate-50 dark:hover:bg-slate-800/30"
-                                )}>
-                                    <td className="px-3 sm:px-4 py-2 whitespace-nowrap text-slate-700 dark:text-slate-300">
-                                        <span className="flex items-center gap-1.5">
-                                            {format(new Date(item.date), 'MMM d, yy')}
-                                            {i === bestIdx && (
-                                                <span className="text-[10px] font-medium px-1 py-0.5 rounded bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400 leading-none">Best</span>
-                                            )}
-                                            {i === worstIdx && (
-                                                <span className="text-[10px] font-medium px-1 py-0.5 rounded bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-400 leading-none">Worst</span>
-                                            )}
-                                        </span>
-                                    </td>
-                                    <td className="px-3 sm:px-4 py-2 text-right whitespace-nowrap text-slate-600 dark:text-slate-400 tabular-nums">
-                                        {formatCurrency(item.price)}
-                                    </td>
-                                    <td className="px-3 sm:px-4 py-2 text-right whitespace-nowrap text-slate-600 dark:text-slate-400 tabular-nums">
-                                        {formatCurrency(item.invested)}
-                                    </td>
-                                    <td className="px-3 sm:px-4 py-2 text-right whitespace-nowrap font-mono text-slate-600 dark:text-slate-400 tabular-nums">
-                                        {formatBtcValue(item.accumulated)}
-                                    </td>
-                                    <td className="px-3 sm:px-4 py-2 text-right whitespace-nowrap font-mono text-slate-600 dark:text-slate-400 tabular-nums">
-                                        {formatBtcValue(item.totalAccumulated)}
-                                    </td>
-                                    <td className="px-3 sm:px-4 py-2 text-right whitespace-nowrap font-medium text-slate-700 dark:text-slate-300 tabular-nums">
-                                        {formatCurrency(item.portfolioValue)}
-                                    </td>
+                <div className="border-t border-slate-200 dark:border-slate-800">
+                    <div className="max-h-[480px] overflow-x-auto overflow-y-auto">
+                        <table className="w-full min-w-[560px] text-xs sm:text-sm">
+                            <thead className="text-slate-500 dark:text-slate-400">
+                                <tr>
+                                    <th scope="col" className={clsx(thClass, 'text-left')}>Date</th>
+                                    <th scope="col" className={clsx(thClass, 'text-right')}>BTC Price</th>
+                                    <th scope="col" className={clsx(thClass, 'text-right')}>Invested</th>
+                                    <th scope="col" className={clsx(thClass, 'text-right')}>Bought</th>
+                                    <th scope="col" className={clsx(thClass, 'text-right')}>Holdings</th>
+                                    <th scope="col" className={clsx(thClass, 'text-right')}>Value</th>
                                 </tr>
-                            ))}
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                                {rows.map((item, i) => (
+                                    <tr
+                                        key={i}
+                                        className={clsx(
+                                            'transition-colors',
+                                            i === bestIdx
+                                                ? 'bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/20 dark:hover:bg-emerald-950/30'
+                                                : i === worstIdx
+                                                    ? 'bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/20 dark:hover:bg-rose-950/30'
+                                                    : 'hover:bg-slate-50 dark:hover:bg-slate-800/30',
+                                        )}
+                                    >
+                                        <td className="whitespace-nowrap px-3 py-2 text-slate-700 dark:text-slate-300 sm:px-4">
+                                            <span className="flex items-center gap-1.5">
+                                                {formatUtc(item.date, 'full')}
+                                                {i === bestIdx && (
+                                                    <span className="rounded bg-emerald-100 px-1 py-0.5 text-[10px] font-medium leading-none text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400">
+                                                        Best
+                                                    </span>
+                                                )}
+                                                {i === worstIdx && (
+                                                    <span className="rounded bg-rose-100 px-1 py-0.5 text-[10px] font-medium leading-none text-rose-700 dark:bg-rose-900/40 dark:text-rose-400">
+                                                        Worst
+                                                    </span>
+                                                )}
+                                            </span>
+                                        </td>
+                                        <td className="whitespace-nowrap px-3 py-2 text-right text-slate-600 tabular-nums dark:text-slate-400 sm:px-4">
+                                            {formatCurrency(item.price)}
+                                        </td>
+                                        <td className="whitespace-nowrap px-3 py-2 text-right text-slate-600 tabular-nums dark:text-slate-400 sm:px-4">
+                                            {formatCurrency(item.invested)}
+                                        </td>
+                                        <td className="whitespace-nowrap px-3 py-2 text-right text-slate-600 tabular-nums dark:text-slate-400 sm:px-4">
+                                            {formatAmount(item.accumulated)}
+                                        </td>
+                                        <td className="whitespace-nowrap px-3 py-2 text-right text-slate-600 tabular-nums dark:text-slate-400 sm:px-4">
+                                            {formatAmount(item.totalAccumulated)}
+                                        </td>
+                                        <td className="whitespace-nowrap px-3 py-2 text-right font-medium text-slate-700 tabular-nums dark:text-slate-300 sm:px-4">
+                                            {formatCurrency(item.portfolioValue)}
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                    {hiddenCount > 0 && (
+                        <div className="border-t border-slate-100 p-2 dark:border-slate-800">
+                            <button
+                                type="button"
+                                onClick={() => setShowAll(true)}
+                                className="w-full rounded-lg py-2 text-xs font-medium text-amber-700 transition-colors hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-500/10 sm:text-sm"
+                            >
+                                Show all {breakdown.length.toLocaleString()} purchases
+                            </button>
+                        </div>
+                    )}
                 </div>
             )}
-        </div>
+        </Card>
     );
 });

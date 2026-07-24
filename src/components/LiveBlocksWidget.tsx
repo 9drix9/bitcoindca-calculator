@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Box } from 'lucide-react';
 import { getRecentBlocks } from '@/app/actions';
+import { Card, CardHeader } from '@/components/ui/Card';
 
 interface BlockData {
     height: number;
@@ -14,6 +15,8 @@ interface BlockData {
 interface LiveBlocksWidgetProps {
     initialData: BlockData[] | null;
 }
+
+const POLL_MS = 30_000;
 
 const formatTimeAgo = (timestamp: number) => {
     const seconds = Math.max(0, Math.floor(Date.now() / 1000 - timestamp));
@@ -32,11 +35,15 @@ export const LiveBlocksWidget = ({ initialData }: LiveBlocksWidgetProps) => {
     const [data, setData] = useState<BlockData[] | null>(initialData);
     const prevHeightsRef = useRef<Set<number>>(new Set(initialData?.map(b => b.height) ?? []));
     const [newHeights, setNewHeights] = useState<Set<number>>(new Set());
+    const hadInitialData = useRef(initialData !== null);
 
     useEffect(() => {
         let mounted = true;
+        // SSR data is seconds old at hydration; only fetch immediately when it is missing.
+        let lastFetched = hadInitialData.current ? Date.now() : 0;
 
         const refresh = async () => {
+            lastFetched = Date.now();
             try {
                 const fresh = await getRecentBlocks();
                 if (mounted && fresh) {
@@ -61,65 +68,81 @@ export const LiveBlocksWidget = ({ initialData }: LiveBlocksWidgetProps) => {
             }
         };
 
-        refresh();
-        const interval = setInterval(refresh, 30_000);
-        return () => { mounted = false; clearInterval(interval); };
+        if (!hadInitialData.current) refresh();
+
+        const interval = setInterval(() => {
+            if (!document.hidden) refresh();
+        }, POLL_MS);
+        const onVisibilityChange = () => {
+            if (!document.hidden && Date.now() - lastFetched >= POLL_MS) refresh();
+        };
+        document.addEventListener('visibilitychange', onVisibilityChange);
+
+        return () => {
+            mounted = false;
+            clearInterval(interval);
+            document.removeEventListener('visibilitychange', onVisibilityChange);
+        };
     }, []);
 
-    // Update time-ago labels every 10 seconds
+    // Update time-ago labels every 10 seconds (skipped while the tab is hidden)
     const [, setTick] = useState(0);
     useEffect(() => {
-        const timer = setInterval(() => setTick(t => t + 1), 10_000);
+        const timer = setInterval(() => {
+            if (!document.hidden) setTick(t => t + 1);
+        }, 10_000);
         return () => clearInterval(timer);
     }, []);
 
-    if (!data) return null;
-
     return (
-        <div className="bg-white dark:bg-slate-900 rounded-xl p-4 border border-slate-200 dark:border-slate-800">
-            <div className="flex items-center gap-2 mb-3">
-                <Box className="w-4 h-4 text-amber-500" />
-                <h4 className="font-semibold text-slate-800 dark:text-white text-xs sm:text-sm">Latest Blocks</h4>
-            </div>
-            <div className="space-y-2">
-                {data.map((block) => (
-                    <div
-                        key={block.height}
-                        className={`flex items-center justify-between py-1.5 px-2 rounded-lg transition-colors duration-700 ${
-                            newHeights.has(block.height)
-                                ? 'bg-green-50 dark:bg-green-950/30'
-                                : 'bg-slate-50 dark:bg-slate-800/50'
-                        }`}
-                    >
-                        <div className="flex flex-col">
-                            <span className="text-xs sm:text-sm font-mono font-semibold text-amber-600 dark:text-amber-400 tabular-nums">
-                                {block.height.toLocaleString()}
-                            </span>
-                            <span className="text-[10px] text-slate-500 dark:text-slate-400">
-                                {formatTimeAgo(block.timestamp)}
-                            </span>
+        <Card className="p-4">
+            <CardHeader icon={<Box className="w-4 h-4" />} title="Latest Blocks" className="mb-3" />
+
+            {data ? (
+                <div className="space-y-2">
+                    {data.map((block) => (
+                        <div
+                            key={block.height}
+                            className={`flex items-center justify-between py-1.5 px-2 rounded-lg transition-colors duration-700 ${
+                                newHeights.has(block.height)
+                                    ? 'bg-emerald-50 dark:bg-emerald-950/30'
+                                    : 'bg-slate-50 dark:bg-slate-800/50'
+                            }`}
+                        >
+                            <div className="flex flex-col">
+                                <span className="text-xs sm:text-sm font-semibold text-amber-600 dark:text-amber-400 tabular-nums">
+                                    {block.height.toLocaleString()}
+                                </span>
+                                {/* Relative time drifts between SSR and hydration — mismatch is expected */}
+                                <span suppressHydrationWarning className="text-[11px] text-slate-500 dark:text-slate-400 tabular-nums">
+                                    {formatTimeAgo(block.timestamp)}
+                                </span>
+                            </div>
+                            <div className="flex flex-col items-end">
+                                <span className="text-[11px] sm:text-xs text-slate-600 dark:text-slate-400 tabular-nums">
+                                    {block.txCount.toLocaleString()} txs
+                                </span>
+                                <span className="text-[11px] text-slate-500 dark:text-slate-400 tabular-nums">
+                                    {formatSize(block.size)} MB
+                                </span>
+                            </div>
                         </div>
-                        <div className="flex flex-col items-end">
-                            <span className="text-[10px] sm:text-xs text-slate-600 dark:text-slate-400">
-                                {block.txCount.toLocaleString()} txs
-                            </span>
-                            <span className="text-[10px] text-slate-500 dark:text-slate-400">
-                                {formatSize(block.size)} MB
-                            </span>
-                        </div>
-                    </div>
-                ))}
-            </div>
+                    ))}
+                </div>
+            ) : (
+                <p className="text-xs text-slate-500 dark:text-slate-400">Data unavailable</p>
+            )}
+
             <div className="mt-2 pt-2 border-t border-slate-100 dark:border-slate-800">
                 <a
                     href="https://mempool.space"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 hover:text-amber-500 transition-colors"
+                    className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 hover:text-amber-500 transition-colors"
                 >
                     Data from mempool.space
                 </a>
             </div>
-        </div>
+        </Card>
     );
 };

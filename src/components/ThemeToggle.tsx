@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useSyncExternalStore, useCallback } from 'react';
+import { useEffect, useState, useSyncExternalStore, useCallback } from 'react';
 import { Sun, Moon } from 'lucide-react';
 
 type Theme = 'light' | 'dark' | 'system';
@@ -34,6 +34,9 @@ function getSnapshot(): Theme {
 
 export const ThemeToggle = () => {
     const theme = useSyncExternalStore(subscribe, getSnapshot, () => 'system' as Theme);
+    // Resolved theme, tracked post-mount so SSR/hydration stays consistent.
+    // null = unknown (before mount) -> generic label, aria-pressed=false.
+    const [isDark, setIsDark] = useState<boolean | null>(null);
 
     useEffect(() => {
         applyTheme(theme);
@@ -48,11 +51,29 @@ export const ThemeToggle = () => {
         }
     }, [theme]);
 
+    // Mirror the resolved theme from the <html> class so the accessible
+    // label/state always match what the user actually sees (covers toggle
+    // clicks, system-preference changes, and other tabs).
+    useEffect(() => {
+        const root = document.documentElement;
+        const update = () => setIsDark(root.classList.contains('dark'));
+        update();
+        const observer = new MutationObserver(update);
+        observer.observe(root, { attributes: true, attributeFilter: ['class'] });
+        return () => observer.disconnect();
+    }, []);
+
     const toggle = useCallback(() => {
         const next: Theme = document.documentElement.classList.contains('dark') ? 'light' : 'dark';
         localStorage.setItem(THEME_KEY, next);
         listeners.forEach(l => l());
     }, []);
+
+    const label = isDark === null
+        ? 'Toggle theme'
+        : isDark
+            ? 'Switch to light theme'
+            : 'Switch to dark theme';
 
     // CSS-driven icon swap avoids hydration mismatch — the theme script
     // adds .dark before React hydrates, so the correct icon shows instantly.
@@ -60,8 +81,9 @@ export const ThemeToggle = () => {
         <button
             onClick={toggle}
             className="w-10 h-10 flex items-center justify-center rounded-full bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 hover:bg-slate-200 dark:hover:bg-white/10 active:bg-slate-300 dark:active:bg-white/15 transition-colors"
-            title="Toggle theme"
-            aria-label="Toggle theme"
+            title={label}
+            aria-label={label}
+            aria-pressed={isDark === true}
         >
             <Sun className="w-5 h-5 text-amber-400 hidden dark:block" />
             <Moon className="w-5 h-5 text-slate-600 block dark:hidden" />

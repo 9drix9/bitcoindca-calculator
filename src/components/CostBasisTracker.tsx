@@ -1,9 +1,11 @@
 'use client';
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useId } from 'react';
 import { CostBasisPosition, Frequency, PriceMode } from '@/types';
 import { calculateDca } from '@/utils/dca';
+import { parseUtcDate } from '@/utils/dates';
 import { useCurrency } from '@/context/CurrencyContext';
+import { Card, CardHeader } from '@/components/ui/Card';
 import clsx from 'clsx';
 
 
@@ -51,8 +53,11 @@ const savePositions = (positions: CostBasisPosition[]) => {
 
 export const CostBasisTracker = ({ priceData, livePrice, priceMode }: CostBasisTrackerProps) => {
     const { formatCurrency, currencyConfig } = useCurrency();
+    // Stored position amounts are always USD; the form input is in the selected
+    // display currency and converted once on save.
     const [positions, setPositions] = useState<CostBasisPosition[]>(() => loadPositions());
     const [showForm, setShowForm] = useState(false);
+    const formId = useId();
 
     // Form state
     const [label, setLabel] = useState('');
@@ -69,7 +74,8 @@ export const CostBasisTracker = ({ priceData, livePrice, priceMode }: CostBasisT
             label: label.trim(),
             startDate: formStartDate,
             endDate: formEndDate,
-            amount: formAmount,
+            // Convert the display-currency input to USD once; the DCA engine is USD-only.
+            amount: formAmount / currencyConfig.rate,
             frequency: formFrequency,
             feePercentage: formFee,
         };
@@ -83,7 +89,7 @@ export const CostBasisTracker = ({ priceData, livePrice, priceMode }: CostBasisT
         setFormAmount(50);
         setFormFrequency('weekly');
         setFormFee(0.5);
-    }, [label, formStartDate, formEndDate, formAmount, formFrequency, formFee, positions]);
+    }, [label, formStartDate, formEndDate, formAmount, formFrequency, formFee, positions, currencyConfig.rate]);
 
     const removePosition = useCallback((id: string) => {
         const updated = positions.filter(p => p.id !== id);
@@ -95,10 +101,10 @@ export const CostBasisTracker = ({ priceData, livePrice, priceMode }: CostBasisT
         return positions.map(pos => {
             const result = calculateDca(
                 {
-                    amount: pos.amount,
+                    amount: pos.amount, // stored in USD
                     frequency: pos.frequency,
-                    startDate: new Date(pos.startDate),
-                    endDate: new Date(pos.endDate),
+                    startDate: new Date(parseUtcDate(pos.startDate)),
+                    endDate: new Date(parseUtcDate(pos.endDate)),
                     feePercentage: pos.feePercentage,
                     priceMode: priceMode === 'api' ? 'api' : 'manual',
                     manualPrice: 50000,
@@ -128,65 +134,75 @@ export const CostBasisTracker = ({ priceData, livePrice, priceMode }: CostBasisT
     if (priceMode !== 'api' || !priceData.length) return null;
 
     return (
-        <div className="bg-white dark:bg-slate-900 p-4 sm:p-6 rounded-xl border border-slate-200 dark:border-slate-800">
-            <div className="flex items-center justify-between mb-3 sm:mb-4">
-                <h3 className="text-base sm:text-lg font-semibold text-slate-800 dark:text-slate-100">Cost Basis Tracker</h3>
-                <button
-                    onClick={() => setShowForm(!showForm)}
-                    className="px-3 py-1.5 text-xs font-medium rounded-lg bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/40 border border-amber-200/60 dark:border-amber-800/40 transition-colors"
-                >
-                    {showForm ? 'Cancel' : '+ Add Position'}
-                </button>
-            </div>
+        <Card className="p-4 sm:p-6">
+            <CardHeader
+                title="Cost Basis Tracker"
+                className="mb-3 sm:mb-4"
+                action={
+                    <button
+                        onClick={() => setShowForm(!showForm)}
+                        className="px-3 py-1.5 min-h-6 text-xs font-medium rounded-lg bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/40 border border-amber-200/60 dark:border-amber-800/40 transition-colors"
+                    >
+                        {showForm ? 'Cancel' : '+ Add Position'}
+                    </button>
+                }
+            />
 
             {/* Add Position Form */}
             {showForm && (
-                <div className="mb-4 p-3 sm:p-4 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 space-y-3 fade-in">
+                <div className="mb-4 p-3 sm:p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700 space-y-3 fade-in">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div className="space-y-1">
-                            <label className="text-xs text-slate-500 dark:text-slate-400">Label</label>
+                            <label htmlFor={`${formId}-label`} className="text-xs text-slate-500 dark:text-slate-400">Label</label>
                             <input
+                                id={`${formId}-label`}
                                 type="text"
                                 value={label}
                                 onChange={(e) => setLabel(e.target.value)}
                                 placeholder="e.g., Weekly DCA 2023"
-                                className="w-full px-2.5 py-1.5 text-sm rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 outline-none focus:border-amber-500"
+                                className="w-full px-2.5 py-1.5 text-base sm:text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 outline-none focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500 transition-shadow"
                             />
                         </div>
                         <div className="space-y-1">
-                            <label className="text-xs text-slate-500 dark:text-slate-400">Amount ({currencyConfig.code})</label>
+                            <label htmlFor={`${formId}-amount`} className="text-xs text-slate-500 dark:text-slate-400">Amount ({currencyConfig.code})</label>
                             <input
+                                id={`${formId}-amount`}
                                 type="number"
+                                inputMode="decimal"
+                                min={0}
                                 value={formAmount}
                                 onChange={(e) => setFormAmount(Math.max(0, Number(e.target.value)))}
                                 onFocus={(e) => e.target.select()}
-                                className="w-full px-2.5 py-1.5 text-sm rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 outline-none focus:border-amber-500"
+                                className="w-full px-2.5 py-1.5 text-base sm:text-sm tabular-nums rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 outline-none focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500 transition-shadow"
                             />
                         </div>
                         <div className="space-y-1 min-w-0">
-                            <label className="text-xs text-slate-500 dark:text-slate-400">Start Date</label>
+                            <label htmlFor={`${formId}-start`} className="text-xs text-slate-500 dark:text-slate-400">Start Date</label>
                             <input
+                                id={`${formId}-start`}
                                 type="date"
                                 value={formStartDate}
                                 onChange={(e) => setFormStartDate(e.target.value)}
-                                className="w-full min-w-0 appearance-none px-2.5 py-1.5 text-sm rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 outline-none focus:border-amber-500"
+                                className="w-full min-w-0 appearance-none px-2.5 py-1.5 text-base sm:text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 outline-none focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500 transition-shadow"
                             />
                         </div>
                         <div className="space-y-1 min-w-0">
-                            <label className="text-xs text-slate-500 dark:text-slate-400">End Date</label>
+                            <label htmlFor={`${formId}-end`} className="text-xs text-slate-500 dark:text-slate-400">End Date</label>
                             <input
+                                id={`${formId}-end`}
                                 type="date"
                                 value={formEndDate}
                                 onChange={(e) => setFormEndDate(e.target.value)}
-                                className="w-full min-w-0 appearance-none px-2.5 py-1.5 text-sm rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 outline-none focus:border-amber-500"
+                                className="w-full min-w-0 appearance-none px-2.5 py-1.5 text-base sm:text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 outline-none focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500 transition-shadow"
                             />
                         </div>
                         <div className="space-y-1">
-                            <label className="text-xs text-slate-500 dark:text-slate-400">Frequency</label>
+                            <label htmlFor={`${formId}-frequency`} className="text-xs text-slate-500 dark:text-slate-400">Frequency</label>
                             <select
+                                id={`${formId}-frequency`}
                                 value={formFrequency}
                                 onChange={(e) => setFormFrequency(e.target.value as Frequency)}
-                                className="w-full px-2.5 py-1.5 text-sm rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 outline-none focus:border-amber-500"
+                                className="w-full px-2.5 py-1.5 text-base sm:text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 outline-none focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500 transition-shadow"
                             >
                                 <option value="daily">Daily</option>
                                 <option value="weekly">Weekly</option>
@@ -195,16 +211,18 @@ export const CostBasisTracker = ({ priceData, livePrice, priceMode }: CostBasisT
                             </select>
                         </div>
                         <div className="space-y-1">
-                            <label className="text-xs text-slate-500 dark:text-slate-400">Fee (%)</label>
+                            <label htmlFor={`${formId}-fee`} className="text-xs text-slate-500 dark:text-slate-400">Fee (%)</label>
                             <input
+                                id={`${formId}-fee`}
                                 type="number"
+                                inputMode="decimal"
                                 step="0.1"
                                 min={0}
                                 max={50}
                                 value={formFee}
                                 onChange={(e) => setFormFee(Math.min(50, Math.max(0, Number(e.target.value))))}
                                 onFocus={(e) => e.target.select()}
-                                className="w-full px-2.5 py-1.5 text-sm rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 outline-none focus:border-amber-500"
+                                className="w-full px-2.5 py-1.5 text-base sm:text-sm tabular-nums rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 outline-none focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500 transition-shadow"
                             />
                         </div>
                     </div>
@@ -225,12 +243,12 @@ export const CostBasisTracker = ({ priceData, livePrice, priceMode }: CostBasisT
                         <table className="w-full text-xs sm:text-sm">
                             <thead>
                                 <tr className="text-left text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-700">
-                                    <th className="pb-2 pr-2 font-medium">Position</th>
-                                    <th className="pb-2 pr-2 font-medium text-right">Invested</th>
-                                    <th className="pb-2 pr-2 font-medium text-right">BTC</th>
-                                    <th className="pb-2 pr-2 font-medium text-right">Value</th>
-                                    <th className="pb-2 pr-2 font-medium text-right">ROI</th>
-                                    <th className="pb-2 font-medium"></th>
+                                    <th scope="col" className="pb-2 pr-2 font-medium">Position</th>
+                                    <th scope="col" className="pb-2 pr-2 font-medium text-right">Invested</th>
+                                    <th scope="col" className="pb-2 pr-2 font-medium text-right">BTC</th>
+                                    <th scope="col" className="pb-2 pr-2 font-medium text-right">Value</th>
+                                    <th scope="col" className="pb-2 pr-2 font-medium text-right">ROI</th>
+                                    <th scope="col" className="pb-2 font-medium"><span className="sr-only">Actions</span></th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -238,19 +256,20 @@ export const CostBasisTracker = ({ priceData, livePrice, priceMode }: CostBasisT
                                     <tr key={position.id} className="border-b border-slate-100 dark:border-slate-800">
                                         <td className="py-2 pr-2">
                                             <div className="font-medium text-slate-800 dark:text-white">{position.label}</div>
-                                            <div className="text-[10px] text-slate-500 dark:text-slate-400">{position.startDate} to {position.endDate}</div>
+                                            <div className="text-[11px] text-slate-500 dark:text-slate-400">{position.startDate} to {position.endDate}</div>
                                         </td>
-                                        <td className="py-2 pr-2 text-right font-mono text-slate-700 dark:text-slate-300">{formatCurrency(result.totalInvested)}</td>
-                                        <td className="py-2 pr-2 text-right font-mono text-slate-700 dark:text-slate-300">{result.btcAccumulated.toFixed(6)}</td>
-                                        <td className="py-2 pr-2 text-right font-mono text-slate-700 dark:text-slate-300">{formatCurrency(result.currentValue)}</td>
-                                        <td className={clsx("py-2 pr-2 text-right font-mono font-medium", result.roi >= 0 ? "text-green-600" : "text-red-600")}>
+                                        <td className="py-2 pr-2 text-right tabular-nums text-slate-700 dark:text-slate-300">{formatCurrency(result.totalInvested)}</td>
+                                        <td className="py-2 pr-2 text-right tabular-nums text-slate-700 dark:text-slate-300">{result.btcAccumulated.toFixed(6)}</td>
+                                        <td className="py-2 pr-2 text-right tabular-nums text-slate-700 dark:text-slate-300">{formatCurrency(result.currentValue)}</td>
+                                        <td className={clsx("py-2 pr-2 text-right tabular-nums font-medium", result.roi >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400")}>
                                             {result.roi >= 0 ? '+' : ''}{result.roi.toFixed(1)}%
                                         </td>
                                         <td className="py-2 text-right">
                                             <button
                                                 onClick={() => removePosition(position.id)}
-                                                className="text-slate-500 dark:text-slate-400 hover:text-red-500 transition-colors p-1"
+                                                className="inline-flex items-center justify-center w-7 h-7 rounded-md text-slate-500 dark:text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 transition-colors"
                                                 title="Remove position"
+                                                aria-label={`Remove position ${position.label}`}
                                             >
                                                 &times;
                                             </button>
@@ -262,10 +281,10 @@ export const CostBasisTracker = ({ priceData, livePrice, priceMode }: CostBasisT
                                 <tfoot>
                                     <tr className="font-semibold border-t-2 border-slate-300 dark:border-slate-600">
                                         <td className="pt-2 pr-2 text-slate-800 dark:text-white">Combined</td>
-                                        <td className="pt-2 pr-2 text-right font-mono text-slate-800 dark:text-white">{formatCurrency(totals.totalInvested)}</td>
-                                        <td className="pt-2 pr-2 text-right font-mono text-slate-800 dark:text-white">{totals.totalBtc.toFixed(6)}</td>
-                                        <td className="pt-2 pr-2 text-right font-mono text-slate-800 dark:text-white">{formatCurrency(totals.totalValue)}</td>
-                                        <td className={clsx("pt-2 pr-2 text-right font-mono", totals.roi >= 0 ? "text-green-600" : "text-red-600")}>
+                                        <td className="pt-2 pr-2 text-right tabular-nums text-slate-800 dark:text-white">{formatCurrency(totals.totalInvested)}</td>
+                                        <td className="pt-2 pr-2 text-right tabular-nums text-slate-800 dark:text-white">{totals.totalBtc.toFixed(6)}</td>
+                                        <td className="pt-2 pr-2 text-right tabular-nums text-slate-800 dark:text-white">{formatCurrency(totals.totalValue)}</td>
+                                        <td className={clsx("pt-2 pr-2 text-right tabular-nums", totals.roi >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400")}>
                                             {totals.roi >= 0 ? '+' : ''}{totals.roi.toFixed(1)}%
                                         </td>
                                         <td></td>
@@ -275,17 +294,17 @@ export const CostBasisTracker = ({ priceData, livePrice, priceMode }: CostBasisT
                         </table>
                     </div>
 
-                    {positionResults.length > 0 && (
-                        <div className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 pt-1">
-                            Avg. Cost Basis: {formatCurrency(totals.avgCost)} per BTC
-                        </div>
-                    )}
+                    <div className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 pt-1">
+                        Avg. Cost Basis: <span className="tabular-nums">{formatCurrency(totals.avgCost)}</span> per BTC
+                        <span className="mx-1.5" aria-hidden="true">&middot;</span>
+                        Amounts are converted to USD when saved and shown in your selected currency.
+                    </div>
                 </div>
             ) : (
                 <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 text-center py-4">
                     No positions yet. Add your first DCA position to track your cost basis.
                 </p>
             )}
-        </div>
+        </Card>
     );
 };

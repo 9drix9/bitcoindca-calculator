@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useRef, useCallback, useState, memo } from 'react';
+import { useMemo, useRef, useCallback, useState, useSyncExternalStore, memo } from 'react';
 import {
     ResponsiveContainer,
     Area,
@@ -11,16 +11,27 @@ import {
     Legend,
     ReferenceLine,
     Line,
-    ComposedChart
+    ComposedChart,
+    Brush,
 } from 'recharts';
 import { DcaBreakdownItem, HistoricalEvent } from '@/types';
-import { format } from 'date-fns';
 import { Camera } from 'lucide-react';
+import clsx from 'clsx';
 import { useCurrency } from '@/context/CurrencyContext';
+import { formatUtc } from '@/utils/dates';
+import { Card } from '@/components/ui/Card';
+
+type ChartTab = 'portfolio' | 'price';
 
 interface DcaChartProps {
     data: DcaBreakdownItem[];
     unit?: 'BTC' | 'SATS';
+    /**
+     * Accepted for backward compatibility with the parent call site but intentionally
+     * unused: the old M2 overlay min-max-normalized money supply onto the portfolio's
+     * scale, which invented a visual correlation that is not in the data (removed per
+     * design spec §2).
+     */
     m2Data?: [number, number][] | null;
 }
 
@@ -49,187 +60,343 @@ const computePowerLawPrice = (dateStr: string): number | null => {
     const daysSinceGenesis = (date.getTime() - GENESIS_DATE.getTime()) / (1000 * 60 * 60 * 24);
     if (daysSinceGenesis <= 0) return null;
     const logDays = Math.log10(daysSinceGenesis);
-    const price = Math.pow(10, 5.82 * logDays - 17.01);
-    return price;
+    return Math.pow(10, 5.82 * logDays - 17.01);
 };
 
 // Minimum gap in days between visible events to avoid overlap
 const MIN_EVENT_GAP_DAYS = 365;
 
-export const DcaChart = memo(function DcaChart({ data, unit = 'BTC', m2Data }: DcaChartProps) {
-    const { currencyConfig } = useCurrency();
+// Downsampling: applied at all viewport sizes above this length (min/max per bucket
+// keeps every peak and trough, unlike naive nth-point sampling).
+const DOWNSAMPLE_THRESHOLD = 500;
+const DOWNSAMPLE_TARGET = 400;
+const BRUSH_MIN_POINTS = 90;
+const BUY_DOT_MAX_POINTS = 60;
+
+/**
+ * Min-max-per-bucket downsampling. For each bucket keep the min and max points of
+ * BOTH portfolioValue and price (in time order), so peaks survive on either tab.
+ * Up to 4 kept indices per bucket → ~DOWNSAMPLE_TARGET points out.
+ */
+function downsampleMinMax(data: DcaBreakdownItem[]): DcaBreakdownItem[] {
+    if (data.length <= DOWNSAMPLE_THRESHOLD) return data;
+    const buckets = Math.max(1, Math.floor(DOWNSAMPLE_TARGET / 4));
+    const bucketSize = data.length / buckets;
+    const keep = new Set<number>([0, data.length - 1]);
+    for (let b = 0; b < buckets; b++) {
+        const start = Math.floor(b * bucketSize);
+        const end = Math.min(data.length, Math.max(start + 1, Math.floor((b + 1) * bucketSize)));
+        let minPvIdx = start;
+        let maxPvIdx = start;
+        let minPrIdx = start;
+        let maxPrIdx = start;
+        for (let i = start; i < end; i++) {
+            const d = data[i];
+            if (d.portfolioValue < data[minPvIdx].portfolioValue) minPvIdx = i;
+            if (d.portfolioValue > data[maxPvIdx].portfolioValue) maxPvIdx = i;
+            if (d.price < data[minPrIdx].price) minPrIdx = i;
+            if (d.price > data[maxPrIdx].price) maxPrIdx = i;
+        }
+        keep.add(minPvIdx);
+        keep.add(maxPvIdx);
+        keep.add(minPrIdx);
+        keep.add(maxPrIdx);
+    }
+    return [...keep].sort((a, b) => a - b).map((i) => data[i]);
+}
+
+interface ChartPoint {
+    date: string;
+    invested: number;
+    accumulated: number;
+    totalAccumulated: number;
+    // Nullable: values ≤ 0 are clamped out in log mode (log(0) is undefined).
+    price: number | null;
+    totalInvested: number | null;
+    portfolioValue: number | null;
+    powerLaw: number | null;
+}
+
+function snapToChartDate(points: ChartPoint[], targetTs: number): string {
+    let closestIdx = 0;
+    let closestDist = Infinity;
+    for (let i = 0; i < points.length; i++) {
+        const dist = Math.abs(new Date(points[i].date).getTime() - targetTs);
+        if (dist < closestDist) {
+            closestDist = dist;
+            closestIdx = i;
+        }
+    }
+    return points[closestIdx].date;
+}
+
+// ── Theme detection: observe the `dark` class on <html> ──────────────────────
+const themeSubscribe = (onChange: () => void) => {
+    const observer = new MutationObserver(onChange);
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+    return () => observer.disconnect();
+};
+const getIsDark = () => document.documentElement.classList.contains('dark');
+const getIsDarkServer = () => false;
+const useIsDark = () => useSyncExternalStore(themeSubscribe, getIsDark, getIsDarkServer);
+
+// ── Viewport: the brush is hidden under 640px where it fights touch scrolling ─
+const resizeSubscribe = (onChange: () => void) => {
+    window.addEventListener('resize', onChange);
+    return () => window.removeEventListener('resize', onChange);
+};
+const getIsWide = () => window.innerWidth >= 640;
+const getIsWideServer = () => false;
+const useIsWideViewport = () => useSyncExternalStore(resizeSubscribe, getIsWide, getIsWideServer);
+
+// ── Custom tooltip (styled like the site cards, theme-aware via dark: classes) ─
+interface SeriesColors {
+    portfolio: string;
+    price: string;
+    powerLaw: string;
+    neutral: string;
+}
+
+interface TooltipPayloadEntry {
+    dataKey?: string | number;
+    value?: number | string;
+    payload?: ChartPoint;
+}
+
+function TooltipRow({
+    color,
+    label,
+    value,
+    valueClassName,
+}: {
+    color?: string;
+    label: string;
+    value: string;
+    valueClassName?: string;
+}) {
+    return (
+        <div className="flex items-center justify-between gap-4">
+            <span className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400">
+                {color && (
+                    <span
+                        className="inline-block h-2 w-2 shrink-0 rounded-full"
+                        style={{ backgroundColor: color }}
+                        aria-hidden="true"
+                    />
+                )}
+                {label}
+            </span>
+            <span className={clsx('font-medium tabular-nums text-slate-800 dark:text-slate-100', valueClassName)}>
+                {value}
+            </span>
+        </div>
+    );
+}
+
+function ChartTooltip({
+    active,
+    payload,
+    label,
+    tab,
+    unit,
+    colors,
+}: {
+    active?: boolean;
+    payload?: TooltipPayloadEntry[];
+    label?: string | number;
+    tab: ChartTab;
+    unit: 'BTC' | 'SATS';
+    colors: SeriesColors;
+}) {
+    const { formatCurrency, formatBtc, formatSats } = useCurrency();
+    if (!active || !payload || payload.length === 0) return null;
+    const point = payload[0]?.payload;
+    if (!point) return null;
+
+    const pv = point.portfolioValue;
+    const ti = point.totalInvested;
+    const pl = typeof pv === 'number' && typeof ti === 'number' ? pv - ti : null;
+    const plPct = pl !== null && typeof ti === 'number' && ti > 0 ? (pl / ti) * 100 : null;
+
+    return (
+        <div className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs shadow-lg dark:border-slate-700 dark:bg-slate-900">
+            <p className="mb-1.5 font-semibold text-slate-800 dark:text-slate-100">
+                {formatUtc(String(label ?? point.date), 'full')}
+            </p>
+            <div className="space-y-1">
+                {tab === 'portfolio' ? (
+                    <>
+                        {typeof pv === 'number' && (
+                            <TooltipRow color={colors.portfolio} label="Portfolio Value" value={formatCurrency(pv)} />
+                        )}
+                        {typeof ti === 'number' && (
+                            <TooltipRow color={colors.neutral} label="Total Invested" value={formatCurrency(ti)} />
+                        )}
+                        {pl !== null && (
+                            <TooltipRow
+                                label="Profit / Loss"
+                                value={`${pl >= 0 ? '+' : ''}${formatCurrency(pl)}${
+                                    plPct !== null ? ` (${plPct >= 0 ? '+' : ''}${plPct.toFixed(1)}%)` : ''
+                                }`}
+                                valueClassName={
+                                    pl >= 0
+                                        ? 'text-emerald-600 dark:text-emerald-400'
+                                        : 'text-rose-600 dark:text-rose-400'
+                                }
+                            />
+                        )}
+                    </>
+                ) : (
+                    <>
+                        {typeof point.price === 'number' && (
+                            <TooltipRow color={colors.price} label="BTC Price" value={formatCurrency(point.price)} />
+                        )}
+                        {typeof point.powerLaw === 'number' && (
+                            <TooltipRow color={colors.powerLaw} label="Power Law" value={formatCurrency(point.powerLaw)} />
+                        )}
+                        <TooltipRow
+                            label={unit === 'SATS' ? 'Sats Held' : 'BTC Held'}
+                            value={unit === 'SATS' ? formatSats(point.totalAccumulated) : formatBtc(point.totalAccumulated)}
+                        />
+                    </>
+                )}
+            </div>
+        </div>
+    );
+}
+
+const toggleLabelClass =
+    'flex cursor-pointer select-none items-center gap-1.5 whitespace-nowrap text-[11px] text-slate-500 dark:text-slate-400';
+
+export const DcaChart = memo(function DcaChart({ data, unit = 'BTC' }: DcaChartProps) {
+    const { currencyConfig, convertFromUsd } = useCurrency();
     const chartRef = useRef<HTMLDivElement>(null);
+    const [tab, setTab] = useState<ChartTab>('portfolio');
     const [showPowerLaw, setShowPowerLaw] = useState(false);
-    const [showM2, setShowM2] = useState(false);
     const [showEvents, setShowEvents] = useState(false);
+    const [isLog, setIsLog] = useState(false);
+    const isDark = useIsDark();
+    const isWide = useIsWideViewport();
 
-    const isSats = unit === 'SATS';
-
-    const formatYAxis = (value: number): string => {
-        const sym = currencyConfig.symbol;
-        if (value >= 1_000_000) return `${sym}${(value / 1_000_000).toFixed(1)}M`;
-        if (value >= 1_000) return `${sym}${(value / 1_000).toFixed(0)}k`;
-        return `${sym}${value.toFixed(0)}`;
+    const colors: SeriesColors & { grid: string; axis: string; halving: string; cursor: string } = {
+        portfolio: '#d97706',
+        price: '#059669',
+        powerLaw: isDark ? '#8b5cf6' : '#7c3aed',
+        neutral: isDark ? '#64748b' : '#94a3b8',
+        grid: isDark ? '#1e293b' : '#f1f5f9',
+        axis: '#64748b',
+        halving: '#a855f7',
+        cursor: isDark ? '#334155' : '#cbd5e1',
     };
 
-    // NOTE: halvingLines and eventLines are computed after chartData (below)
-    // so they snap to dates that actually exist in the (possibly downsampled) chart.
+    // Compact currency axis ticks — always converted from USD before formatting.
+    const formatAxisTick = useCallback(
+        (usd: number): string => {
+            const v = convertFromUsd(usd);
+            const sym = currencyConfig.symbol;
+            const sign = v < 0 ? '-' : '';
+            const abs = Math.abs(v);
+            if (abs >= 1_000_000_000) return `${sign}${sym}${(abs / 1_000_000_000).toFixed(1)}B`;
+            if (abs >= 1_000_000) return `${sign}${sym}${(abs / 1_000_000).toFixed(1)}M`;
+            if (abs >= 10_000) return `${sign}${sym}${(abs / 1_000).toFixed(0)}k`;
+            if (abs >= 1_000) return `${sign}${sym}${(abs / 1_000).toFixed(1)}k`;
+            if (abs >= 1) return `${sign}${sym}${abs.toFixed(0)}`;
+            return `${sign}${sym}${abs.toFixed(2)}`;
+        },
+        [convertFromUsd, currencyConfig.symbol],
+    );
 
-    // Build sorted M2 array for efficient lookup
-    const m2Sorted = useMemo(() => {
-        if (!m2Data || m2Data.length === 0) return null;
-        // m2Data is already [timestamp, value][], ensure sorted by timestamp
-        const sorted = [...m2Data].sort((a, b) => a[0] - b[0]);
-        return sorted;
-    }, [m2Data]);
-
-    const chartData = useMemo(() => {
+    const sampled = useMemo(() => {
         if (!data || data.length === 0) return [];
+        return downsampleMinMax(data);
+    }, [data]);
 
-        // Downsample on mobile to reduce SVG nodes
-        let sourceData = data;
-        const mobile = typeof window !== 'undefined' && window.innerWidth < 640;
-        if (mobile && data.length >= 200) {
-            const maxPoints = 100;
-            const step = Math.ceil(data.length / maxPoints);
-            const sampled: typeof data = [];
-            for (let i = 0; i < data.length; i += step) {
-                sampled.push(data[i]);
-            }
-            // Always include the last point
-            if (sampled[sampled.length - 1] !== data[data.length - 1]) {
-                sampled.push(data[data.length - 1]);
-            }
-            sourceData = sampled;
-        }
-
-        // Determine max portfolio value for M2 normalization
-        let maxPortfolioValue = 0;
-        if (showM2 && m2Sorted) {
-            for (const item of sourceData) {
-                if (item.portfolioValue > maxPortfolioValue) maxPortfolioValue = item.portfolioValue;
-            }
-        }
-
-        // Find min/max M2 values
-        let minM2 = Infinity;
-        let maxM2 = 0;
-        if (showM2 && m2Sorted) {
-            for (const [, val] of m2Sorted) {
-                if (val < minM2) minM2 = val;
-                if (val > maxM2) maxM2 = val;
-            }
-        }
-
-        // Use index pointer for O(n+m) M2 lookup instead of O(n*m)
-        let m2Idx = 0;
-
-        return sourceData.map(item => {
-            const extended: Record<string, unknown> = { ...item };
-
-            if (showPowerLaw) {
-                extended.powerLaw = computePowerLawPrice(item.date);
-            }
-
-            if (showM2 && m2Sorted && m2Sorted.length > 0 && maxM2 > minM2 && maxPortfolioValue > 0) {
-                const dateTs = new Date(item.date).getTime();
-                // Advance pointer to closest M2 data point
-                while (m2Idx < m2Sorted.length - 1 && m2Sorted[m2Idx + 1][0] <= dateTs) {
-                    m2Idx++;
-                }
-                // Check if next point is closer than current
-                let closestVal = m2Sorted[m2Idx][1];
-                if (m2Idx < m2Sorted.length - 1) {
-                    const distCurrent = Math.abs(m2Sorted[m2Idx][0] - dateTs);
-                    const distNext = Math.abs(m2Sorted[m2Idx + 1][0] - dateTs);
-                    if (distNext < distCurrent) closestVal = m2Sorted[m2Idx + 1][1];
-                }
-                // Normalize M2 to left Y-axis scale (0 to maxPortfolioValue)
-                extended.m2Normalized = ((closestVal - minM2) / (maxM2 - minM2)) * maxPortfolioValue;
-            }
-
-            return extended;
+    const chartData = useMemo<ChartPoint[]>(() => {
+        const clamp = (v: number): number | null => (isLog && v <= 0 ? null : v);
+        return sampled.map((item) => {
+            const pl = showPowerLaw ? computePowerLawPrice(item.date) : null;
+            return {
+                date: item.date,
+                invested: item.invested,
+                accumulated: item.accumulated,
+                totalAccumulated: item.totalAccumulated,
+                price: clamp(item.price),
+                totalInvested: clamp(item.totalInvested),
+                portfolioValue: clamp(item.portfolioValue),
+                powerLaw: pl === null ? null : clamp(pl),
+            };
         });
-    }, [data, showPowerLaw, showM2, m2Sorted]);
+    }, [sampled, showPowerLaw, isLog]);
 
-    // Snap halving/event lines to chartData dates so they work with downsampled data on mobile
+    // Average cost basis = last cumulative invested / last cumulative accumulated.
+    const avgCostUsd = useMemo(() => {
+        if (!data || data.length === 0) return null;
+        const last = data[data.length - 1];
+        return last.totalAccumulated > 0 ? last.totalInvested / last.totalAccumulated : null;
+    }, [data]);
+
+    // Snap halving/event lines to dates that exist in the (downsampled) chart data.
     const halvingLines = useMemo(() => {
-        if (!chartData || chartData.length < 2) return [];
-        const firstDate = new Date(chartData[0].date as string).getTime();
-        const lastDate = new Date(chartData[chartData.length - 1].date as string).getTime();
-        return HALVING_DATES
-            .filter(h => {
-                const hTs = new Date(h.date).getTime();
-                return hTs >= firstDate && hTs <= lastDate;
-            })
-            .map(h => {
-                const hTs = new Date(h.date).getTime();
-                let closestIdx = 0;
-                let closestDist = Infinity;
-                for (let i = 0; i < chartData.length; i++) {
-                    const dist = Math.abs(new Date(chartData[i].date as string).getTime() - hTs);
-                    if (dist < closestDist) {
-                        closestDist = dist;
-                        closestIdx = i;
-                    }
-                }
-                return { ...h, snappedDate: chartData[closestIdx].date as string };
-            });
+        if (chartData.length < 2) return [];
+        const firstTs = new Date(chartData[0].date).getTime();
+        const lastTs = new Date(chartData[chartData.length - 1].date).getTime();
+        return HALVING_DATES.filter((h) => {
+            const t = new Date(h.date).getTime();
+            return t >= firstTs && t <= lastTs;
+        }).map((h) => ({ ...h, snappedDate: snapToChartDate(chartData, new Date(h.date).getTime()) }));
     }, [chartData]);
 
     const eventLines = useMemo(() => {
-        if (!showEvents || !chartData || chartData.length < 2) return [];
-        const firstDate = new Date(chartData[0].date as string).getTime();
-        const lastDate = new Date(chartData[chartData.length - 1].date as string).getTime();
+        if (!showEvents || chartData.length < 2) return [];
+        const firstTs = new Date(chartData[0].date).getTime();
+        const lastTs = new Date(chartData[chartData.length - 1].date).getTime();
 
-        const candidates = HISTORICAL_EVENTS
-            .filter(e => {
-                const eTs = new Date(e.date).getTime();
-                return eTs >= firstDate && eTs <= lastDate;
-            })
-            .map(e => {
-                const eTs = new Date(e.date).getTime();
-                let closestIdx = 0;
-                let closestDist = Infinity;
-                for (let i = 0; i < chartData.length; i++) {
-                    const dist = Math.abs(new Date(chartData[i].date as string).getTime() - eTs);
-                    if (dist < closestDist) {
-                        closestDist = dist;
-                        closestIdx = i;
-                    }
-                }
-                return { ...e, snappedDate: chartData[closestIdx].date as string, ts: eTs };
-            });
+        const candidates = HISTORICAL_EVENTS.filter((e) => {
+            const t = new Date(e.date).getTime();
+            return t >= firstTs && t <= lastTs;
+        }).map((e) => {
+            const ts = new Date(e.date).getTime();
+            return { ...e, ts, snappedDate: snapToChartDate(chartData, ts) };
+        });
 
-        // Filter out events that are too close together to be readable
-        const rangeYears = (lastDate - firstDate) / (365.25 * 24 * 60 * 60 * 1000);
+        // Filter out events too close together to be readable on long ranges
+        const rangeYears = (lastTs - firstTs) / (365.25 * 24 * 60 * 60 * 1000);
         if (rangeYears > 5 && candidates.length > 3) {
             const gapMs = MIN_EVENT_GAP_DAYS * 24 * 60 * 60 * 1000;
             const filtered: typeof candidates = [];
-            let lastTs = -Infinity;
+            let lastKept = -Infinity;
             for (const ev of candidates) {
-                if (ev.ts - lastTs >= gapMs) {
+                if (ev.ts - lastKept >= gapMs) {
                     filtered.push(ev);
-                    lastTs = ev.ts;
+                    lastKept = ev.ts;
                 }
             }
             return filtered;
         }
-
         return candidates;
     }, [chartData, showEvents]);
+
+    const chartAriaLabel = useMemo(() => {
+        if (!data || data.length === 0) return 'DCA performance chart';
+        const start = formatUtc(data[0].date, 'full');
+        const end = formatUtc(data[data.length - 1].date, 'full');
+        return tab === 'portfolio'
+            ? `Portfolio value versus total invested chart from ${start} to ${end}`
+            : `Bitcoin price chart with average cost from ${start} to ${end}`;
+    }, [data, tab]);
 
     const handleExport = useCallback(async () => {
         if (!chartRef.current) return;
         try {
             const { toPng } = await import('html-to-image');
+            const dark = document.documentElement.classList.contains('dark');
             const dataUrl = await toPng(chartRef.current, {
                 pixelRatio: 2,
-                backgroundColor: '#0f172a',
+                backgroundColor: dark ? '#0f172a' : '#ffffff',
                 skipFonts: true,
             });
             const link = document.createElement('a');
-            link.download = `bitcoin-dca-chart-${format(new Date(), 'yyyy-MM-dd')}.png`;
+            link.download = `bitcoin-dca-chart-${formatUtc(Date.now(), 'isoDay')}.png`;
             link.href = dataUrl;
             link.click();
         } catch {
@@ -239,155 +406,259 @@ export const DcaChart = memo(function DcaChart({ data, unit = 'BTC', m2Data }: D
 
     if (!data || data.length === 0) return null;
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const tooltipFormatter = (value: any, name: any) => {
-        const sym = currencyConfig.symbol;
-        if (name === 'price' || name === 'BTC Price') {
-            return [`${sym}${Number(value).toLocaleString()}`, 'BTC Price'];
-        }
-        if (name === 'powerLaw' || name === 'Power Law') {
-            return [`${sym}${Number(value).toLocaleString(undefined, { maximumFractionDigits: 0 })}`, 'Power Law'];
-        }
-        if (name === 'm2Normalized' || name === 'M2 Supply') {
-            return [`${sym}${Number(value).toLocaleString(undefined, { maximumFractionDigits: 0 })}`, 'M2 Supply (normalized)'];
-        }
-        if ((name === 'accumulated' || name === 'BTC Bought') && isSats) {
-            return [`${Math.floor(Number(value) * 100_000_000).toLocaleString()} sats`, 'Sats Bought'];
-        }
-        return [`${sym}${Number(value).toLocaleString()}`, name];
-    };
+    const showBrush = isWide && data.length > BRUSH_MIN_POINTS;
+    const showBuyDots = chartData.length <= BUY_DOT_MAX_POINTS;
+    // Legend only when the active tab draws ≥ 2 series
+    const showLegend = tab === 'portfolio' || showPowerLaw;
+
+    const tabButtonClass = (active: boolean) =>
+        clsx(
+            'rounded-md px-2.5 py-1 text-xs font-medium transition-colors',
+            active
+                ? 'bg-white text-amber-700 shadow-sm dark:bg-slate-700 dark:text-amber-400'
+                : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200',
+        );
 
     return (
-        <div
-            ref={chartRef}
-            className="w-full h-[300px] sm:h-[420px] bg-white dark:bg-slate-900 rounded-xl p-3 sm:p-4 shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden relative flex flex-col select-none touch-manipulation contain-layout-paint"
-        >
-            {/* Header — stacks on mobile to prevent title truncation */}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-1 sm:mb-4 gap-1 sm:gap-2 shrink-0">
-                <h3 className="text-sm sm:text-lg font-semibold text-slate-800 dark:text-slate-100">Performance Over Time</h3>
-                <div className="flex items-center gap-1 sm:gap-2 shrink-0 flex-wrap">
-                    <label className="flex items-center gap-1 sm:gap-1.5 text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 cursor-pointer select-none whitespace-nowrap">
+        <div ref={chartRef}>
+            <Card className="relative flex h-[340px] w-full flex-col overflow-hidden p-3 select-none touch-manipulation contain-layout-paint sm:h-[460px] sm:p-4">
+                {/* Header: title + tab switcher */}
+                <div className="mb-2 flex shrink-0 items-center justify-between gap-2">
+                    <h3 className="min-w-0 truncate text-sm font-semibold text-slate-800 dark:text-slate-100 sm:text-base">
+                        Performance Over Time
+                    </h3>
+                    <div
+                        role="group"
+                        aria-label="Chart view"
+                        className="inline-flex shrink-0 items-center rounded-lg bg-slate-100 p-0.5 dark:bg-slate-800"
+                    >
+                        <button
+                            type="button"
+                            aria-pressed={tab === 'portfolio'}
+                            onClick={() => setTab('portfolio')}
+                            className={tabButtonClass(tab === 'portfolio')}
+                        >
+                            Portfolio
+                        </button>
+                        <button
+                            type="button"
+                            aria-pressed={tab === 'price'}
+                            onClick={() => setTab('price')}
+                            className={tabButtonClass(tab === 'price')}
+                        >
+                            BTC Price
+                        </button>
+                    </div>
+                </div>
+
+                {/* Toggles + export */}
+                <div className="mb-1 flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1 sm:mb-2">
+                    <label className={toggleLabelClass}>
                         <input
                             type="checkbox"
-                            checked={showPowerLaw}
-                            onChange={(e) => setShowPowerLaw(e.target.checked)}
-                            className="rounded border-slate-300 dark:border-slate-600 text-violet-500 focus:ring-violet-500 w-3 h-3 sm:w-3.5 sm:h-3.5"
+                            checked={isLog}
+                            onChange={(e) => setIsLog(e.target.checked)}
+                            className="h-3.5 w-3.5 rounded border-slate-300 text-amber-600 focus:ring-amber-500 dark:border-slate-600"
                         />
-                        Power Law
+                        Log
                     </label>
-                    {m2Data && m2Data.length > 0 && (
-                        <label className="flex items-center gap-1 sm:gap-1.5 text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 cursor-pointer select-none whitespace-nowrap">
+                    {tab === 'price' && (
+                        <label className={toggleLabelClass}>
                             <input
                                 type="checkbox"
-                                checked={showM2}
-                                onChange={(e) => setShowM2(e.target.checked)}
-                                className="rounded border-slate-300 dark:border-slate-600 text-green-500 focus:ring-green-500 w-3 h-3 sm:w-3.5 sm:h-3.5"
+                                checked={showPowerLaw}
+                                onChange={(e) => setShowPowerLaw(e.target.checked)}
+                                className="h-3.5 w-3.5 rounded border-slate-300 text-violet-600 focus:ring-violet-500 dark:border-slate-600"
                             />
-                            M2 Supply
+                            Power Law
                         </label>
                     )}
-                    <label className="flex items-center gap-1 sm:gap-1.5 text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 cursor-pointer select-none whitespace-nowrap">
+                    <label className={toggleLabelClass}>
                         <input
                             type="checkbox"
                             checked={showEvents}
                             onChange={(e) => setShowEvents(e.target.checked)}
-                            className="rounded border-slate-300 dark:border-slate-600 text-blue-500 focus:ring-blue-500 w-3 h-3 sm:w-3.5 sm:h-3.5"
+                            className="h-3.5 w-3.5 rounded border-slate-300 text-blue-600 focus:ring-blue-500 dark:border-slate-600"
                         />
                         Events
                     </label>
+                    <span className="flex-1" aria-hidden="true" />
                     <button
+                        type="button"
                         onClick={handleExport}
-                        className="p-1.5 sm:p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-slate-500 dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+                        className="rounded-lg p-1.5 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-600 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-300 sm:p-2"
                         aria-label="Export chart as image"
                         title="Export chart as PNG"
                     >
-                        <Camera className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                        <Camera className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                     </button>
                 </div>
-            </div>
 
-            <div className="flex-1 min-h-0">
-            <ResponsiveContainer width="100%" height="100%">
-                <ComposedChart data={chartData} margin={{ top: 5, right: 5, left: 0, bottom: 5 }}>
-                    <defs>
-                        <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.8} />
-                            <stop offset="95%" stopColor="#f59e0b" stopOpacity={0} />
-                        </linearGradient>
-                        <linearGradient id="colorInvested" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#64748b" stopOpacity={0.8} />
-                            <stop offset="95%" stopColor="#64748b" stopOpacity={0} />
-                        </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                    <XAxis
-                        dataKey="date"
-                        tickFormatter={(str) => format(new Date(str), 'MMM yy')}
-                        minTickGap={40}
-                        stroke="#94a3b8"
-                        fontSize={10}
-                        tick={{ fontSize: 10 }}
-                    />
-                    <YAxis
-                        yAxisId="left"
-                        stroke="#94a3b8"
-                        fontSize={10}
-                        width={40}
-                        tickFormatter={formatYAxis}
-                        tick={{ fontSize: 10 }}
-                    />
-                    <YAxis
-                        yAxisId="right"
-                        orientation="right"
-                        stroke="#94a3b8"
-                        fontSize={10}
-                        width={40}
-                        tickFormatter={formatYAxis}
-                        tick={{ fontSize: 10 }}
-                    />
-                    <Tooltip
-                        labelFormatter={(label) => format(new Date(label), 'MMM d, yyyy')}
-                        formatter={tooltipFormatter}
-                        contentStyle={{ backgroundColor: '#1e293b', borderColor: '#334155', color: '#f8fafc', fontSize: '11px', borderRadius: '8px', padding: '8px 12px' }}
-                    />
-                    <Legend verticalAlign="top" height={28} iconSize={8} wrapperStyle={{ top: -4, fontSize: '10px' }} />
-                    {halvingLines.map((h) => (
-                        <ReferenceLine
-                            key={h.date}
-                            x={h.snappedDate}
-                            yAxisId="left"
-                            stroke="#a855f7"
-                            strokeDasharray="4 4"
-                            strokeWidth={1.5}
-                            label={{ value: h.label, position: 'top', fill: '#a855f7', fontSize: 9 }}
-                        />
-                    ))}
-                    {eventLines.map((e, i) => (
-                        <ReferenceLine
-                            key={e.date}
-                            x={e.snappedDate}
-                            yAxisId="left"
-                            stroke={e.color}
-                            strokeDasharray="3 3"
-                            strokeWidth={1}
-                            label={{ value: e.label, position: i % 2 === 0 ? 'insideTopRight' : 'insideBottomRight', fill: e.color, fontSize: 8 }}
-                        />
-                    ))}
-                    <Area yAxisId="left" type="monotone" dataKey="portfolioValue" name="Portfolio Value" stroke="#f59e0b" strokeWidth={2} fillOpacity={1} fill="url(#colorValue)" isAnimationActive={false} />
-                    <Area yAxisId="left" type="monotone" dataKey="totalInvested" name="Total Invested" stroke="#64748b" strokeWidth={1.5} fillOpacity={0.5} fill="url(#colorInvested)" isAnimationActive={false} />
-                    <Area yAxisId="right" type="monotone" dataKey="price" name="BTC Price" stroke="#10b981" strokeWidth={1.5} fillOpacity={0.1} strokeDasharray="5 5" fill="#10b981" isAnimationActive={false} />
-                    {showPowerLaw && (
-                        <Line yAxisId="right" type="monotone" dataKey="powerLaw" name="Power Law" stroke="#8b5cf6" strokeWidth={1.5} strokeDasharray="4 4" dot={false} isAnimationActive={false} />
-                    )}
-                    {showM2 && (
-                        <Line yAxisId="left" type="monotone" dataKey="m2Normalized" name="M2 Supply" stroke="#22c55e" strokeWidth={1.5} strokeDasharray="6 3" dot={false} isAnimationActive={false} />
-                    )}
-                </ComposedChart>
-            </ResponsiveContainer>
-            </div>
-            <div className="absolute bottom-0.5 right-2 text-[9px] text-slate-400/40 dark:text-slate-600/40 select-none pointer-events-none">
-                btcdollarcostaverage.com
-            </div>
+                <div className="min-h-0 flex-1 tabular-nums" role="img" aria-label={chartAriaLabel}>
+                    <ResponsiveContainer width="100%" height="100%" debounce={150}>
+                        {/* accessibilityLayer off: the region is exposed as a labeled image and the
+                            full data lives in the transaction table below the chart. */}
+                        <ComposedChart
+                            data={chartData}
+                            margin={{ top: 8, right: 12, left: 0, bottom: 0 }}
+                            accessibilityLayer={false}
+                        >
+                            <defs>
+                                <linearGradient id="dcaPortfolioFill" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="0%" stopColor="#d97706" stopOpacity={0.25} />
+                                    <stop offset="100%" stopColor="#d97706" stopOpacity={0} />
+                                </linearGradient>
+                            </defs>
+                            {/* Horizontal-only SOLID hairlines */}
+                            <CartesianGrid vertical={false} stroke={colors.grid} />
+                            <XAxis
+                                dataKey="date"
+                                tickFormatter={(d: string) => formatUtc(d, 'shortMonthYear')}
+                                minTickGap={40}
+                                tick={{ fontSize: 11, fill: colors.axis }}
+                                tickLine={false}
+                                axisLine={{ stroke: colors.grid }}
+                            />
+                            <YAxis
+                                scale={isLog ? 'log' : 'auto'}
+                                domain={isLog ? ['auto', 'auto'] : [0, 'auto']}
+                                allowDataOverflow={isLog}
+                                width={48}
+                                tickFormatter={formatAxisTick}
+                                tick={{ fontSize: 11, fill: colors.axis }}
+                                tickLine={false}
+                                axisLine={false}
+                            />
+                            <Tooltip
+                                content={<ChartTooltip tab={tab} unit={unit} colors={colors} />}
+                                cursor={{ stroke: colors.cursor, strokeWidth: 1 }}
+                            />
+                            {showLegend && (
+                                <Legend
+                                    verticalAlign="top"
+                                    height={24}
+                                    iconSize={8}
+                                    wrapperStyle={{ fontSize: 11 }}
+                                    formatter={(value) => <span style={{ color: colors.axis }}>{value}</span>}
+                                />
+                            )}
+                            {halvingLines.map((h) => (
+                                <ReferenceLine
+                                    key={h.date}
+                                    x={h.snappedDate}
+                                    stroke={colors.halving}
+                                    strokeDasharray="4 4"
+                                    strokeWidth={1.5}
+                                    label={{ value: h.label, position: 'insideTop', fill: colors.halving, fontSize: 10 }}
+                                />
+                            ))}
+                            {eventLines.map((e, i) => (
+                                <ReferenceLine
+                                    key={e.date}
+                                    x={e.snappedDate}
+                                    stroke={e.color}
+                                    strokeDasharray="3 3"
+                                    strokeWidth={1}
+                                    label={{
+                                        value: e.label,
+                                        position: i % 2 === 0 ? 'insideTopRight' : 'insideBottomRight',
+                                        fill: e.color,
+                                        fontSize: 10,
+                                    }}
+                                />
+                            ))}
+                            {tab === 'price' && avgCostUsd !== null && (
+                                <ReferenceLine
+                                    y={avgCostUsd}
+                                    stroke={colors.neutral}
+                                    strokeDasharray="4 4"
+                                    strokeWidth={1.5}
+                                    ifOverflow="extendDomain"
+                                    label={{
+                                        value: `Avg cost ${formatAxisTick(avgCostUsd)}`,
+                                        position: 'insideBottomLeft',
+                                        fill: colors.axis,
+                                        fontSize: 10,
+                                    }}
+                                />
+                            )}
+                            {tab === 'portfolio' && !isLog && (
+                                <Area
+                                    type="monotone"
+                                    dataKey="portfolioValue"
+                                    name="Portfolio Value"
+                                    stroke={colors.portfolio}
+                                    strokeWidth={2}
+                                    fill="url(#dcaPortfolioFill)"
+                                    fillOpacity={1}
+                                    isAnimationActive={false}
+                                />
+                            )}
+                            {tab === 'portfolio' && isLog && (
+                                // Log scale: area baselines to zero are undefined, draw a line instead
+                                <Line
+                                    type="monotone"
+                                    dataKey="portfolioValue"
+                                    name="Portfolio Value"
+                                    stroke={colors.portfolio}
+                                    strokeWidth={2}
+                                    dot={false}
+                                    isAnimationActive={false}
+                                />
+                            )}
+                            {tab === 'portfolio' && (
+                                <Line
+                                    type="monotone"
+                                    dataKey="totalInvested"
+                                    name="Total Invested"
+                                    stroke={colors.neutral}
+                                    strokeWidth={1.5}
+                                    strokeDasharray="4 4"
+                                    dot={false}
+                                    isAnimationActive={false}
+                                />
+                            )}
+                            {tab === 'price' && (
+                                <Line
+                                    type="monotone"
+                                    dataKey="price"
+                                    name="BTC Price"
+                                    stroke={colors.price}
+                                    strokeWidth={2}
+                                    dot={showBuyDots ? { r: 2.5, fill: colors.portfolio, stroke: 'none' } : false}
+                                    activeDot={{ r: 4, strokeWidth: 0 }}
+                                    isAnimationActive={false}
+                                />
+                            )}
+                            {tab === 'price' && showPowerLaw && (
+                                <Line
+                                    type="monotone"
+                                    dataKey="powerLaw"
+                                    name="Power Law"
+                                    stroke={colors.powerLaw}
+                                    strokeWidth={1.5}
+                                    strokeDasharray="4 4"
+                                    dot={false}
+                                    isAnimationActive={false}
+                                />
+                            )}
+                            {showBrush && (
+                                <Brush
+                                    dataKey="date"
+                                    height={24}
+                                    travellerWidth={8}
+                                    stroke={colors.portfolio}
+                                    fill={isDark ? 'rgba(217, 119, 6, 0.08)' : 'rgba(217, 119, 6, 0.06)'}
+                                    tickFormatter={(d: string) => formatUtc(d, 'shortMonthYear')}
+                                />
+                            )}
+                        </ComposedChart>
+                    </ResponsiveContainer>
+                </div>
+                <div className="pointer-events-none absolute bottom-0.5 right-2 select-none text-[9px] text-slate-400/40 dark:text-slate-600/40">
+                    btcdollarcostaverage.com
+                </div>
+            </Card>
         </div>
     );
 });

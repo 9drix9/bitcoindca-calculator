@@ -4,12 +4,21 @@ import { Shield, AlertTriangle, Key, Lock, CheckCircle2, ExternalLink, ArrowRigh
 import { WalletImage } from '@/components/WalletImage';
 
 export const metadata: Metadata = {
-  title: 'Why Self-Custody Matters | Bitcoin DCA Calculator',
-  description: 'Learn why self-custody is essential for Bitcoin holders. Understand hardware wallets, the risks of exchanges, and how to secure your Bitcoin with Cypherock, Ledger, Blockstream Jade, Coldcard, and SeedSigner.',
+  title: 'Why Self-Custody Matters',
+  description: 'Learn why self-custody is essential for Bitcoin holders. Understand hardware wallets, the risks of exchanges, and how to secure your Bitcoin with 7 leading devices including Trezor, Ledger, Coldcard, BitBox02, Blockstream Jade, Cypherock, and SeedSigner.',
   openGraph: {
     title: 'Why Self-Custody Matters | Protect Your Bitcoin',
     description: 'Not your keys, not your coins. Learn how to properly secure your Bitcoin with hardware wallets.',
+    url: '/self-custody',
     type: 'article',
+    siteName: 'Bitcoin DCA Calculator',
+    locale: 'en_US',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Why Self-Custody Matters | Protect Your Bitcoin',
+    description: 'Not your keys, not your coins. Learn how to properly secure your Bitcoin with hardware wallets.',
+    creator: '@9drix9',
   },
   alternates: {
     canonical: '/self-custody',
@@ -64,7 +73,7 @@ const WALLETS = [
     name: 'Trezor',
     tagline: 'The original hardware wallet',
     description: 'Trezor pioneered the hardware wallet industry in 2014 and remains one of the most trusted names in Bitcoin security. Every line of code is open-source and publicly auditable. With a simple interface and strong track record, Trezor is a great choice for anyone stepping into self-custody.',
-    features: ['Fully open-source firmware & software', 'Touchscreen (Model T & Safe 5)', 'Supports Bitcoin + 9,000+ assets', 'Shamir Backup option (Model T & Safe 5)', 'Proven 10+ year track record'],
+    features: ['Fully open-source firmware & software', 'Touchscreen (Model T & Safe 5)', 'Multi-asset support (we only care about the BTC part)', 'Shamir Backup option (Model T & Safe 5)', 'Proven 10+ year track record'],
     price: 'From $59',
     href: 'https://affil.trezor.io/aff_c?offer_id=238&aff_id=36991',
     color: 'emerald',
@@ -76,7 +85,7 @@ const WALLETS = [
     name: 'Ledger',
     tagline: 'The most popular hardware wallet',
     description: 'Ledger devices have secured millions of users worldwide. With Ledger Live, you can manage your Bitcoin, check your balance, and send transactions all from a single app. Their secure element chip is certified by independent security labs.',
-    features: ['Certified secure element (CC EAL5+)', 'Bluetooth (Nano X) or USB', 'Ledger Live companion app', 'Supports 5,500+ assets', 'Large ecosystem & community'],
+    features: ['Certified secure element (CC EAL5+)', 'Bluetooth (Nano X) or USB', 'Ledger Live companion app', 'Multi-asset support (we only care about the BTC part)', 'Large ecosystem & community'],
     price: 'From $79',
     href: 'https://shop.ledger.com/?r=ee186bc1f36d',
     color: 'amber',
@@ -100,7 +109,7 @@ const WALLETS = [
     name: 'Cypherock X1',
     tagline: 'No single point of failure',
     description: 'Cypherock uses Shamir Secret Sharing to split your private key across 4 tamper-proof cards and the device itself. Even if you lose one card, your Bitcoin is safe. No seed phrase to write down or worry about.',
-    features: ['No seed phrase backup needed', 'Shamir Secret Sharing across 4 cards', 'Open-source firmware', 'Supports 9,000+ assets', 'EAL6+ secure element'],
+    features: ['No seed phrase backup needed', 'Shamir Secret Sharing across 4 cards', 'Open-source firmware', 'Multi-asset support (we only care about the BTC part)', 'EAL6+ secure element'],
     price: 'From $99',
     href: 'https://cypherock.com/store/?ref=BTCDOLLARCOSTAVERAGE',
     color: 'violet',
@@ -231,7 +240,7 @@ const faqJsonLd = {
     {
       "@type": "Question",
       "name": "Is self-custody worth it for small amounts?",
-      "acceptedAnswer": { "@type": "Answer", "text": "A common rule of thumb: if you hold more Bitcoin than you'd be comfortable losing, move it to self-custody. For many people, that threshold is around $500-$1,000. Hardware wallets cost $65-$100." }
+      "acceptedAnswer": { "@type": "Answer", "text": "A common rule of thumb: if you hold more Bitcoin than you'd be comfortable losing, move it to self-custody. For many people, that threshold is around $500-$1,000. Hardware wallets cost roughly $50-$160 depending on the model." }
     },
     {
       "@type": "Question",
@@ -511,7 +520,7 @@ export default function SelfCustodyPage() {
             },
             {
               q: 'Is self-custody worth it for small amounts?',
-              a: 'A common rule of thumb: if you hold more Bitcoin than you\'d be comfortable losing, move it to self-custody. For many people, that threshold is around $500-$1,000. Hardware wallets cost $65-$100, which is a small price for peace of mind.',
+              a: 'A common rule of thumb: if you hold more Bitcoin than you\'d be comfortable losing, move it to self-custody. For many people, that threshold is around $500-$1,000. Hardware wallets cost roughly $50-$160 depending on the model, which is a small price for peace of mind.',
             },
             {
               q: 'Can\'t I just use a software wallet on my phone?',

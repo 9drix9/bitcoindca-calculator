@@ -1,8 +1,10 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useId } from 'react';
+import { Flame } from 'lucide-react';
 import { Frequency, AppreciationScenario } from '@/types';
 import { useCurrency } from '@/context/CurrencyContext';
+import { Card, CardHeader } from '@/components/ui/Card';
 import clsx from 'clsx';
 
 const SCENARIOS: AppreciationScenario[] = [
@@ -17,6 +19,7 @@ interface FireCalculatorProps {
     btcAccumulated: number;
     totalInvested: number;
     livePrice: number | null;
+    /** Contribution amount in USD (parent passes amountUsd) */
     amount: number;
     frequency: Frequency;
 }
@@ -37,27 +40,30 @@ export const FireCalculator = ({
     amount,
     frequency,
 }: FireCalculatorProps) => {
-    const { currencyConfig, formatCurrency, formatCompact } = useCurrency();
+    const { currencyConfig, formatCurrency } = useCurrency();
+    // Entered in the selected display currency; converted to USD once for all math.
     const [monthlyExpenses, setMonthlyExpenses] = useState<number>(4000);
+    const expensesInputId = useId();
 
-    const annualExpenses = monthlyExpenses * 12;
-    const fireNumber = annualExpenses / WITHDRAWAL_RATE; // Amount needed to retire
+    const monthlyExpensesUsd = monthlyExpenses / currencyConfig.rate;
+    const annualExpensesUsd = monthlyExpensesUsd * 12;
+    const fireNumberUsd = annualExpensesUsd / WITHDRAWAL_RATE; // USD needed to retire
 
     const scenarioResults = useMemo(() => {
         if (!livePrice || btcAccumulated <= 0 || totalInvested <= 0) return null;
 
-        const currentStackValue = btcAccumulated * livePrice;
-        const annualContribution = getContributionsPerYear(amount, frequency);
+        const currentStackValue = btcAccumulated * livePrice; // USD
+        const annualContribution = getContributionsPerYear(amount, frequency); // USD
 
         return SCENARIOS.map(scenario => {
-            // Simulate year by year
+            // Simulate year by year (all values USD)
             let stackValue = currentStackValue;
             let years = 0;
             const maxYears = 100;
 
             while (years < maxYears) {
                 // Check if we can sustain withdrawal
-                if (stackValue * WITHDRAWAL_RATE >= annualExpenses) {
+                if (stackValue * WITHDRAWAL_RATE >= annualExpensesUsd) {
                     break;
                 }
                 // Appreciate + add contributions
@@ -70,61 +76,59 @@ export const FireCalculator = ({
             return {
                 ...scenario,
                 years: reached ? years : null,
-                fireNumber,
                 projectedValue: stackValue,
                 reached,
             };
         });
-    }, [btcAccumulated, livePrice, totalInvested, amount, frequency, annualExpenses, fireNumber]);
+    }, [btcAccumulated, livePrice, totalInvested, amount, frequency, annualExpensesUsd]);
 
     if (!scenarioResults || !livePrice) return null;
 
     const currentStackValue = btcAccumulated * livePrice;
-    const progressPercent = Math.min((currentStackValue / fireNumber) * 100, 100);
+    const progressPercent = fireNumberUsd > 0 ? Math.min((currentStackValue / fireNumberUsd) * 100, 100) : 0;
 
     return (
-        <div className="bg-gradient-to-br from-slate-50 to-white dark:from-slate-900 dark:to-slate-800 text-slate-900 dark:text-white p-4 sm:p-6 rounded-2xl shadow-sm dark:shadow-lg border border-slate-200 dark:border-slate-700">
-            {/* Header with explanation */}
-            <div className="mb-4">
-                <h3 className="text-base sm:text-xl font-bold flex items-center gap-2">
-                    <span className="text-green-600 dark:text-green-400 text-lg">&#127793;</span>
-                    When Could You Retire?
-                </h3>
-                <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
-                    FIRE = Financial Independence, Retire Early. This shows when your Bitcoin could cover your living expenses forever.
-                </p>
-            </div>
+        <Card className="p-4 sm:p-6">
+            <CardHeader
+                icon={<Flame className="w-4 h-4" />}
+                title="When Could You Retire?"
+                subtitle="FIRE = Financial Independence, Retire Early. This shows when your Bitcoin could cover your living expenses forever."
+                className="mb-4"
+            />
 
             {/* Input section */}
-            <div className="bg-slate-100 dark:bg-slate-800/50 rounded-xl p-4 mb-4">
-                <label className="text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 block mb-2">
+            <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-4 mb-4">
+                <label htmlFor={expensesInputId} className="text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 block mb-2">
                     What are your monthly living expenses?
                 </label>
                 <div className="relative mb-3">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 dark:text-slate-400">{currencyConfig.symbol}</span>
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 dark:text-slate-400" aria-hidden="true">{currencyConfig.symbol}</span>
                     <input
+                        id={expensesInputId}
                         type="number"
+                        inputMode="decimal"
+                        min={0}
                         value={monthlyExpenses}
                         onChange={(e) => setMonthlyExpenses(Math.max(0, Number(e.target.value)))}
                         onFocus={(e) => e.target.select()}
-                        className="w-full pl-7 pr-3 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-base font-mono focus:ring-2 focus:ring-green-500 outline-none"
+                        className="w-full h-10 pl-8 pr-3 text-base sm:text-sm tabular-nums rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500 outline-none transition-shadow"
                         placeholder="4000"
                     />
                 </div>
                 <div className="text-xs text-slate-500 dark:text-slate-400 space-y-1">
-                    <div>That&apos;s <strong className="text-slate-700 dark:text-slate-300">{formatCurrency(annualExpenses)}/year</strong> in expenses</div>
-                    <div>You need <strong className="text-green-600 dark:text-green-400">{formatCurrency(fireNumber)}</strong> to retire (using the 4% rule)</div>
+                    <div>That&apos;s <strong className="text-slate-700 dark:text-slate-300 tabular-nums">{formatCurrency(annualExpensesUsd)}/year</strong> in expenses</div>
+                    <div>You need <strong className="text-emerald-600 dark:text-emerald-400 tabular-nums">{formatCurrency(fireNumberUsd)}</strong> to retire (using the 4% rule)</div>
                 </div>
             </div>
 
             {/* What is the 4% rule - collapsible */}
             <details className="mb-4 text-xs sm:text-sm">
-                <summary className="text-slate-500 dark:text-slate-400 cursor-pointer hover:text-slate-700 dark:hover:text-slate-300">
+                <summary className="text-slate-500 dark:text-slate-400 cursor-pointer hover:text-slate-700 dark:hover:text-slate-300 py-1">
                     What is the 4% rule?
                 </summary>
                 <div className="mt-2 p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg text-slate-600 dark:text-slate-400 leading-relaxed">
                     The 4% rule says you can withdraw 4% of your savings each year without running out of money.
-                    So if you need {formatCurrency(annualExpenses)}/year, you need 25x that amount ({formatCurrency(fireNumber)}) saved up.
+                    So if you need {formatCurrency(annualExpensesUsd)}/year, you need 25x that amount ({formatCurrency(fireNumberUsd)}) saved up.
                 </div>
             </details>
 
@@ -132,17 +136,17 @@ export const FireCalculator = ({
             <div className="mb-4">
                 <div className="flex justify-between text-xs sm:text-sm mb-1">
                     <span className="text-slate-600 dark:text-slate-400">Your progress</span>
-                    <span className="font-medium text-slate-800 dark:text-slate-200">{progressPercent.toFixed(1)}%</span>
+                    <span className="font-medium text-slate-800 dark:text-slate-200 tabular-nums">{progressPercent.toFixed(1)}%</span>
                 </div>
-                <div className="h-3 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+                <div className="h-3 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
                     <div
-                        className="h-full bg-gradient-to-r from-green-500 to-emerald-500 rounded-full transition-all duration-500"
+                        className="h-full bg-emerald-500 rounded-full transition-all duration-500"
                         style={{ width: `${progressPercent}%` }}
                     />
                 </div>
-                <div className="flex justify-between text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 mt-1">
+                <div className="flex justify-between text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 mt-1 tabular-nums">
                     <span>You have: {formatCurrency(currentStackValue)}</span>
-                    <span>Goal: {formatCurrency(fireNumber)}</span>
+                    <span>Goal: {formatCurrency(fireNumberUsd)}</span>
                 </div>
             </div>
 
@@ -158,30 +162,30 @@ export const FireCalculator = ({
                             className={clsx(
                                 "p-3 sm:p-4 rounded-xl border text-center",
                                 result.label === 'Conservative' && "bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-700/50",
-                                result.label === 'Moderate' && "bg-green-50 border-green-200 dark:bg-green-900/20 dark:border-green-700/50",
+                                result.label === 'Moderate' && "bg-emerald-50 border-emerald-200 dark:bg-emerald-900/20 dark:border-emerald-700/50",
                                 result.label === 'Aggressive' && "bg-amber-50 border-amber-200 dark:bg-amber-900/20 dark:border-amber-700/50",
                             )}
                         >
                             <div className={clsx(
                                 "text-xs font-bold mb-1",
                                 result.label === 'Conservative' && "text-blue-600 dark:text-blue-400",
-                                result.label === 'Moderate' && "text-green-600 dark:text-green-400",
+                                result.label === 'Moderate' && "text-emerald-600 dark:text-emerald-400",
                                 result.label === 'Aggressive' && "text-amber-600 dark:text-amber-400",
                             )}>
                                 {(result.rate * 100).toFixed(0)}% per year
                             </div>
-                            <div className="text-2xl sm:text-3xl font-bold text-slate-800 dark:text-white">
+                            <div className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-800 dark:text-white">
                                 {result.reached ? (
                                     result.years === 0 ? (
-                                        <span className="text-green-600 dark:text-green-400">Now!</span>
+                                        <span className="text-emerald-600 dark:text-emerald-400">Now!</span>
                                     ) : (
                                         <span>{result.years} <span className="text-base">years</span></span>
                                     )
                                 ) : (
-                                    <span className="text-red-500 dark:text-red-400 text-xl">100+ years</span>
+                                    <span className="text-rose-600 dark:text-rose-400 text-xl">100+ years</span>
                                 )}
                             </div>
-                            <div className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 mt-1">
+                            <div className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 mt-1">
                                 {result.reached
                                     ? result.years === 0
                                         ? "You're already there!"
@@ -195,9 +199,9 @@ export const FireCalculator = ({
             </div>
 
             {/* Footer note */}
-            <div className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 text-center">
+            <div className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 text-center">
                 Assumes you keep investing {formatCurrency(getContributionsPerYear(amount, frequency))}/year
             </div>
-        </div>
+        </Card>
     );
 };

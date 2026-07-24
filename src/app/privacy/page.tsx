@@ -1,15 +1,24 @@
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-    title: 'Privacy Policy | Bitcoin DCA Calculator',
+    title: 'Privacy Policy',
     description: 'Privacy policy for Bitcoin DCA Calculator. Learn how we handle your data, cookies, third-party advertising, and analytics. No personal financial data is collected or stored.',
     alternates: {
         canonical: '/privacy',
     },
     openGraph: {
-        title: 'Privacy Policy | Bitcoin DCA Calculator',
+        title: 'Privacy Policy',
         description: 'Learn how Bitcoin DCA Calculator handles your data. No personal financial data is collected or stored.',
+        url: '/privacy',
         type: 'website',
+        siteName: 'Bitcoin DCA Calculator',
+        locale: 'en_US',
+    },
+    twitter: {
+        card: 'summary_large_image',
+        title: 'Privacy Policy',
+        description: 'Learn how Bitcoin DCA Calculator handles your data. No personal financial data is collected or stored.',
+        creator: '@9drix9',
     },
 };
 
@@ -18,7 +27,7 @@ export default function PrivacyPage() {
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
             <article className="prose dark:prose-invert prose-sm sm:prose-base max-w-none prose-headings:scroll-mt-20">
                 <h1>Privacy Policy</h1>
-                <p className="text-sm text-slate-500 dark:text-slate-400">Last updated: February 1, 2026</p>
+                <p className="text-sm text-slate-500 dark:text-slate-400">Last updated: July 24, 2026</p>
 
                 <h2>Data Collection</h2>
                 <p>
@@ -28,7 +37,19 @@ export default function PrivacyPage() {
                 <p>
                     When you use the &quot;Live API&quot; price mode, your browser makes requests to public cryptocurrency exchange APIs
                     (Kraken, Coinbase) to fetch historical price data. These requests are proxied through our server to enable caching,
-                    but no personally identifiable information is included in these requests.
+                    but no personally identifiable information is included in these requests. The same applies to the other public data
+                    APIs the site uses (mempool.space, CoinGecko, FRED, Yahoo Finance, alternative.me, blockchain.info, and
+                    frankfurter.app for exchange rates) — all requests are server-proxied and contain no personal data.
+                </p>
+
+                <h2>Analytics</h2>
+                <p>
+                    We use <strong>Vercel Web Analytics</strong> and <strong>Vercel Speed Insights</strong> to understand aggregate site
+                    usage and performance. These tools are privacy-friendly: they are cookieless, do not track you across other
+                    websites, and do not build individual profiles. They collect aggregated, anonymized data such as page views,
+                    referrers, device type, and coarse geography. See{' '}
+                    <a href="https://vercel.com/legal/privacy-policy" target="_blank" rel="noopener noreferrer">Vercel&apos;s privacy policy</a>{' '}
+                    for details.
                 </p>
 
                 <h2>Cookies &amp; Tracking</h2>
