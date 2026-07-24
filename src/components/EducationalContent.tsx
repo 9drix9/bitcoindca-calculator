@@ -1,11 +1,12 @@
 import React from 'react';
+import Link from 'next/link';
 import { BookOpen, TrendingUp, AlertTriangle, Lightbulb } from 'lucide-react';
 
 const BITCOIN_QUOTES = [
     { text: "If you don't believe it or don't get it, I don't have the time to try to convince you, sorry.", author: "Satoshi Nakamoto" },
     { text: "Bitcoin is a technological tour de force.", author: "Bill Gates" },
-    { text: "Bitcoin is the most important invention in the history of the world since the Internet.", author: "Roger Ver" },
-    { text: "Every informed person needs to know about Bitcoin because it might be one of the world's most important developments.", author: "Leon Luow" },
+    { text: "Running bitcoin", author: "Hal Finney" },
+    { text: "Every informed person needs to know about Bitcoin because it might be one of the world's most important developments.", author: "Leon Louw" },
     { text: "Bitcoin will do to banks what email did to the postal industry.", author: "Rick Falkvinge" },
     { text: "Bitcoin is a remarkable cryptographic achievement and the ability to create something that is not duplicable in the digital world has enormous value.", author: "Eric Schmidt" },
     { text: "I think the fact that within the bitcoin universe an algorithm replaces the function of the government is actually pretty cool.", author: "Al Gore" },
@@ -32,7 +33,8 @@ export const EducationalContent = () => {
                     <h2 className="text-xl sm:text-3xl font-bold text-slate-900 dark:text-white">Mastering Bitcoin DCA</h2>
                 </div>
                 <p className="text-sm sm:text-lg text-slate-600 dark:text-slate-300 leading-relaxed">
-                    Dollar Cost Averaging (DCA) isn&apos;t just a buzzing investment term&mdash;it&apos;s a time-tested strategy tailored for volatile assets like Bitcoin. By purchasing a fixed dollar amount of Bitcoin at regular intervals, you effectively remove the emotional stress of trying to time the market.
+                    Dollar Cost Averaging (DCA) isn&apos;t just a buzzing investment term&mdash;it&apos;s a time-tested strategy tailored for volatile assets like Bitcoin. By purchasing a fixed dollar amount of Bitcoin at regular intervals, you effectively remove the emotional stress of trying to time the market. New to the asset itself? Start with{' '}
+                    <Link href="/why-bitcoin" className="text-amber-600 dark:text-amber-400 hover:underline font-medium">where Bitcoin&apos;s value comes from</Link>.
                 </p>
                 <div className="grid sm:grid-cols-2 gap-3 sm:gap-6 mt-4 sm:mt-8">
                     <div className="bg-white dark:bg-slate-800 p-4 sm:p-6 rounded-xl border border-slate-200 dark:border-slate-700">
@@ -71,7 +73,9 @@ export const EducationalContent = () => {
                         Bitcoin is famous for its cycles, typically revolving around the 4-year &quot;Halving&quot; event. While long-term trends have been up, the journey includes drawdowns of 50%, 70%, or even 80%.
                     </p>
                     <p>
-                        Our calculator uses <strong className="text-slate-800 dark:text-slate-200">real historical daily data</strong> from Kraken to simulate exactly how a DCA strategy would have performed during these turbulent times. Whether you started at the 2017 peak or the 2020 crash, the results often surprise investors who assume they missed the boat.
+                        Our calculator uses <strong className="text-slate-800 dark:text-slate-200">real historical data</strong> from Kraken and Coinbase to simulate exactly how a DCA strategy would have performed during these turbulent times. Price history reaches back to 2010, but pre-2015 values are interpolated estimates rather than real exchange candles&mdash;see our{' '}
+                        <Link href="/methodology" className="text-amber-600 dark:text-amber-400 hover:underline font-medium">Methodology</Link>{' '}
+                        for exactly how the data is built. Whether you started at the 2017 peak or the 2020 crash, the results often surprise investors who assume they missed the boat.
                     </p>
                 </div>
             </section>
@@ -87,13 +91,18 @@ export const EducationalContent = () => {
                         <strong>Set Amount &amp; Frequency:</strong> Choose how much you want to invest (e.g., $50) and how often (Daily, Weekly, Bi-weekly, Monthly).
                     </li>
                     <li>
-                        <strong>Select Dates:</strong> Pick a start date in the past. We support data going back to 2010.
+                        <strong>Select Dates:</strong> Pick a start date in the past. Price history goes back to 2010&mdash;pre-2015 values are interpolated estimates.
                     </li>
                     <li>
                         <strong>Adjust Parameters:</strong> Add an estimated exchange fee (standard is 0.5% - 1.5%) to see net results.
                     </li>
                     <li>
                         <strong>Analyze:</strong> Check the result cards and explore the interactive chart to see how your portfolio value diverged from your cash input over time.
+                    </li>
+                    <li>
+                        <strong>Withdraw &amp; Secure:</strong> Stacking is only half the job&mdash;once your balance matters to you, move it to your own keys. Our{' '}
+                        <Link href="/self-custody" className="text-amber-600 dark:text-amber-400 hover:underline font-medium">self-custody guide</Link>{' '}
+                        walks you through it.
                     </li>
                 </ol>
             </section>

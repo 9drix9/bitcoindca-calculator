@@ -8,7 +8,9 @@ export default function robots(): MetadataRoute.Robots {
             {
                 userAgent: '*',
                 allow: '/',
-                disallow: ['/api/', '/_next/'],
+                // NOTE: never disallow /_next/ — it blocks Googlebot from all JS/CSS
+                // and breaks rendering-based indexing.
+                disallow: ['/api/', '/offline'],
             },
         ],
         sitemap: `${baseUrl}/sitemap.xml`,

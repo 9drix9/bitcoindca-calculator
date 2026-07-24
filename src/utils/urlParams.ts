@@ -13,6 +13,9 @@ function isValidDateString(s: string): boolean {
     return d.getFullYear() === y && d.getMonth() + 1 === m && d.getDate() === day;
 }
 
+const VALID_CURRENCIES = ['USD', 'EUR', 'GBP', 'CAD', 'AUD', 'JPY'] as const;
+export type UrlCurrency = typeof VALID_CURRENCIES[number];
+
 export function encodeParams(params: {
     amount: number;
     frequency: Frequency;
@@ -22,6 +25,7 @@ export function encodeParams(params: {
     priceMode: PriceMode;
     provider: string;
     manualPrice: number;
+    currency?: string;
 }): string {
     const sp = new URLSearchParams();
     sp.set('amount', String(params.amount));
@@ -33,6 +37,11 @@ export function encodeParams(params: {
     sp.set('provider', params.provider);
     if (params.priceMode === 'manual') {
         sp.set('manualPrice', String(params.manualPrice));
+    }
+    // Amounts are entered in the sharer's currency — without it the recipient
+    // would silently reinterpret them in their own.
+    if (params.currency && params.currency !== 'USD') {
+        sp.set('currency', params.currency);
     }
     return sp.toString();
 }
@@ -46,6 +55,7 @@ export function decodeParams(searchParams: CalculatorSearchParams): {
     priceMode?: PriceMode;
     provider?: 'kraken' | 'coinbase';
     manualPrice?: number;
+    currency?: UrlCurrency;
 } | null {
     if (!searchParams || Object.keys(searchParams).length === 0) return null;
 
@@ -77,6 +87,9 @@ export function decodeParams(searchParams: CalculatorSearchParams): {
     if (searchParams.manualPrice) {
         const n = Number(searchParams.manualPrice);
         if (!isNaN(n) && n > 0) result.manualPrice = n;
+    }
+    if (searchParams.currency && (VALID_CURRENCIES as readonly string[]).includes(searchParams.currency)) {
+        result.currency = searchParams.currency as UrlCurrency;
     }
 
     return Object.keys(result).length > 0 ? result : null;

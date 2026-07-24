@@ -1,16 +1,19 @@
 'use client';
 
-import { useState, useEffect, useMemo, useCallback, useDeferredValue, useRef } from 'react';
+import { useState, useEffect, useMemo, useCallback, useDeferredValue, useRef, memo } from 'react';
 import { format, subYears, subMonths, startOfToday, differenceInMonths } from 'date-fns';
-import { Frequency, PriceMode, ResultCardProps, AssetDcaResult } from '@/types';
+import { Frequency, PriceMode, AssetDcaResult, DcaStats } from '@/types';
 import { useCurrency, CurrencyCode } from '@/context/CurrencyContext';
 import { calculateDca, calculateLumpSum, calculateAssetDca } from '@/utils/dca';
-import { getBitcoinPriceHistory, getCurrentBitcoinPrice, getAssetPriceHistory, getCpiData, getM2Data } from '@/app/actions';
+import { getBitcoinPriceHistory, getCurrentBitcoinPrice, getAssetPriceHistory, getCpiData } from '@/app/actions';
 import { generateCsvContent, downloadCsv } from '@/utils/csv';
 import { encodeParams, decodeParams } from '@/utils/urlParams';
+import { formatUtc, parseUtcDate } from '@/utils/dates';
 import dynamic from 'next/dynamic';
 import { SkeletonCard, SkeletonChart } from './Skeleton';
 import { AdSlot } from './AdSlot';
+import { Card } from './ui/Card';
+import { useCountUp } from '@/hooks/useCountUp';
 
 // Lazy-load result sub-components — none render until after a calculation
 const DcaChart = dynamic(() => import('./DcaChart').then(m => m.DcaChart));
@@ -25,35 +28,37 @@ const OpportunityCostCalculator = dynamic(() => import('./OpportunityCostCalcula
 const FireCalculator = dynamic(() => import('./FireCalculator').then(m => m.FireCalculator));
 const CostBasisTracker = dynamic(() => import('./CostBasisTracker').then(m => m.CostBasisTracker));
 const FutureProjection = dynamic(() => import('./FutureProjection').then(m => m.FutureProjection));
-import { TrendingUp, TrendingDown, DollarSign, Activity, Repeat, Download, Share2 } from 'lucide-react';
+import { TrendingUp, TrendingDown, DollarSign, Activity, Repeat, Download, Share2, RefreshCw } from 'lucide-react';
 import clsx from 'clsx';
 
 type Preset = { label: string; amount: number; frequency: Frequency; yearsBack?: number; monthsBack?: number; startDate?: string };
 
-const PRESET_GROUPS: { title: string; presets: Preset[] }[] = [
-    {
-        title: 'Quick scenarios',
-        presets: [
-            { label: '$50/week for 5 years', amount: 50, frequency: 'weekly', yearsBack: 5 },
-            { label: '$100/week for 3 years', amount: 100, frequency: 'weekly', yearsBack: 3 },
-            { label: '$200/month for 1 year', amount: 200, frequency: 'monthly', yearsBack: 1 },
-            { label: '$25/week since 2013', amount: 25, frequency: 'weekly', startDate: '2013-01-01' },
-        ],
-    },
-    {
-        title: 'What if I bought the peak?',
-        presets: [
-            { label: '$50/week from 2013 peak', amount: 50, frequency: 'weekly', startDate: '2013-12-04' },
-            { label: '$50/week from 2017 peak', amount: 50, frequency: 'weekly', startDate: '2017-12-17' },
-            { label: '$50/week from 2021 peak', amount: 50, frequency: 'weekly', startDate: '2021-11-10' },
-        ],
-    },
+const FEE_PRESETS: { name: string; fee: number }[] = [
+    { name: 'River', fee: 0 },
+    { name: 'Strike', fee: 0 },
+    { name: 'Kraken', fee: 0.26 },
+    { name: 'Swan', fee: 0.99 },
+    { name: 'Coinbase', fee: 1.49 },
 ];
 
+/** Round to 2 significant figures (used to keep converted quick-pick prices tidy). */
+const roundTo2Sig = (n: number): number => {
+    if (!Number.isFinite(n) || n <= 0) return 0;
+    const mag = Math.pow(10, Math.floor(Math.log10(n)) - 1);
+    return Math.round(n / mag) * mag;
+};
+
+/** Compact sats rendering for narrow columns. */
+const satsShort = (btc: number): string => {
+    const sats = Math.floor(btc * 100_000_000);
+    if (sats >= 1_000_000_000) return `${(sats / 1_000_000_000).toFixed(2)}B sats`;
+    if (sats >= 1_000_000) return `${(sats / 1_000_000).toFixed(1)}M sats`;
+    return `${sats.toLocaleString()} sats`;
+};
+
 export const DcaCalculator = () => {
-    const { currency, setCurrency, currencyConfig, currencies, formatCurrency, formatCompact } = useCurrency();
+    const { currency, setCurrency, currencyConfig, currencies, formatCurrency, formatCompact, formatBtc, formatSats } = useCurrency();
     const [today, setToday] = useState(() => startOfToday());
-    const oneYearAgo = subYears(today, 1);
 
     useEffect(() => {
         const interval = setInterval(() => {
@@ -65,10 +70,10 @@ export const DcaCalculator = () => {
         return () => clearInterval(interval);
     }, [today]);
 
-    const [amount, setAmount] = useState<number>(100);
+    const [amount, setAmount] = useState<number>(50);
     const deferredAmount = useDeferredValue(amount);
     const [frequency, setFrequency] = useState<Frequency>('weekly');
-    const [startDate, setStartDate] = useState<string>(format(oneYearAgo, 'yyyy-MM-dd'));
+    const [startDate, setStartDate] = useState<string>(format(subYears(today, 5), 'yyyy-MM-dd'));
     const [endDate, setEndDate] = useState<string>(format(today, 'yyyy-MM-dd'));
     const [feePercentage, setFeePercentage] = useState<number>(0.5);
     const deferredFee = useDeferredValue(feePercentage);
@@ -81,13 +86,13 @@ export const DcaCalculator = () => {
     const [livePrice, setLivePrice] = useState<number | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [retryToken, setRetryToken] = useState(0);
     const [shareMessage, setShareMessage] = useState<string | null>(null);
     const shareTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const [sp500Data, setSp500Data] = useState<[number, number][] | null>(null);
     const [goldData, setGoldData] = useState<[number, number][] | null>(null);
     const [comparisonLoading, setComparisonLoading] = useState(false);
     const [cpiData, setCpiData] = useState<[number, number][] | null>(null);
-    const [m2Data, setM2Data] = useState<[number, number][] | null>(null);
 
     const applyPreset = useCallback((preset: Preset) => {
         const now = startOfToday();
@@ -104,10 +109,36 @@ export const DcaCalculator = () => {
         setPriceMode('api');
     }, []);
 
+    // Preset amounts are entered into the display-currency amount field, so the
+    // labels carry the selected currency's symbol rather than a hardcoded '$'.
+    const presetGroups = useMemo(() => {
+        const s = currencyConfig.symbol;
+        return [
+            {
+                title: 'Quick scenarios',
+                presets: [
+                    { label: `${s}50/week for 5 years`, amount: 50, frequency: 'weekly', yearsBack: 5 },
+                    { label: `${s}100/week for 3 years`, amount: 100, frequency: 'weekly', yearsBack: 3 },
+                    { label: `${s}200/month for 1 year`, amount: 200, frequency: 'monthly', yearsBack: 1 },
+                    { label: `${s}25/week since 2013`, amount: 25, frequency: 'weekly', startDate: '2013-01-01' },
+                ] as Preset[],
+            },
+            {
+                title: 'What if I bought the peak?',
+                presets: [
+                    { label: `${s}50/week from 2013 peak`, amount: 50, frequency: 'weekly', startDate: '2013-12-04' },
+                    { label: `${s}50/week from 2017 peak`, amount: 50, frequency: 'weekly', startDate: '2017-12-17' },
+                    { label: `${s}50/week from 2021 peak`, amount: 50, frequency: 'weekly', startDate: '2021-11-10' },
+                ] as Preset[],
+            },
+        ];
+    }, [currencyConfig.symbol]);
+
     useEffect(() => {
         const sp = new URLSearchParams(window.location.search);
         const params = decodeParams(Object.fromEntries(sp.entries()));
         if (params) {
+            if (params.currency) setCurrency(params.currency as CurrencyCode);
             if (params.amount !== undefined) setAmount(params.amount);
             if (params.frequency) setFrequency(params.frequency);
             if (params.startDate) setStartDate(params.startDate);
@@ -117,7 +148,7 @@ export const DcaCalculator = () => {
             if (params.provider) setProvider(params.provider);
             if (params.manualPrice !== undefined) setManualPrice(params.manualPrice);
         }
-    }, []);
+    }, [setCurrency]);
 
     const dateError = useMemo(() => {
         if (!startDate || !endDate) return 'Please select both start and end dates';
@@ -127,6 +158,7 @@ export const DcaCalculator = () => {
 
     useEffect(() => {
         if (priceMode !== 'api' || dateError) return;
+        let cancelled = false;
         const fetchPrices = async () => {
             setLoading(true);
             setError(null);
@@ -137,55 +169,70 @@ export const DcaCalculator = () => {
                     getBitcoinPriceHistory(startTs, endTs + 86400000, provider),
                     getCurrentBitcoinPrice(provider)
                 ]);
+                if (cancelled) return;
                 setPriceData(history);
                 setLivePrice(current);
             } catch {
-                setError(`Failed to fetch live prices from ${provider}. Switched to manual mode.`);
+                if (cancelled) return;
+                // Be honest: don't silently price everything at the manual default.
+                setPriceData([]);
+                setLivePrice(null);
+                setError('Live price data is unavailable right now — showing no results. Try again or switch to Manual mode.');
             } finally {
-                setLoading(false);
+                if (!cancelled) setLoading(false);
             }
         };
         const timer = setTimeout(fetchPrices, 500);
-        return () => clearTimeout(timer);
-    }, [startDate, endDate, priceMode, provider, dateError]);
+        return () => {
+            cancelled = true;
+            clearTimeout(timer);
+        };
+    }, [startDate, endDate, priceMode, provider, dateError, retryToken]);
 
     useEffect(() => {
         if (priceMode !== 'api' || dateError) {
             setSp500Data(null);
             setGoldData(null);
             setCpiData(null);
-            setM2Data(null);
             return;
         }
+        let cancelled = false;
         const fetchComparison = async () => {
             setComparisonLoading(true);
             try {
                 const startTs = new Date(startDate).getTime();
                 const endTs = new Date(endDate).getTime() + 86400000;
-                const [sp500, gold, cpi, m2] = await Promise.all([
+                const [sp500, gold, cpi] = await Promise.all([
                     getAssetPriceHistory('^GSPC', startTs, endTs),
                     getAssetPriceHistory('GC=F', startTs, endTs),
                     getCpiData(startTs, endTs),
-                    getM2Data(startTs, endTs),
                 ]);
+                if (cancelled) return;
                 setSp500Data(sp500);
                 setGoldData(gold);
                 setCpiData(cpi);
-                setM2Data(m2);
             } catch {
+                if (cancelled) return;
                 setSp500Data(null);
                 setGoldData(null);
                 setCpiData(null);
-                setM2Data(null);
             } finally {
-                setComparisonLoading(false);
+                if (!cancelled) setComparisonLoading(false);
             }
         };
         const timer = setTimeout(fetchComparison, 600);
-        return () => clearTimeout(timer);
+        return () => {
+            cancelled = true;
+            clearTimeout(timer);
+        };
     }, [startDate, endDate, priceMode, dateError]);
 
     const amountUsd = useMemo(() => deferredAmount / currencyConfig.rate, [deferredAmount, currencyConfig.rate]);
+
+    // Today as a UTC-midnight timestamp of the user's local calendar date — the
+    // engine buckets by UTC day, so this is the correct "today" for comparisons.
+    const todayUtcTs = Date.UTC(today.getFullYear(), today.getMonth(), today.getDate());
+    const isFutureEndDate = parseUtcDate(endDate) > todayUtcTs;
 
     const results = useMemo(() => {
         if (dateError) {
@@ -194,10 +241,23 @@ export const DcaCalculator = () => {
         return calculateDca({ amount: amountUsd, frequency, startDate: new Date(startDate), endDate: new Date(endDate), feePercentage: deferredFee, priceMode, manualPrice: deferredManualPrice }, priceData, priceMode === 'api' ? livePrice : undefined);
     }, [amountUsd, frequency, startDate, endDate, deferredFee, priceMode, deferredManualPrice, priceData, livePrice, dateError]);
 
+    // Past-only run (end date capped at today). calculateDca already includes the
+    // future leg at the last known price when the end date is in the future, so
+    // FutureProjection must receive these figures — not the full-range ones — or
+    // every future purchase would be counted twice.
+    const pastResults = useMemo(() => {
+        if (dateError || !isFutureEndDate) return results;
+        return calculateDca(
+            { amount: amountUsd, frequency, startDate: new Date(startDate), endDate: new Date(todayUtcTs), feePercentage: deferredFee, priceMode, manualPrice: deferredManualPrice },
+            priceData,
+            priceMode === 'api' ? livePrice : undefined
+        );
+    }, [results, dateError, isFutureEndDate, amountUsd, frequency, startDate, todayUtcTs, deferredFee, priceMode, deferredManualPrice, priceData, livePrice]);
+
     const lumpSumResult = useMemo(() => {
         if (priceMode !== 'api' || !priceData.length || !livePrice || dateError) return null;
-        return calculateLumpSum(results.totalInvested, new Date(startDate), priceData, livePrice);
-    }, [priceMode, priceData, livePrice, results.totalInvested, startDate, dateError]);
+        return calculateLumpSum(results.totalInvested, new Date(startDate), priceData, livePrice, deferredFee);
+    }, [priceMode, priceData, livePrice, results.totalInvested, startDate, dateError, deferredFee]);
 
     const sp500Result: AssetDcaResult | null = useMemo(() => {
         if (!sp500Data) return null;
@@ -243,17 +303,25 @@ export const DcaCalculator = () => {
     }, [cpiData, results.currentValue, results.totalInvested]);
 
     const isProfit = results.profit >= 0;
-    const isFutureEndDate = new Date(endDate) > today;
 
     const handleExportCsv = useCallback(() => {
         if (results.breakdown.length === 0) return;
-        const csv = generateCsvContent(results.breakdown);
+        const csv = generateCsvContent(results.breakdown, { code: currencyConfig.code, rate: currencyConfig.rate });
         downloadCsv(csv, `bitcoin-dca-${startDate}-to-${endDate}.csv`);
-    }, [results.breakdown, startDate, endDate]);
+    }, [results.breakdown, startDate, endDate, currencyConfig.code, currencyConfig.rate]);
 
     const handleShare = useCallback(async () => {
-        const paramStr = encodeParams({ amount, frequency, startDate, endDate, feePercentage, priceMode, provider, manualPrice });
+        const paramStr = encodeParams({ amount, frequency, startDate, endDate, feePercentage, priceMode, provider, manualPrice, currency: currencyConfig.code });
         const url = `${window.location.origin}${window.location.pathname}?${paramStr}`;
+        if (typeof navigator.share === 'function') {
+            try {
+                await navigator.share({ title: 'Bitcoin DCA Calculator', url });
+                return;
+            } catch (e) {
+                if (e instanceof Error && e.name === 'AbortError') return;
+                // fall through to the clipboard path
+            }
+        }
         if (shareTimerRef.current) clearTimeout(shareTimerRef.current);
         try {
             await navigator.clipboard.writeText(url);
@@ -262,14 +330,22 @@ export const DcaCalculator = () => {
             setShareMessage('Failed to copy link');
         }
         shareTimerRef.current = setTimeout(() => setShareMessage(null), 2000);
-    }, [amount, frequency, startDate, endDate, feePercentage, priceMode, provider, manualPrice]);
+    }, [amount, frequency, startDate, endDate, feePercentage, priceMode, provider, manualPrice, currencyConfig.code]);
+
+    const handleRetry = useCallback(() => setRetryToken(t => t + 1), []);
 
     const handleFeeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const val = Math.min(50, Math.max(0, Number(e.target.value)));
         setFeePercentage(val);
     };
 
-    const profitPrefix = results.profit >= 0 ? '+' : '-';
+    // In API mode with no data, results would be silently priced at the manual
+    // default — never show those phantom numbers.
+    const apiDataMissing = priceMode === 'api' && !dateError && priceData.length === 0;
+    const showSkeleton = loading || (apiDataMissing && !error);
+    const showEmptyError = !loading && apiDataMissing && !!error;
+
+    const profitClass = isProfit ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400';
 
     return (
         <div className="space-y-6 sm:space-y-8">
@@ -282,7 +358,7 @@ export const DcaCalculator = () => {
 
                 {/* Presets */}
                 <div className="space-y-3 mb-5 sm:mb-6">
-                    {PRESET_GROUPS.map((group) => (
+                    {presetGroups.map((group) => (
                         <div key={group.title}>
                             <div className="text-[11px] sm:text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1.5">
                                 {group.title}
@@ -291,8 +367,9 @@ export const DcaCalculator = () => {
                                 {group.presets.map((preset) => (
                                     <button
                                         key={preset.label}
+                                        type="button"
                                         onClick={() => applyPreset(preset)}
-                                        className="px-2.5 sm:px-3 py-1 sm:py-1.5 text-xs font-medium rounded-full bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/40 border border-amber-200/60 dark:border-amber-800/40 transition-colors"
+                                        className="px-2.5 sm:px-3 py-1.5 text-xs font-medium rounded-full bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/40 border border-amber-200/60 dark:border-amber-800/40 transition-colors"
                                     >
                                         {preset.label}
                                     </button>
@@ -305,26 +382,29 @@ export const DcaCalculator = () => {
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-5 overflow-hidden">
                     {/* Amount */}
                     <div className="space-y-1.5">
-                        <label className="text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300">Amount ({currencyConfig.code})</label>
+                        <label htmlFor="dca-amount" className="text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300">Amount ({currencyConfig.code})</label>
                         <div className="relative">
                             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 dark:text-slate-400 text-sm">{currencyConfig.symbol}</span>
                             <input
+                                id="dca-amount"
                                 type="number"
+                                inputMode="decimal"
                                 value={amount}
                                 onChange={(e) => setAmount(Math.max(0, Number(e.target.value)))}
                                 onFocus={(e) => e.target.select()}
-                                className="w-full pl-7 pr-3 py-2 text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500 outline-none transition-all"
+                                className="w-full pl-7 pr-3 py-2 text-base sm:text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500 outline-none transition-all"
                             />
                         </div>
                     </div>
 
                     {/* Frequency */}
                     <div className="space-y-1.5">
-                        <label className="text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300">Frequency</label>
+                        <label htmlFor="dca-frequency" className="text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300">Frequency</label>
                         <select
+                            id="dca-frequency"
                             value={frequency}
                             onChange={(e) => setFrequency(e.target.value as Frequency)}
-                            className="w-full px-3 py-2 text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500 outline-none transition-all"
+                            className="w-full px-3 py-2 text-base sm:text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500 outline-none transition-all"
                         >
                             <option value="daily">Daily</option>
                             <option value="weekly">Weekly</option>
@@ -335,26 +415,50 @@ export const DcaCalculator = () => {
 
                     {/* Fee */}
                     <div className="space-y-1.5">
-                        <label className="text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300">Fee (%)</label>
+                        <label htmlFor="dca-fee" className="text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300">Fee (%)</label>
                         <input
+                            id="dca-fee"
                             type="number"
+                            inputMode="decimal"
                             step="0.1"
                             min={0}
                             max={50}
                             value={feePercentage}
                             onChange={handleFeeChange}
                             onFocus={(e) => e.target.select()}
-                            className="w-full px-3 py-2 text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500 outline-none transition-all"
+                            className="w-full px-3 py-2 text-base sm:text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500 outline-none transition-all"
                         />
+                        <div className="pt-0.5">
+                            <div className="text-[11px] font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">Exchange presets</div>
+                            <div className="flex flex-wrap gap-1.5" role="group" aria-label="Exchange fee presets">
+                                {FEE_PRESETS.map((p) => (
+                                    <button
+                                        key={p.name}
+                                        type="button"
+                                        onClick={() => setFeePercentage(p.fee)}
+                                        aria-pressed={feePercentage === p.fee}
+                                        className={clsx(
+                                            'px-2 py-1 min-h-[24px] text-[11px] font-medium rounded-full border transition-colors',
+                                            feePercentage === p.fee
+                                                ? 'bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 border-amber-200/60 dark:border-amber-800/40'
+                                                : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700'
+                                        )}
+                                    >
+                                        {p.name} {p.fee}%
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
                     </div>
 
                     {/* Currency */}
                     <div className="space-y-1.5">
-                        <label className="text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300">Currency</label>
+                        <label htmlFor="dca-currency" className="text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300">Currency</label>
                         <select
+                            id="dca-currency"
                             value={currency}
                             onChange={(e) => setCurrency(e.target.value as CurrencyCode)}
-                            className="w-full px-3 py-2 text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500 outline-none transition-all"
+                            className="w-full px-3 py-2 text-base sm:text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500 outline-none transition-all"
                         >
                             {currencies.map(c => (
                                 <option key={c.code} value={c.code}>{c.label}</option>
@@ -364,40 +468,48 @@ export const DcaCalculator = () => {
 
                     {/* Start Date */}
                     <div className="space-y-1.5 min-w-0 overflow-hidden">
-                        <label className="text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300">Start Date</label>
+                        <label htmlFor="dca-start-date" className="text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300">Start Date</label>
                         <input
+                            id="dca-start-date"
                             type="date"
                             value={startDate}
                             onChange={(e) => setStartDate(e.target.value)}
+                            aria-invalid={!!dateError}
+                            aria-describedby={dateError ? 'dca-date-error' : undefined}
                             className={clsx(
-                                "w-full min-w-0 max-w-full appearance-none box-border px-2 sm:px-3 py-2 text-sm rounded-lg border bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500 outline-none transition-all min-h-[38px]",
-                                dateError ? "border-red-400 dark:border-red-600" : "border-slate-200 dark:border-slate-700"
+                                "w-full min-w-0 max-w-full appearance-none box-border px-2 sm:px-3 py-2 text-base sm:text-sm rounded-lg border bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500 outline-none transition-all min-h-[38px]",
+                                dateError ? "border-rose-400 dark:border-rose-600" : "border-slate-200 dark:border-slate-700"
                             )}
                         />
                     </div>
 
                     {/* End Date */}
                     <div className="space-y-1.5 min-w-0 overflow-hidden">
-                        <label className="text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300">End Date</label>
+                        <label htmlFor="dca-end-date" className="text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300">End Date</label>
                         <input
+                            id="dca-end-date"
                             type="date"
                             value={endDate}
                             onChange={(e) => setEndDate(e.target.value)}
+                            aria-invalid={!!dateError}
+                            aria-describedby={dateError ? 'dca-date-error' : undefined}
                             className={clsx(
-                                "w-full min-w-0 max-w-full appearance-none box-border px-2 sm:px-3 py-2 text-sm rounded-lg border bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500 outline-none transition-all min-h-[38px]",
-                                dateError ? "border-red-400 dark:border-red-600" : "border-slate-200 dark:border-slate-700"
+                                "w-full min-w-0 max-w-full appearance-none box-border px-2 sm:px-3 py-2 text-base sm:text-sm rounded-lg border bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500 outline-none transition-all min-h-[38px]",
+                                dateError ? "border-rose-400 dark:border-rose-600" : "border-slate-200 dark:border-slate-700"
                             )}
                         />
-                        {dateError && <p className="text-xs text-red-500">{dateError}</p>}
+                        {dateError && <p id="dca-date-error" className="text-xs text-rose-600 dark:text-rose-400">{dateError}</p>}
                     </div>
 
                     {/* Price Mode + Provider */}
                     <div className="space-y-3 sm:col-span-2 lg:col-span-1">
                         <div className="space-y-1.5">
-                            <label className="text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300">Price Mode</label>
-                            <div className="flex bg-slate-100 dark:bg-slate-800 rounded-lg p-0.5">
+                            <span id="dca-price-mode-label" className="block text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300">Price Mode</span>
+                            <div role="group" aria-labelledby="dca-price-mode-label" className="flex bg-slate-100 dark:bg-slate-800 rounded-lg p-0.5">
                                 <button
+                                    type="button"
                                     onClick={() => setPriceMode('api')}
+                                    aria-pressed={priceMode === 'api'}
                                     className={clsx(
                                         "flex-1 py-1.5 text-xs sm:text-sm font-medium rounded-md transition-all",
                                         priceMode === 'api'
@@ -408,7 +520,9 @@ export const DcaCalculator = () => {
                                     Live API
                                 </button>
                                 <button
+                                    type="button"
                                     onClick={() => setPriceMode('manual')}
+                                    aria-pressed={priceMode === 'manual'}
                                     className={clsx(
                                         "flex-1 py-1.5 text-xs sm:text-sm font-medium rounded-md transition-all",
                                         priceMode === 'manual'
@@ -423,11 +537,12 @@ export const DcaCalculator = () => {
 
                         {priceMode === 'api' && (
                             <div className="fade-in">
-                                <label className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-1 block">Data Source</label>
+                                <label htmlFor="dca-provider" className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-1 block">Data Source</label>
                                 <select
+                                    id="dca-provider"
                                     value={provider}
                                     onChange={(e) => setProvider(e.target.value as 'kraken' | 'coinbase')}
-                                    className="w-full text-xs sm:text-sm px-3 py-1.5 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 outline-none focus:border-amber-500 transition-all"
+                                    className="w-full text-base sm:text-sm px-3 py-1.5 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 outline-none focus:border-amber-500 transition-all"
                                 >
                                     <option value="kraken">Kraken</option>
                                     <option value="coinbase">Coinbase</option>
@@ -438,13 +553,15 @@ export const DcaCalculator = () => {
 
                     {priceMode === 'manual' && (
                         <div className="space-y-1.5 fade-in sm:col-span-2 lg:col-span-1">
-                            <label className="text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300">Avg. BTC Price</label>
+                            <label htmlFor="dca-manual-price" className="text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300">Avg. BTC Price (USD)</label>
                             <input
+                                id="dca-manual-price"
                                 type="number"
+                                inputMode="decimal"
                                 value={manualPrice}
                                 onChange={(e) => setManualPrice(Math.max(1, Number(e.target.value)))}
                                 onFocus={(e) => e.target.select()}
-                                className="w-full px-3 py-2 text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500 outline-none transition-all"
+                                className="w-full px-3 py-2 text-base sm:text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500 outline-none transition-all"
                             />
                         </div>
                     )}
@@ -454,7 +571,7 @@ export const DcaCalculator = () => {
                 <div className="mt-5 pt-4 border-t border-slate-100 dark:border-slate-800 flex flex-wrap justify-between items-center gap-3">
                     <div className="flex items-center gap-2">
                         <span className="text-xs sm:text-sm text-slate-500">Projected</span>
-                        <span className="text-base sm:text-lg font-bold text-slate-800 dark:text-white">{formatCurrency(results.totalInvested)}</span>
+                        <span className="text-base sm:text-lg font-bold text-slate-800 dark:text-white tabular-nums">{formatCurrency(results.totalInvested)}</span>
                     </div>
                     <div className="flex items-center gap-1">
                         <button
@@ -477,15 +594,13 @@ export const DcaCalculator = () => {
                         )}
                     </div>
                 </div>
-                {shareMessage && <div className="mt-2 text-xs sm:text-sm text-green-600 dark:text-green-400 fade-in">{shareMessage}</div>}
-                {error && <div className="mt-3 text-xs sm:text-sm text-red-500 fade-in">{error}</div>}
+                <div role="status" aria-live="polite">
+                    {shareMessage && <div className="mt-2 text-xs sm:text-sm text-emerald-600 dark:text-emerald-400 fade-in">{shareMessage}</div>}
+                </div>
             </div>
 
-            {/* Ad Slot */}
-            <AdSlot className="min-h-[100px] flex justify-center" />
-
-            {/* Loading / Results */}
-            {loading ? (
+            {/* Loading / Error / Results */}
+            {showSkeleton ? (
                 <>
                     <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
                         <SkeletonCard />
@@ -495,26 +610,52 @@ export const DcaCalculator = () => {
                     </div>
                     <SkeletonChart />
                 </>
+            ) : showEmptyError ? (
+                <Card className="p-6 sm:p-10 text-center fade-in">
+                    <p role="status" aria-live="polite" className="text-sm sm:text-base text-slate-600 dark:text-slate-300 max-w-md mx-auto">
+                        {error}
+                    </p>
+                    <div className="mt-5 flex flex-wrap justify-center gap-2">
+                        <button
+                            type="button"
+                            onClick={handleRetry}
+                            className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-lg bg-amber-500 hover:bg-amber-600 text-white transition-colors"
+                        >
+                            <RefreshCw className="w-4 h-4" aria-hidden="true" />
+                            Retry
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setPriceMode('manual')}
+                            className="px-4 py-2 text-sm font-medium rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                        >
+                            Use Manual mode
+                        </button>
+                    </div>
+                </Card>
             ) : (
                 <>
                     {/* Result Cards */}
                     <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
                         <ResultCard
                             label={isFutureEndDate ? "Total to Invest" : "Total Invested"}
-                            value={formatCurrency(results.totalInvested)}
+                            value={results.totalInvested}
+                            format={formatCurrency}
+                            formatShort={formatCompact}
                         />
                         <ResultCard
                             label={unit === 'BTC' ? (isFutureEndDate ? "BTC to Accumulate" : "BTC Accumulated") : (isFutureEndDate ? "Sats to Accumulate" : "Sats Accumulated")}
-                            value={unit === 'BTC'
-                                ? `${results.btcAccumulated.toFixed(8)} ₿`
-                                : `${Math.floor(results.btcAccumulated * 100_000_000).toLocaleString()} sats`
-                            }
+                            value={results.btcAccumulated}
+                            format={(n) => unit === 'BTC' ? formatBtc(n) : formatSats(n)}
+                            formatShort={(n) => unit === 'BTC' ? `${n < 1 ? n.toFixed(4) : n.toFixed(2)} ₿` : satsShort(n)}
                             subValue={isFutureEndDate ? "at current prices" : `Avg: ${formatCurrency(results.averageCost)}`}
                             action={
                                 <button
+                                    type="button"
                                     onClick={() => setUnit(prev => prev === 'BTC' ? 'SATS' : 'BTC')}
-                                    className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition-colors"
+                                    className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition-colors"
                                     title={`Switch to ${unit === 'BTC' ? 'Sats' : 'BTC'}`}
+                                    aria-label={`Switch to ${unit === 'BTC' ? 'sats' : 'BTC'}`}
                                 >
                                     <Repeat className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
                                 </button>
@@ -522,21 +663,32 @@ export const DcaCalculator = () => {
                         />
                         <ResultCard
                             label={isFutureEndDate ? "Value at Current Price" : "Current Value"}
-                            value={formatCurrency(results.currentValue)}
+                            value={results.currentValue}
+                            format={formatCurrency}
+                            formatShort={formatCompact}
                             subValue={priceMode === 'api' && livePrice ? `@ ${formatCurrency(livePrice)}` : undefined}
-                            subValueColor="text-amber-600 dark:text-amber-400 font-medium"
-                            highlight={true}
+                            subValueClassName="text-amber-600 dark:text-amber-400 font-medium"
+                            celebrated
                             icon={<Activity className="w-4 h-4 sm:w-5 sm:h-5 text-amber-500 shrink-0" />}
                         />
                         <ResultCard
                             label={isFutureEndDate ? "Projected Gain" : "Profit / Loss"}
-                            value={`${profitPrefix}${formatCurrency(Math.abs(results.profit))}`}
-                            valueColor={isProfit ? 'text-green-500' : 'text-red-500'}
-                            icon={isProfit ? <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5 text-green-500 shrink-0" /> : <TrendingDown className="w-4 h-4 sm:w-5 sm:h-5 text-red-500 shrink-0" />}
+                            value={results.profit}
+                            format={(n) => `${n >= 0 ? '+' : ''}${formatCurrency(n)}`}
+                            formatShort={(n) => `${n >= 0 ? '+' : ''}${formatCompact(n)}`}
+                            valueClassName={profitClass}
+                            icon={isProfit
+                                ? <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                                : <TrendingDown className="w-4 h-4 sm:w-5 sm:h-5 text-rose-600 dark:text-rose-400 shrink-0" />}
                             subValue={isFutureEndDate ? "if price stays same" : `${results.roi.toFixed(1)}% ROI`}
-                            subValueColor={isProfit ? 'text-green-600' : 'text-red-600'}
+                            subValueClassName={profitClass}
                         />
                     </div>
+
+                    {/* Stats strip (historical figures — capped at today when the end date is in the future) */}
+                    {pastResults.stats && pastResults.breakdown.length > 0 && (
+                        <StatsStrip stats={pastResults.stats} />
+                    )}
 
                     {/* Stats Banner */}
                     {purchaseCount > 0 && (
@@ -558,10 +710,10 @@ export const DcaCalculator = () => {
                     {/* Result Explainer */}
                     {purchaseCount > 0 && (
                         <p className="text-center text-xs sm:text-sm text-slate-500 dark:text-slate-400 leading-relaxed max-w-2xl mx-auto">
-                            {new Date(endDate) > today ? (
+                            {isFutureEndDate ? (
                                 <>
                                     If you invest {currencyConfig.symbol}{amount.toLocaleString()} every {frequency === 'daily' ? 'day' : frequency === 'biweekly' ? 'two weeks' : frequency.replace('ly', '')} from{' '}
-                                    {format(new Date(startDate), 'MMM yyyy')} to {format(new Date(endDate), 'MMM yyyy')}, you will spend{' '}
+                                    {formatUtc(parseUtcDate(startDate), 'monthYear')} to {formatUtc(parseUtcDate(endDate), 'monthYear')}, you will spend{' '}
                                     {formatCurrency(results.totalInvested)} and accumulate{' '}
                                     <span className="font-medium text-slate-700 dark:text-slate-200">{results.btcAccumulated < 1 ? results.btcAccumulated.toFixed(6) : results.btcAccumulated.toFixed(4)} BTC</span>{' '}
                                     (at current prices: {formatCurrency(results.currentValue)}).
@@ -569,10 +721,10 @@ export const DcaCalculator = () => {
                             ) : (
                                 <>
                                     If you had invested {currencyConfig.symbol}{amount.toLocaleString()} every {frequency === 'daily' ? 'day' : frequency === 'biweekly' ? 'two weeks' : frequency.replace('ly', '')} from{' '}
-                                    {format(new Date(startDate), 'MMM yyyy')} to {format(new Date(endDate), 'MMM yyyy')}, you would have spent{' '}
+                                    {formatUtc(parseUtcDate(startDate), 'monthYear')} to {formatUtc(parseUtcDate(endDate), 'monthYear')}, you would have spent{' '}
                                     {formatCurrency(results.totalInvested)} and your Bitcoin would now be worth{' '}
                                     <span className="font-medium text-slate-700 dark:text-slate-200">{formatCurrency(results.currentValue)}</span>{' '}
-                                    &mdash; a <span className={clsx("font-medium", isProfit ? "text-green-600 dark:text-green-400" : "text-red-500")}>{results.roi.toFixed(1)}% return</span>.
+                                    &mdash; a <span className={clsx("font-medium", isProfit ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400")}>{results.roi.toFixed(1)}% return</span>.
                                 </>
                             )}
                         </p>
@@ -587,31 +739,34 @@ export const DcaCalculator = () => {
                             endDate={endDate}
                             feePercentage={deferredFee}
                             currentPrice={livePrice}
-                            currentBtc={results.btcAccumulated}
-                            currentInvested={results.totalInvested}
+                            currentBtc={pastResults.btcAccumulated}
+                            currentInvested={pastResults.totalInvested}
                         />
                     )}
 
                     {/* Inflation-Adjusted Returns */}
                     {inflationStats && (
                         <div className="bg-white dark:bg-slate-900 px-4 sm:px-6 py-3 sm:py-4 rounded-xl border border-slate-200 dark:border-slate-800 fade-in">
+                            <div className="text-[11px] sm:text-xs font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400 text-center mb-2">
+                                Real (inflation-adjusted) value &mdash; full-period CPI
+                            </div>
                             <div className="grid grid-cols-3 gap-2 sm:gap-4 text-center text-xs sm:text-sm">
                                 <div>
                                     <div className="text-slate-500 dark:text-slate-400 mb-0.5">Real Value</div>
-                                    <div className="font-semibold text-slate-800 dark:text-white truncate">
+                                    <div className="font-semibold text-slate-800 dark:text-white truncate tabular-nums">
                                         <span className="sm:hidden">{formatCompact(inflationStats.adjustedValue)}</span>
                                         <span className="hidden sm:inline">{formatCurrency(inflationStats.adjustedValue)}</span>
                                     </div>
                                 </div>
                                 <div>
                                     <div className="text-slate-500 dark:text-slate-400 mb-0.5">Real ROI</div>
-                                    <div className={clsx("font-semibold", inflationStats.adjustedRoi >= 0 ? "text-green-600" : "text-red-600")}>
+                                    <div className={clsx("font-semibold tabular-nums", inflationStats.adjustedRoi >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400")}>
                                         {inflationStats.adjustedRoi.toFixed(1)}%
                                     </div>
                                 </div>
                                 <div>
                                     <div className="text-slate-500 dark:text-slate-400 mb-0.5">Inflation</div>
-                                    <div className="font-semibold text-red-500">
+                                    <div className="font-semibold text-rose-600 dark:text-rose-400 tabular-nums">
                                         {inflationStats.cumulativeInflation.toFixed(1)}%
                                     </div>
                                 </div>
@@ -630,7 +785,7 @@ export const DcaCalculator = () => {
                                         <span className="sm:hidden">{formatCompact(results.currentValue)}</span>
                                         <span className="hidden sm:inline">{formatCurrency(results.currentValue)}</span>
                                     </div>
-                                    <div className={clsx("text-xs sm:text-sm mt-1 truncate", results.profit >= 0 ? "text-green-600" : "text-red-600")}>
+                                    <div className={clsx("text-xs sm:text-sm mt-1 truncate tabular-nums", results.profit >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400")}>
                                         <span className="sm:hidden">{results.profit >= 0 ? '+' : '-'}{formatCompact(Math.abs(results.profit))} ({results.roi.toFixed(1)}%)</span>
                                         <span className="hidden sm:inline">{results.profit >= 0 ? '+' : '-'}{formatCurrency(Math.abs(results.profit))} ({results.roi.toFixed(1)}%)</span>
                                     </div>
@@ -641,7 +796,7 @@ export const DcaCalculator = () => {
                                         <span className="sm:hidden">{formatCompact(lumpSumResult.currentValue)}</span>
                                         <span className="hidden sm:inline">{formatCurrency(lumpSumResult.currentValue)}</span>
                                     </div>
-                                    <div className={clsx("text-xs sm:text-sm mt-1 truncate", lumpSumResult.profit >= 0 ? "text-green-600" : "text-red-600")}>
+                                    <div className={clsx("text-xs sm:text-sm mt-1 truncate tabular-nums", lumpSumResult.profit >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400")}>
                                         <span className="sm:hidden">{lumpSumResult.profit >= 0 ? '+' : '-'}{formatCompact(Math.abs(lumpSumResult.profit))} ({lumpSumResult.roi.toFixed(1)}%)</span>
                                         <span className="hidden sm:inline">{lumpSumResult.profit >= 0 ? '+' : '-'}{formatCurrency(Math.abs(lumpSumResult.profit))} ({lumpSumResult.roi.toFixed(1)}%)</span>
                                     </div>
@@ -675,7 +830,10 @@ export const DcaCalculator = () => {
                     )}
 
                     {/* Chart */}
-                    <DcaChart data={results.breakdown} unit={unit} m2Data={m2Data} />
+                    <DcaChart data={results.breakdown} unit={unit} />
+
+                    {/* Ad Slot (after the chart — never between the form and its results) */}
+                    <AdSlot className="min-h-[100px] flex justify-center" />
 
                     {/* Transaction Table */}
                     <TransactionTable breakdown={results.breakdown} unit={unit} />
@@ -690,7 +848,7 @@ export const DcaCalculator = () => {
                         purchaseCount={purchaseCount}
                         startDate={startDate}
                         endDate={endDate}
-                        amount={amount}
+                        amount={amountUsd}
                         frequency={frequency}
                         unit={unit}
                     />
@@ -733,61 +891,162 @@ export const DcaCalculator = () => {
     );
 };
 
-const ResultCard = ({ label, value, subValue, highlight, valueColor, icon, subValueColor, action }: ResultCardProps) => (
-    <div className={clsx(
-        "p-3 sm:p-5 rounded-xl border transition-all",
-        highlight
-            ? "bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800/50"
-            : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800"
-    )}>
-        <div className="flex justify-between items-start mb-1">
-            <div className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 leading-tight">{label}</div>
-            {action && <div>{action}</div>}
-        </div>
-        <div className="flex items-center gap-1.5">
-            <div className={clsx("text-base sm:text-2xl font-bold text-slate-900 dark:text-slate-100 truncate", valueColor)}>{value}</div>
-            {icon}
-        </div>
-        {subValue && <div className={clsx("text-[11px] sm:text-sm mt-0.5 sm:mt-1 truncate", subValueColor || "text-slate-500 dark:text-slate-400")}>{subValue}</div>}
-    </div>
-);
+interface AnimatedResultCardProps {
+    label: string;
+    /** Raw numeric value — animated with useCountUp, then formatted. */
+    value: number;
+    format: (n: number) => string;
+    /** Compact formatter used below the sm breakpoint (replaces truncation). */
+    formatShort?: (n: number) => string;
+    subValue?: string;
+    celebrated?: boolean;
+    valueClassName?: string;
+    icon?: React.ReactNode;
+    subValueClassName?: string;
+    action?: React.ReactNode;
+}
 
-const PricePredictionScenario = ({ btcAmount, totalInvested }: { btcAmount: number, totalInvested: number }) => {
+const ResultCard = ({ label, value, format, formatShort, subValue, celebrated, valueClassName, icon, subValueClassName, action }: AnimatedResultCardProps) => {
+    const animated = useCountUp(value);
+    return (
+        <Card celebrated={celebrated} className="p-3 sm:p-5">
+            <div className="flex justify-between items-start gap-1 mb-1">
+                <div className="text-xs font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400 leading-tight">{label}</div>
+                {action && <div className="shrink-0">{action}</div>}
+            </div>
+            <div className="flex items-center gap-1.5 min-w-0">
+                <div className={clsx("text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100 min-w-0", valueClassName)}>
+                    {formatShort ? (
+                        <>
+                            <span className="sm:hidden">{formatShort(animated)}</span>
+                            <span className="hidden sm:inline">{format(animated)}</span>
+                        </>
+                    ) : format(animated)}
+                </div>
+                {icon}
+            </div>
+            {subValue && <div className={clsx("text-[11px] sm:text-sm mt-0.5 sm:mt-1", subValueClassName || "text-slate-500 dark:text-slate-400")}>{subValue}</div>}
+        </Card>
+    );
+};
+
+const StatsStrip = memo(function StatsStrip({ stats }: { stats: DcaStats }) {
+    const { formatCurrency } = useCurrency();
+    const xirr = stats.xirrPercent;
+    const labelClass = "text-[11px] font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-0.5";
+    const valueClass = "text-sm sm:text-base font-semibold tabular-nums text-slate-800 dark:text-slate-100";
+    return (
+        <Card className="p-4 sm:p-5 fade-in">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-3">
+                <div>
+                    <div className={labelClass}>Annualized return (XIRR)</div>
+                    <div className={clsx(
+                        "text-sm sm:text-base font-semibold tabular-nums",
+                        xirr === null
+                            ? "text-slate-500 dark:text-slate-400"
+                            : xirr >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"
+                    )}>
+                        {xirr === null ? '—' : `${xirr >= 0 ? '+' : ''}${xirr.toFixed(1)}%`}
+                    </div>
+                </div>
+                <div>
+                    <div className={labelClass}>Max drawdown</div>
+                    <div className={valueClass}>
+                        {stats.maxDrawdownPercent > 0 ? `-${stats.maxDrawdownPercent.toFixed(1)}%` : '0%'}
+                    </div>
+                </div>
+                <div>
+                    <div className={labelClass}>Best buy</div>
+                    <div className={valueClass}>{stats.bestBuy ? formatCurrency(stats.bestBuy.price) : '—'}</div>
+                    {stats.bestBuy && (
+                        <div className="text-[11px] text-slate-500 dark:text-slate-400">{formatUtc(stats.bestBuy.date, 'full')}</div>
+                    )}
+                </div>
+                <div>
+                    <div className={labelClass}>Fees paid</div>
+                    <div className={valueClass}>{formatCurrency(stats.feesPaid, 2)}</div>
+                </div>
+            </div>
+        </Card>
+    );
+});
+
+const PricePredictionScenario = memo(function PricePredictionScenario({ btcAmount, totalInvested }: { btcAmount: number; totalInvested: number }) {
     const { currencyConfig, formatCurrency, formatCompact } = useCurrency();
-    const [targetPrice, setTargetPrice] = useState<number>(100000);
+    // Entered in the selected display currency; converted to USD before the math.
+    const [targetPrice, setTargetPrice] = useState<number>(() => roundTo2Sig(100_000 * currencyConfig.rate));
 
-    const projectedValue = btcAmount * targetPrice;
+    // Re-denominate the entered target when the display currency changes so the
+    // same USD scenario is preserved (a JPY user shouldn't inherit a $-shaped number).
+    const prevCurrencyRef = useRef({ code: currencyConfig.code, rate: currencyConfig.rate });
+    useEffect(() => {
+        const prev = prevCurrencyRef.current;
+        if (prev.code !== currencyConfig.code && prev.rate > 0) {
+            setTargetPrice(p => roundTo2Sig((p / prev.rate) * currencyConfig.rate));
+        }
+        prevCurrencyRef.current = { code: currencyConfig.code, rate: currencyConfig.rate };
+    }, [currencyConfig.code, currencyConfig.rate]);
+
+    const targetPriceUsd = currencyConfig.rate > 0 ? targetPrice / currencyConfig.rate : targetPrice;
+    const projectedValue = btcAmount * targetPriceUsd;
     const projectedProfit = projectedValue - totalInvested;
     const multiplier = totalInvested > 0 ? projectedValue / totalInvested : 0;
+
+    const quickTargets = useMemo(
+        () => [100_000, 150_000, 250_000, 500_000, 1_000_000].map(usd => roundTo2Sig(usd * currencyConfig.rate)),
+        [currencyConfig.rate]
+    );
+
+    const chipLabel = (v: number): string => {
+        const sym = currencyConfig.symbol;
+        if (v >= 1_000_000) {
+            const m = v / 1_000_000;
+            return `${sym}${Number.isInteger(m) ? m : m.toFixed(1)}M`;
+        }
+        if (v >= 1_000) {
+            const k = v / 1_000;
+            return `${sym}${Number.isInteger(k) ? k : k.toFixed(1)}k`;
+        }
+        return `${sym}${v.toLocaleString()}`;
+    };
 
     return (
         <div className="bg-gradient-to-br from-slate-50 to-white dark:from-slate-900 dark:to-slate-800 text-slate-900 dark:text-white p-4 sm:p-6 rounded-2xl shadow-sm dark:shadow-lg border border-slate-200 dark:border-slate-700">
             <h3 className="text-base sm:text-xl font-bold mb-3 sm:mb-4 flex items-center gap-2">
-                <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5 text-green-600 dark:text-green-400 shrink-0" />
+                <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
                 Price Prediction
             </h3>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-8 items-center">
                 <div className="space-y-3">
-                    <label className="text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300">If Bitcoin Price Hits...</label>
+                    <label htmlFor="prediction-target" className="text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300">If Bitcoin Price Hits... ({currencyConfig.code})</label>
                     <div className="relative">
                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 dark:text-slate-400">{currencyConfig.symbol}</span>
                         <input
+                            id="prediction-target"
                             type="number"
+                            inputMode="decimal"
                             value={targetPrice}
                             onChange={(e) => setTargetPrice(Math.max(0, Number(e.target.value)))}
                             onFocus={(e) => e.target.select()}
-                            className="w-full pl-7 pr-3 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900/50 text-lg font-bold focus:ring-2 focus:ring-green-500 outline-none transition-all"
+                            className="w-full pl-7 pr-3 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900/50 text-lg font-bold focus:ring-2 focus:ring-emerald-500 outline-none transition-all"
                         />
                     </div>
-                    <div className="flex gap-1.5 flex-wrap">
-                        {[100000, 150000, 250000, 500000, 1000000].map(price => (
+                    <div className="flex gap-1.5 flex-wrap" role="group" aria-label="Quick target prices">
+                        {quickTargets.map((price, i) => (
                             <button
-                                key={price}
+                                key={`${price}-${i}`}
+                                type="button"
                                 onClick={() => setTargetPrice(price)}
-                                className="px-2.5 py-1 text-[11px] sm:text-xs font-medium rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 dark:bg-slate-700/80 dark:hover:bg-slate-600 dark:text-slate-300 transition-colors"
+                                aria-pressed={targetPrice === price}
+                                className={clsx(
+                                    "px-2.5 py-1.5 text-[11px] sm:text-xs font-medium rounded-full transition-colors",
+                                    targetPrice === price
+                                        ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300"
+                                        : "bg-slate-100 hover:bg-slate-200 text-slate-600 dark:bg-slate-700/80 dark:hover:bg-slate-600 dark:text-slate-300"
+                                )}
                             >
-                                {currencyConfig.symbol}{price >= 1000000 ? `${price / 1000000}M` : `${price / 1000}k`}
+                                {chipLabel(price)}
                             </button>
                         ))}
                     </div>
@@ -796,24 +1055,24 @@ const PricePredictionScenario = ({ btcAmount, totalInvested }: { btcAmount: numb
                 <div className="space-y-3 bg-slate-50 dark:bg-slate-800/50 p-4 sm:p-5 rounded-xl border border-slate-200 dark:border-slate-700/50">
                     <div className="flex justify-between items-end border-b border-slate-200 dark:border-slate-700 pb-3">
                         <span className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">Portfolio Value</span>
-                        <span className="text-xl sm:text-3xl font-bold text-green-600 dark:text-green-400 truncate ml-2">
+                        <span className="text-xl sm:text-3xl font-bold text-emerald-600 dark:text-emerald-400 ml-2">
                             <span className="sm:hidden">{formatCompact(projectedValue)}</span>
                             <span className="hidden sm:inline">{formatCurrency(projectedValue)}</span>
                         </span>
                     </div>
                     <div className="flex justify-between items-center">
                         <span className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">Profit</span>
-                        <span className={clsx("text-sm sm:text-lg font-semibold truncate ml-2", projectedProfit >= 0 ? "text-green-600 dark:text-green-300" : "text-red-500 dark:text-red-400")}>
+                        <span className={clsx("text-sm sm:text-lg font-semibold ml-2 tabular-nums", projectedProfit >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400")}>
                             <span className="sm:hidden">{projectedProfit >= 0 ? '+' : ''}{formatCompact(projectedProfit)}</span>
                             <span className="hidden sm:inline">{projectedProfit >= 0 ? '+' : ''}{formatCurrency(projectedProfit)}</span>
                         </span>
                     </div>
                     <div className="flex justify-between items-center">
                         <span className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">Multiplier</span>
-                        <span className="text-xs sm:text-sm font-medium bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 px-2 py-0.5 rounded">{multiplier.toFixed(1)}x</span>
+                        <span className="text-xs sm:text-sm font-medium bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 px-2 py-0.5 rounded tabular-nums">{multiplier.toFixed(1)}x</span>
                     </div>
                 </div>
             </div>
         </div>
     );
-};
+});

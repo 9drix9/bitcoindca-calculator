@@ -1,30 +1,39 @@
 // Service Worker for Bitcoin DCA Calculator
-const CACHE_VERSION = 'btc-dca-v1';
+// NOTE: bump CACHE_VERSION on every deploy that changes cached content —
+// the version change re-triggers install/activate, which re-precaches the
+// offline page and purges every previous cache below.
+const CACHE_VERSION = 'btc-dca-v2';
 const OFFLINE_URL = '/offline';
 
 // Static assets to precache on install
 const PRECACHE_URLS = [OFFLINE_URL];
 
-// Install: precache offline page
+// Install: precache offline page (bypass the HTTP cache so the freshly
+// deployed offline page is stored, not a stale copy) + take over ASAP.
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_VERSION).then((cache) => cache.addAll(PRECACHE_URLS))
+    caches
+      .open(CACHE_VERSION)
+      .then((cache) =>
+        cache.addAll(PRECACHE_URLS.map((url) => new Request(url, { cache: 'reload' })))
+      )
   );
   self.skipWaiting();
 });
 
-// Activate: clean old caches + claim clients
+// Activate: delete every old cache, then claim all open clients so the
+// new worker controls existing tabs without a reload.
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(
-        keys
-          .filter((key) => key !== CACHE_VERSION)
-          .map((key) => caches.delete(key))
+    caches
+      .keys()
+      .then((keys) =>
+        Promise.all(
+          keys.filter((key) => key !== CACHE_VERSION).map((key) => caches.delete(key))
+        )
       )
-    )
+      .then(() => self.clients.claim())
   );
-  self.clients.claim();
 });
 
 // Fetch handler

@@ -9,7 +9,7 @@ const STEPS = [
     {
         icon: Calendar,
         title: 'Set your schedule',
-        description: 'Pick how often (weekly, monthly) and a date range to simulate',
+        description: 'Pick how often (daily, weekly, bi-weekly, or monthly) and a date range to simulate',
     },
     {
         icon: TrendingUp,

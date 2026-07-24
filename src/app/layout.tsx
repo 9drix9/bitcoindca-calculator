@@ -16,7 +16,10 @@ const inter = Inter({ subsets: ['latin'], display: 'swap' });
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_BASE_URL || 'https://btcdollarcostaverage.com'),
-  title: 'Bitcoin DCA Calculator | Dollar Cost Averaging BTC Returns Calculator',
+  title: {
+    default: 'Bitcoin DCA Calculator — Backtest Dollar-Cost Averaging BTC',
+    template: '%s | Bitcoin DCA Calculator',
+  },
   description: 'Free Bitcoin DCA calculator with real historical price data. See how much $50/week in BTC would be worth today. Compare vs S&P 500, Gold, and savings.',
   keywords: ['bitcoin dca calculator', 'dollar cost averaging bitcoin', 'btc dca', 'bitcoin investment calculator', 'bitcoin returns calculator', 'bitcoin savings calculator', 'crypto dca', 'bitcoin halving countdown', 'stack sats calculator', 'bitcoin portfolio tracker'],
   openGraph: {
@@ -31,6 +34,7 @@ export const metadata: Metadata = {
     title: 'Bitcoin DCA Calculator | See What $50/Week in BTC Would Be Worth',
     description: 'Free Bitcoin DCA calculator with real historical data. Compare BTC vs S&P 500, Gold, and savings accounts.',
     creator: '@9drix9',
+    site: '@9drix9',
   },
   alternates: {
     canonical: '/',
@@ -47,7 +51,10 @@ export const viewport = {
   width: 'device-width',
   initialScale: 1,
   viewportFit: 'cover' as const,
-  themeColor: '#f59e0b',
+  themeColor: [
+    { media: '(prefers-color-scheme: dark)', color: '#020617' },
+    { media: '(prefers-color-scheme: light)', color: '#f8fafc' },
+  ],
 };
 
 const themeScript = `
@@ -91,12 +98,9 @@ export default function RootLayout({
         `}} />
         <script dangerouslySetInnerHTML={{ __html: swRegisterScript }} />
         <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
-        <link rel="icon" type="image/png" sizes="32x32" href="/favicon.ico" />
-        <link rel="preconnect" href="https://mempool.space" />
-        <link rel="preconnect" href="https://api.alternative.me" />
-        <link rel="dns-prefetch" href="https://api.coingecko.com" />
-        <link rel="dns-prefetch" href="https://blockchain.info" />
-        <link rel="dns-prefetch" href="https://api.kraken.com" />
+        <link rel="icon" href="/favicon.ico" sizes="32x32" />
+        {/* No preconnect hints: all market-data fetches happen server-side via actions,
+            so the browser never contacts those origins directly. */}
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
@@ -109,7 +113,12 @@ export default function RootLayout({
               "publisher": {
                 "@type": "Organization",
                 "name": "Bitcoin DCA Calculator",
-                "url": "https://btcdollarcostaverage.com"
+                "url": "https://btcdollarcostaverage.com",
+                "logo": {
+                  "@type": "ImageObject",
+                  "url": "https://btcdollarcostaverage.com/icon-512.png"
+                },
+                "sameAs": ["https://x.com/9drix9"]
               }
             })
           }}
@@ -161,6 +170,9 @@ export default function RootLayout({
                     </Link>
                     <Link href="/mining" className="text-sm text-slate-500 dark:text-slate-400 hover:text-amber-600 dark:hover:text-amber-400 transition-colors">
                       Mining Guide
+                    </Link>
+                    <Link href="/methodology" className="text-sm text-slate-500 dark:text-slate-400 hover:text-amber-600 dark:hover:text-amber-400 transition-colors">
+                      Methodology &amp; Data
                     </Link>
                     <Link href="/about" className="text-sm text-slate-500 dark:text-slate-400 hover:text-amber-600 dark:hover:text-amber-400 transition-colors">
                       About

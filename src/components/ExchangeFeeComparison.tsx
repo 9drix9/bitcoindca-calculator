@@ -1,6 +1,7 @@
 'use client';
 
 import { useCurrency } from '@/context/CurrencyContext';
+import { Card, CardHeader } from '@/components/ui/Card';
 import clsx from 'clsx';
 
 interface ExchangeFeeComparisonProps {
@@ -8,13 +9,14 @@ interface ExchangeFeeComparisonProps {
     purchaseCount: number;
 }
 
-const EXCHANGES = [
-    { name: 'Strike', feeRate: 0 },
-    { name: 'River', feeRate: 0 },
+const EXCHANGES: { name: string; feeRate: number; note?: string }[] = [
+    { name: 'Strike', feeRate: 0, note: 'excludes spread' },
+    { name: 'River', feeRate: 0, note: 'recurring buys; excludes spread' },
     { name: 'Binance', feeRate: 0.1 },
     { name: 'Kraken', feeRate: 0.26 },
     { name: 'Swan', feeRate: 0.99 },
     { name: 'Coinbase', feeRate: 1.49 },
+    { name: 'Cash App', feeRate: 2.2, note: 'approx.; varies by amount' },
 ];
 
 export const ExchangeFeeComparison = ({ totalInvested, purchaseCount }: ExchangeFeeComparisonProps) => {
@@ -25,21 +27,22 @@ export const ExchangeFeeComparison = ({ totalInvested, purchaseCount }: Exchange
     const maxFeeRate = Math.max(...EXCHANGES.map(e => e.feeRate));
 
     return (
-        <div className="bg-white dark:bg-slate-900 p-4 sm:p-6 rounded-xl border border-slate-200 dark:border-slate-800">
-            <h3 className="text-base sm:text-lg font-semibold text-slate-800 dark:text-slate-100 mb-0.5">Exchange Fee Comparison</h3>
-            <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mb-3 sm:mb-4">
-                Fees on {formatCurrency(totalInvested)} across {purchaseCount} purchases
-            </p>
+        <Card className="p-4 sm:p-6">
+            <CardHeader
+                title="Exchange Fee Comparison"
+                subtitle={<>Fees on {formatCurrency(totalInvested)} across {purchaseCount} purchases</>}
+                className="mb-3 sm:mb-4"
+            />
 
             <div className="overflow-x-auto -mx-4 sm:mx-0">
                 <table className="w-full text-xs sm:text-sm min-w-[480px]">
                     <thead>
                         <tr className="bg-slate-50 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400">
-                            <th className="text-left px-3 sm:px-4 py-2.5 font-medium whitespace-nowrap">Exchange</th>
-                            <th className="text-right px-3 sm:px-4 py-2.5 font-medium whitespace-nowrap">Rate</th>
-                            <th className="text-right px-3 sm:px-4 py-2.5 font-medium whitespace-nowrap">Total Fees</th>
-                            <th className="text-right px-3 sm:px-4 py-2.5 font-medium whitespace-nowrap">Net Invested</th>
-                            <th className="text-right px-3 sm:px-4 py-2.5 font-medium whitespace-nowrap">Per Purchase</th>
+                            <th scope="col" className="text-left px-3 sm:px-4 py-2.5 font-medium whitespace-nowrap">Exchange</th>
+                            <th scope="col" className="text-right px-3 sm:px-4 py-2.5 font-medium whitespace-nowrap">Rate</th>
+                            <th scope="col" className="text-right px-3 sm:px-4 py-2.5 font-medium whitespace-nowrap">Total Fees</th>
+                            <th scope="col" className="text-right px-3 sm:px-4 py-2.5 font-medium whitespace-nowrap">Net Invested</th>
+                            <th scope="col" className="text-right px-3 sm:px-4 py-2.5 font-medium whitespace-nowrap">Per Purchase</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -56,28 +59,31 @@ export const ExchangeFeeComparison = ({ totalInvested, purchaseCount }: Exchange
                                         <span className="flex items-center gap-1.5">
                                             <span className="font-medium text-slate-700 dark:text-slate-300">{exchange.name}</span>
                                             {isZeroFee && (
-                                                <span className="text-[10px] font-medium px-1 py-0.5 rounded bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400 leading-none">
+                                                <span className="text-[11px] font-medium px-1 py-0.5 rounded bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-400 leading-none">
                                                     0%
                                                 </span>
+                                            )}
+                                            {exchange.note && (
+                                                <span className="text-[11px] text-slate-400 dark:text-slate-500">{exchange.note}</span>
                                             )}
                                         </span>
                                     </td>
                                     <td className={clsx(
-                                        "px-3 sm:px-4 py-2 text-right whitespace-nowrap",
-                                        isZeroFee ? "text-green-600 dark:text-green-400 font-medium" : isHighest ? "text-red-500 font-medium" : "text-slate-600 dark:text-slate-400"
+                                        "px-3 sm:px-4 py-2 text-right whitespace-nowrap tabular-nums",
+                                        isZeroFee ? "text-emerald-600 dark:text-emerald-400 font-medium" : isHighest ? "text-rose-600 dark:text-rose-400 font-medium" : "text-slate-600 dark:text-slate-400"
                                     )}>
                                         {exchange.feeRate}%
                                     </td>
                                     <td className={clsx(
-                                        "px-3 sm:px-4 py-2 text-right whitespace-nowrap",
-                                        isZeroFee ? "text-green-600 dark:text-green-400" : isHighest ? "text-red-500" : "text-slate-600 dark:text-slate-400"
+                                        "px-3 sm:px-4 py-2 text-right whitespace-nowrap tabular-nums",
+                                        isZeroFee ? "text-emerald-600 dark:text-emerald-400" : isHighest ? "text-rose-600 dark:text-rose-400" : "text-slate-600 dark:text-slate-400"
                                     )}>
                                         {formatCurrency(totalFees)}
                                     </td>
-                                    <td className="px-3 sm:px-4 py-2 text-right whitespace-nowrap text-slate-600 dark:text-slate-400">
+                                    <td className="px-3 sm:px-4 py-2 text-right whitespace-nowrap tabular-nums text-slate-600 dark:text-slate-400">
                                         {formatCurrency(netInvested)}
                                     </td>
-                                    <td className="px-3 sm:px-4 py-2 text-right whitespace-nowrap text-slate-600 dark:text-slate-400">
+                                    <td className="px-3 sm:px-4 py-2 text-right whitespace-nowrap tabular-nums text-slate-600 dark:text-slate-400">
                                         {formatCurrency(feePerPurchase)}
                                     </td>
                                 </tr>
@@ -86,6 +92,12 @@ export const ExchangeFeeComparison = ({ totalInvested, purchaseCount }: Exchange
                     </tbody>
                 </table>
             </div>
-        </div>
+
+            <p className="mt-3 text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                Rates last verified July 2026 &mdash; maker/taker tiers and price spread vary by exchange and order size;
+                percentages are per-purchase trading fees only. Strike and River&apos;s 0% excludes their price spread,
+                and Cash App&apos;s ~2.2% is an approximation that varies by purchase amount.
+            </p>
+        </Card>
     );
 };

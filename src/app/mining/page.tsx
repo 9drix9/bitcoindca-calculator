@@ -5,7 +5,7 @@ import { WalletImage } from '@/components/WalletImage';
 import { getBlockHeight } from '@/app/actions';
 
 export const metadata: Metadata = {
-    title: 'How Bitcoin Mining Works (Simple Explanation) | Bitcoin DCA Calculator',
+    title: 'How Bitcoin Mining Works (Simple Explanation)',
     description: 'A beginner-friendly guide to Bitcoin mining. Learn what miners do, why halvings matter, and how mining keeps Bitcoin secure and valuable.',
     keywords: ['bitcoin mining explained', 'bitcoin halving', 'what is bitcoin mining', 'bitcoin for beginners', 'how bitcoin works', 'bitcoin mining simple'],
     alternates: {
@@ -55,7 +55,8 @@ const articleJsonLd = {
         "@id": "https://btcdollarcostaverage.com/mining"
     },
     "datePublished": "2026-02-05",
-    "dateModified": new Date().toISOString().split('T')[0],
+    // Static date — update when the content actually changes. Keep in sync with sitemap.ts.
+    "dateModified": "2026-07-24",
 };
 
 const HALVING_DATA = [
@@ -114,9 +115,15 @@ const orangeColorClasses = {
     check: 'text-orange-500',
 };
 
+// Static fallback height used when the mempool.space API is unavailable.
+// Any value >= 840,000 keeps the four past halvings rendered as past.
+const FALLBACK_BLOCK_HEIGHT = 905_000; // fallback, July 2026
+
 export default async function MiningPage() {
-    // Fetch current block height to determine which halvings have occurred
-    const currentBlockHeight = await getBlockHeight() ?? 0;
+    // Fetch current block height to determine which halvings have occurred.
+    // || (not ??) so a null OR zero height falls back — height 0 would wrongly
+    // mark every past halving as future.
+    const currentBlockHeight = (await getBlockHeight()) || FALLBACK_BLOCK_HEIGHT;
 
     return (
         <>

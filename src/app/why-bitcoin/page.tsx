@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { Users, Network, Cpu, BadgeDollarSign, AlertTriangle, ArrowRight } from 'lucide-react';
 
 export const metadata: Metadata = {
-    title: 'Why Bitcoin Has Value | Bitcoin DCA Calculator',
+    title: 'Why Bitcoin Has Value',
     description: 'Where does Bitcoin\'s value come from? Explore user adoption, network effects, mining costs, and the case for exiting fiat currency.',
     keywords: ['why bitcoin has value', 'bitcoin value proposition', 'bitcoin fundamentals', 'bitcoin adoption', 'bitcoin mining cost', 'bitcoin vs fiat', 'bitcoin network effect', 'metcalfe law bitcoin'],
     alternates: {
@@ -53,7 +53,8 @@ const articleJsonLd = {
         "@id": "https://btcdollarcostaverage.com/why-bitcoin"
     },
     "datePublished": "2025-01-01",
-    "dateModified": new Date().toISOString().split('T')[0],
+    // Static date — update when the content actually changes. Keep in sync with sitemap.ts.
+    "dateModified": "2026-07-24",
 };
 
 export default function WhyBitcoinPage() {
@@ -90,8 +91,8 @@ export default function WhyBitcoinPage() {
                 <div className="space-y-4 text-sm sm:text-base text-slate-600 dark:text-slate-400 leading-relaxed">
                     <p>
                         A network is only as valuable as the people who use it. Bitcoin has grown from a small group of
-                        privacy-focused developers in 2009 to an estimated <strong className="text-slate-800 dark:text-slate-200">560 million+ owners worldwide</strong> and
-                        counting. Each new participant adds demand to a mathematically fixed supply.
+                        privacy-focused developers in 2009 to <strong className="text-slate-800 dark:text-slate-200">hundreds of millions of crypto users worldwide</strong> (estimates
+                        vary widely; a large share hold BTC). Each new participant adds demand to a mathematically fixed supply.
                     </p>
                     <div className="grid sm:grid-cols-2 gap-3 sm:gap-4">
                         <div className="bg-white dark:bg-slate-800 p-4 sm:p-5 rounded-xl border border-slate-200 dark:border-slate-700">

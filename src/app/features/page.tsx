@@ -33,11 +33,25 @@ import {
 } from 'lucide-react';
 
 export const metadata: Metadata = {
-    title: 'Features Guide | Bitcoin DCA Calculator',
+    title: 'Features Guide',
     description: 'Learn how to use every feature of the Bitcoin DCA Calculator. Comprehensive guide to all tools, widgets, and calculators explained in simple terms.',
     keywords: ['bitcoin calculator guide', 'dca calculator tutorial', 'bitcoin tools explained', 'crypto calculator features'],
     alternates: {
         canonical: '/features',
+    },
+    openGraph: {
+        title: 'Features Guide',
+        description: 'Every tool in the Bitcoin DCA Calculator explained: backtesting, comparisons, goal tracking, fee analysis, and live network widgets.',
+        url: '/features',
+        type: 'article',
+        siteName: 'Bitcoin DCA Calculator',
+        locale: 'en_US',
+    },
+    twitter: {
+        card: 'summary_large_image',
+        title: 'Features Guide',
+        description: 'Every tool in the Bitcoin DCA Calculator explained: backtesting, comparisons, goal tracking, fee analysis, and live network widgets.',
+        creator: '@9drix9',
     },
 };
 
@@ -277,7 +291,7 @@ export default function FeaturesPage() {
                     <FeatureCard
                         icon={PiggyBank}
                         title="Savings Account Comparison"
-                        description="See how Bitcoin compares to keeping your money in a high-yield savings account (currently ~4.5% APY). Includes compound interest calculations."
+                        description="See how Bitcoin compares to keeping your money in a high-yield savings account (around 4-5% APY, varies — the rate is fully adjustable). Includes compound interest calculations."
                         color="amber"
                     />
                     <FeatureCard
@@ -397,7 +411,7 @@ export default function FeaturesPage() {
                     <FeatureCard
                         icon={Database}
                         title="Supply Scarcity"
-                        description="Track how much of the 21 million Bitcoin cap has been mined. Currently ~19.5M exist. Shows percentage mined and remaining supply."
+                        description="Track how much of the 21 million Bitcoin cap has been mined. Currently ~19.9M exist. Shows percentage mined and remaining supply."
                         color="amber"
                     />
                     <FeatureCard

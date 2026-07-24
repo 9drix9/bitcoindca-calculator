@@ -5,20 +5,28 @@ interface AdSlotProps {
     className?: string;
 }
 
+// A fixed, honest 90px reservation: no layout shift when the ad loads and no
+// giant blank band when it doesn't.
 export const AdSlot = ({ unitId = '2426249', className = '' }: AdSlotProps) => {
     return (
-        <div className={`w-full relative ${className}`}>
+        <div className={`w-full ${className}`}>
+            <span className="block text-center text-[10px] font-medium uppercase tracking-wider text-slate-400 dark:text-slate-600 mb-1" aria-hidden="true">
+                Sponsored
+            </span>
             <iframe
                 data-aa={unitId}
                 src={`//acceptable.a-ads.com/${unitId}/?size=Adaptive`}
+                title="Advertisement"
+                loading="lazy"
                 style={{
                     border: 0,
                     padding: 0,
-                    width: '70%',
-                    height: 'auto',
+                    width: '100%',
+                    maxWidth: 728,
+                    height: 90,
                     overflow: 'hidden',
                     display: 'block',
-                    margin: 'auto',
+                    margin: '0 auto',
                 }}
             />
         </div>

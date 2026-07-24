@@ -27,7 +27,12 @@ import {
   getBitcoinDominance,
   getPurchasingPowerData,
   getRecentBlocks,
+  getHeroStat,
+  getCurrentBitcoinPriceWithChange,
 } from '@/app/actions';
+
+const usd = (n: number) =>
+  `$${n.toLocaleString('en-US', { maximumFractionDigits: 0 })}`;
 
 const BitcoinAdoption = dynamic(() => import('@/components/BitcoinAdoption').then(m => m.BitcoinAdoption), {
   loading: () => <div className="h-[400px] bg-slate-100 dark:bg-slate-800/50 rounded-xl animate-pulse" />,
@@ -36,7 +41,11 @@ const BitcoinAdoption = dynamic(() => import('@/components/BitcoinAdoption').the
 const faqItems = [
   {
     question: "Is this calculator accurate?",
-    answer: "We use real historical daily price data from high-volume exchanges for our 'Live API' mode. However, for dates where data might be missing, we use a closest-match fallback. It is intended for estimation and educational purposes."
+    answer: "We use historical price data from Kraken and Coinbase. Coinbase mode uses real daily candles back to 2015; Kraken mode uses weekly closes interpolated to daily. Prices before 2015 are estimates, and missing dates fall back to the last known price. The Methodology page documents exactly how every number is computed. Intended for estimation and education."
+  },
+  {
+    question: "What do annualized return (XIRR) and max drawdown mean?",
+    answer: "XIRR is your money-weighted annualized return — the yearly growth rate that accounts for the timing and size of every purchase, which makes it the honest way to annualize a DCA strategy. Max drawdown is the largest peak-to-trough decline your portfolio value experienced along the way."
   },
   {
     question: "Does this include transaction fees?",
@@ -65,13 +74,6 @@ const softwareAppJsonLd = {
     "price": "0",
     "priceCurrency": "USD",
   },
-  "aggregateRating": {
-    "@type": "AggregateRating",
-    "ratingValue": "4.8",
-    "ratingCount": "150",
-    "bestRating": "5",
-    "worstRating": "1",
-  },
 };
 
 const faqJsonLd = {
@@ -87,10 +89,54 @@ const faqJsonLd = {
   }))
 };
 
+// Streams in via Suspense: the live proof line + price ticker seeded with SSR data
+async function HeroLive() {
+  const [stat, ticker] = await Promise.all([
+    getHeroStat(),
+    getCurrentBitcoinPriceWithChange().catch(() => null),
+  ]);
+
+  return (
+    <>
+      {stat ? (
+        <p className="text-base sm:text-lg text-slate-600 dark:text-slate-300 max-w-2xl mx-auto text-balance">
+          $50 of Bitcoin every week for the last 5 years is{' '}
+          {usd(stat.invested)} invested — worth{' '}
+          <strong className="font-bold text-slate-900 dark:text-white">{usd(stat.value)}</strong> today
+          {Number.isFinite(stat.roi) && (
+            <span className={stat.roi >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}>
+              {' '}({stat.roi >= 0 ? '+' : ''}{stat.roi.toFixed(0)}%)
+            </span>
+          )}.
+        </p>
+      ) : (
+        <p className="text-base sm:text-lg text-slate-600 dark:text-slate-300 max-w-xl mx-auto">
+          See what steady weekly buys of Bitcoin would be worth today — with real market history, not vibes.
+        </p>
+      )}
+      <LivePriceTicker initialData={ticker} />
+    </>
+  );
+}
+
+function HeroLiveSkeleton() {
+  return (
+    <>
+      <p className="text-base sm:text-lg text-slate-600 dark:text-slate-300 max-w-xl mx-auto">
+        See what steady weekly buys of Bitcoin would be worth today — with real market history, not vibes.
+      </p>
+      <div className="inline-flex items-center gap-2 mt-3 px-4 py-2 rounded-full bg-slate-100 dark:bg-slate-800/60 animate-pulse">
+        <span className="w-2 h-2 rounded-full bg-slate-300 dark:bg-slate-600" />
+        <span className="h-5 w-32 rounded bg-slate-200 dark:bg-slate-700" />
+      </div>
+    </>
+  );
+}
+
 function SidebarSkeleton() {
   return (
     <div className="space-y-4 lg:sticky lg:top-20">
-      {Array.from({ length: 6 }).map((_, i) => (
+      {Array.from({ length: 10 }).map((_, i) => (
         <SkeletonCard key={i} />
       ))}
     </div>
@@ -141,14 +187,16 @@ export default function Home() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-8 sm:space-y-12">
 
         {/* Hero Section */}
-        <section className="text-center max-w-3xl mx-auto space-y-3 sm:space-y-4">
+        <section className="hero-glow text-center max-w-3xl mx-auto space-y-3 sm:space-y-4 pt-2 sm:pt-6">
           <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-slate-900 dark:text-white tracking-tight text-balance">
-            Calculate Your <span className="text-amber-500">Bitcoin</span> Wealth
+            <span className="bg-gradient-to-r from-amber-500 to-orange-600 bg-clip-text text-transparent">Bitcoin</span> DCA Calculator
           </h1>
-          <p className="text-base sm:text-lg text-slate-600 dark:text-slate-300 max-w-xl mx-auto">
-            See how much you would have today if you started investing $50 a week in Bitcoin 5 years ago.
+          <p className="text-sm sm:text-base text-slate-500 dark:text-slate-400 max-w-2xl mx-auto">
+            Backtest a dollar-cost-averaging strategy against real market history.
           </p>
-          <LivePriceTicker />
+          <Suspense fallback={<HeroLiveSkeleton />}>
+            <HeroLive />
+          </Suspense>
         </section>
 
         {/* How It Works */}

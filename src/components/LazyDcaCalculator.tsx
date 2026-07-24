@@ -10,6 +10,19 @@ const DcaCalculator = dynamic(
       <div className="space-y-6">
         <div className="bg-white dark:bg-slate-900 p-4 sm:p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 animate-pulse">
           <div className="h-6 w-48 bg-slate-200 dark:bg-slate-700 rounded mb-4" />
+          {/* preset chip rows */}
+          <div className="space-y-2 mb-5">
+            <div className="flex flex-wrap gap-1.5">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="h-7 w-32 bg-slate-100 dark:bg-slate-800 rounded-full" />
+              ))}
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="h-7 w-36 bg-slate-100 dark:bg-slate-800 rounded-full" />
+              ))}
+            </div>
+          </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-5">
             {Array.from({ length: 6 }).map((_, i) => (
               <div key={i} className="space-y-1.5">
@@ -17,6 +30,10 @@ const DcaCalculator = dynamic(
                 <div className="h-10 bg-slate-100 dark:bg-slate-800 rounded-lg" />
               </div>
             ))}
+          </div>
+          <div className="mt-5 pt-4 border-t border-slate-100 dark:border-slate-800 flex justify-between">
+            <div className="h-6 w-32 bg-slate-100 dark:bg-slate-800 rounded" />
+            <div className="h-6 w-16 bg-slate-100 dark:bg-slate-800 rounded" />
           </div>
         </div>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">

@@ -16,25 +16,32 @@
   -webkit-tap-highlight-color: transparent;
 }
 
-/* Visible focus ring for keyboard navigation (accessibility) */
+/* Visible focus ring for keyboard navigation (accessibility).
+   amber-700 clears 3:1 non-text contrast on light surfaces; amber-400 on dark. */
 :focus-visible {
-  outline: 2px solid #f59e0b;
+  outline: 2px solid #b45309;
   outline-offset: 2px;
   border-radius: 4px;
 }
+.dark :focus-visible {
+  outline-color: #fbbf24;
+}
 
-/* Remove focus outline, tap highlight, and selection on charts */
+/* Charts: suppress tap highlight/selection and the click-focus ring,
+   but keep the keyboard :focus-visible ring (a11y). */
 .recharts-wrapper,
 .recharts-wrapper *,
 .recharts-surface,
 .recharts-surface * {
-  outline: none !important;
   -webkit-tap-highlight-color: transparent !important;
   -webkit-touch-callout: none !important;
   -webkit-user-select: none !important;
   user-select: none !important;
-  tap-highlight-color: transparent !important;
   touch-action: manipulation !important;
+}
+.recharts-wrapper:focus:not(:focus-visible),
+.recharts-surface:focus:not(:focus-visible) {
+  outline: none;
 }
 
 /* Extra iOS long-press prevention on the SVG itself */
@@ -74,6 +81,36 @@
   html {
     scroll-behavior: smooth;
   }
+}
+
+/* Respect reduced-motion for every animation this stylesheet defines */
+@media (prefers-reduced-motion: reduce) {
+  .fade-in,
+  .animate-pulse-dot,
+  .animate-pulse {
+    animation: none !important;
+  }
+  * {
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Text selection in brand amber */
+::selection {
+  background: rgba(245, 158, 11, 0.25);
+}
+
+/* Soft radial glow behind the hero — visible mostly in dark mode */
+.hero-glow {
+  position: relative;
+}
+.hero-glow::before {
+  content: '';
+  position: absolute;
+  inset: -40% -20%;
+  pointer-events: none;
+  background: radial-gradient(ellipse 50% 60% at 50% 30%, rgba(245, 158, 11, 0.07), transparent 70%);
+  z-index: -1;
 }
 
 /* Custom scrollbar for overflow tables */

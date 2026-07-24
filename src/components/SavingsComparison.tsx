@@ -1,15 +1,17 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useId } from 'react';
 import { Frequency } from '@/types';
-import { addDays, addWeeks, addMonths, isAfter, startOfDay } from 'date-fns';
+import { DAY_MS, parseUtcDate, addUtcMonths } from '@/utils/dates';
 import { useCurrency } from '@/context/CurrencyContext';
+import { Card } from '@/components/ui/Card';
 import clsx from 'clsx';
 
 interface SavingsComparisonProps {
     totalInvested: number;
     btcCurrentValue: number;
     btcRoi: number;
+    /** Contribution amount in USD (parent passes amountUsd) */
     amount: number;
     frequency: Frequency;
     startDate: string;
@@ -26,37 +28,44 @@ export const SavingsComparison = ({
     endDate,
 }: SavingsComparisonProps) => {
     const { formatCurrency, formatCompact } = useCurrency();
+    // APY is a rate, not a money amount — no currency conversion needed.
     const [apy, setApy] = useState<number>(4.5);
+    const apyInputId = useId();
 
     const savingsResult = useMemo(() => {
         if (totalInvested <= 0 || !startDate || !endDate) return null;
 
+        const startTs = parseUtcDate(startDate);
+        const endTs = parseUtcDate(endDate);
+        if (!Number.isFinite(startTs) || !Number.isFinite(endTs) || endTs < startTs) return null;
+
+        const anchorDay = new Date(startTs).getUTCDate();
+        const depositTs = (i: number): number => {
+            switch (frequency) {
+                case 'daily': return startTs + i * DAY_MS;
+                case 'weekly': return startTs + i * 7 * DAY_MS;
+                case 'biweekly': return startTs + i * 14 * DAY_MS;
+                case 'monthly': return addUtcMonths(startTs, i, anchorDay);
+            }
+        };
+
         const dailyRate = Math.pow(1 + apy / 100, 1 / 365) - 1;
         let balance = 0;
         let totalDeposited = 0;
-        let currentDate = startOfDay(new Date(startDate));
-        const end = startOfDay(new Date(endDate));
 
-        while (!isAfter(currentDate, end)) {
+        for (let i = 0; ; i++) {
+            const ts = depositTs(i);
+            if (ts > endTs || i > 40_000) break;
+
             // Deposit
             balance += amount;
             totalDeposited += amount;
 
-            // Calculate days until next deposit
-            let nextDate: Date;
-            switch (frequency) {
-                case 'daily': nextDate = addDays(currentDate, 1); break;
-                case 'weekly': nextDate = addWeeks(currentDate, 1); break;
-                case 'biweekly': nextDate = addWeeks(currentDate, 2); break;
-                case 'monthly': nextDate = addMonths(currentDate, 1); break;
-            }
-
-            // Cap compounding to the end date so we don't over-compound past the period
-            const compoundEnd = isAfter(nextDate, end) ? end : nextDate;
-            const daysUntilNext = Math.max(1, Math.round((compoundEnd.getTime() - currentDate.getTime()) / (1000 * 60 * 60 * 24)));
+            // Compound until the next deposit, capped at the end date. A deposit
+            // landing exactly on the end date earns zero days of interest.
+            const compoundEnd = Math.min(depositTs(i + 1), endTs);
+            const daysUntilNext = Math.max(0, Math.round((compoundEnd - ts) / DAY_MS));
             balance *= Math.pow(1 + dailyRate, daysUntilNext);
-
-            currentDate = nextDate;
         }
 
         const profit = balance - totalDeposited;
@@ -71,20 +80,22 @@ export const SavingsComparison = ({
     const difference = Math.abs(btcCurrentValue - savingsResult.balance);
 
     return (
-        <div className="bg-white dark:bg-slate-900 p-4 sm:p-6 rounded-xl border border-slate-200 dark:border-slate-800">
+        <Card className="p-4 sm:p-6">
             <div className="flex flex-wrap items-center justify-between gap-2 mb-3 sm:mb-4">
-                <h3 className="text-base sm:text-lg font-semibold text-slate-800 dark:text-slate-100">BTC vs Savings Account</h3>
+                <h3 className="text-sm sm:text-base font-semibold text-slate-800 dark:text-slate-100">BTC vs Savings Account</h3>
                 <div className="flex items-center gap-2">
-                    <label className="text-xs text-slate-500 dark:text-slate-400">APY:</label>
+                    <label htmlFor={apyInputId} className="text-xs text-slate-500 dark:text-slate-400">APY:</label>
                     <input
+                        id={apyInputId}
                         type="number"
+                        inputMode="decimal"
                         step="0.1"
                         min={0}
                         max={20}
                         value={apy}
                         onChange={(e) => setApy(Math.min(20, Math.max(0, Number(e.target.value))))}
                         onFocus={(e) => e.target.select()}
-                        className="w-16 px-2 py-1 text-xs rounded border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:ring-1 focus:ring-amber-500/40 outline-none"
+                        className="w-20 px-2 py-1.5 text-base sm:text-xs tabular-nums rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500 outline-none transition-shadow"
                     />
                     <span className="text-xs text-slate-500 dark:text-slate-400">%</span>
                 </div>
@@ -92,33 +103,33 @@ export const SavingsComparison = ({
 
             <div className="grid grid-cols-2 gap-3 sm:gap-6">
                 <div className={clsx(
-                    "p-3 sm:p-4 rounded-lg border",
+                    "p-3 sm:p-4 rounded-xl border",
                     btcWins
                         ? "bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800/50"
                         : "bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700"
                 )}>
                     <div className="text-xs sm:text-sm font-medium text-amber-700 dark:text-amber-400 mb-1">Bitcoin DCA</div>
-                    <div className="text-lg sm:text-2xl font-bold text-slate-900 dark:text-white truncate">
+                    <div className="text-lg sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-white truncate">
                         <span className="sm:hidden">{formatCompact(btcCurrentValue)}</span>
                         <span className="hidden sm:inline">{formatCurrency(btcCurrentValue)}</span>
                     </div>
-                    <div className={clsx("text-xs sm:text-sm mt-1", btcRoi >= 0 ? "text-green-600" : "text-red-600")}>
+                    <div className={clsx("text-xs sm:text-sm mt-1 tabular-nums", btcRoi >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400")}>
                         {btcRoi >= 0 ? '+' : ''}{btcRoi.toFixed(1)}% ROI
                     </div>
                 </div>
 
                 <div className={clsx(
-                    "p-3 sm:p-4 rounded-lg border",
+                    "p-3 sm:p-4 rounded-xl border",
                     !btcWins
                         ? "bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800/50"
                         : "bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700"
                 )}>
                     <div className="text-xs sm:text-sm font-medium text-blue-700 dark:text-blue-400 mb-1">Savings ({apy}% APY)</div>
-                    <div className="text-lg sm:text-2xl font-bold text-slate-900 dark:text-white truncate">
+                    <div className="text-lg sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-white truncate">
                         <span className="sm:hidden">{formatCompact(savingsResult.balance)}</span>
                         <span className="hidden sm:inline">{formatCurrency(savingsResult.balance)}</span>
                     </div>
-                    <div className={clsx("text-xs sm:text-sm mt-1", savingsResult.roi >= 0 ? "text-green-600" : "text-red-600")}>
+                    <div className={clsx("text-xs sm:text-sm mt-1 tabular-nums", savingsResult.roi >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400")}>
                         {savingsResult.roi >= 0 ? '+' : ''}{savingsResult.roi.toFixed(1)}% ROI
                     </div>
                 </div>
@@ -126,11 +137,11 @@ export const SavingsComparison = ({
 
             <div className="mt-3 text-center text-xs sm:text-sm text-slate-500 dark:text-slate-400">
                 {btcWins ? (
-                    <span>Bitcoin outperforms by <span className="font-semibold text-green-600 dark:text-green-400">{formatCurrency(difference)}</span></span>
+                    <span>Bitcoin outperforms by <span className="font-semibold text-emerald-600 dark:text-emerald-400 tabular-nums">{formatCurrency(difference)}</span></span>
                 ) : (
-                    <span>Savings account outperforms by <span className="font-semibold text-blue-600 dark:text-blue-400">{formatCurrency(difference)}</span></span>
+                    <span>Savings account outperforms by <span className="font-semibold text-blue-600 dark:text-blue-400 tabular-nums">{formatCurrency(difference)}</span></span>
                 )}
             </div>
-        </div>
+        </Card>
     );
 };

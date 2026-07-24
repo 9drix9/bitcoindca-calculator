@@ -1,7 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { Flame } from 'lucide-react';
 import { getMempoolFees } from '@/app/actions';
+import { Card, CardHeader, StatRow } from '@/components/ui/Card';
 
 interface MempoolFees {
     highFee: number;
@@ -13,12 +15,14 @@ interface MempoolFeeWidgetProps {
     initialData: MempoolFees | null;
 }
 
+const POLL_MS = 30_000;
+
 const getFeeColor = (fee: number) => {
-    if (fee >= 100) return 'text-red-500';
+    if (fee >= 100) return 'text-rose-500';
     if (fee >= 50) return 'text-orange-500';
     if (fee >= 20) return 'text-amber-500';
     if (fee >= 5) return 'text-yellow-500';
-    return 'text-green-500';
+    return 'text-emerald-500';
 };
 
 const formatFee = (fee: number) => {
@@ -29,11 +33,15 @@ const formatFee = (fee: number) => {
 
 export const MempoolFeeWidget = ({ initialData }: MempoolFeeWidgetProps) => {
     const [data, setData] = useState<MempoolFees | null>(initialData);
+    const hadInitialData = useRef(initialData !== null);
 
     useEffect(() => {
         let mounted = true;
+        // SSR data is seconds old at hydration; only fetch immediately when it is missing.
+        let lastFetched = hadInitialData.current ? Date.now() : 0;
 
         const refresh = async () => {
+            lastFetched = Date.now();
             try {
                 const fresh = await getMempoolFees();
                 if (mounted && fresh) setData(fresh);
@@ -42,45 +50,69 @@ export const MempoolFeeWidget = ({ initialData }: MempoolFeeWidgetProps) => {
             }
         };
 
-        refresh();
-        const interval = setInterval(refresh, 30_000);
-        return () => { mounted = false; clearInterval(interval); };
+        if (!hadInitialData.current) refresh();
+
+        const interval = setInterval(() => {
+            if (!document.hidden) refresh();
+        }, POLL_MS);
+        const onVisibilityChange = () => {
+            if (!document.hidden && Date.now() - lastFetched >= POLL_MS) refresh();
+        };
+        document.addEventListener('visibilitychange', onVisibilityChange);
+
+        return () => {
+            mounted = false;
+            clearInterval(interval);
+            document.removeEventListener('visibilitychange', onVisibilityChange);
+        };
     }, []);
 
-    if (!data) return null;
-
-    const fees = [
-        { label: 'High', value: data.highFee, desc: '~10 min' },
-        { label: 'Medium', value: data.mediumFee, desc: '~30 min' },
-        { label: 'Low', value: data.lowFee, desc: '~60 min' },
-    ];
+    const fees = data
+        ? [
+              { label: 'High', value: data.highFee, desc: '~10 min' },
+              { label: 'Medium', value: data.mediumFee, desc: '~30 min' },
+              { label: 'Low', value: data.lowFee, desc: '~60 min' },
+          ]
+        : null;
 
     return (
-        <div className="bg-white dark:bg-slate-900 rounded-xl p-4 border border-slate-200 dark:border-slate-800">
-            <h4 className="font-semibold text-slate-800 dark:text-white mb-3 text-xs sm:text-sm">Mempool Fees</h4>
-            <div className="space-y-2">
-                {fees.map((fee) => (
-                    <div key={fee.label} className="flex items-center justify-between">
-                        <div className="flex items-center gap-1">
-                            <span className="text-xs text-slate-600 dark:text-slate-400">{fee.label}</span>
-                            <span className="text-[10px] text-slate-500 dark:text-slate-400">({fee.desc})</span>
-                        </div>
-                        <span className={`text-xs sm:text-sm font-mono font-semibold tabular-nums ${getFeeColor(fee.value)}`}>
-                            {formatFee(fee.value)} <span className="text-[10px] font-normal text-slate-500 dark:text-slate-400">sat/vB</span>
-                        </span>
-                    </div>
-                ))}
-            </div>
+        <Card className="p-4">
+            <CardHeader icon={<Flame className="w-4 h-4" />} title="Mempool Fees" className="mb-3" />
+
+            {fees ? (
+                <div className="space-y-2">
+                    {fees.map((fee) => (
+                        <StatRow
+                            key={fee.label}
+                            label={
+                                <>
+                                    {fee.label}{' '}
+                                    <span className="text-[11px] text-slate-400 dark:text-slate-500">({fee.desc})</span>
+                                </>
+                            }
+                            value={
+                                <>
+                                    <span className={getFeeColor(fee.value)}>{formatFee(fee.value)}</span>{' '}
+                                    <span className="text-[11px] font-normal text-slate-500 dark:text-slate-400">sat/vB</span>
+                                </>
+                            }
+                        />
+                    ))}
+                </div>
+            ) : (
+                <p className="text-xs text-slate-500 dark:text-slate-400">Data unavailable</p>
+            )}
+
             <div className="mt-2 pt-2 border-t border-slate-100 dark:border-slate-800">
                 <a
                     href="https://mempool.space"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 hover:text-amber-500 transition-colors"
+                    className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 hover:text-amber-500 transition-colors"
                 >
                     Data from mempool.space
                 </a>
             </div>
-        </div>
+        </Card>
     );
 };

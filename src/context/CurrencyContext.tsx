@@ -1,8 +1,11 @@
 'use client';
 
-import { createContext, useContext, useState, useCallback, useMemo, ReactNode } from 'react';
+import { createContext, useContext, useState, useCallback, useMemo, useEffect, useSyncExternalStore, ReactNode } from 'react';
+import { getFxRates } from '@/app/actions';
 
 export type CurrencyCode = 'USD' | 'EUR' | 'GBP' | 'CAD' | 'AUD' | 'JPY';
+
+const CURRENCY_STORAGE_KEY = 'currency-preference';
 
 export interface CurrencyConfig {
     code: CurrencyCode;
@@ -28,16 +31,61 @@ interface CurrencyContextType {
     formatCurrency: (usdValue: number, maximumFractionDigits?: number) => string;
     formatCompact: (usdValue: number) => string;
     convertFromUsd: (usdValue: number) => number;
+    /** Consistent BTC display: 4 decimals ≥1 BTC, 8 below, trailing zeros trimmed */
+    formatBtc: (btc: number) => string;
+    formatSats: (btc: number) => string;
 }
 
 const CurrencyContext = createContext<CurrencyContextType | undefined>(undefined);
 
+const subscribeStorage = (callback: () => void) => {
+    window.addEventListener('storage', callback);
+    return () => window.removeEventListener('storage', callback);
+};
+
+const readStoredCurrency = (): CurrencyCode | null => {
+    try {
+        const stored = window.localStorage.getItem(CURRENCY_STORAGE_KEY);
+        return stored && CURRENCIES.some(c => c.code === stored) ? (stored as CurrencyCode) : null;
+    } catch {
+        return null; // private mode
+    }
+};
+
 export const CurrencyProvider = ({ children }: { children: ReactNode }) => {
-    const [currency, setCurrency] = useState<CurrencyCode>('USD');
+    // Persisted preference read via the external-store pattern (hydration-safe:
+    // the server snapshot is null → USD, the client re-renders with the stored value).
+    const storedCurrency = useSyncExternalStore(subscribeStorage, readStoredCurrency, () => null);
+    const [override, setOverride] = useState<CurrencyCode | null>(null);
+    const currency: CurrencyCode = override ?? storedCurrency ?? 'USD';
+
+    // Hardcoded rates are the fallback; live ECB rates replace them after mount.
+    const [liveRates, setLiveRates] = useState<Partial<Record<CurrencyCode, number>>>({});
+
+    useEffect(() => {
+        let mounted = true;
+        getFxRates()
+            .then(rates => { if (mounted && rates) setLiveRates(rates); })
+            .catch(() => { /* fall back to hardcoded rates */ });
+        return () => { mounted = false; };
+    }, []);
+
+    const setCurrency = useCallback((code: CurrencyCode) => {
+        setOverride(code);
+        try { window.localStorage.setItem(CURRENCY_STORAGE_KEY, code); } catch { /* private mode */ }
+    }, []);
+
+    const currencies = useMemo(
+        () => CURRENCIES.map(c => {
+            const live = liveRates[c.code];
+            return live ? { ...c, rate: live } : c;
+        }),
+        [liveRates]
+    );
 
     const currencyConfig = useMemo(
-        () => CURRENCIES.find(c => c.code === currency) || CURRENCIES[0],
-        [currency]
+        () => currencies.find(c => c.code === currency) || currencies[0],
+        [currencies, currency]
     );
 
     const convertFromUsd = useCallback(
@@ -48,13 +96,29 @@ export const CurrencyProvider = ({ children }: { children: ReactNode }) => {
     const formatCurrency = useCallback(
         (usdValue: number, maximumFractionDigits: number = 0) => {
             const converted = usdValue * currencyConfig.rate;
+            const sign = converted < 0 ? '-' : '';
+            const abs = Math.abs(converted);
             if (currencyConfig.code === 'JPY') {
-                return `${currencyConfig.symbol}${Math.round(converted).toLocaleString()}`;
+                return `${sign}${currencyConfig.symbol}${Math.round(abs).toLocaleString('en-US')}`;
             }
-            return `${currencyConfig.symbol}${converted.toLocaleString(undefined, { maximumFractionDigits })}`;
+            // Sub-unit prices (early BTC history) would otherwise render as "$0"
+            const digits = abs > 0 && abs < 1 ? 4 : maximumFractionDigits;
+            return `${sign}${currencyConfig.symbol}${abs.toLocaleString('en-US', { maximumFractionDigits: digits })}`;
         },
         [currencyConfig]
     );
+
+    const formatBtc = useCallback((btc: number) => {
+        if (!Number.isFinite(btc)) return '0 BTC';
+        const abs = Math.abs(btc);
+        const digits = abs >= 1 ? 4 : 8;
+        return `${btc.toFixed(digits).replace(/\.?0+$/, '')} BTC`;
+    }, []);
+
+    const formatSats = useCallback((btc: number) => {
+        if (!Number.isFinite(btc)) return '0 sats';
+        return `${Math.floor(btc * 100_000_000).toLocaleString('en-US')} sats`;
+    }, []);
 
     const formatCompact = useCallback(
         (usdValue: number) => {
@@ -79,13 +143,15 @@ export const CurrencyProvider = ({ children }: { children: ReactNode }) => {
         () => ({
             currency,
             currencyConfig,
-            currencies: CURRENCIES,
+            currencies,
             setCurrency,
             formatCurrency,
             formatCompact,
             convertFromUsd,
+            formatBtc,
+            formatSats,
         }),
-        [currency, currencyConfig, formatCurrency, formatCompact, convertFromUsd]
+        [currency, currencyConfig, currencies, setCurrency, formatCurrency, formatCompact, convertFromUsd, formatBtc, formatSats]
     );
 
     return (

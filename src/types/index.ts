@@ -12,6 +12,17 @@ export interface DcaParams {
     manualPrice: number; // Used if mode is manual or API fails
 }
 
+export interface DcaStats {
+    /** Money-weighted annualized return (XIRR), % — null when the period is under ~90 days */
+    xirrPercent: number | null;
+    /** Largest peak-to-trough decline of portfolio value across the purchase series, % */
+    maxDrawdownPercent: number;
+    bestBuy: { date: string; price: number } | null;
+    worstBuy: { date: string; price: number } | null;
+    /** Total exchange fees paid in USD */
+    feesPaid: number;
+}
+
 export interface DcaResult {
     totalInvested: number;
     btcAccumulated: number;
@@ -20,6 +31,7 @@ export interface DcaResult {
     profit: number;
     roi: number;
     breakdown: DcaBreakdownItem[];
+    stats?: DcaStats;
     error?: string;
 }
 
@@ -71,6 +83,7 @@ export interface CalculatorSearchParams {
     mode?: string;
     provider?: string;
     manualPrice?: string;
+    currency?: string;
 }
 
 export interface CostBasisPosition {
