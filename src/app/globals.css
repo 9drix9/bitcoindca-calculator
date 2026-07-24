@@ -100,16 +100,18 @@
   background: rgba(245, 158, 11, 0.25);
 }
 
-/* Soft radial glow behind the hero — visible mostly in dark mode */
+/* Soft radial glow behind the hero — visible mostly in dark mode.
+   Horizontal inset must stay >= 0: negative values widen the page and let
+   mobile Safari pan sideways. */
 .hero-glow {
   position: relative;
 }
 .hero-glow::before {
   content: '';
   position: absolute;
-  inset: -40% -20%;
+  inset: -40% 0;
   pointer-events: none;
-  background: radial-gradient(ellipse 50% 60% at 50% 30%, rgba(245, 158, 11, 0.07), transparent 70%);
+  background: radial-gradient(ellipse 70% 60% at 50% 30%, rgba(245, 158, 11, 0.07), transparent 70%);
   z-index: -1;
 }
 
@@ -154,6 +156,16 @@ input[type="number"]::-webkit-outer-spin-button {
 @layer base {
   body {
     @apply bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-50;
+  }
+
+  /* Hard guard against sideways panning on mobile: any stray element wider
+     than the viewport gets clipped instead of widening the page.
+     `clip` (unlike `hidden`) creates no scroll container, so position:sticky
+     keeps working; the `hidden` line is the fallback for older browsers. */
+  html,
+  body {
+    overflow-x: hidden;
+    overflow-x: clip;
   }
 }
 
