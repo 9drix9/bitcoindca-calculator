@@ -15,7 +15,7 @@ const PAGE_DATES = {
 } as const;
 
 export default function sitemap(): MetadataRoute.Sitemap {
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://btcdollarcostaverage.com';
+    const baseUrl = (process.env.NEXT_PUBLIC_BASE_URL || 'https://btcdollarcostaverage.com').replace(/\/+$/, '');
 
     return [
         {
