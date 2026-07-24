@@ -1,7 +1,8 @@
 import type { MetadataRoute } from 'next';
 
 export default function robots(): MetadataRoute.Robots {
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://btcdollarcostaverage.com';
+    // Trailing slash stripped: the env var may include one, which would produce "…com//sitemap.xml"
+    const baseUrl = (process.env.NEXT_PUBLIC_BASE_URL || 'https://btcdollarcostaverage.com').replace(/\/+$/, '');
 
     return {
         rules: [
