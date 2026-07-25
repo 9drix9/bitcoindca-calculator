@@ -141,7 +141,7 @@ export const CostBasisTracker = ({ priceData, livePrice, priceMode }: CostBasisT
                 action={
                     <button
                         onClick={() => setShowForm(!showForm)}
-                        className="px-3 py-1.5 min-h-6 text-xs font-medium rounded-lg bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/40 border border-amber-200/60 dark:border-amber-800/40 transition-colors"
+                        className="inline-flex items-center justify-center px-3 py-1.5 min-h-9 text-xs font-medium rounded-lg bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/40 border border-amber-200/60 dark:border-amber-800/40 transition-colors"
                     >
                         {showForm ? 'Cancel' : '+ Add Position'}
                     </button>
@@ -229,7 +229,7 @@ export const CostBasisTracker = ({ priceData, livePrice, priceMode }: CostBasisT
                     <button
                         onClick={addPosition}
                         disabled={!label.trim() || !formStartDate || !formEndDate}
-                        className="w-full py-2 text-sm font-medium rounded-lg bg-amber-500 hover:bg-amber-600 text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        className="flex h-11 w-full items-center justify-center py-2 text-sm font-medium rounded-lg bg-amber-500 hover:bg-amber-600 text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     >
                         Add Position
                     </button>
@@ -239,15 +239,17 @@ export const CostBasisTracker = ({ priceData, livePrice, priceMode }: CostBasisT
             {/* Positions List */}
             {positionResults.length > 0 ? (
                 <div className="space-y-2">
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-xs sm:text-sm">
+                    {/* min-w keeps the six columns legible instead of collapsing to
+                        min-content at ~358px; this div is the only sideways scroller. */}
+                    <div className="overflow-x-auto overscroll-x-contain">
+                        <table className="w-full min-w-[520px] text-xs sm:text-sm">
                             <thead>
                                 <tr className="text-left text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-700">
                                     <th scope="col" className="pb-2 pr-2 font-medium">Position</th>
-                                    <th scope="col" className="pb-2 pr-2 font-medium text-right">Invested</th>
-                                    <th scope="col" className="pb-2 pr-2 font-medium text-right">BTC</th>
-                                    <th scope="col" className="pb-2 pr-2 font-medium text-right">Value</th>
-                                    <th scope="col" className="pb-2 pr-2 font-medium text-right">ROI</th>
+                                    <th scope="col" className="pb-2 pr-2 font-medium text-right whitespace-nowrap">Invested</th>
+                                    <th scope="col" className="pb-2 pr-2 font-medium text-right whitespace-nowrap">BTC</th>
+                                    <th scope="col" className="pb-2 pr-2 font-medium text-right whitespace-nowrap">Value</th>
+                                    <th scope="col" className="pb-2 pr-2 font-medium text-right whitespace-nowrap">ROI</th>
                                     <th scope="col" className="pb-2 font-medium"><span className="sr-only">Actions</span></th>
                                 </tr>
                             </thead>
@@ -258,16 +260,16 @@ export const CostBasisTracker = ({ priceData, livePrice, priceMode }: CostBasisT
                                             <div className="font-medium text-slate-800 dark:text-white">{position.label}</div>
                                             <div className="text-[11px] text-slate-500 dark:text-slate-400">{position.startDate} to {position.endDate}</div>
                                         </td>
-                                        <td className="py-2 pr-2 text-right tabular-nums text-slate-700 dark:text-slate-300">{formatCurrency(result.totalInvested)}</td>
-                                        <td className="py-2 pr-2 text-right tabular-nums text-slate-700 dark:text-slate-300">{result.btcAccumulated.toFixed(6)}</td>
-                                        <td className="py-2 pr-2 text-right tabular-nums text-slate-700 dark:text-slate-300">{formatCurrency(result.currentValue)}</td>
-                                        <td className={clsx("py-2 pr-2 text-right tabular-nums font-medium", result.roi >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400")}>
+                                        <td className="py-2 pr-2 text-right tabular-nums whitespace-nowrap text-slate-700 dark:text-slate-300">{formatCurrency(result.totalInvested)}</td>
+                                        <td className="py-2 pr-2 text-right tabular-nums whitespace-nowrap text-slate-700 dark:text-slate-300">{result.btcAccumulated.toFixed(6)}</td>
+                                        <td className="py-2 pr-2 text-right tabular-nums whitespace-nowrap text-slate-700 dark:text-slate-300">{formatCurrency(result.currentValue)}</td>
+                                        <td className={clsx("py-2 pr-2 text-right tabular-nums whitespace-nowrap font-medium", result.roi >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400")}>
                                             {result.roi >= 0 ? '+' : ''}{result.roi.toFixed(1)}%
                                         </td>
                                         <td className="py-2 text-right">
                                             <button
                                                 onClick={() => removePosition(position.id)}
-                                                className="inline-flex items-center justify-center w-7 h-7 rounded-md text-slate-500 dark:text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 transition-colors"
+                                                className="inline-flex items-center justify-center w-9 h-9 text-base leading-none rounded-md text-slate-500 dark:text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                                                 title="Remove position"
                                                 aria-label={`Remove position ${position.label}`}
                                             >
@@ -281,10 +283,10 @@ export const CostBasisTracker = ({ priceData, livePrice, priceMode }: CostBasisT
                                 <tfoot>
                                     <tr className="font-semibold border-t-2 border-slate-300 dark:border-slate-600">
                                         <td className="pt-2 pr-2 text-slate-800 dark:text-white">Combined</td>
-                                        <td className="pt-2 pr-2 text-right tabular-nums text-slate-800 dark:text-white">{formatCurrency(totals.totalInvested)}</td>
-                                        <td className="pt-2 pr-2 text-right tabular-nums text-slate-800 dark:text-white">{totals.totalBtc.toFixed(6)}</td>
-                                        <td className="pt-2 pr-2 text-right tabular-nums text-slate-800 dark:text-white">{formatCurrency(totals.totalValue)}</td>
-                                        <td className={clsx("pt-2 pr-2 text-right tabular-nums", totals.roi >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400")}>
+                                        <td className="pt-2 pr-2 text-right tabular-nums whitespace-nowrap text-slate-800 dark:text-white">{formatCurrency(totals.totalInvested)}</td>
+                                        <td className="pt-2 pr-2 text-right tabular-nums whitespace-nowrap text-slate-800 dark:text-white">{totals.totalBtc.toFixed(6)}</td>
+                                        <td className="pt-2 pr-2 text-right tabular-nums whitespace-nowrap text-slate-800 dark:text-white">{formatCurrency(totals.totalValue)}</td>
+                                        <td className={clsx("pt-2 pr-2 text-right tabular-nums whitespace-nowrap", totals.roi >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400")}>
                                             {totals.roi >= 0 ? '+' : ''}{totals.roi.toFixed(1)}%
                                         </td>
                                         <td></td>

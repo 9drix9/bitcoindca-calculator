@@ -41,9 +41,30 @@ export function MobileMenuDrawer({ open, onClose, triggerRef }: MobileMenuDrawer
     return () => document.removeEventListener('keydown', handleKey);
   }, [open, onClose]);
 
+  // The drawer and its overlay are `md:hidden`, but the body scroll lock is
+  // not. Rotating a phone to landscape crosses the md breakpoint (390x844
+  // becomes 844px wide), which would hide the drawer while leaving the body
+  // pinned with no reachable close control — a stuck page. Close on crossing.
+  useEffect(() => {
+    if (!open) return;
+    const mq = window.matchMedia('(min-width: 768px)');
+    if (mq.matches) {
+      onClose();
+      return;
+    }
+    const handler = (e: MediaQueryListEvent) => {
+      if (e.matches) onClose();
+    };
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, [open, onClose]);
+
   // iOS-safe body scroll lock: fix the body in place while open, restore
   // the scroll position on close (overflow:hidden alone does not stop
-  // background touch scrolling in iOS Safari).
+  // background touch scrolling in iOS Safari). The cleanup is the unlock, so
+  // React also runs it if this component unmounts while open (e.g. navigating
+  // to /embed, where ResponsiveNav renders nothing) — the body can never be
+  // left pinned.
   useEffect(() => {
     if (!open) return;
     const scrollY = window.scrollY;
@@ -128,7 +149,7 @@ export function MobileMenuDrawer({ open, onClose, triggerRef }: MobileMenuDrawer
         aria-label="Menu"
         inert={!open}
         onKeyDown={handleKeyDown}
-        className={`fixed top-0 right-0 bottom-0 z-[70] w-64 bg-white dark:bg-slate-900 shadow-xl transition-transform duration-200 ease-out md:hidden ${
+        className={`fixed top-0 right-0 bottom-0 z-[70] w-64 overflow-y-auto overscroll-contain bg-white dark:bg-slate-900 shadow-xl transition-transform duration-200 ease-out md:hidden pr-[env(safe-area-inset-right)] ${
           open ? 'translate-x-0' : 'translate-x-full'
         }`}
       >
@@ -136,14 +157,17 @@ export function MobileMenuDrawer({ open, onClose, triggerRef }: MobileMenuDrawer
           <span className="font-semibold text-sm text-slate-800 dark:text-white">Menu</span>
           <button
             onClick={onClose}
-            className="p-2 -m-2 text-slate-500 hover:text-slate-800 dark:hover:text-white transition-colors"
+            className="-my-2 -mr-2 h-11 w-11 flex items-center justify-center rounded-lg text-slate-500 hover:text-slate-800 dark:hover:text-white transition-colors"
             aria-label="Close menu"
           >
             <X size={20} />
           </button>
         </div>
 
-        <nav aria-label="Menu navigation" className="p-4 space-y-1">
+        <nav
+          aria-label="Menu navigation"
+          className="p-4 pb-[max(env(safe-area-inset-bottom),1rem)] space-y-1"
+        >
           {drawerLinks.map(({ href, label, icon: Icon }) => {
             const isActive = pathname === href;
             return (
@@ -151,7 +175,7 @@ export function MobileMenuDrawer({ open, onClose, triggerRef }: MobileMenuDrawer
                 key={href}
                 href={href}
                 aria-current={isActive ? 'page' : undefined}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                className={`flex min-h-11 items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
                   isActive
                     ? 'bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400'
                     : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
@@ -169,7 +193,7 @@ export function MobileMenuDrawer({ open, onClose, triggerRef }: MobileMenuDrawer
             href="https://github.com/9drix9/bitcoindca-calculator"
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+            className="flex min-h-11 items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
           >
             <Github size={18} />
             GitHub

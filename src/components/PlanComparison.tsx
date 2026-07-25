@@ -206,13 +206,15 @@ function PlanRow({
                     type="button"
                     onClick={onRemove}
                     aria-label={`Remove ${name}`}
-                    className="rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-slate-200/60 hover:text-slate-600 dark:hover:bg-slate-700 dark:hover:text-slate-300"
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-200/60 hover:text-slate-600 dark:hover:bg-slate-700 dark:hover:text-slate-300"
                 >
                     <X className="h-4 w-4" />
                 </button>
             </div>
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                <div>
+            {/* Stacked below sm: a native date field cannot shrink into a ~147px column at
+                the 16px font size iOS needs, and would spill out of the card. */}
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 md:grid-cols-4">
+                <div className="min-w-0">
                     <label htmlFor={`${uid}-amount`} className={labelClass}>
                         Amount ({currencyConfig.symbol})
                     </label>
@@ -226,7 +228,7 @@ function PlanRow({
                         className={inputClass}
                     />
                 </div>
-                <div>
+                <div className="min-w-0">
                     <label htmlFor={`${uid}-frequency`} className={labelClass}>
                         Frequency
                     </label>
@@ -243,7 +245,7 @@ function PlanRow({
                         ))}
                     </select>
                 </div>
-                <div>
+                <div className="min-w-0">
                     <label htmlFor={`${uid}-start`} className={labelClass}>
                         Start date
                     </label>
@@ -253,10 +255,10 @@ function PlanRow({
                         max={maxDate}
                         value={plan.startDate}
                         onChange={(e) => onChange({ startDate: e.target.value })}
-                        className={inputClass}
+                        className={clsx(inputClass, 'min-w-0')}
                     />
                 </div>
-                <div>
+                <div className="min-w-0">
                     <label htmlFor={`${uid}-fee`} className={labelClass}>
                         Fee (%)
                     </label>

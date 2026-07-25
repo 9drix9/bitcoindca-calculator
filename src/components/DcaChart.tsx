@@ -266,8 +266,10 @@ function ChartTooltip({
     );
 }
 
+// min-h-8 + padding: the checkbox alone is a 16px target, so the label carries the
+// tap area (clicking a label toggles its input) and clears the 24px minimum on touch.
 const toggleLabelClass =
-    'flex cursor-pointer select-none items-center gap-1.5 whitespace-nowrap text-[11px] text-slate-500 dark:text-slate-400';
+    'flex min-h-8 cursor-pointer select-none items-center gap-1.5 whitespace-nowrap py-1 pr-1 text-[11px] text-slate-500 dark:text-slate-400';
 
 export const DcaChart = memo(function DcaChart({ data, unit }: DcaChartProps) {
     const { currencyConfig, convertFromUsd, denomination } = useCurrency();
@@ -461,7 +463,7 @@ export const DcaChart = memo(function DcaChart({ data, unit }: DcaChartProps) {
                             type="checkbox"
                             checked={isLog}
                             onChange={(e) => setIsLog(e.target.checked)}
-                            className="h-3.5 w-3.5 rounded border-slate-300 text-amber-600 focus:ring-amber-500 dark:border-slate-600"
+                            className="h-4 w-4 rounded border-slate-300 text-amber-600 focus:ring-amber-500 dark:border-slate-600"
                         />
                         Log
                     </label>
@@ -471,7 +473,7 @@ export const DcaChart = memo(function DcaChart({ data, unit }: DcaChartProps) {
                                 type="checkbox"
                                 checked={showPowerLaw}
                                 onChange={(e) => setShowPowerLaw(e.target.checked)}
-                                className="h-3.5 w-3.5 rounded border-slate-300 text-violet-600 focus:ring-violet-500 dark:border-slate-600"
+                                className="h-4 w-4 rounded border-slate-300 text-violet-600 focus:ring-violet-500 dark:border-slate-600"
                             />
                             Power Law
                         </label>
@@ -481,7 +483,7 @@ export const DcaChart = memo(function DcaChart({ data, unit }: DcaChartProps) {
                             type="checkbox"
                             checked={showEvents}
                             onChange={(e) => setShowEvents(e.target.checked)}
-                            className="h-3.5 w-3.5 rounded border-slate-300 text-blue-600 focus:ring-blue-500 dark:border-slate-600"
+                            className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 dark:border-slate-600"
                         />
                         Events
                     </label>

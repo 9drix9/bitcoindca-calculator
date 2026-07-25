@@ -221,7 +221,7 @@ export const ShareMyStack = ({
                 <button
                     onClick={handleDownload}
                     disabled={downloading}
-                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs sm:text-sm font-medium rounded-lg bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white transition-colors"
+                    className="inline-flex items-center gap-1.5 min-h-9 shrink-0 px-3 py-2 text-xs sm:text-sm font-medium rounded-lg bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white transition-colors"
                 >
                     <Download className="w-3.5 h-3.5" aria-hidden="true" />
                     {downloading ? 'Generating...' : 'Download PNG'}

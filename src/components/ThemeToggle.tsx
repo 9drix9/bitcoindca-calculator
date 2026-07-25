@@ -80,7 +80,7 @@ export const ThemeToggle = () => {
     return (
         <button
             onClick={toggle}
-            className="w-10 h-10 flex items-center justify-center rounded-full bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 hover:bg-slate-200 dark:hover:bg-white/10 active:bg-slate-300 dark:active:bg-white/15 transition-colors"
+            className="w-11 h-11 flex items-center justify-center rounded-full bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 hover:bg-slate-200 dark:hover:bg-white/10 active:bg-slate-300 dark:active:bg-white/15 transition-colors"
             title={label}
             aria-label={label}
             aria-pressed={isDark === true}

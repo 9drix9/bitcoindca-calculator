@@ -70,16 +70,19 @@ export const CookieConsent = () => {
                             Privacy Policy
                         </Link>
                     </p>
+                    {/* h-11, not min-h-[44px]: globals.css sets an unlayered
+                        `button { min-height: 36px }` under 640px that outranks
+                        Tailwind's layered min-h-* utilities. */}
                     <div className="flex gap-2 self-end sm:self-auto shrink-0">
                         <button
                             onClick={handleEssentialOnly}
-                            className="min-h-[44px] px-4 py-2 text-xs sm:text-sm font-medium rounded-lg border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                            className="h-11 px-4 py-2 text-xs sm:text-sm font-medium rounded-lg border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                         >
                             Essential Only
                         </button>
                         <button
                             onClick={handleAcceptAll}
-                            className="min-h-[44px] px-4 py-2 text-xs sm:text-sm font-medium rounded-lg bg-amber-500 hover:bg-amber-600 text-white transition-colors"
+                            className="h-11 px-4 py-2 text-xs sm:text-sm font-medium rounded-lg bg-amber-500 hover:bg-amber-600 text-white transition-colors"
                         >
                             Accept All
                         </button>

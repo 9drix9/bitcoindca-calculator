@@ -81,7 +81,10 @@ export const TransactionTable = memo(function TransactionTable({ breakdown, unit
 
             {open && (
                 <div className="border-t border-slate-200 dark:border-slate-800">
-                    <div className="max-h-[480px] overflow-x-auto overflow-y-auto">
+                    {/* Card is overflow-hidden, so this is the only thing that scrolls
+                        sideways; overscroll-x-contain keeps the swipe off the back gesture
+                        while vertical scrolling still chains to the page. */}
+                    <div className="max-h-[480px] overflow-x-auto overflow-y-auto overscroll-x-contain">
                         <table className="w-full min-w-[560px] text-xs sm:text-sm">
                             <thead className="text-slate-500 dark:text-slate-400">
                                 <tr>
@@ -146,7 +149,7 @@ export const TransactionTable = memo(function TransactionTable({ breakdown, unit
                             <button
                                 type="button"
                                 onClick={() => setShowAll(true)}
-                                className="w-full rounded-lg py-2 text-xs font-medium text-amber-700 transition-colors hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-500/10 sm:text-sm"
+                                className="flex min-h-9 w-full items-center justify-center rounded-lg py-2 text-xs font-medium text-amber-700 transition-colors hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-500/10 sm:text-sm"
                             >
                                 Show all {breakdown.length.toLocaleString()} purchases
                             </button>

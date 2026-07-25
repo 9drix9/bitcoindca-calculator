@@ -170,7 +170,7 @@ export function PwaInstallPrompt() {
     <div
       role="dialog"
       aria-label="Install app"
-      className="fixed left-0 right-0 z-40 p-3 sm:p-4 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-700 shadow-[0_-4px_20px_rgba(0,0,0,0.08)] dark:shadow-[0_-4px_20px_rgba(0,0,0,0.3)] bottom-[calc(var(--bottom-nav-h)_+_max(env(safe-area-inset-bottom),12px))] md:bottom-0 md:pb-[max(env(safe-area-inset-bottom),1rem)]"
+      className="fixed left-0 right-0 z-40 p-3 sm:p-4 pl-[max(env(safe-area-inset-left),0.75rem)] pr-[max(env(safe-area-inset-right),0.75rem)] sm:pl-[max(env(safe-area-inset-left),1rem)] sm:pr-[max(env(safe-area-inset-right),1rem)] bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-700 shadow-[0_-4px_20px_rgba(0,0,0,0.08)] dark:shadow-[0_-4px_20px_rgba(0,0,0,0.3)] bottom-[calc(var(--bottom-nav-h)_+_max(env(safe-area-inset-bottom),12px))] md:bottom-0 md:pb-[max(env(safe-area-inset-bottom),1rem)]"
     >
       <div className="max-w-4xl mx-auto">
         <div className="flex items-center gap-3">
@@ -201,11 +201,14 @@ export function PwaInstallPrompt() {
               </>
             )}
           </div>
+          {/* h-11/w-11, not min-h-[44px]: globals.css sets an unlayered
+              `button { min-height: 36px }` under 640px that outranks
+              Tailwind's layered min-h-* utilities. */}
           <div className="flex items-center gap-2 shrink-0">
             {deferredPrompt && (
               <button
                 onClick={handleInstall}
-                className="flex items-center gap-1.5 min-h-[44px] px-3 py-2 text-xs sm:text-sm font-medium rounded-lg bg-amber-500 hover:bg-amber-600 text-white transition-colors"
+                className="flex items-center gap-1.5 h-11 px-3 py-2 text-xs sm:text-sm font-medium rounded-lg bg-amber-500 hover:bg-amber-600 text-white transition-colors"
               >
                 <Download size={14} />
                 Install
@@ -213,7 +216,7 @@ export function PwaInstallPrompt() {
             )}
             <button
               onClick={handleDismiss}
-              className="min-w-[44px] min-h-[44px] flex items-center justify-center text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300 transition-colors"
+              className="h-11 w-11 shrink-0 flex items-center justify-center rounded-lg text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300 transition-colors"
               aria-label="Dismiss install prompt"
             >
               <X size={18} />

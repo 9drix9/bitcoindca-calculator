@@ -491,7 +491,8 @@ export const DrawdownCalculator: React.FC<DrawdownCalculatorProps> = ({ btcAccum
                                 onClick={() => setGrowthInput(String(Math.round(rate * 100)))}
                                 aria-pressed={active}
                                 className={clsx(
-                                    'rounded-lg px-2.5 py-1 text-xs font-medium tabular-nums transition-colors',
+                                    // min-h-8: the label alone is a ~16px target, so the chip carries the tap area.
+                                    'inline-flex min-h-8 items-center rounded-lg px-2.5 py-1 text-xs font-medium tabular-nums transition-colors',
                                     active
                                         ? 'bg-amber-500 text-white'
                                         : 'border border-slate-200 bg-white text-slate-600 hover:border-amber-500/60 hover:text-amber-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-amber-500/40 dark:hover:text-amber-400',
