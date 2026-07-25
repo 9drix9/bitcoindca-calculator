@@ -104,8 +104,9 @@ FRED_API_KEY=your_fred_api_key_here
 # Base URL for sitemap and canonical URLs (defaults to https://btcdollarcostaverage.com)
 NEXT_PUBLIC_BASE_URL=https://btcdollarcostaverage.com
 
-# Optional. A Lightning address (e.g. you@walletofsatoshi.com) shown alongside the
-# on-chain donation address in the footer. When unset, the Lightning row is not rendered.
+# Optional. Overrides the Lightning donation address shown alongside the on-chain
+# address in the footer. Defaults to the project's own address; set to an empty
+# string to hide the Lightning row entirely.
 NEXT_PUBLIC_LIGHTNING_ADDRESS=
 ```
 
