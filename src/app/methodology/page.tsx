@@ -39,7 +39,7 @@ const DATA_SOURCES = [
     { source: 'Coinbase', provides: 'Real daily candles from 2015 onward (alternate price source)', cadence: 'Cached ~1 hour' },
     { source: 'mempool.space', provides: 'Block height, transaction fees, hash rate, difficulty, Lightning stats', cadence: '30s - 5 min' },
     { source: 'CoinGecko', provides: 'Global market cap and Bitcoin dominance', cadence: '~5 min' },
-    { source: 'FRED (St. Louis Fed)', provides: 'CPI inflation and M2 money supply series', cadence: 'Daily' },
+    { source: 'FRED (St. Louis Fed)', provides: 'CPI inflation series (inflation-adjusted returns)', cadence: 'Daily' },
     { source: 'Yahoo Finance', provides: 'S&P 500 (^GSPC) and Gold (GC=F) for asset comparisons', cadence: 'Cached ~1 hour' },
     { source: 'alternative.me', provides: 'Fear & Greed Index', cadence: '~5 min' },
     { source: 'blockchain.info', provides: 'Circulating BTC supply; daily market prices 2010-2015 (static snapshot)', cadence: '~5 min / fixed' },

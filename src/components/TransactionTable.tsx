@@ -3,14 +3,15 @@
 import { useState, useMemo, memo } from 'react';
 import { DcaBreakdownItem } from '@/types';
 import { ChevronDown } from 'lucide-react';
-import { useCurrency } from '@/context/CurrencyContext';
+import { useCurrency, Denomination } from '@/context/CurrencyContext';
 import { formatUtc } from '@/utils/dates';
 import { Card } from '@/components/ui/Card';
 import clsx from 'clsx';
 
 interface TransactionTableProps {
     breakdown: DcaBreakdownItem[];
-    unit?: 'BTC' | 'SATS';
+    /** Overrides the site-wide denomination preference when supplied. */
+    unit?: Denomination;
 }
 
 // Long ranges render at most this many rows until the user asks for all of them.
@@ -19,13 +20,24 @@ const INITIAL_ROWS = 200;
 const thClass =
     'sticky top-0 z-10 bg-slate-50 dark:bg-slate-800 px-3 sm:px-4 py-2.5 font-medium whitespace-nowrap';
 
-export const TransactionTable = memo(function TransactionTable({ breakdown, unit = 'BTC' }: TransactionTableProps) {
-    const { formatCurrency, formatBtc, formatSats } = useCurrency();
+/**
+ * Bare numeric amount for the aligned columns — the unit lives in the column header
+ * so sats strings (which get long fast) don't blow the row width out.
+ */
+const formatAmountBare = (btc: number, unit: Denomination): string => {
+    if (!Number.isFinite(btc)) return '0';
+    if (unit === 'SATS') return Math.floor(btc * 100_000_000).toLocaleString('en-US');
+    return btc.toFixed(Math.abs(btc) >= 1 ? 4 : 8).replace(/\.?0+$/, '');
+};
+
+export const TransactionTable = memo(function TransactionTable({ breakdown, unit }: TransactionTableProps) {
+    const { formatCurrency, denomination } = useCurrency();
     const [open, setOpen] = useState(false);
     const [showAll, setShowAll] = useState(false);
 
-    const isSats = unit === 'SATS';
-    const formatAmount = isSats ? formatSats : formatBtc;
+    // Falls back to the site-wide preference when the call site doesn't pin a unit.
+    const activeUnit: Denomination = unit ?? denomination;
+    const unitLabel = activeUnit === 'SATS' ? 'sats' : 'BTC';
 
     const { bestIdx, worstIdx } = useMemo(() => {
         if (!breakdown || breakdown.length < 2) return { bestIdx: -1, worstIdx: -1 };
@@ -76,8 +88,8 @@ export const TransactionTable = memo(function TransactionTable({ breakdown, unit
                                     <th scope="col" className={clsx(thClass, 'text-left')}>Date</th>
                                     <th scope="col" className={clsx(thClass, 'text-right')}>BTC Price</th>
                                     <th scope="col" className={clsx(thClass, 'text-right')}>Invested</th>
-                                    <th scope="col" className={clsx(thClass, 'text-right')}>Bought</th>
-                                    <th scope="col" className={clsx(thClass, 'text-right')}>Holdings</th>
+                                    <th scope="col" className={clsx(thClass, 'text-right')}>Bought ({unitLabel})</th>
+                                    <th scope="col" className={clsx(thClass, 'text-right')}>Holdings ({unitLabel})</th>
                                     <th scope="col" className={clsx(thClass, 'text-right')}>Value</th>
                                 </tr>
                             </thead>
@@ -116,10 +128,10 @@ export const TransactionTable = memo(function TransactionTable({ breakdown, unit
                                             {formatCurrency(item.invested)}
                                         </td>
                                         <td className="whitespace-nowrap px-3 py-2 text-right text-slate-600 tabular-nums dark:text-slate-400 sm:px-4">
-                                            {formatAmount(item.accumulated)}
+                                            {formatAmountBare(item.accumulated, activeUnit)}
                                         </td>
                                         <td className="whitespace-nowrap px-3 py-2 text-right text-slate-600 tabular-nums dark:text-slate-400 sm:px-4">
-                                            {formatAmount(item.totalAccumulated)}
+                                            {formatAmountBare(item.totalAccumulated, activeUnit)}
                                         </td>
                                         <td className="whitespace-nowrap px-3 py-2 text-right font-medium text-slate-700 tabular-nums dark:text-slate-300 sm:px-4">
                                             {formatCurrency(item.portfolioValue)}

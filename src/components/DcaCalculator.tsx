@@ -29,7 +29,8 @@ const FireCalculator = dynamic(() => import('./FireCalculator').then(m => m.Fire
 const CostBasisTracker = dynamic(() => import('./CostBasisTracker').then(m => m.CostBasisTracker));
 const PlanComparison = dynamic(() => import('./PlanComparison').then(m => m.PlanComparison));
 const FutureProjection = dynamic(() => import('./FutureProjection').then(m => m.FutureProjection));
-import { TrendingUp, TrendingDown, DollarSign, Activity, Repeat, Download, Share2, RefreshCw } from 'lucide-react';
+const DrawdownCalculator = dynamic(() => import('./DrawdownCalculator').then(m => m.DrawdownCalculator));
+import { TrendingUp, TrendingDown, DollarSign, Activity, Download, Share2, RefreshCw } from 'lucide-react';
 import clsx from 'clsx';
 
 type Preset = { label: string; amount: number; frequency: Frequency; yearsBack?: number; monthsBack?: number; startDate?: string };
@@ -58,7 +59,8 @@ const satsShort = (btc: number): string => {
 };
 
 export const DcaCalculator = () => {
-    const { currency, setCurrency, currencyConfig, currencies, formatCurrency, formatCompact, formatBtc, formatSats } = useCurrency();
+    const { currency, setCurrency, currencyConfig, currencies, formatCurrency, formatCompact, denomination, setDenomination, formatBtcAmount } = useCurrency();
+    const isSats = denomination === 'SATS';
     const [today, setToday] = useState(() => startOfToday());
 
     useEffect(() => {
@@ -82,7 +84,6 @@ export const DcaCalculator = () => {
     const [manualPrice, setManualPrice] = useState<number>(50000);
     const deferredManualPrice = useDeferredValue(manualPrice);
     const [provider, setProvider] = useState<'kraken' | 'coinbase'>('kraken');
-    const [unit, setUnit] = useState<'BTC' | 'SATS'>('BTC');
     const [priceData, setPriceData] = useState<[number, number][]>([]);
     const [livePrice, setLivePrice] = useState<number | null>(null);
     const [loading, setLoading] = useState(false);
@@ -638,6 +639,35 @@ export const DcaCalculator = () => {
                 </Card>
             ) : (
                 <>
+                    {/* Denomination — display only, every BTC figure below follows it */}
+                    <div className="flex items-center justify-end gap-2 -mb-2 sm:-mb-3">
+                        <span id="dca-denomination-label" className="text-[11px] font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                            Denomination
+                        </span>
+                        <div
+                            role="group"
+                            aria-labelledby="dca-denomination-label"
+                            className="inline-flex items-center rounded-lg bg-slate-100 dark:bg-slate-800 p-0.5"
+                        >
+                            {(['BTC', 'SATS'] as const).map((d) => (
+                                <button
+                                    key={d}
+                                    type="button"
+                                    onClick={() => setDenomination(d)}
+                                    aria-pressed={denomination === d}
+                                    className={clsx(
+                                        'min-h-[24px] rounded-md px-2.5 py-1 text-xs font-medium transition-colors',
+                                        denomination === d
+                                            ? 'bg-white dark:bg-slate-700 shadow-sm text-amber-600 dark:text-amber-400'
+                                            : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
+                                    )}
+                                >
+                                    {d === 'BTC' ? 'BTC' : 'sats'}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
                     {/* Result Cards */}
                     <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
                         <ResultCard
@@ -647,22 +677,12 @@ export const DcaCalculator = () => {
                             formatShort={formatCompact}
                         />
                         <ResultCard
-                            label={unit === 'BTC' ? (isFutureEndDate ? "BTC to Accumulate" : "BTC Accumulated") : (isFutureEndDate ? "Sats to Accumulate" : "Sats Accumulated")}
+                            label={isSats ? (isFutureEndDate ? "Sats to Accumulate" : "Sats Accumulated") : (isFutureEndDate ? "BTC to Accumulate" : "BTC Accumulated")}
                             value={results.btcAccumulated}
-                            format={(n) => unit === 'BTC' ? formatBtc(n) : formatSats(n)}
-                            formatShort={(n) => unit === 'BTC' ? `${n < 1 ? n.toFixed(4) : n.toFixed(2)} ₿` : satsShort(n)}
+                            format={formatBtcAmount}
+                            /* Sats strings blow out a half-width card on mobile — abbreviate below sm. */
+                            formatShort={(n) => isSats ? satsShort(n) : `${n < 1 ? n.toFixed(4) : n.toFixed(2)} ₿`}
                             subValue={isFutureEndDate ? "at current prices" : `Avg: ${formatCurrency(results.averageCost)}`}
-                            action={
-                                <button
-                                    type="button"
-                                    onClick={() => setUnit(prev => prev === 'BTC' ? 'SATS' : 'BTC')}
-                                    className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition-colors"
-                                    title={`Switch to ${unit === 'BTC' ? 'Sats' : 'BTC'}`}
-                                    aria-label={`Switch to ${unit === 'BTC' ? 'sats' : 'BTC'}`}
-                                >
-                                    <Repeat className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
-                                </button>
-                            }
                         />
                         <ResultCard
                             label={isFutureEndDate ? "Value at Current Price" : "Current Value"}
@@ -707,7 +727,11 @@ export const DcaCalculator = () => {
                                     <>
                                         <span className="hidden sm:inline mx-1">|</span>
                                         <span>
-                                            <span className="font-medium text-amber-600 dark:text-amber-400">{results.btcAccumulated < 1 ? results.btcAccumulated.toFixed(4) : results.btcAccumulated.toFixed(2)}</span> of 21M BTC
+                                            <span className="font-medium text-amber-600 dark:text-amber-400 tabular-nums">
+                                                {isSats
+                                                    ? Math.floor(results.btcAccumulated * 100_000_000).toLocaleString('en-US')
+                                                    : (results.btcAccumulated < 1 ? results.btcAccumulated.toFixed(4) : results.btcAccumulated.toFixed(2))}
+                                            </span> of {isSats ? '2.1 quadrillion sats' : '21M BTC'}
                                         </span>
                                     </>
                                 )}
@@ -723,14 +747,16 @@ export const DcaCalculator = () => {
                                     If you invest {currencyConfig.symbol}{amount.toLocaleString()} every {frequency === 'daily' ? 'day' : frequency === 'biweekly' ? 'two weeks' : frequency.replace('ly', '')} from{' '}
                                     {formatUtc(parseUtcDate(startDate), 'monthYear')} to {formatUtc(parseUtcDate(endDate), 'monthYear')}, you will spend{' '}
                                     {formatCurrency(results.totalInvested)} and accumulate{' '}
-                                    <span className="font-medium text-slate-700 dark:text-slate-200">{results.btcAccumulated < 1 ? results.btcAccumulated.toFixed(6) : results.btcAccumulated.toFixed(4)} BTC</span>{' '}
+                                    <span className="font-medium text-slate-700 dark:text-slate-200">{formatBtcAmount(results.btcAccumulated)}</span>{' '}
                                     (at current prices: {formatCurrency(results.currentValue)}).
                                 </>
                             ) : (
                                 <>
                                     If you had invested {currencyConfig.symbol}{amount.toLocaleString()} every {frequency === 'daily' ? 'day' : frequency === 'biweekly' ? 'two weeks' : frequency.replace('ly', '')} from{' '}
                                     {formatUtc(parseUtcDate(startDate), 'monthYear')} to {formatUtc(parseUtcDate(endDate), 'monthYear')}, you would have spent{' '}
-                                    {formatCurrency(results.totalInvested)} and your Bitcoin would now be worth{' '}
+                                    {formatCurrency(results.totalInvested)}, stacked{' '}
+                                    <span className="font-medium text-slate-700 dark:text-slate-200">{formatBtcAmount(results.btcAccumulated)}</span>,{' '}
+                                    and it would now be worth{' '}
                                     <span className="font-medium text-slate-700 dark:text-slate-200">{formatCurrency(results.currentValue)}</span>{' '}
                                     &mdash; a <span className={clsx("font-medium", isProfit ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400")}>{results.roi.toFixed(1)}% return</span>.
                                 </>
@@ -838,13 +864,13 @@ export const DcaCalculator = () => {
                     )}
 
                     {/* Chart */}
-                    <DcaChart data={results.breakdown} unit={unit} />
+                    <DcaChart data={results.breakdown} unit={denomination} />
 
                     {/* Ad Slot (after the chart — never between the form and its results) */}
                     <AdSlot className="min-h-[100px] flex justify-center" />
 
                     {/* Transaction Table */}
-                    <TransactionTable breakdown={results.breakdown} unit={unit} />
+                    <TransactionTable breakdown={results.breakdown} unit={denomination} />
 
                     {/* Plan-vs-plan comparison */}
                     {priceMode === 'api' && !dateError && (
@@ -872,7 +898,7 @@ export const DcaCalculator = () => {
                         endDate={endDate}
                         amount={amountUsd}
                         frequency={frequency}
-                        unit={unit}
+                        unit={denomination}
                     />
 
                     {/* Unit Bias Calculator */}
@@ -884,9 +910,12 @@ export const DcaCalculator = () => {
                         currentValue={results.currentValue}
                         roi={results.roi}
                         btcAccumulated={results.btcAccumulated}
-                        unit={unit}
+                        unit={denomination}
                         startDate={startDate}
                         endDate={endDate}
+                        amount={amount}
+                        frequency={frequency}
+                        feePercentage={feePercentage}
                     />
 
                     {/* FIRE Calculator */}
@@ -897,6 +926,14 @@ export const DcaCalculator = () => {
                         amount={amountUsd}
                         frequency={frequency}
                     />
+
+                    {/* Drawdown / spend-down planner */}
+                    {livePrice && results.btcAccumulated > 0 && (
+                        <DrawdownCalculator
+                            btcAccumulated={results.btcAccumulated}
+                            livePrice={livePrice}
+                        />
+                    )}
 
                     {/* Cost Basis Tracker */}
                     <CostBasisTracker

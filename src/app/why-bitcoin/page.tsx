@@ -350,8 +350,8 @@ export default function WhyBitcoinPage() {
                             <p className={cardBody}>
                                 Since 2020 the US M2 money supply expanded by trillions of dollars, and similar expansions happened
                                 worldwide. Bitcoin&apos;s issuance schedule did not react at all — it cannot. That indifference to
-                                policy is the actual product being sold, and it is why the calculator can overlay M2 against your
-                                results.
+                                policy is the actual product being sold, and the calculator&apos;s inflation-adjusted view shows what
+                                it did to your purchasing power either way.
                             </p>
                         </div>
                         <div className={cardClass}>

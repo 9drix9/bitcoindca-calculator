@@ -488,52 +488,9 @@ export async function getBitcoinDominance(): Promise<{
     }
 }
 
-export async function getM2Data(from: number, to: number): Promise<[number, number][] | null> {
-    const apiKey = process.env.FRED_API_KEY;
-    if (!apiKey) return null;
-
-    const cacheKey = `m2_${from}_${to}`;
-
-    const cached = memoryCache.get(cacheKey);
-    if (cached) {
-        const age = differenceInMinutes(Date.now(), cached.timestamp);
-        if (age < 1440) { // 24h cache for M2 (monthly data)
-            return cached.data;
-        }
-    }
-
-    try {
-        const startDate = new Date(from).toISOString().split('T')[0];
-        const endDate = new Date(to).toISOString().split('T')[0];
-        const url = `https://api.stlouisfed.org/fred/series/observations?series_id=M2SL&api_key=${apiKey}&file_type=json&observation_start=${startDate}&observation_end=${endDate}`;
-
-        const response = await fetch(url, {
-            next: { revalidate: 86400 }
-        });
-
-        if (!response.ok) return null;
-
-        const json = await response.json();
-        if (!json.observations || !Array.isArray(json.observations)) return null;
-
-        const data: [number, number][] = [];
-        for (const obs of json.observations) {
-            const dateTs = new Date(obs.date).getTime();
-            const value = parseFloat(obs.value);
-            if (!isNaN(dateTs) && !isNaN(value) && value > 0) {
-                data.push([dateTs, value]);
-            }
-        }
-
-        if (data.length === 0) return null;
-
-        data.sort((a, b) => a[0] - b[0]);
-        memoryCache.set(cacheKey, { timestamp: Date.now(), data });
-        return data;
-    } catch {
-        return null;
-    }
-}
+// getM2Data was removed along with the chart's M2 overlay: normalizing M2 onto the
+// portfolio's axis implied a correlation the data does not support. FRED is still
+// used for CPI (getCpiData above).
 
 export async function getPurchasingPowerData(): Promise<{
     cpiStart: number;

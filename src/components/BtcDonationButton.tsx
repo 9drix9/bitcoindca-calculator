@@ -1,38 +1,83 @@
 'use client';
 
-import { useState, useCallback } from 'react';
-import { Copy, Check } from 'lucide-react';
+import { useState, useCallback, useRef, useEffect } from 'react';
+import { Copy, Check, Zap } from 'lucide-react';
 
 const BTC_ADDRESS = 'bc1qg9vdwfcn2c4wv6dtfvhjd4j3fmq2kzhrt6cq6k';
 
-export const BtcDonationButton = () => {
-    const [copied, setCopied] = useState(false);
+// Lightning address (e.g. "you@walletofsatoshi.com"). Set NEXT_PUBLIC_LIGHTNING_ADDRESS
+// in the deployment environment to enable the Lightning option; when unset, the
+// Lightning row simply does not render rather than showing a placeholder nobody can pay.
+const LIGHTNING_ADDRESS = process.env.NEXT_PUBLIC_LIGHTNING_ADDRESS?.trim();
 
-    const handleCopy = useCallback(async () => {
-        try {
-            await navigator.clipboard.writeText(BTC_ADDRESS);
-            setCopied(true);
-            setTimeout(() => setCopied(false), 1500);
-        } catch {
-            // Fallback: do nothing
-        }
+const truncate = (value: string, lead = 6, tail = 6) =>
+    value.length <= lead + tail + 1 ? value : `${value.slice(0, lead)}…${value.slice(-tail)}`;
+
+type Target = 'onchain' | 'lightning';
+
+export const BtcDonationButton = () => {
+    const [copied, setCopied] = useState<Target | null>(null);
+    const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    useEffect(() => () => {
+        if (timerRef.current) clearTimeout(timerRef.current);
     }, []);
 
+    const handleCopy = useCallback(async (target: Target, value: string) => {
+        try {
+            await navigator.clipboard.writeText(value);
+            setCopied(target);
+        } catch {
+            return; // insecure context or denied — leave the visible address selectable
+        }
+        if (timerRef.current) clearTimeout(timerRef.current);
+        timerRef.current = setTimeout(() => setCopied(null), 1500);
+    }, []);
+
+    const rowClass = 'flex items-center gap-1';
+    const buttonClass =
+        'inline-flex items-center justify-center w-11 h-11 -my-3 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-slate-500 dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-300';
+    const codeClass = 'text-xs text-slate-500 dark:text-slate-400 font-mono';
+
     return (
-        <div className="flex items-center gap-1">
-            <code className="text-xs text-slate-500 dark:text-slate-400 font-mono">
-                bc1qg9...t6cq6k
-            </code>
-            <button
-                onClick={handleCopy}
-                className="inline-flex items-center justify-center w-11 h-11 -my-3 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-slate-500 dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
-                title={copied ? 'Address copied' : 'Copy BTC address'}
-                aria-label={copied ? 'Bitcoin address copied' : 'Copy BTC donation address'}
-            >
-                {copied ? <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-            </button>
-            <span role="status" className="sr-only">
-                {copied ? 'Bitcoin address copied to clipboard' : ''}
+        <div className="space-y-1">
+            {LIGHTNING_ADDRESS && (
+                <div className={rowClass}>
+                    <Zap className="w-3 h-3 text-amber-500 shrink-0" aria-hidden="true" />
+                    <code className={codeClass}>{truncate(LIGHTNING_ADDRESS, 8, 8)}</code>
+                    <button
+                        onClick={() => handleCopy('lightning', LIGHTNING_ADDRESS)}
+                        className={buttonClass}
+                        title={copied === 'lightning' ? 'Lightning address copied' : 'Copy Lightning address'}
+                        aria-label={copied === 'lightning' ? 'Lightning address copied' : 'Copy Lightning donation address'}
+                    >
+                        {copied === 'lightning'
+                            ? <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                            : <Copy className="w-3.5 h-3.5" />}
+                    </button>
+                </div>
+            )}
+
+            <div className={rowClass}>
+                <code className={codeClass}>{truncate(BTC_ADDRESS)}</code>
+                <button
+                    onClick={() => handleCopy('onchain', BTC_ADDRESS)}
+                    className={buttonClass}
+                    title={copied === 'onchain' ? 'Address copied' : 'Copy BTC address'}
+                    aria-label={copied === 'onchain' ? 'Bitcoin address copied' : 'Copy on-chain BTC donation address'}
+                >
+                    {copied === 'onchain'
+                        ? <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                        : <Copy className="w-3.5 h-3.5" />}
+                </button>
+            </div>
+
+            <span role="status" aria-live="polite" className="sr-only">
+                {copied === 'lightning'
+                    ? 'Lightning address copied to clipboard'
+                    : copied === 'onchain'
+                        ? 'Bitcoin address copied to clipboard'
+                        : ''}
             </span>
         </div>
     );

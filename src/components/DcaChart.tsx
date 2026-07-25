@@ -17,7 +17,7 @@ import {
 import { DcaBreakdownItem, HistoricalEvent } from '@/types';
 import { Camera } from 'lucide-react';
 import clsx from 'clsx';
-import { useCurrency } from '@/context/CurrencyContext';
+import { useCurrency, Denomination } from '@/context/CurrencyContext';
 import { formatUtc } from '@/utils/dates';
 import { Card } from '@/components/ui/Card';
 
@@ -25,7 +25,8 @@ type ChartTab = 'portfolio' | 'price';
 
 interface DcaChartProps {
     data: DcaBreakdownItem[];
-    unit?: 'BTC' | 'SATS';
+    /** Overrides the site-wide denomination preference when supplied. */
+    unit?: Denomination;
     /**
      * Accepted for backward compatibility with the parent call site but intentionally
      * unused: the old M2 overlay min-max-normalized money supply onto the portfolio's
@@ -205,7 +206,7 @@ function ChartTooltip({
     payload?: TooltipPayloadEntry[];
     label?: string | number;
     tab: ChartTab;
-    unit: 'BTC' | 'SATS';
+    unit: Denomination;
     colors: SeriesColors;
 }) {
     const { formatCurrency, formatBtc, formatSats } = useCurrency();
@@ -268,8 +269,10 @@ function ChartTooltip({
 const toggleLabelClass =
     'flex cursor-pointer select-none items-center gap-1.5 whitespace-nowrap text-[11px] text-slate-500 dark:text-slate-400';
 
-export const DcaChart = memo(function DcaChart({ data, unit = 'BTC' }: DcaChartProps) {
-    const { currencyConfig, convertFromUsd } = useCurrency();
+export const DcaChart = memo(function DcaChart({ data, unit }: DcaChartProps) {
+    const { currencyConfig, convertFromUsd, denomination } = useCurrency();
+    // Falls back to the site-wide preference when the call site doesn't pin a unit.
+    const activeUnit: Denomination = unit ?? denomination;
     const chartRef = useRef<HTMLDivElement>(null);
     const [tab, setTab] = useState<ChartTab>('portfolio');
     const [showPowerLaw, setShowPowerLaw] = useState(false);
@@ -530,7 +533,7 @@ export const DcaChart = memo(function DcaChart({ data, unit = 'BTC' }: DcaChartP
                                 axisLine={false}
                             />
                             <Tooltip
-                                content={<ChartTooltip tab={tab} unit={unit} colors={colors} />}
+                                content={<ChartTooltip tab={tab} unit={activeUnit} colors={colors} />}
                                 cursor={{ stroke: colors.cursor, strokeWidth: 1 }}
                             />
                             {showLegend && (

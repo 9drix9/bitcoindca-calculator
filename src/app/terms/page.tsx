@@ -79,7 +79,7 @@ export default function TermsPage() {
                     <li><strong>alternative.me:</strong> For the Fear &amp; Greed Index</li>
                     <li><strong>blockchain.info:</strong> For circulating supply data</li>
                     <li><strong>frankfurter.app:</strong> For ECB foreign exchange rates (currency conversion)</li>
-                    <li><strong>Google AdSense &amp; A-ADS:</strong> For serving advertisements</li>
+                    <li><strong>A-ADS:</strong> For serving advertisements (Bitcoin-native, cookieless)</li>
                 </ul>
                 <p>
                     We are not responsible for the availability, accuracy, or practices of these third-party services.

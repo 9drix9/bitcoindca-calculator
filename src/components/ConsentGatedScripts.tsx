@@ -77,11 +77,9 @@ export const ConsentGatedScripts = () => {
             <Script id="google-ads-pageview" strategy="afterInteractive">
                 {`gtag('event', 'conversion', {'send_to': 'AW-17927251983/1XdmCPrtgfIbEI_QsORC'});`}
             </Script>
-            <Script
-                src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7196704678615727"
-                crossOrigin="anonymous"
-                strategy="afterInteractive"
-            />
+            {/* Google AdSense was removed deliberately: surveillance display advertising
+                contradicts this site's stated privacy position. Ad revenue comes from
+                A-ADS, which is Bitcoin-native and does not track visitors. */}
         </>
     );
 };

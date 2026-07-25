@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useRef } from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { Menu } from 'lucide-react';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { TopNav } from './TopNav';
@@ -12,6 +13,11 @@ export function ResponsiveNav() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const closeDrawer = useCallback(() => setDrawerOpen(false), []);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
+  const pathname = usePathname();
+
+  // The /embed widget renders inside third-party iframes: no site chrome.
+  // Exact match only — /embed-guide is a normal page and keeps its navigation.
+  if (pathname === '/embed' || pathname?.startsWith('/embed/')) return null;
 
   return (
     <>

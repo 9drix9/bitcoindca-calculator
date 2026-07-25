@@ -5,7 +5,11 @@ import { getFxRates } from '@/app/actions';
 
 export type CurrencyCode = 'USD' | 'EUR' | 'GBP' | 'CAD' | 'AUD' | 'JPY';
 
+/** Display denomination for every bitcoin amount on the site. Display only — all math stays in BTC. */
+export type Denomination = 'BTC' | 'SATS';
+
 const CURRENCY_STORAGE_KEY = 'currency-preference';
+const DENOMINATION_STORAGE_KEY = 'denomination-preference';
 
 export interface CurrencyConfig {
     code: CurrencyCode;
@@ -34,6 +38,11 @@ interface CurrencyContextType {
     /** Consistent BTC display: 4 decimals ≥1 BTC, 8 below, trailing zeros trimmed */
     formatBtc: (btc: number) => string;
     formatSats: (btc: number) => string;
+    /** Persisted site-wide display denomination (BTC vs sats). */
+    denomination: Denomination;
+    setDenomination: (denomination: Denomination) => void;
+    /** Renders a BTC amount in the active denomination (formatBtc or formatSats). */
+    formatBtcAmount: (btc: number) => string;
 }
 
 const CurrencyContext = createContext<CurrencyContextType | undefined>(undefined);
@@ -52,12 +61,26 @@ const readStoredCurrency = (): CurrencyCode | null => {
     }
 };
 
+const readStoredDenomination = (): Denomination | null => {
+    try {
+        const stored = window.localStorage.getItem(DENOMINATION_STORAGE_KEY);
+        return stored === 'BTC' || stored === 'SATS' ? stored : null;
+    } catch {
+        return null; // private mode
+    }
+};
+
 export const CurrencyProvider = ({ children }: { children: ReactNode }) => {
     // Persisted preference read via the external-store pattern (hydration-safe:
     // the server snapshot is null → USD, the client re-renders with the stored value).
     const storedCurrency = useSyncExternalStore(subscribeStorage, readStoredCurrency, () => null);
     const [override, setOverride] = useState<CurrencyCode | null>(null);
     const currency: CurrencyCode = override ?? storedCurrency ?? 'USD';
+
+    // Same hydration-safe pattern for the BTC/sats display denomination.
+    const storedDenomination = useSyncExternalStore(subscribeStorage, readStoredDenomination, () => null);
+    const [denominationOverride, setDenominationOverride] = useState<Denomination | null>(null);
+    const denomination: Denomination = denominationOverride ?? storedDenomination ?? 'BTC';
 
     // Hardcoded rates are the fallback; live ECB rates replace them after mount.
     const [liveRates, setLiveRates] = useState<Partial<Record<CurrencyCode, number>>>({});
@@ -73,6 +96,11 @@ export const CurrencyProvider = ({ children }: { children: ReactNode }) => {
     const setCurrency = useCallback((code: CurrencyCode) => {
         setOverride(code);
         try { window.localStorage.setItem(CURRENCY_STORAGE_KEY, code); } catch { /* private mode */ }
+    }, []);
+
+    const setDenomination = useCallback((next: Denomination) => {
+        setDenominationOverride(next);
+        try { window.localStorage.setItem(DENOMINATION_STORAGE_KEY, next); } catch { /* private mode */ }
     }, []);
 
     const currencies = useMemo(
@@ -120,6 +148,12 @@ export const CurrencyProvider = ({ children }: { children: ReactNode }) => {
         return `${Math.floor(btc * 100_000_000).toLocaleString('en-US')} sats`;
     }, []);
 
+    // Display-only: never route a sats figure through formatCurrency.
+    const formatBtcAmount = useCallback(
+        (btc: number) => (denomination === 'SATS' ? formatSats(btc) : formatBtc(btc)),
+        [denomination, formatBtc, formatSats]
+    );
+
     const formatCompact = useCallback(
         (usdValue: number) => {
             const converted = usdValue * currencyConfig.rate;
@@ -150,8 +184,11 @@ export const CurrencyProvider = ({ children }: { children: ReactNode }) => {
             convertFromUsd,
             formatBtc,
             formatSats,
+            denomination,
+            setDenomination,
+            formatBtcAmount,
         }),
-        [currency, currencyConfig, currencies, setCurrency, formatCurrency, formatCompact, convertFromUsd, formatBtc, formatSats]
+        [currency, currencyConfig, currencies, setCurrency, formatCurrency, formatCompact, convertFromUsd, formatBtc, formatSats, denomination, setDenomination, formatBtcAmount]
     );
 
     return (
