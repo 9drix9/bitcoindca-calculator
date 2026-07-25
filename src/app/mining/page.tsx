@@ -6,7 +6,7 @@ import { getBlockHeight } from '@/app/actions';
 
 export const metadata: Metadata = {
     title: 'How Bitcoin Mining Works',
-    description: 'What miners actually compute, how difficulty and halvings control supply, what a 51% attack can and cannot do, and the honest numbers on mining energy use.',
+    description: 'What miners compute, how difficulty and halvings hold issuance to schedule, what a 51% attack can and cannot do, and the honest numbers on mining energy use.',
     keywords: [
         'bitcoin mining explained',
         'how bitcoin mining works',
@@ -24,7 +24,7 @@ export const metadata: Metadata = {
     },
     openGraph: {
         title: 'How Bitcoin Mining Works',
-        description: 'Hashing, difficulty, pools, ASIC economics, the security budget, and the energy debate — explained straight, with the common myths corrected.',
+        description: 'Hashing, difficulty, pools, ASIC economics, the security budget, the energy debate. Explained straight, with the common myths corrected.',
         type: 'article',
         url: '/mining',
         siteName: 'Bitcoin DCA Calculator',
@@ -33,7 +33,7 @@ export const metadata: Metadata = {
     twitter: {
         card: 'summary_large_image',
         title: 'How Bitcoin Mining Works',
-        description: 'Hashing, difficulty, pools, ASIC economics, the security budget, and the energy debate — explained straight, with the common myths corrected.',
+        description: 'Hashing, difficulty, pools, ASIC economics, the security budget, the energy debate. Explained straight, with the common myths corrected.',
         creator: '@9drix9',
     },
 };
@@ -51,7 +51,7 @@ const articleJsonLd = {
     "@context": "https://schema.org",
     "@type": "Article",
     "headline": "How Bitcoin Mining Works",
-    "description": "What miners actually compute, how difficulty and halvings control supply, what a 51% attack can and cannot do, and the honest numbers on mining energy use.",
+    "description": "What miners compute, how difficulty and halvings hold issuance to schedule, what a 51% attack can and cannot do, and the honest numbers on mining energy use.",
     "author": {
         "@type": "Organization",
         "name": "Bitcoin DCA Calculator",
@@ -67,46 +67,46 @@ const articleJsonLd = {
         "@id": "https://btcdollarcostaverage.com/mining"
     },
     "datePublished": "2026-02-05",
-    // Static date — update when the content actually changes. Keep in sync with sitemap.ts.
+    // Static date. Update when the content changes, and keep in sync with sitemap.ts.
     "dateModified": "2026-07-25",
 };
 
 const faqs = [
     {
         q: 'Is Bitcoin mining still profitable at home?',
-        a: 'Almost never at residential electricity prices. A current-generation machine draws roughly 3.5 kW, or about 2,500 kWh a month — around $430 at a typical US residential rate near $0.17/kWh. Industrial miners buy the same power for $0.03 to $0.05 per kWh, so their cost per bitcoin is three to four times lower, and network difficulty is set by their economics rather than yours. Home mining can make sense as a hobby, as a heat source, or where power is unusually cheap, but treated purely as an investment it is normally beaten by simply buying bitcoin.',
+        a: 'Almost never, at residential electricity prices. A current-generation machine draws roughly 3.5 kW, or about 2,500 kWh a month. That runs around $430 at a typical US residential rate near $0.17/kWh. Industrial miners buy the same power for $0.03 to $0.05 per kWh, so their cost per bitcoin is three to four times lower, and network difficulty is set by their economics, not yours. Home mining can still make sense as a hobby, as a heat source, or where power is unusually cheap. Treated purely as an investment, it is normally beaten by buying bitcoin outright.',
     },
     {
         q: 'What is hashprice?',
-        a: 'Hashprice is mining revenue per unit of hashrate per day, usually quoted in dollars per petahash per day. It compresses bitcoin\'s price, network difficulty, and transaction fees into a single number, and it is what miners actually underwrite hardware purchases and power contracts against. It falls whenever difficulty grows faster than price, spikes when fees surge, and drops by roughly half overnight at each halving.',
+        a: 'Hashprice is mining revenue per unit of hashrate per day, usually quoted in dollars per petahash per day. It compresses bitcoin\'s price, network difficulty and transaction fees into one number, and it is the figure miners underwrite hardware purchases and power contracts against. It falls whenever difficulty grows faster than price, and it spikes when fees surge. Each halving cuts it roughly in half overnight.',
     },
     {
         q: 'Do mining costs put a floor under Bitcoin\'s price?',
-        a: 'No — the causation runs the other way. Difficulty re-targets about every two weeks, so when the price falls, unprofitable miners switch off, difficulty drops, and the cost of producing a bitcoin falls to meet the price. Mining cost tracks price rather than supporting it. The real, observable dynamic is miner capitulation: stressed miners sell production and reserves, which adds supply during weakness rather than removing it.',
+        a: 'No. The causation runs the other way. Difficulty re-targets about every two weeks, so when the price falls, unprofitable miners switch off, difficulty drops, and the cost of producing a bitcoin falls to meet the price. Mining cost tracks price rather than supporting it. What you can observe instead is miner capitulation: stressed miners sell production and reserves, which adds supply during weakness rather than removing it.',
     },
     {
         q: 'What happens when all 21 million bitcoin are mined?',
-        a: 'The last fraction of a bitcoin is expected to be issued around 2140, after which miners earn only transaction fees. Whether fees alone can fund enough security is the most interesting genuinely open question in Bitcoin. It depends on how much demand there is for on-chain settlement decades from now, and anyone who tells you it is definitely fine — or definitely fatal — is claiming to know something nobody knows.',
+        a: 'The last fraction of a bitcoin is expected to be issued around 2140, after which miners earn only transaction fees. Whether fees alone can fund enough security is the most interesting open question in Bitcoin. It depends on how much demand there is for on-chain settlement decades from now. Anyone who tells you it is definitely fine, or definitely fatal, is claiming to know something nobody knows.',
     },
     {
         q: 'Does Bitcoin mining waste energy?',
-        a: 'Mining uses real energy on purpose: that expenditure is what makes rewriting history expensive. Model-based estimates put annual consumption somewhere around 100 to 200 TWh, roughly 0.3% to 0.6% of global electricity, though nobody meters the network and the estimates disagree widely. Miners chase the cheapest power available, which pushes them toward stranded, curtailed, off-peak, and flared energy, and some are paid by grid operators to shut down during demand peaks. Whether that use is justified is a value judgment about what you think the network is for, not something the numbers settle.',
+        a: 'Mining uses real energy on purpose. That expenditure is what makes rewriting history expensive. Model-based estimates put annual consumption somewhere around 100 to 200 TWh, roughly 0.3% to 0.6% of global electricity, though nobody meters the network and the estimates disagree widely. Miners chase the cheapest power they can find, which pushes them toward stranded, curtailed, off-peak and flared energy; some are paid by grid operators to shut down during demand peaks. Whether that use is justified is a value judgment about what you think the network is for. The numbers do not settle it.',
     },
     {
         q: 'Can a government ban Bitcoin mining?',
-        a: 'Within its own borders, yes, and several have. China banned mining in mid-2021 and more than half the network\'s hashrate went offline within weeks. Difficulty adjusted downward by about 28% — the largest drop on record — blocks kept being produced, and the hashrate reappeared in the United States, Kazakhstan, Russia and elsewhere over the following year. A national ban relocates mining rather than stopping it, because mining needs only cheap power and an internet connection.',
+        a: 'Within its own borders, yes, and several have. China banned mining in mid-2021 and more than half the network\'s hashrate went offline within weeks. Difficulty adjusted downward by about 28%, the largest drop on record. Blocks kept being produced throughout, and the hashrate reappeared in the United States, Kazakhstan, Russia and elsewhere over the following year. A national ban relocates mining rather than stopping it, because mining needs only cheap power and an internet connection.',
     },
     {
         q: 'Could someone with 51% of the hashrate steal my bitcoin?',
-        a: 'No. A majority attacker can reverse its own recent transactions, censor transactions, and reorganize recent blocks. It cannot spend coins it does not hold the private keys for, cannot create coins outside the issuance schedule, and cannot raise the 21 million cap. Every full node checks those rules independently and rejects invalid blocks no matter how much work sits behind them. Coins in a wallet you control are not at risk from hashrate.',
+        a: 'No. A majority attacker can reverse its own recent transactions, censor transactions and reorganize recent blocks. What it cannot do is spend coins whose private keys it does not hold, create coins outside the issuance schedule, or raise the 21 million cap. Every full node checks those rules independently and rejects invalid blocks no matter how much work sits behind them. Coins in a wallet you control are not at risk from hashrate.',
     },
     {
         q: 'Why can\'t newly mined bitcoin be spent right away?',
-        a: 'Newly issued coins are subject to a 100-block maturity rule, roughly 16 to 17 hours. If a competing chain later orphans that block, the reward disappears with it, so the rule prevents anyone from spending coins that a chain reorganization might erase.',
+        a: 'Newly issued coins are subject to a 100-block maturity rule, roughly 16 to 17 hours. If a competing chain later orphans that block, the reward disappears with it. The rule stops anyone from spending coins that a chain reorganization might erase.',
     },
     {
         q: 'Can I mine bitcoin with a normal computer or a gaming GPU?',
-        a: 'Not usefully, and not for well over a decade. Mining is done by ASICs — chips that do nothing but SHA-256 hashing — and they outperform general-purpose CPUs and GPUs by many orders of magnitude. Software offering to mine bitcoin on an ordinary computer is either mining a different coin or is malware.',
+        a: 'Not usefully, and not for well over a decade. Mining is done by ASICs: chips that do nothing but SHA-256 hashing. They outperform general-purpose CPUs and GPUs by many orders of magnitude. Software offering to mine bitcoin on an ordinary computer is either mining a different coin or is malware.',
     },
 ];
 
@@ -160,7 +160,7 @@ const HALVING_DATA = [
 const GOMINING_DATA = {
     name: 'GoMining',
     tagline: 'Hashrate exposure without owning hardware',
-    description: 'GoMining sells tokenized shares of hashrate hosted in its own facilities, paying holders a share of mining output in bitcoin. You are buying exposure to mining revenue — not bitcoin itself — so your return depends on difficulty, price, and the operator staying solvent.',
+    description: 'GoMining sells tokenized shares of hashrate hosted in its own facilities, paying holders a share of mining output in bitcoin. What you buy is exposure to mining revenue, not bitcoin itself, so your return depends on difficulty, on price, and on the operator staying solvent.',
     claims: ['No equipment to buy or maintain', 'Payouts made in bitcoin', 'Entry from roughly $30', 'Hashrate hosted in operator-run data centers'],
     price: 'From ~$30',
     href: 'https://gomining.com/?ref=v56m_',
@@ -202,7 +202,7 @@ function subsidyAtHeight(height: number): number {
 
 /**
  * Total BTC issued by a given height. Includes the genesis block's 50 BTC,
- * which is famously unspendable — so the spendable supply is slightly lower.
+ * which is famously unspendable, so the spendable supply is slightly lower.
  */
 function issuedSupply(height: number): number {
     let total = 0;
@@ -217,7 +217,7 @@ function issuedSupply(height: number): number {
 
 export default async function MiningPage() {
     // Fetch current block height to determine which halvings have occurred.
-    // || (not ??) so a null OR zero height falls back — height 0 would wrongly
+    // || (not ??) so a null OR zero height falls back. Height 0 would wrongly
     // mark every past halving as future.
     const currentBlockHeight = (await getBlockHeight()) || FALLBACK_BLOCK_HEIGHT;
 
@@ -263,10 +263,10 @@ export default async function MiningPage() {
                         How Bitcoin <span className="text-amber-500">Mining</span> Works
                     </h1>
                     <p className="text-base sm:text-lg text-slate-600 dark:text-slate-300 max-w-2xl mx-auto leading-relaxed">
-                        Mining is how new bitcoin is issued and how the transaction history is made expensive to rewrite.
-                        This page covers what miners literally compute, how difficulty and halvings keep issuance on schedule,
-                        what an attacker with a majority of hashrate can and cannot do, and the energy numbers as they
-                        actually stand.
+                        Mining is how new bitcoin gets issued, and how the transaction history is made expensive to rewrite.
+                        This page covers what miners literally compute, how difficulty and halvings hold issuance to schedule,
+                        what an attacker with a majority of hashrate can and cannot do, and what is and is not known about
+                        the energy use.
                     </p>
                     <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 max-w-2xl mx-auto">
                         It also corrects the most repeated myth in mining commentary: that production cost puts a floor under the price.
@@ -284,16 +284,16 @@ export default async function MiningPage() {
                     ))}
                 </section>
 
-                {/* 1. What miners actually compute */}
+                {/* 1. What miners compute */}
                 <section className="space-y-4">
                     <div className="flex items-center gap-2 sm:gap-3">
                         <Hash className={sectionIcon} />
-                        <h2 className={sectionHead}>What Miners Are Actually Computing</h2>
+                        <h2 className={sectionHead}>What Miners Are Computing</h2>
                     </div>
                     <div className={prose}>
                         <p>
-                            Mining is usually described as &ldquo;solving complex math problems.&rdquo; That is misleading. There is
-                            nothing to solve. Miners are guessing, extremely fast, at an enormous scale.
+                            Mining gets described as &ldquo;solving complex math problems.&rdquo; That&apos;s misleading. Nothing is
+                            being solved. Miners are guessing, very fast, at enormous scale.
                         </p>
                         <p>
                             Every candidate block starts with an 80-byte <strong className="text-slate-800 dark:text-slate-200">block
@@ -302,27 +302,27 @@ export default async function MiningPage() {
                             header twice, producing a 256-bit number, and checks one thing: is that number below the target?
                         </p>
                         <p>
-                            Almost always it is not. So the miner changes something and hashes again. The nonce gives about 4.3
-                            billion attempts, which a modern machine exhausts in a fraction of a second — so miners also vary the{' '}
+                            Almost always it isn&apos;t. So the miner changes something and hashes again. The nonce gives about 4.3
+                            billion attempts, which a modern machine burns through in a fraction of a second, so miners also vary the{' '}
                             <strong className="text-slate-800 dark:text-slate-200">extranonce</strong> inside the coinbase transaction
-                            (which changes the Merkle root, and therefore the entire header), roll the timestamp, and use spare bits
-                            in the version field. There is no strategy and no shortcut. SHA-256 output is unpredictable by design,
-                            so the only method is to try.
+                            (which changes the Merkle root, and with it the entire header), roll the timestamp, and use spare bits
+                            in the version field. No strategy helps. SHA-256 output is unpredictable by design, so the only method
+                            is to try.
                         </p>
                         <div className="grid sm:grid-cols-2 gap-3 sm:gap-4">
                             <div className={cardClass}>
                                 <h3 className={cardTitle}>Finding a block: astronomically hard</h3>
                                 <p className={cardBody}>
-                                    Across the whole network, miners are running on the order of a sextillion (10<sup>21</sup>) hashes
-                                    every second — and it still takes about ten minutes for one of them to get lucky. Every failed guess
-                                    consumed real electricity that nobody gets back.
+                                    Across the whole network, miners run on the order of a sextillion (10<sup>21</sup>) hashes every
+                                    second, and it still takes about ten minutes for one of them to get lucky. Every failed guess burned
+                                    real electricity that nobody gets back.
                                 </p>
                             </div>
                             <div className={cardClass}>
-                                <h3 className={cardTitle}>Checking a block: instant</h3>
+                                <h3 className={cardTitle}>Nobody has to trust the result</h3>
                                 <p className={cardBody}>
                                     Verification is two SHA-256 operations and one numeric comparison. A phone does it in microseconds.
-                                    Nobody has to trust the miner, replay the search, or take anyone&apos;s word for anything.
+                                    You never have to trust the miner, replay the search, or take anyone&apos;s word for anything.
                                 </p>
                             </div>
                         </div>
@@ -330,8 +330,8 @@ export default async function MiningPage() {
                             <p className="text-sm sm:text-base text-slate-700 dark:text-slate-300 leading-relaxed">
                                 <strong className="text-slate-800 dark:text-slate-200">That asymmetry is the security model.</strong> Each
                                 block header commits to the one before it, so changing an old transaction invalidates every block built on
-                                top of it. Rewriting history means redoing all that work faster than the entire rest of the network is
-                                extending the chain — while anyone in the world can detect the fraud for free.
+                                top of it. Rewriting history means redoing all that work faster than the rest of the network extends the
+                                chain, while anyone in the world can detect the fraud for free.
                             </p>
                         </div>
                     </div>
@@ -345,32 +345,32 @@ export default async function MiningPage() {
                     </div>
                     <div className={prose}>
                         <p>
-                            Bitcoin targets one block roughly every ten minutes regardless of how much computing power is pointed at
-                            it. It achieves that with a single automatic rule:{' '}
-                            <strong className="text-slate-800 dark:text-slate-200">every 2,016 blocks — about two weeks — every node
-                            independently recalculates the target</strong> from how long those 2,016 blocks actually took. Faster than
-                            two weeks, and the target tightens. Slower, and it loosens.
+                            Bitcoin targets one block roughly every ten minutes, no matter how much computing power is pointed at it.
+                            One automatic rule does all the work:{' '}
+                            <strong className="text-slate-800 dark:text-slate-200">every 2,016 blocks (about two weeks) every node
+                            independently recalculates the target</strong> from how long those 2,016 blocks took. Faster than two
+                            weeks, and the target tightens. Slower, and it loosens.
                         </p>
                         <div className="grid sm:grid-cols-3 gap-3 sm:gap-4">
                             <div className="bg-emerald-50 dark:bg-emerald-950/20 p-4 sm:p-5 rounded-xl border border-emerald-200 dark:border-emerald-800/50">
                                 <h3 className="text-sm sm:text-base font-bold text-emerald-800 dark:text-emerald-300 mb-2">Hashrate joins</h3>
                                 <p className={cardBody}>
-                                    Blocks arrive early, difficulty rises at the next re-target, and block times return to ten minutes.
-                                    The new machines earn a smaller share, not extra coins.
+                                    Blocks arrive early, difficulty rises at the next re-target, and block times settle back to ten
+                                    minutes. The new machines earn a smaller share of the same issuance, not extra coins.
                                 </p>
                             </div>
                             <div className="bg-rose-50 dark:bg-rose-950/20 p-4 sm:p-5 rounded-xl border border-rose-200 dark:border-rose-800/50">
                                 <h3 className="text-sm sm:text-base font-bold text-rose-800 dark:text-rose-300 mb-2">Hashrate leaves</h3>
                                 <p className={cardBody}>
-                                    Blocks slow down, difficulty falls at the next re-target, and block times return to ten minutes.
-                                    The chain never stalls; it just gets cheaper to mine.
+                                    Blocks come slower until the next re-target, which lowers difficulty and pulls block times back to
+                                    ten minutes. The chain never stalls. It just gets cheaper to mine.
                                 </p>
                             </div>
                             <div className={cardClass}>
                                 <h3 className={cardTitle}>Clamped at 4x</h3>
                                 <p className={cardBody}>
                                     A single adjustment can never move difficulty by more than a factor of four in either direction.
-                                    That caps the damage from timestamp manipulation and smooths genuine shocks.
+                                    That caps the damage from timestamp manipulation and smooths out real shocks.
                                 </p>
                             </div>
                         </div>
@@ -378,21 +378,21 @@ export default async function MiningPage() {
                             <strong className="text-slate-800 dark:text-slate-200">This is what makes issuance predictable decades
                             ahead.</strong> The supply schedule is denominated in blocks, not calendar time: the subsidy halves every
                             210,000 blocks, full stop. Difficulty is the mechanism that keeps 210,000 blocks landing close to four
-                            years, no matter how much hashrate arrives. A hundredfold increase in mining power does not produce a
-                            single extra bitcoin — it just makes each block harder to find.
+                            years, no matter how much hashrate arrives. A hundredfold increase in mining power produces no extra
+                            bitcoin at all. It only makes each block harder to find.
                         </p>
                         <div className="bg-slate-100 dark:bg-slate-900/50 p-5 sm:p-6 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-3">
                             <h3 className={cardTitle}>It has been stress-tested</h3>
                             <p className={cardBody}>
                                 In mid-2021 China banned mining outright and more than half the network&apos;s hashrate went dark within
-                                weeks. Blocks slowed noticeably, and the next re-target cut difficulty by roughly 28% — the largest single
-                                drop in Bitcoin&apos;s history. No committee met, no emergency patch shipped, and the chain kept producing
-                                blocks the entire time. The hashrate reappeared elsewhere over the following year.
+                                weeks. Blocks slowed noticeably, and the next re-target cut difficulty by roughly 28%, the largest single
+                                drop in Bitcoin&apos;s history. No committee met. No emergency patch shipped. The chain kept producing
+                                blocks the entire time, and the hashrate reappeared elsewhere over the following year.
                             </p>
                             <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
                                 A detail for the pedants: the original code measures the elapsed time across 2,015 block intervals rather
-                                than 2,016, so the network runs a hair fast. It is one of the oldest known bugs in Bitcoin, left alone
-                                because fixing it would change consensus rules for no practical benefit.
+                                than 2,016, so the network runs a hair fast. It&apos;s one of the oldest known bugs in Bitcoin, left alone
+                                because fixing it would change consensus rules for no practical gain.
                             </p>
                         </div>
                     </div>
@@ -409,19 +409,19 @@ export default async function MiningPage() {
                             Every 210,000 blocks the block subsidy is cut in half. It started at 50 BTC in 2009, then 25 in 2012, 12.5
                             in 2016, 6.25 in 2020, and{' '}
                             <strong className="text-slate-800 dark:text-slate-200">3.125 BTC since block 840,000 on 20 April 2024</strong>.
-                            The next halving takes it to 1.5625 BTC at block 1,050,000, expected around April 2028 — a date estimate,
-                            because the schedule counts blocks, not days.
+                            The next halving takes it to 1.5625 BTC at block 1,050,000, expected around April 2028. That date is an
+                            estimate, because the schedule counts blocks, not days.
                         </p>
 
                         <div className="bg-gradient-to-r from-amber-500 to-amber-600 text-white p-6 sm:p-8 rounded-2xl">
                             <div className="text-xl sm:text-2xl md:text-3xl font-extrabold mb-3">
-                                What the halving actually buys you
+                                What the halving buys you
                             </div>
                             <p className="text-sm sm:text-base text-white/90 leading-relaxed">
                                 Predictability, not a price trigger. Every full node enforces the schedule independently, so issuance
-                                cannot be accelerated by demand, lobbied for, or voted on. That property is checkable today. The popular
-                                claim — that halvings cause bull markets — is far weaker: there have been four of them, prices rose in
-                                the year or so after most, and four observations cannot separate the halving from the macro cycle. They
+                                cannot be accelerated by demand, lobbied for, or voted on. You can check that property today. The popular
+                                claim, that halvings cause bull markets, is much weaker. There have been four of them, prices rose in the
+                                year or so after most, and four observations cannot separate the halving from the macro cycle. Halvings
                                 are also perfectly foreseeable, so markets have years to price each one in.
                             </p>
                         </div>
@@ -465,8 +465,8 @@ export default async function MiningPage() {
                                 </table>
                             </div>
                             <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-                                After 33 halvings the subsidy rounds to zero in integer satoshis, which happens around 2140. Note that
-                                slightly <em>fewer</em> than 21 million will ever be spendable: the genesis block&apos;s 50 BTC can never
+                                After 33 halvings the subsidy rounds to zero in integer satoshis, which happens around 2140. Slightly{' '}
+                                <em>fewer</em> than 21 million will ever be spendable, though. The genesis block&apos;s 50 BTC can never
                                 be moved because of a quirk in the original code, a handful of miners have claimed less than the full
                                 subsidy they were owed, and an unknowable number of coins are permanently lost.
                             </p>
@@ -476,7 +476,7 @@ export default async function MiningPage() {
                             <div className={cardClass}>
                                 <h3 className={cardTitle}>The coinbase transaction</h3>
                                 <p className={cardBody}>
-                                    Every block&apos;s first transaction is the coinbase. It has no inputs — it creates the subsidy out of
+                                    Every block&apos;s first transaction is the coinbase. It has no inputs: it creates the subsidy out of
                                     nothing and sweeps up the fees from every other transaction in the block. It also carries an arbitrary
                                     data field, which is where Satoshi wrote the 3 January 2009 <em>Times</em> headline into the genesis
                                     block. (The exchange named itself after the term, not the other way round.)
@@ -486,8 +486,8 @@ export default async function MiningPage() {
                                 <h3 className={cardTitle}>100-block maturity</h3>
                                 <p className={cardBody}>
                                     Newly mined coins cannot be spent for 100 blocks, about 16 to 17 hours. If a competing chain later
-                                    orphans that block, the reward vanishes with it — so the rule stops anyone from spending coins that a
-                                    reorganization might erase. It is a small detail that shows how carefully the reorg case was thought
+                                    orphans that block, the reward vanishes with it, so the rule stops anyone from spending coins that a
+                                    reorganization might erase. A small detail, and a sign of how carefully the reorg case was thought
                                     through.
                                 </p>
                             </div>
@@ -505,8 +505,8 @@ export default async function MiningPage() {
                         <p>
                             Solo mining is a lottery with brutal odds. A single top-end machine at roughly 250 TH/s is about one part in
                             four million of a network running near a zettahash per second. On average it finds a block once every seventy
-                            years or so — and &ldquo;on average&rdquo; hides the real problem, because the process is memoryless. Your
-                            block is equally likely to arrive tomorrow or in year 200.
+                            years or so, and &ldquo;on average&rdquo; hides the real problem: the process is memoryless. Your block is
+                            equally likely to arrive tomorrow or in year 200.
                         </p>
                         <p>
                             Pools exist to sell you out of that variance. Miners submit <strong className="text-slate-800 dark:text-slate-200">shares</strong>:
@@ -520,17 +520,17 @@ export default async function MiningPage() {
                                 <p className={cardBody}>
                                     Pay-per-share: the pool pays a fixed rate for every valid share, whether or not the pool finds any
                                     blocks that day. FPPS adds an average share of transaction fees on top. The pool absorbs all the
-                                    variance and charges a higher fee for carrying that risk. Revenue is smooth and boring, which is
-                                    exactly what a miner with a power bill wants.
+                                    variance and charges a higher fee for carrying that risk. Revenue comes out smooth and boring, which
+                                    is exactly what a miner with a power bill wants.
                                 </p>
                             </div>
                             <div className={cardClass}>
                                 <h3 className={cardTitle}>PPLNS</h3>
                                 <p className={cardBody}>
                                     Pay-per-last-N-shares: payouts come only out of blocks the pool actually finds, split across the most
-                                    recent N shares. Fees are lower, income is lumpier, and loyalty is rewarded — hopping between pools
-                                    forfeits your position in the share window. Over the long run PPLNS and PPS converge; they differ in
-                                    who holds the risk in the meantime.
+                                    recent N shares. Fees are lower and income is lumpier. Loyalty gets rewarded, since hopping between
+                                    pools forfeits your position in the share window. Over the long run PPLNS and PPS converge; they
+                                    differ in who holds the risk in the meantime.
                                 </p>
                             </div>
                         </div>
@@ -543,8 +543,8 @@ export default async function MiningPage() {
                             </p>
                             <p className={cardBody}>
                                 Two things bound it. First, <strong className="text-slate-800 dark:text-slate-200">pools do not own the
-                                hashrate</strong> — thousands of independent operators do, and they can repoint their machines at a
-                                different pool in minutes. That has happened when pools have behaved badly. Second,{' '}
+                                hashrate</strong>. Thousands of independent operators do, and they can repoint their machines at a
+                                different pool in minutes; that has happened when pools have behaved badly. Second,{' '}
                                 <strong className="text-slate-800 dark:text-slate-200">pools cannot break consensus rules</strong>. A pool
                                 that mined a block paying itself extra coins, or spending someone else&apos;s coins, would have that block
                                 rejected by every full node and would have burned the electricity for nothing. Nodes enforce the rules;
@@ -568,29 +568,29 @@ export default async function MiningPage() {
                     </div>
                     <div className={prose}>
                         <p>
-                            Mining ran on CPUs in 2009, moved to GPUs in 2010, briefly to FPGAs, and from 2013 onward to{' '}
-                            <strong className="text-slate-800 dark:text-slate-200">ASICs</strong> — application-specific chips that do
-                            nothing but SHA-256, wired directly into silicon. The gap is not a matter of degree. A general-purpose
-                            processor is behind by many orders of magnitude, which is why hobbyist CPU and GPU mining of bitcoin has been
-                            dead for well over a decade. Anything advertising bitcoin mining on a normal computer today is mining a
-                            different coin or is malware.
+                            Mining ran on CPUs in 2009, moved to GPUs in 2010, passed briefly through FPGAs, and from 2013 onward went
+                            to <strong className="text-slate-800 dark:text-slate-200">ASICs</strong>: application-specific chips that do
+                            nothing but SHA-256, wired straight into silicon. The gap is not a matter of degree. A general-purpose
+                            processor is behind by many orders of magnitude, which is why hobbyist CPU and GPU mining of bitcoin died
+                            well over a decade ago. Anything advertising bitcoin mining on a normal computer today is mining a different
+                            coin or is malware.
                         </p>
                         <div className="grid sm:grid-cols-2 gap-3 sm:gap-4">
                             <div className={cardClass}>
                                 <h3 className={cardTitle}>Joules per terahash is the whole game</h3>
                                 <p className={cardBody}>
-                                    Efficiency is measured in J/TH — energy burned per trillion hashes. The 2016-era S9 generation ran
+                                    Efficiency is measured in J/TH, energy burned per trillion hashes. The 2016-era S9 generation ran
                                     near 100 J/TH. Current top-end machines sit in the low-to-mid teens, with sub-10 J/TH designs
-                                    emerging. Every generation lowers the electricity price at which the previous generation breaks even,
-                                    and eventually strands it entirely.
+                                    emerging. Every generation lowers the electricity price at which the previous one breaks even, and
+                                    eventually strands it entirely.
                                 </p>
                             </div>
                             <div className={cardClass}>
                                 <h3 className={cardTitle}>Hardware depreciates in two directions</h3>
                                 <p className={cardBody}>
                                     A miner is a wasting asset. As newer machines come online, difficulty rises and your machine earns
-                                    fewer bitcoin per month even if nothing else changes — and its resale value falls at the same time,
-                                    for the same reason. Operators underwrite purchases against forecasts of difficulty growth and are
+                                    fewer bitcoin per month even if nothing else changes. Its resale value falls at the same time, for
+                                    the same reason. Operators underwrite purchases against forecasts of difficulty growth, and they are
                                     frequently wrong.
                                 </p>
                             </div>
@@ -598,19 +598,19 @@ export default async function MiningPage() {
                                 <h3 className={cardTitle}>Hashprice: the one number that matters</h3>
                                 <p className={cardBody}>
                                     Hashprice is revenue per unit of hashrate per day, usually quoted in dollars per petahash per day. It
-                                    folds price, difficulty, and fees into a single figure, and it is what power contracts and hosting
-                                    deals are underwritten against. It falls whenever difficulty outruns price, spikes when fees do, and
-                                    is roughly halved overnight by every halving.
+                                    folds price, difficulty and fees into one figure, and power contracts and hosting deals get
+                                    underwritten against it. It falls whenever difficulty outruns price, and spikes when fees do. Every
+                                    halving cuts it roughly in half overnight.
                                 </p>
                             </div>
                             <div className={cardClass}>
                                 <h3 className={cardTitle}>The honest home-mining math</h3>
                                 <p className={cardBody}>
-                                    A current machine draws about 3.5 kW. Run continuously that is roughly 2,500 kWh a month — near $430
+                                    A current machine draws about 3.5 kW. Run continuously that is roughly 2,500 kWh a month, near $430
                                     at a US residential rate around $0.17/kWh. An industrial operator on a $0.04/kWh contract pays about
                                     $100 for identical work. Same bitcoin out, three to four times the cost in, and difficulty is set by
-                                    their economics. Add a few thousand dollars of hardware, roughly vacuum-cleaner-level noise, and 3.5 kW
-                                    of heat you have to move somewhere.
+                                    their economics. Then add a few thousand dollars of hardware, roughly vacuum-cleaner-level noise, and
+                                    3.5 kW of heat you have to move somewhere.
                                 </p>
                             </div>
                         </div>
@@ -618,15 +618,15 @@ export default async function MiningPage() {
                             <p className="text-sm sm:text-base text-slate-700 dark:text-slate-300 leading-relaxed">
                                 <strong className="text-slate-800 dark:text-slate-200">The blunt version:</strong> if your goal is exposure
                                 to bitcoin, buying bitcoin is the cheaper trade. Home mining can be worth it as a hobby, as space heating
-                                you were paying for anyway, or where power is unusually cheap — but as an investment it is almost always
-                                dominated by simply buying and holding. You can test what a schedule of ordinary purchases would have done
-                                with the <Link href="/" className={linkClass}>calculator</Link>.
+                                you were paying for anyway, or where power is unusually cheap. As an investment, buying and holding almost
+                                always beats it. You can test what a schedule of ordinary purchases would have done with the{' '}
+                                <Link href="/" className={linkClass}>calculator</Link>.
                             </p>
                         </div>
                     </div>
                 </section>
 
-                {/* 6. Mining and price — the correction */}
+                {/* 6. Mining and price: the correction */}
                 <section className="space-y-4">
                     <div className="flex items-center gap-2 sm:gap-3">
                         <TrendingUp className={sectionIcon} />
@@ -638,10 +638,10 @@ export default async function MiningPage() {
                             single most repeated mistake in Bitcoin analysis.</strong>
                         </p>
                         <p>
-                            The claim goes: it costs roughly $X of electricity and hardware to produce one bitcoin, so the price cannot
-                            stay below $X for long. It sounds like a standard commodity argument, and it fails for a specific reason.
-                            In an ordinary commodity, production cost is set outside the market — the ore is however deep it is. In
-                            Bitcoin, production cost is set <em>by</em> the market, through difficulty.
+                            The claim goes like this: it costs roughly $X of electricity and hardware to produce one bitcoin, so the
+                            price cannot stay below $X for long. That sounds like a standard commodity argument. It fails for a specific
+                            reason. With an ordinary commodity, production cost is set outside the market; the ore is however deep it is.
+                            In Bitcoin, production cost is set <em>by</em> the market, through difficulty.
                         </p>
                         <div className="bg-slate-100 dark:bg-slate-900/50 p-5 sm:p-6 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-3">
                             <h3 className={cardTitle}>The feedback loop, step by step</h3>
@@ -668,25 +668,25 @@ export default async function MiningPage() {
                                 </li>
                             </ol>
                             <p className={cardBody}>
-                                The loop runs identically in reverse: a rally pulls hashrate in, difficulty climbs, and production cost
-                                rises to meet the higher price. In both directions cost chases price. Mining cost is an{' '}
+                                Run it in reverse and it works the same way: a rally pulls hashrate in, difficulty climbs, and production
+                                cost rises to meet the higher price. In both directions, cost chases price. Mining cost is an{' '}
                                 <strong className="text-slate-800 dark:text-slate-200">output</strong> of the price, not an input to it.
                             </p>
                         </div>
                         <p>
-                            There is a second problem with the claim: there is no such thing as <em>the</em> cost of production. A miner
-                            on flared gas at $0.02/kWh and one paying $0.09 in Europe differ by more than a factor of four. Any single
-                            global figure is an average across a very wide distribution, and it is the marginal miner — the most expensive
-                            one still running — who sets the shutdown point, not the average one.
+                            The claim has a second problem too: there is no such thing as <em>the</em> cost of production. A miner on
+                            flared gas at $0.02/kWh and one paying $0.09 in Europe differ by more than a factor of four. Any single global
+                            figure is an average across a very wide distribution, and it is the marginal miner — the most expensive one
+                            still running — who sets the shutdown point, not the average one.
                         </p>
                         <div className="grid sm:grid-cols-2 gap-3 sm:gap-4">
                             <div className={cardClass}>
                                 <h3 className={cardTitle}>The kernel of truth: capitulation is real</h3>
                                 <p className={cardBody}>
                                     Deep drawdowns do produce visible hashrate declines and negative difficulty adjustments, and analysts
-                                    watch them closely. That is a genuine, observable market dynamic. But it marks miner{' '}
+                                    watch them closely. That is a real, observable market dynamic. But it marks miner{' '}
                                     <em>stress</em>, not a price level anyone is defending. The largest drop on record, about 28%, followed
-                                    China&apos;s 2021 ban — a regulatory event, not a price floor.
+                                    China&apos;s 2021 ban: a regulatory event, not a price floor.
                                 </p>
                             </div>
                             <div className={cardClass}>
@@ -694,18 +694,18 @@ export default async function MiningPage() {
                                 <p className={cardBody}>
                                     Miners have fiat-denominated power bills and bitcoin-denominated revenue, so they must sell a portion
                                     of production continuously. Under stress they sell treasury reserves too, and distressed operators
-                                    liquidate. Miner behaviour therefore adds supply during downturns rather than removing it. That is the
-                                    opposite of a floor.
+                                    liquidate outright. So miner behaviour adds supply during downturns rather than removing it. That is
+                                    the opposite of a floor.
                                 </p>
                             </div>
                         </div>
                         <div className={cardClass}>
-                            <h3 className={cardTitle}>What is actually true about hashrate and security</h3>
+                            <h3 className={cardTitle}>What hashrate does tell you</h3>
                             <p className={cardBody}>
                                 More hashrate raises the cost of rewriting recent history. That is a security statement, not a price
-                                statement — the two get conflated constantly. Bitcoin is far more expensive to attack than it was a decade
-                                ago, and that fact says nothing about what a coin should be worth. We keep a scorecard of claims like this
-                                one on the <Link href="/why-bitcoin" className={linkClass}>why Bitcoin has value</Link> page.
+                                statement, and the two get conflated constantly. Bitcoin is far more expensive to attack than it was a
+                                decade ago. That fact says nothing about what a coin should be worth. We keep a scorecard of claims like
+                                this one on the <Link href="/why-bitcoin" className={linkClass}>why Bitcoin has value</Link> page.
                             </p>
                         </div>
                     </div>
@@ -721,22 +721,22 @@ export default async function MiningPage() {
                         <p>
                             Miner revenue has two parts: the block subsidy and transaction fees. Blocks hold a limited amount of data by
                             design, so when more people want to transact than there is space, they bid against each other and the miner
-                            takes the highest bidders. Fees are usually a small fraction of block revenue — often a few percent — but
-                            during congestion episodes they have briefly exceeded the subsidy itself.
+                            takes the highest bidders. Fees are usually a small fraction of block revenue, often a few percent. During
+                            congestion episodes they have briefly exceeded the subsidy itself.
                         </p>
                         <div className="grid sm:grid-cols-2 gap-3 sm:gap-4">
                             <div className={cardClass}>
-                                <h3 className={cardTitle}>Busy blockspace, higher fees</h3>
+                                <h3 className={cardTitle}>When the mempool backs up</h3>
                                 <p className={cardBody}>
-                                    During rallies and novel on-chain activity, the mempool fills and fees spike hard. Wallets that let you
-                                    set your own fee rate, and patience, are worth real money in those windows.
+                                    During rallies and novel on-chain activity, the queue fills and fees spike hard. Two things are worth
+                                    real money in those windows: a wallet that lets you set your own fee rate, and patience.
                                 </p>
                             </div>
                             <div className={cardClass}>
                                 <h3 className={cardTitle}>Quiet blockspace, cheap fees</h3>
                                 <p className={cardBody}>
-                                    In slow periods a transaction can confirm for a few cents. Fee markets are genuinely volatile, and
-                                    nothing about the protocol smooths them.
+                                    In slow periods a transaction can confirm for a few cents. Fee markets are volatile, and nothing in
+                                    the protocol smooths them.
                                 </p>
                             </div>
                         </div>
@@ -751,10 +751,10 @@ export default async function MiningPage() {
                             </p>
                             <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
                                 Nobody knows whether that works. The optimistic case is that as more value settles on Bitcoin, fee revenue
-                                in dollar terms grows to fill the gap. The pessimistic case is that layers built on top batch activity
+                                in dollar terms grows to fill the gap. Pessimists counter that layers built on top batch activity
                                 off-chain, so on-chain fee demand does not scale with the value being protected, and the security budget
-                                shrinks relative to what is at stake. It is decades away and it is genuinely unresolved — treat anyone
-                                who says it is obviously fine, or obviously fatal, as overstating what is known. The{' '}
+                                shrinks relative to what is at stake. This is decades away, and it is unresolved. Treat anyone who says it
+                                is obviously fine, or obviously fatal, as overstating what is known. The{' '}
                                 <Link href="/why-bitcoin" className={linkClass}>risks section on the why Bitcoin page</Link> covers it
                                 alongside the other open problems.
                             </p>
@@ -770,16 +770,16 @@ export default async function MiningPage() {
                     </div>
                     <div className={prose}>
                         <p>
-                            This is one of the most widely misunderstood topics in Bitcoin. A majority of hashrate is genuinely dangerous
-                            — and its powers are much narrower than the headlines suggest.
+                            This is one of the most widely misunderstood topics in Bitcoin. A majority of hashrate is dangerous. Its
+                            powers are also much narrower than the headlines suggest.
                         </p>
                         <div className="grid sm:grid-cols-2 gap-3 sm:gap-4">
                             <div className="bg-rose-50 dark:bg-rose-950/20 p-4 sm:p-5 rounded-xl border border-rose-200 dark:border-rose-800/50 space-y-2">
                                 <h3 className="text-sm sm:text-base font-bold text-rose-800 dark:text-rose-300">It CAN</h3>
                                 <ul className="space-y-2 text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-                                    <li className="flex gap-2"><span className="text-rose-500 shrink-0">&bull;</span><span><strong className="text-slate-700 dark:text-slate-300">Reverse its own recent transactions.</strong> Deposit coins somewhere, spend them, then publish a longer chain in which the deposit never happened. This is the double spend — and it only ever works on the attacker&apos;s own coins.</span></li>
+                                    <li className="flex gap-2"><span className="text-rose-500 shrink-0">&bull;</span><span><strong className="text-slate-700 dark:text-slate-300">Reverse its own recent transactions.</strong> Deposit coins somewhere, spend them, then publish a longer chain in which the deposit never happened. This is the double spend, and it only ever works on the attacker&apos;s own coins.</span></li>
                                     <li className="flex gap-2"><span className="text-rose-500 shrink-0">&bull;</span><span><strong className="text-slate-700 dark:text-slate-300">Censor transactions.</strong> Refuse to include specific transactions and orphan the blocks of miners who do include them. Sustained censorship requires a sustained majority.</span></li>
-                                    <li className="flex gap-2"><span className="text-rose-500 shrink-0">&bull;</span><span><strong className="text-slate-700 dark:text-slate-300">Reorganize recent blocks</strong> and stall confirmations — enormously disruptive even without any theft.</span></li>
+                                    <li className="flex gap-2"><span className="text-rose-500 shrink-0">&bull;</span><span><strong className="text-slate-700 dark:text-slate-300">Reorganize recent blocks</strong> and stall confirmations. Hugely disruptive even without any theft.</span></li>
                                 </ul>
                             </div>
                             <div className="bg-emerald-50 dark:bg-emerald-950/20 p-4 sm:p-5 rounded-xl border border-emerald-200 dark:border-emerald-800/50 space-y-2">
@@ -804,7 +804,7 @@ export default async function MiningPage() {
                             <div className={cardClass}>
                                 <h3 className={cardTitle}>Not hypothetical for small chains</h3>
                                 <p className={cardBody}>
-                                    Smaller proof-of-work chains with thin hashrate have been 51%-attacked repeatedly — Ethereum Classic
+                                    Smaller proof-of-work chains with thin hashrate have been 51%-attacked repeatedly, Ethereum Classic
                                     and Bitcoin Gold among them. Bitcoin&apos;s defence is that it is by far the most expensive chain to
                                     out-hash, and that anyone spending that much would be destroying the value of the asset they get paid
                                     in while holding a warehouse of purpose-built hardware good for nothing else.
@@ -823,8 +823,9 @@ export default async function MiningPage() {
                     <div className={prose}>
                         <p>
                             Start with the numbers, and with how weak they are. Nobody meters the Bitcoin network. Every published figure
-                            is a model built from observed hashrate plus an assumed mix of hardware, and the leading estimates — Cambridge&apos;s
-                            CBECI is the most cited — disagree with each other by wide margins. The usual range is roughly{' '}
+                            is a model built from observed hashrate plus an assumed mix of hardware, and the leading estimates
+                            (Cambridge&apos;s CBECI is the most cited) disagree with each other by wide margins. The usual range is
+                            roughly{' '}
                             <strong className="text-slate-800 dark:text-slate-200">100 to 200 TWh per year</strong>, which puts Bitcoin
                             somewhere around <strong className="text-slate-800 dark:text-slate-200">0.3% to 0.6% of global electricity</strong>,
                             comparable to a mid-sized country. Treat precise figures with suspicion, including the flattering ones.
@@ -833,11 +834,11 @@ export default async function MiningPage() {
                             <div className={cardClass}>
                                 <h3 className={cardTitle}>The strongest case for</h3>
                                 <p className={cardBody}>
-                                    Miners are unusually mobile and interruptible buyers of electricity. They do not need to be near
+                                    Miners are unusually mobile and interruptible buyers of electricity. They don&apos;t need to sit near
                                     customers, they run at any hour, and they can shut down within seconds. That pushes them toward power
-                                    nobody else wants: stranded hydro, curtailed wind and solar, off-peak baseload, and gas that would
+                                    nobody else wants: stranded hydro, curtailed wind and solar, off-peak baseload, gas that would
                                     otherwise be flared at the wellhead. Grid operators in Texas and elsewhere pay miners to curtail during
-                                    demand peaks, which makes the load function as a controllable, sheddable buyer. Estimates of the
+                                    demand peaks, which turns the load into a controllable, sheddable buyer. Estimates of the
                                     sustainable-energy share range from roughly 40% to over 50%, and they disagree partly because of who
                                     commissioned them.
                                 </p>
@@ -845,18 +846,18 @@ export default async function MiningPage() {
                             <div className={cardClass}>
                                 <h3 className={cardTitle}>The strongest case against</h3>
                                 <p className={cardBody}>
-                                    The best version of the criticism is not about the number at all. It is that energy spent here is
+                                    The best version of the criticism isn&apos;t about the number at all. It is that energy spent here is
                                     energy not spent elsewhere, and that &ldquo;it uses power others did not want&rdquo; does not establish
-                                    that the activity is worth doing. There are documented local costs too: mining load has been shown to
-                                    raise wholesale power prices in some markets, noise complaints near facilities are real and recurring,
-                                    and rapid hardware turnover produces electronic waste.
+                                    that the activity is worth doing. Documented local costs exist too. Mining load has been shown to raise
+                                    wholesale power prices in some markets, noise complaints near facilities are real and recurring, and
+                                    rapid hardware turnover produces electronic waste.
                                 </p>
                             </div>
                         </div>
                         <div className="bg-slate-100 dark:bg-slate-900/50 p-5 sm:p-6 rounded-2xl border border-slate-200 dark:border-slate-800">
                             <p className="text-sm sm:text-base text-slate-700 dark:text-slate-300 leading-relaxed">
-                                <strong className="text-slate-800 dark:text-slate-200">Where this actually lands:</strong> the energy use is
-                                deliberate, not a bug — it is the thing that makes rewriting history expensive. Whether a settlement system
+                                <strong className="text-slate-800 dark:text-slate-200">Where this lands:</strong> the energy use is
+                                deliberate, not a bug. It is the thing that makes rewriting history expensive. Whether a settlement system
                                 nobody controls is worth that cost is a value judgment, and the data does not settle it in either direction.
                                 Anyone claiming the numbers alone prove mining is wasteful, or prove it is virtuous, has quietly skipped the
                                 step where they tell you what they think it is for.
@@ -875,18 +876,18 @@ export default async function MiningPage() {
                     <div className="bg-slate-100 dark:bg-slate-900/50 p-5 sm:p-6 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-3">
                         <h3 className={cardTitle}>Read this before you read the offer</h3>
                         <p className={cardBody}>
-                            Buying hashrate instead of running it is a real product category, and it is also a category with a long
-                            history of fraud. Cloud-mining and hosted-mining operators have repeatedly taken deposits and vanished, and
-                            plenty of contracts that were not outright scams simply never returned their principal. Even a fully honest
-                            operator is selling you a return driven by difficulty and price — two variables neither you nor they control.
+                            Buying hashrate instead of running it is a real product category. It is also a category with a long history of
+                            fraud. Cloud-mining and hosted-mining operators have repeatedly taken deposits and vanished, and plenty of
+                            contracts that were not outright scams still never returned their principal. Even a fully honest operator is
+                            selling you a return driven by difficulty and price, two variables neither you nor they control.
                         </p>
                         <p className={cardBody}>
-                            For most people, <strong className="text-slate-800 dark:text-slate-200">simply buying and holding bitcoin gives
-                            the same directional exposure with fewer moving parts and no counterparty</strong>. A hashrate product layers
-                            hashprice risk and operator risk on top of the price risk you already wanted. If you go ahead anyway, at minimum
-                            check: how fees are deducted (usually daily, in bitcoin, so a flat market quietly erodes your position), whether
-                            advertised returns are quoted before or after electricity, whether facility data is independently verifiable, and
-                            what happens to your position if the operator fails.
+                            For most people, <strong className="text-slate-800 dark:text-slate-200">buying and holding bitcoin gives the
+                            same directional exposure with fewer moving parts and no counterparty</strong>. A hashrate product layers
+                            hashprice risk and operator risk on top of the price risk you already wanted. If you go ahead anyway, check at
+                            minimum: how fees are deducted (usually daily, in bitcoin, so a flat market quietly erodes your position),
+                            whether advertised returns are quoted before or after electricity, whether facility data is independently
+                            verifiable, and what happens to your position if the operator fails.
                         </p>
                     </div>
 
@@ -950,7 +951,7 @@ export default async function MiningPage() {
 
                     <p className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 text-center max-w-2xl mx-auto leading-relaxed">
                         Affiliate disclosure: we earn a commission if you sign up through the link above, at no extra cost to you. That is
-                        part of how this free calculator is funded — and it is exactly why the caveats above are stated as bluntly as they
+                        part of how this free calculator is funded, which is exactly why the caveats above are stated as bluntly as they
                         are. We would rather you skip it than get hurt by it.
                     </p>
                 </section>
@@ -979,7 +980,7 @@ export default async function MiningPage() {
                 {/* CTA */}
                 <section className="text-center bg-slate-100 dark:bg-slate-900/50 p-6 sm:p-10 rounded-2xl border border-slate-200 dark:border-slate-800">
                     <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white mb-3">
-                        See What the Numbers Actually Say
+                        See What the Numbers Say
                     </h2>
                     <p className="text-sm sm:text-base text-slate-600 dark:text-slate-400 mb-5 max-w-xl mx-auto">
                         Test any dollar-cost-averaging schedule against real historical prices, with the halving dates marked on the

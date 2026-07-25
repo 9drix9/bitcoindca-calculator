@@ -11,7 +11,7 @@ export const metadata: Metadata = {
     },
     openGraph: {
         title: 'Methodology & Data Sources',
-        description: 'Every data source, every formula, every limitation. No black box — this is exactly how the calculator works.',
+        description: 'Every data source, every formula, every limitation. No black box: this is exactly how the calculator works.',
         url: '/methodology',
         type: 'article',
         siteName: 'Bitcoin DCA Calculator',
@@ -20,7 +20,7 @@ export const metadata: Metadata = {
     twitter: {
         card: 'summary_large_image',
         title: 'Methodology & Data Sources',
-        description: 'Every data source, every formula, every limitation. No black box — this is exactly how the calculator works.',
+        description: 'Every data source, every formula, every limitation. No black box: this is exactly how the calculator works.',
         creator: '@9drix9',
     },
 };
@@ -61,8 +61,8 @@ export default function MethodologyPage() {
                         Methodology &amp; <span className="text-amber-500">Data Sources</span>
                     </h1>
                     <p className="text-base sm:text-lg text-slate-600 dark:text-slate-300 max-w-2xl mx-auto leading-relaxed">
-                        A calculator you can&apos;t verify is a black box. This page documents exactly where our data
-                        comes from, how every number is computed, and where the model falls short of reality.
+                        A calculator you can&apos;t verify is a black box. This page lists every data source, walks
+                        through the math behind each number, and is blunt about where the model falls short of reality.
                     </p>
                 </section>
 
@@ -73,8 +73,9 @@ export default function MethodologyPage() {
                         <h2 className="text-xl sm:text-3xl font-bold text-slate-900 dark:text-white">Data Sources</h2>
                     </div>
                     <p className="text-sm sm:text-base text-slate-600 dark:text-slate-400 leading-relaxed">
-                        All requests are proxied through our server for caching; no personal data is sent to any provider.
-                        Refresh cadences are server-side cache windows, not guarantees from the providers.
+                        Every request is proxied through our server so responses can be cached, and no personal data
+                        is sent to any provider. The cadences below describe our own cache windows. They are not
+                        guarantees from the providers.
                     </p>
                     <div className="bg-slate-100 dark:bg-slate-900/50 p-5 sm:p-6 rounded-2xl border border-slate-200 dark:border-slate-800">
                         <div className="overflow-x-auto -mx-2 sm:mx-0">
@@ -108,16 +109,17 @@ export default function MethodologyPage() {
                     </div>
                     <div className="space-y-4 text-sm sm:text-base text-slate-600 dark:text-slate-400 leading-relaxed">
                         <p>
-                            <strong className="text-slate-800 dark:text-slate-200">Purchase schedule.</strong> Purchases are
-                            scheduled on UTC calendar days: daily, weekly (every 7 days), bi-weekly (every 14 days), or monthly
-                            (same day-of-month, anchored to your start date). Exchange candles are UTC-aligned, so using UTC
-                            avoids the off-by-one-day shifts that local-time math causes for users west of Greenwich.
+                            <strong className="text-slate-800 dark:text-slate-200">Purchase schedule.</strong> Purchases land
+                            on UTC calendar days: daily, weekly (every 7 days), bi-weekly (every 14 days), or monthly
+                            (same day-of-month, anchored to your start date). Exchange candles are UTC-aligned too.
+                            Doing the same math in local time shifts the whole schedule by a day for anyone west of
+                            Greenwich, which is why we don&apos;t.
                         </p>
                         <p>
-                            <strong className="text-slate-800 dark:text-slate-200">Fees.</strong> Your fee percentage is applied
-                            to every purchase before conversion: <code className="text-xs sm:text-sm bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">btcBought = amount &times; (1 &minus; fee%) / price</code>.
-                            The gross amount still counts as invested capital, so fees show up as a drag on returns — exactly
-                            as they do in real life.
+                            <strong className="text-slate-800 dark:text-slate-200">Fees.</strong> Your fee percentage comes off
+                            every purchase before conversion: <code className="text-xs sm:text-sm bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">btcBought = amount &times; (1 &minus; fee%) / price</code>.
+                            The gross amount still counts as invested capital, so fees drag on returns here the same way
+                            they do on a real exchange.
                         </p>
                         <div className="grid sm:grid-cols-2 gap-3 sm:gap-4">
                             <div className="bg-white dark:bg-slate-800 p-4 sm:p-5 rounded-xl border border-slate-200 dark:border-slate-700">
@@ -132,24 +134,25 @@ export default function MethodologyPage() {
                                 <h3 className="text-sm sm:text-base font-bold text-slate-800 dark:text-white mb-2">XIRR (Annualized Return)</h3>
                                 <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
                                     The money-weighted annualized return: the discount rate at which the net present value of all
-                                    your dated purchases plus the final portfolio value equals zero. Solved numerically
-                                    (Newton&apos;s method with a bisection fallback). Not shown for periods under 90 days,
-                                    where annualizing is meaningless.
+                                    your dated purchases plus the final portfolio value equals zero. We solve it numerically,
+                                    with Newton&apos;s method and a bisection fallback. Under 90 days it isn&apos;t shown at
+                                    all, because annualizing a window that short is meaningless.
                                 </p>
                             </div>
                             <div className="bg-white dark:bg-slate-800 p-4 sm:p-5 rounded-xl border border-slate-200 dark:border-slate-700">
                                 <h3 className="text-sm sm:text-base font-bold text-slate-800 dark:text-white mb-2">Max Drawdown</h3>
                                 <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
                                     The largest peak-to-trough decline in your portfolio&apos;s value across the purchase-day
-                                    series: how far underwater the strategy went at its worst point, as a percentage of the
-                                    preceding peak.
+                                    series, stated as a percentage of the preceding peak. It answers one question: how far
+                                    underwater did the strategy go at its worst point?
                                 </p>
                             </div>
                             <div className="bg-white dark:bg-slate-800 p-4 sm:p-5 rounded-xl border border-slate-200 dark:border-slate-700">
                                 <h3 className="text-sm sm:text-base font-bold text-slate-800 dark:text-white mb-2">Currency Display</h3>
                                 <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-                                    All math runs in USD. Non-USD displays (EUR, GBP, CAD, AUD, JPY) convert at current ECB
-                                    reference rates from frankfurter.app at display time — historical FX rates are not applied.
+                                    All math runs in USD. The other display currencies (EUR, GBP, CAD, AUD, JPY) convert at
+                                    current ECB reference rates from frankfurter.app, applied at display time. Historical FX
+                                    rates are not used.
                                 </p>
                             </div>
                         </div>
@@ -165,22 +168,22 @@ export default function MethodologyPage() {
                     <div className="space-y-4 text-sm sm:text-base text-slate-600 dark:text-slate-400 leading-relaxed">
                         <p>
                             <strong className="text-slate-800 dark:text-slate-200">The default series is interpolated.</strong>{' '}
-                            Kraken (the default source) provides weekly closes, which we linearly interpolate to daily values.
+                            Kraken, the default source, gives us weekly closes, which we linearly interpolate to daily values.
                             That smooths out intra-week volatility: a purchase on a Wednesday uses an estimate between two real
-                            weekly closes, not the actual Wednesday price. Switching the source to Coinbase uses real daily
+                            weekly closes, not the actual Wednesday price. Switch the source to Coinbase and you get real daily
                             candles from 2015 onward.
                         </p>
                         <p>
                             <strong className="text-slate-800 dark:text-slate-200">Early history uses real market prices.</strong>{' '}
-                            For dates before an exchange&apos;s own candles begin, we use actual daily market prices from
-                            blockchain.info covering August 2010 through mid-2015 (a static snapshot, since this history no
-                            longer changes). No prices are fabricated; the earliest supported simulations start in August 2010
+                            For dates before an exchange&apos;s own candles begin, we fall back to actual daily market prices from
+                            blockchain.info covering August 2010 through mid-2015. It&apos;s a static snapshot, since that history
+                            no longer changes. No prices are fabricated. The earliest supported simulations start in August 2010
                             at around $0.07.
                         </p>
                         <p>
                             <strong className="text-slate-800 dark:text-slate-200">Gaps use the last known price.</strong> If a
-                            scheduled purchase lands on a day with no price data (a gap in the series), the simulation uses the
-                            most recent known price rather than skipping the purchase.
+                            scheduled purchase lands on a day with no price data, the simulation carries the most recent known
+                            price forward rather than skipping the buy.
                         </p>
                     </div>
                 </section>
@@ -194,19 +197,19 @@ export default function MethodologyPage() {
                     <ul className="space-y-2 ml-1 text-sm sm:text-base text-slate-600 dark:text-slate-400 leading-relaxed">
                         <li className="flex items-start gap-2">
                             <span className="text-amber-500 font-bold mt-0.5 shrink-0">&bull;</span>
-                            <span><strong className="text-slate-800 dark:text-slate-200">No taxes.</strong> Capital gains, income tax on rewards, and cost-basis accounting methods are not modeled.</span>
+                            <span><strong className="text-slate-800 dark:text-slate-200">No taxes.</strong> Capital gains and income tax on rewards are not modeled, and neither are cost-basis accounting methods.</span>
                         </li>
                         <li className="flex items-start gap-2">
                             <span className="text-amber-500 font-bold mt-0.5 shrink-0">&bull;</span>
-                            <span><strong className="text-slate-800 dark:text-slate-200">No withdrawal fees.</strong> On-chain network fees and exchange withdrawal fees for moving coins to self-custody are excluded.</span>
+                            <span><strong className="text-slate-800 dark:text-slate-200">No withdrawal fees.</strong> Moving coins to self-custody costs an on-chain network fee, often plus an exchange withdrawal fee. Both are excluded.</span>
                         </li>
                         <li className="flex items-start gap-2">
                             <span className="text-amber-500 font-bold mt-0.5 shrink-0">&bull;</span>
-                            <span><strong className="text-slate-800 dark:text-slate-200">No spread modeling.</strong> The single fee percentage does not capture bid-ask spreads or exchange-specific price differences, which can add a hidden cost on top of quoted fees.</span>
+                            <span><strong className="text-slate-800 dark:text-slate-200">No spread modeling.</strong> One fee percentage cannot capture bid-ask spreads or the price differences between exchanges, both of which can add a hidden cost on top of quoted fees.</span>
                         </li>
                         <li className="flex items-start gap-2">
                             <span className="text-amber-500 font-bold mt-0.5 shrink-0">&bull;</span>
-                            <span><strong className="text-slate-800 dark:text-slate-200">One price per day.</strong> All purchases execute at the day&apos;s series price; intraday timing is not simulated.</span>
+                            <span><strong className="text-slate-800 dark:text-slate-200">One price per day.</strong> Every purchase executes at the day&apos;s series price. Intraday timing is not simulated.</span>
                         </li>
                     </ul>
                 </section>
@@ -231,7 +234,7 @@ export default function MethodologyPage() {
                                 <li className="flex items-start gap-2"><span className="text-amber-500 font-bold mt-0.5 shrink-0">&bull;</span><span>New: XIRR (money-weighted annualized return) and max drawdown statistics.</span></li>
                                 <li className="flex items-start gap-2"><span className="text-amber-500 font-bold mt-0.5 shrink-0">&bull;</span><span>New: redesigned charts with single-axis tabs, plus this methodology page.</span></li>
                                 <li className="flex items-start gap-2"><span className="text-amber-500 font-bold mt-0.5 shrink-0">&bull;</span><span>New: real daily market prices (blockchain.info) for 2010&ndash;2015, replacing the earlier synthetic pre-2015 interpolation.</span></li>
-                                <li className="flex items-start gap-2"><span className="text-amber-500 font-bold mt-0.5 shrink-0">&bull;</span><span>New: historical win-rate stat — the share of comparable DCA windows since 2010 that ended in profit.</span></li>
+                                <li className="flex items-start gap-2"><span className="text-amber-500 font-bold mt-0.5 shrink-0">&bull;</span><span>New: historical win-rate stat, the share of comparable DCA windows since 2010 that ended in profit.</span></li>
                                 <li className="flex items-start gap-2"><span className="text-amber-500 font-bold mt-0.5 shrink-0">&bull;</span><span>New: result-specific share previews, plan-vs-plan comparison, and prerendered DCA scenario pages.</span></li>
                             </ul>
                         </div>
@@ -253,7 +256,7 @@ export default function MethodologyPage() {
                         Now Run Your Own Numbers
                     </h2>
                     <p className="text-sm sm:text-base text-slate-600 dark:text-slate-400 mb-5 max-w-xl mx-auto">
-                        You know exactly how the sausage is made. Backtest your own DCA strategy with the calculator.
+                        You&apos;ve seen how the sausage gets made. Go backtest your own DCA schedule with the calculator.
                     </p>
                     <Link
                         href="/"

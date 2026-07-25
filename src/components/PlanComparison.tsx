@@ -548,14 +548,14 @@ export const PlanComparison: React.FC<{ basePlan: BasePlan }> = ({ basePlan }) =
             <CardHeader
                 icon={<GitCompare className="h-4 w-4" />}
                 title="Compare Plans"
-                subtitle="See how a different amount, schedule, or start date would have played out."
+                subtitle="What a different amount, schedule, or start date would have done."
             />
 
             {altPlans.length === 0 ? (
                 // Collapsed: nothing is fetched until the user adds a plan.
                 <button type="button" onClick={addPlan} className={clsx('mt-4', addButtonClass)}>
                     <Plus className="h-4 w-4" aria-hidden="true" />
-                    Add a comparison plan
+                    Add a plan to compare
                 </button>
             ) : (
                 <div className="mt-4 space-y-4">

@@ -30,23 +30,23 @@ export const EducationalContent = () => {
             <section>
                 <div className="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-4">
                     <BookOpen className="w-6 h-6 sm:w-8 sm:h-8 text-amber-500 shrink-0" />
-                    <h2 className="text-xl sm:text-3xl font-bold text-slate-900 dark:text-white">Mastering Bitcoin DCA</h2>
+                    <h2 className="text-xl sm:text-3xl font-bold text-slate-900 dark:text-white">Why DCA Works</h2>
                 </div>
                 <p className="text-sm sm:text-lg text-slate-600 dark:text-slate-300 leading-relaxed">
-                    Dollar Cost Averaging (DCA) isn&apos;t just a buzzing investment term&mdash;it&apos;s a time-tested strategy tailored for volatile assets like Bitcoin. By purchasing a fixed dollar amount of Bitcoin at regular intervals, you effectively remove the emotional stress of trying to time the market. New to the asset itself? Start with{' '}
+                    Dollar cost averaging means buying a fixed amount on a schedule, whatever the price that day. It suits volatile assets like Bitcoin because it takes the timing decision, and most of the second-guessing, off your plate. New to the asset itself? Start with{' '}
                     <Link href="/why-bitcoin" className="text-amber-600 dark:text-amber-400 hover:underline font-medium">where Bitcoin&apos;s value comes from</Link>.
                 </p>
                 <div className="grid sm:grid-cols-2 gap-3 sm:gap-6 mt-4 sm:mt-8">
                     <div className="bg-white dark:bg-slate-800 p-4 sm:p-6 rounded-xl border border-slate-200 dark:border-slate-700">
                         <h3 className="text-sm sm:text-xl font-bold text-slate-800 dark:text-white mb-2 sm:mb-3">Time in the Market {'>'} Timing the Market</h3>
                         <p className="text-xs sm:text-base text-slate-600 dark:text-slate-400 leading-relaxed">
-                            History shows that trying to buy the &quot;perfect bottom&quot; is nearly impossible. DCA ensures you catch the lows along with the highs, often resulting in a lower average entry price over time.
+                            Almost nobody buys the exact bottom, and the people who did it once rarely do it twice. Buying on a schedule catches the lows along with the highs, and the average entry price usually ends up lower than guessing would have.
                         </p>
                     </div>
                     <div className="bg-white dark:bg-slate-800 p-4 sm:p-6 rounded-xl border border-slate-200 dark:border-slate-700">
-                        <h3 className="text-sm sm:text-xl font-bold text-slate-800 dark:text-white mb-2 sm:mb-3">Psychological Advantage</h3>
+                        <h3 className="text-sm sm:text-xl font-bold text-slate-800 dark:text-white mb-2 sm:mb-3">The Psychology</h3>
                         <p className="text-xs sm:text-base text-slate-600 dark:text-slate-400 leading-relaxed">
-                            When prices drop, human nature is to panic sell. With DCA, a price drop is seen as a discount&mdash;your regular buy order simply accumulates more Satoshis for the same dollar cost.
+                            A falling price is exactly when most people sell. If your buy is already scheduled, the same drop just hands you more sats for the same money.
                         </p>
                     </div>
                 </div>
@@ -70,12 +70,12 @@ export const EducationalContent = () => {
                 </div>
                 <div className="space-y-3 text-xs sm:text-base text-slate-600 dark:text-slate-400 leading-relaxed">
                     <p>
-                        Bitcoin is famous for its cycles, typically revolving around the 4-year &quot;Halving&quot; event. While long-term trends have been up, the journey includes drawdowns of 50%, 70%, or even 80%.
+                        Bitcoin moves in cycles, loosely tied to the four-year &quot;halving&quot;. The long-term trend has been up, but getting there meant drawdowns of 50%, 70%, even 80%.
                     </p>
                     <p>
-                        Our calculator uses <strong className="text-slate-800 dark:text-slate-200">real historical data</strong> from Kraken and Coinbase to simulate exactly how a DCA strategy would have performed during these turbulent times. Price history reaches back to 2010, but pre-2015 values are interpolated estimates rather than real exchange candles&mdash;see our{' '}
+                        This calculator runs on <strong className="text-slate-800 dark:text-slate-200">real historical data</strong> from Kraken and Coinbase, so you can see how a DCA plan would have held up through those stretches. Price history reaches back to 2010, though pre-2015 values are interpolated estimates rather than real exchange candles. Our{' '}
                         <Link href="/methodology" className="text-amber-600 dark:text-amber-400 hover:underline font-medium">Methodology</Link>{' '}
-                        for exactly how the data is built. Whether you started at the 2017 peak or the 2020 crash, the results often surprise investors who assume they missed the boat.
+                        page covers how the data is built. Start at the 2017 peak or the 2020 crash and the results still tend to surprise people who assume they missed the boat.
                     </p>
                 </div>
             </section>
@@ -88,21 +88,21 @@ export const EducationalContent = () => {
                 </div>
                 <ol className="list-decimal pl-4 sm:pl-5 space-y-2 sm:space-y-4 text-xs sm:text-base text-slate-700 dark:text-slate-300">
                     <li>
-                        <strong>Set Amount &amp; Frequency:</strong> Choose how much you want to invest (e.g., $50) and how often (Daily, Weekly, Bi-weekly, Monthly).
+                        <strong>Set amount &amp; frequency:</strong> How much per buy (say $50) and how often (daily, weekly, bi-weekly, monthly).
                     </li>
                     <li>
-                        <strong>Select Dates:</strong> Pick a start date in the past. Price history goes back to 2010&mdash;pre-2015 values are interpolated estimates.
+                        <strong>Select dates:</strong> Pick a start date in the past. Price history goes back to 2010, though pre-2015 values are interpolated estimates.
                     </li>
                     <li>
-                        <strong>Adjust Parameters:</strong> Add an estimated exchange fee (standard is 0.5% - 1.5%) to see net results.
+                        <strong>Adjust parameters:</strong> Add an estimated exchange fee (standard is 0.5% - 1.5%) to see net results.
                     </li>
                     <li>
-                        <strong>Analyze:</strong> Check the result cards and explore the interactive chart to see how your portfolio value diverged from your cash input over time.
+                        <strong>Read the results:</strong> The cards and the chart show where portfolio value pulled away from what you put in.
                     </li>
                     <li>
-                        <strong>Withdraw &amp; Secure:</strong> Stacking is only half the job&mdash;once your balance matters to you, move it to your own keys. Our{' '}
+                        <strong>Withdraw &amp; secure:</strong> Stacking is half the job. Once the balance matters to you, move it to your own keys. Our{' '}
                         <Link href="/self-custody" className="text-amber-600 dark:text-amber-400 hover:underline font-medium">self-custody guide</Link>{' '}
-                        walks you through it.
+                        covers how.
                     </li>
                 </ol>
             </section>
@@ -112,7 +112,7 @@ export const EducationalContent = () => {
                 <div className="flex items-start gap-3">
                     <AlertTriangle className="w-5 h-5 text-slate-500 dark:text-slate-400 shrink-0 mt-0.5" />
                     <p className="text-[11px] sm:text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
-                        <strong>Disclaimer:</strong> This website is for educational and entertainment purposes only. The calculations are based on historical data and do not guarantee future performance. Bitcoin and cryptocurrency investments carry significant risk. Always conduct your own research (DYOR) and consult with a qualified financial advisor before making investment decisions.
+                        <strong>Disclaimer:</strong> This site is for education and entertainment, not investment advice. Every figure here comes from historical data, which guarantees nothing about the future, and Bitcoin carries a real risk of loss. Do your own research and talk to a qualified financial advisor before you invest.
                     </p>
                 </div>
             </section>

@@ -137,9 +137,9 @@ export const SavingsComparison = ({
 
             <div className="mt-3 text-center text-xs sm:text-sm text-slate-500 dark:text-slate-400">
                 {btcWins ? (
-                    <span>Bitcoin outperforms by <span className="font-semibold text-emerald-600 dark:text-emerald-400 tabular-nums">{formatCurrency(difference)}</span></span>
+                    <span>Bitcoin is ahead by <span className="font-semibold text-emerald-600 dark:text-emerald-400 tabular-nums">{formatCurrency(difference)}</span></span>
                 ) : (
-                    <span>Savings account outperforms by <span className="font-semibold text-blue-600 dark:text-blue-400 tabular-nums">{formatCurrency(difference)}</span></span>
+                    <span>The savings account is ahead by <span className="font-semibold text-blue-600 dark:text-blue-400 tabular-nums">{formatCurrency(difference)}</span></span>
                 )}
             </div>
         </Card>

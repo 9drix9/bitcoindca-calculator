@@ -45,11 +45,11 @@ const faqItems = [
   },
   {
     question: "What do annualized return (XIRR) and max drawdown mean?",
-    answer: "XIRR is your money-weighted annualized return — the yearly growth rate that accounts for the timing and size of every purchase, which makes it the honest way to annualize a DCA strategy. Max drawdown is the largest peak-to-trough decline your portfolio value experienced along the way."
+    answer: "XIRR is your money-weighted annualized return. It's the yearly growth rate that accounts for the timing and size of every purchase, which makes it the honest way to annualize a DCA strategy. Max drawdown is the largest peak-to-trough fall your portfolio value took along the way."
   },
   {
     question: "Does this include transaction fees?",
-    answer: "Yes! You can adjust the 'Fee %' input to simulate exchange fees. Most major exchanges like Coinbase, Kraken, or Binance charge between 0.1% and 1.5% per transaction, which can impact long-term returns."
+    answer: "Yes. Set the 'Fee %' input to whatever your exchange charges. Most major exchanges charge between 0.1% and 1.5% per purchase, and over a few hundred buys that adds up to real money."
   },
   {
     question: "What is the best frequency for DCA?",
@@ -57,7 +57,7 @@ const faqItems = [
   },
   {
     question: "Can I export my data?",
-    answer: "Yes! Click the download icon next to the projected investment total to export your full transaction history as a CSV file. The export includes every purchase date, BTC price, amount invested, BTC bought, and portfolio value."
+    answer: "Yes. Click the download icon next to the projected investment total to export the full transaction history as a CSV. It includes every purchase date, BTC price, amount invested, BTC bought, and portfolio value, converted to your selected currency."
   }
 ];
 
@@ -100,8 +100,8 @@ async function HeroLive() {
     <>
       {stat ? (
         <p className="text-base sm:text-lg text-slate-600 dark:text-slate-300 max-w-2xl mx-auto text-balance">
-          $50 of Bitcoin every week for the last 5 years is{' '}
-          {usd(stat.invested)} invested — worth{' '}
+          $50 of Bitcoin every week for the last 5 years comes to{' '}
+          {usd(stat.invested)} invested, worth{' '}
           <strong className="font-bold text-slate-900 dark:text-white">{usd(stat.value)}</strong> today
           {Number.isFinite(stat.roi) && (
             <span className={stat.roi >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}>
@@ -111,7 +111,7 @@ async function HeroLive() {
         </p>
       ) : (
         <p className="text-base sm:text-lg text-slate-600 dark:text-slate-300 max-w-xl mx-auto">
-          See what steady weekly buys of Bitcoin would be worth today — with real market history, not vibes.
+          See what steady weekly buys of Bitcoin would be worth today, using real market history rather than vibes.
         </p>
       )}
       <LivePriceTicker initialData={ticker} />
@@ -123,7 +123,7 @@ function HeroLiveSkeleton() {
   return (
     <>
       <p className="text-base sm:text-lg text-slate-600 dark:text-slate-300 max-w-xl mx-auto">
-        See what steady weekly buys of Bitcoin would be worth today — with real market history, not vibes.
+        See what steady weekly buys of Bitcoin would be worth today, using real market history rather than vibes.
       </p>
       <div className="inline-flex items-center gap-2 mt-3 px-4 py-2 rounded-full bg-slate-100 dark:bg-slate-800/60 animate-pulse">
         <span className="w-2 h-2 rounded-full bg-slate-300 dark:bg-slate-600" />

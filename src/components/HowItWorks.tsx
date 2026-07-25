@@ -4,17 +4,17 @@ const STEPS = [
     {
         icon: DollarSign,
         title: 'Pick an amount',
-        description: 'Choose how much you want to invest regularly — even $10/week works',
+        description: 'Whatever you’d put in each time. $10 a week counts.',
     },
     {
         icon: Calendar,
         title: 'Set your schedule',
-        description: 'Pick how often (daily, weekly, bi-weekly, or monthly) and a date range to simulate',
+        description: 'Daily, weekly, bi-weekly, or monthly, across any date range you pick',
     },
     {
         icon: TrendingUp,
         title: 'See your results',
-        description: 'Instantly see how much Bitcoin you\u2019d have accumulated and your returns',
+        description: 'The Bitcoin you’d be holding today, and what it would be worth',
     },
 ];
 

@@ -235,7 +235,7 @@ export const AssetComparison = ({ btcResult, sp500Result, goldResult, loading }:
             {chartData && (
                 <div className="mt-4 sm:mt-5">
                     <div className="text-xs font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">
-                        Growth of your DCA
+                        Portfolio value over time
                     </div>
                     <div className="h-[180px] tabular-nums">
                         <ResponsiveContainer width="100%" height="100%">

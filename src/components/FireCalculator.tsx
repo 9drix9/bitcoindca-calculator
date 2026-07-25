@@ -92,14 +92,14 @@ export const FireCalculator = ({
             <CardHeader
                 icon={<Flame className="w-4 h-4" />}
                 title="When Could You Retire?"
-                subtitle="FIRE = Financial Independence, Retire Early. This shows when your Bitcoin could cover your living expenses forever."
+                subtitle="FIRE stands for Financial Independence, Retire Early. This is how long until your Bitcoin could cover your living costs."
                 className="mb-4"
             />
 
             {/* Input section */}
             <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-4 mb-4">
                 <label htmlFor={expensesInputId} className="text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 block mb-2">
-                    What are your monthly living expenses?
+                    What do you spend in a month?
                 </label>
                 <div className="relative mb-3">
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 dark:text-slate-400" aria-hidden="true">{currencyConfig.symbol}</span>
@@ -117,7 +117,7 @@ export const FireCalculator = ({
                 </div>
                 <div className="text-xs text-slate-500 dark:text-slate-400 space-y-1">
                     <div>That&apos;s <strong className="text-slate-700 dark:text-slate-300 tabular-nums">{formatCurrency(annualExpensesUsd)}/year</strong> in expenses</div>
-                    <div>You need <strong className="text-emerald-600 dark:text-emerald-400 tabular-nums">{formatCurrency(fireNumberUsd)}</strong> to retire (using the 4% rule)</div>
+                    <div>You&apos;d need <strong className="text-emerald-600 dark:text-emerald-400 tabular-nums">{formatCurrency(fireNumberUsd)}</strong> to retire on the 4% rule</div>
                 </div>
             </div>
 
@@ -127,8 +127,9 @@ export const FireCalculator = ({
                     What is the 4% rule?
                 </summary>
                 <div className="mt-2 p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg text-slate-600 dark:text-slate-400 leading-relaxed">
-                    The 4% rule says you can withdraw 4% of your savings each year without running out of money.
-                    So if you need {formatCurrency(annualExpensesUsd)}/year, you need 25x that amount ({formatCurrency(fireNumberUsd)}) saved up.
+                    A rule of thumb from retirement planning: withdraw 4% of your savings a year and the pot
+                    shouldn&apos;t run dry. So {formatCurrency(annualExpensesUsd)}/year in spending means 25x that
+                    saved up, or {formatCurrency(fireNumberUsd)}.
                 </div>
             </details>
 
@@ -177,9 +178,9 @@ export const FireCalculator = ({
                             <div className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-800 dark:text-white">
                                 {result.reached ? (
                                     result.years === 0 ? (
-                                        <span className="text-emerald-600 dark:text-emerald-400">Now!</span>
+                                        <span className="text-emerald-600 dark:text-emerald-400">Now</span>
                                     ) : (
-                                        <span>{result.years} <span className="text-base">years</span></span>
+                                        <span>{result.years} <span className="text-base">{result.years === 1 ? 'year' : 'years'}</span></span>
                                     )
                                 ) : (
                                     <span className="text-rose-600 dark:text-rose-400 text-xl">100+ years</span>
@@ -188,9 +189,9 @@ export const FireCalculator = ({
                             <div className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 mt-1">
                                 {result.reached
                                     ? result.years === 0
-                                        ? "You're already there!"
-                                        : "until you can retire"
-                                    : "keep stacking!"
+                                        ? "you're already there"
+                                        : 'until you can retire'
+                                    : 'not on this schedule'
                                 }
                             </div>
                         </div>
