@@ -53,7 +53,7 @@ const articleJsonLd = {
         "@id": "https://btcdollarcostaverage.com/about"
     },
     "datePublished": "2025-01-01",
-    // Static date — update when the content actually changes (build-date freshness
+    // Static date: update when the content itself changes (build-date freshness
     // is a spam-adjacent signal). Keep in sync with sitemap.ts.
     "dateModified": "2026-07-24",
 };
@@ -90,8 +90,8 @@ export default function AboutPage() {
                     </div>
                     <div className="space-y-3 text-sm sm:text-base text-slate-600 dark:text-slate-400 leading-relaxed">
                         <p>
-                            Most Bitcoin education online is either fragmented across dozens of sites, buried in ads,
-                            or trying to sell you something. This tool was built to fix that.
+                            Bitcoin education online tends to be scattered across dozens of sites, buried under ads,
+                            or quietly trying to sell you something. This tool is an attempt at the opposite.
                         </p>
                         <ul className="space-y-2 ml-1">
                             <li className="flex items-start gap-2">
@@ -100,7 +100,7 @@ export default function AboutPage() {
                             </li>
                             <li className="flex items-start gap-2">
                                 <span className="text-amber-500 font-bold mt-0.5 shrink-0">&bull;</span>
-                                <span><strong className="text-slate-800 dark:text-slate-200">Make long-term thinking easier.</strong> Help beginners understand self-custody, dollar-cost averaging, and the halving cycle without jargon.</span>
+                                <span><strong className="text-slate-800 dark:text-slate-200">Make long-term thinking easier.</strong> Self-custody, dollar-cost averaging, and the halving cycle, explained to beginners without the jargon.</span>
                             </li>
                             <li className="flex items-start gap-2">
                                 <span className="text-amber-500 font-bold mt-0.5 shrink-0">&bull;</span>
@@ -117,7 +117,7 @@ export default function AboutPage() {
                         <h2 className="text-xl sm:text-3xl font-bold text-slate-900 dark:text-white">Purpose &amp; Transparency</h2>
                     </div>
                     <div className="space-y-3 text-sm sm:text-base text-slate-600 dark:text-slate-400 leading-relaxed">
-                        <p>This site exists to provide free, Bitcoin-only education. Here is exactly how it works:</p>
+                        <p>This site exists to provide free, Bitcoin-only education. The arrangement, in full:</p>
                         <ul className="space-y-2 ml-1">
                             <li className="flex items-start gap-2">
                                 <span className="text-amber-500 font-bold mt-0.5 shrink-0">&bull;</span>
@@ -257,12 +257,12 @@ export default function AboutPage() {
                     </div>
                     <div className="space-y-3 text-sm sm:text-base text-slate-600 dark:text-slate-400 leading-relaxed">
                         <p>
-                            This site was built by an independent Bitcoiner. No company, no VC funding, no team of marketers.
-                            Just someone who got tired of scattered, ad-ridden Bitcoin tools and decided to build something better.
+                            An independent Bitcoiner. No company, no VC funding, no team of marketers. Just someone who
+                            got tired of scattered, ad-ridden Bitcoin tools and decided to build something better.
                         </p>
                         <p>
-                            The goal is simple: give people a clean, honest calculator that helps them understand
-                            what consistent Bitcoin accumulation actually looks like over time.
+                            The aim is a clean, honest calculator that shows what consistent Bitcoin accumulation
+                            looks like over time. Nothing beyond that.
                         </p>
                         <p>
                             You can find the builder on X (Twitter) at{' '}

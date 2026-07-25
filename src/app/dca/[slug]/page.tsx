@@ -19,7 +19,7 @@ import {
 
 // Prerender all 104 scenarios and recompute against fresh prices once a day.
 export const revalidate = 86400;
-// Anything outside the fixed matrix is a 404 — never compute arbitrary slugs.
+// Anything outside the fixed matrix is a 404: never compute arbitrary slugs.
 export const dynamicParams = false;
 
 const BASE_URL = 'https://btcdollarcostaverage.com';
@@ -153,15 +153,15 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     if (!scenario) return {};
     const { amount, freqSlug, year } = scenario;
 
-    // Root layout template appends "| Bitcoin DCA Calculator" — no suffix here.
+    // Root layout template appends "| Bitcoin DCA Calculator", so no suffix here.
     const title = `$${amount}/${freqSlug === 'week' ? 'Week' : 'Month'} in Bitcoin Since ${year}: What It's Worth Today`;
 
-    let description = `See what buying $${amount} of Bitcoin every ${freqSlug} since January ${year} would be worth today — total invested, BTC accumulated, and year-by-year returns from real historical prices.`;
+    let description = `See what buying $${amount} of Bitcoin every ${freqSlug} since January ${year} would be worth today: total invested, BTC accumulated, and year-by-year returns from real historical prices.`;
     try {
         // Hits the same warm cache as the page render, so this is cheap.
         const result = await computeScenario(scenario);
         if (result) {
-            description = `Buying $${amount} of Bitcoin every ${freqSlug} since January ${year} adds up to ${fmtUsd(result.totalInvested)} invested — worth ${fmtUsd(result.currentValue)} today (${fmtPct(result.roi, true)}), with ${fmtBtc(result.btcAccumulated)} accumulated.`;
+            description = `Buying $${amount} of Bitcoin every ${freqSlug} since January ${year} adds up to ${fmtUsd(result.totalInvested)} invested, worth ${fmtUsd(result.currentValue)} today (${fmtPct(result.roi, true)}), with ${fmtBtc(result.btcAccumulated)} accumulated.`;
         }
     } catch {
         // Keep the generic description.
@@ -252,7 +252,7 @@ export default async function DcaScenarioPage({ params }: PageProps) {
                     name: `How much would $${amount} per ${freqSlug} in Bitcoin since ${year} be worth today?`,
                     acceptedAnswer: {
                         '@type': 'Answer',
-                        text: `Investing $${amount} every ${freqSlug} from January 1, ${year} totals ${fmtUsd(result.totalInvested)} across ${result.breakdown.length} purchases. At today's price that stack would be worth ${fmtUsd(result.currentValue)} — a ${fmtPct(result.roi, true)} return.`,
+                        text: `Investing $${amount} every ${freqSlug} from January 1, ${year} totals ${fmtUsd(result.totalInvested)} across ${result.breakdown.length} purchases. At today's price that stack would be worth ${fmtUsd(result.currentValue)}, a return of ${fmtPct(result.roi, true)}.`,
                     },
                 },
                 {
@@ -310,11 +310,11 @@ export default async function DcaScenarioPage({ params }: PageProps) {
                     {result && (
                         <p className="text-base sm:text-lg text-slate-600 dark:text-slate-300 leading-relaxed">
                             Buying <strong className="font-semibold text-slate-900 dark:text-white">${amount}</strong> of
-                            Bitcoin every {freqSlug} starting January 1, {year} adds up
-                            to <strong className="font-semibold text-slate-900 dark:text-white">{fmtUsd(result.totalInvested)}</strong> invested
-                            across {result.breakdown.length} purchases — worth <strong className="font-semibold text-slate-900 dark:text-white">{fmtUsd(result.currentValue)}</strong> today,
-                            a return of <strong className={clsx('font-semibold', profitClass)}>{fmtPct(result.roi, true)}</strong>,
-                            with <strong className="font-semibold text-slate-900 dark:text-white">{fmtBtc(result.btcAccumulated)}</strong> accumulated.
+                            Bitcoin every {freqSlug} from January 1, {year} works out
+                            to <strong className="font-semibold text-slate-900 dark:text-white">{fmtUsd(result.totalInvested)}</strong> put
+                            in across {result.breakdown.length} purchases. Those buys total <strong className="font-semibold text-slate-900 dark:text-white">{fmtBtc(result.btcAccumulated)}</strong>,
+                            worth <strong className="font-semibold text-slate-900 dark:text-white">{fmtUsd(result.currentValue)}</strong> at
+                            today&apos;s price, a return of <strong className={clsx('font-semibold', profitClass)}>{fmtPct(result.roi, true)}</strong>.
                         </p>
                     )}
                 </header>
@@ -416,7 +416,7 @@ export default async function DcaScenarioPage({ params }: PageProps) {
                                 </table>
                             </div>
                             <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">
-                                Values are measured at the year&apos;s final scheduled purchase; the current year shows the latest purchase to date.
+                                Each row is measured at that year&apos;s final scheduled purchase. The current year shows the latest purchase so far.
                             </p>
                         </Card>
 
@@ -424,9 +424,10 @@ export default async function DcaScenarioPage({ params }: PageProps) {
                         <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
                             <strong className="font-semibold text-slate-600 dark:text-slate-300">How this is calculated:</strong>{' '}
                             purchases are simulated on UTC calendar days against Kraken weekly candles interpolated to daily
-                            prices, with real daily market data covering 2010&ndash;2015. No exchange fees are applied, and
-                            amounts are in USD. Read the full{' '}
-                            <Link href="/methodology" className="text-amber-600 dark:text-amber-400 hover:underline">methodology</Link>.
+                            prices, with real daily market data covering 2010&ndash;2015. Amounts are in USD. No exchange fees
+                            are applied. The full{' '}
+                            <Link href="/methodology" className="text-amber-600 dark:text-amber-400 hover:underline">methodology</Link>{' '}
+                            covers the rest.
                         </p>
                     </>
                 ) : (
@@ -438,8 +439,8 @@ export default async function DcaScenarioPage({ params }: PageProps) {
                                     Price data is temporarily unavailable
                                 </h2>
                                 <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
-                                    We couldn&apos;t load historical Bitcoin prices to compute this scenario right now.
-                                    The live calculator can fetch from multiple providers — try running the same schedule there.
+                                    We couldn&apos;t load historical Bitcoin prices for this scenario right now.
+                                    The live calculator pulls from several providers, so try running the same schedule there.
                                 </p>
                             </div>
                         </div>
@@ -452,8 +453,8 @@ export default async function DcaScenarioPage({ params }: PageProps) {
                         Run your own numbers
                     </h2>
                     <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300 mb-5 max-w-xl mx-auto">
-                        This page starts from ${amount} every {freqSlug} with zero fees. Change the amount, cadence,
-                        dates, and fees in the live calculator — backtested against the same historical data.
+                        This page assumes ${amount} every {freqSlug} and zero fees. Change any of it in the live
+                        calculator: amount, cadence, dates, fees, all backtested against the same historical data.
                     </p>
                     <Link
                         href={ctaHref}

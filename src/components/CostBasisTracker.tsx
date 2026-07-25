@@ -295,14 +295,14 @@ export const CostBasisTracker = ({ priceData, livePrice, priceMode }: CostBasisT
                     </div>
 
                     <div className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 pt-1">
-                        Avg. Cost Basis: <span className="tabular-nums">{formatCurrency(totals.avgCost)}</span> per BTC
+                        Average cost basis: <span className="tabular-nums">{formatCurrency(totals.avgCost)}</span> per BTC
                         <span className="mx-1.5" aria-hidden="true">&middot;</span>
-                        Amounts are converted to USD when saved and shown in your selected currency.
+                        Saved in USD, shown in your selected currency.
                     </div>
                 </div>
             ) : (
                 <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 text-center py-4">
-                    No positions yet. Add your first DCA position to track your cost basis.
+                    Nothing tracked yet. Add a position to see what you paid per BTC.
                 </p>
             )}
         </Card>

@@ -390,12 +390,12 @@ export const DrawdownCalculator: React.FC<DrawdownCalculatorProps> = ({ btcAccum
                 <CardHeader
                     icon={<Hourglass className="h-4 w-4" />}
                     title="How Long Would Your Stack Last?"
-                    subtitle="Spend the stack down instead of building it, and see the month it runs out."
+                    subtitle="Sell the stack down instead of building it. See when it runs out."
                 />
                 <p className="mt-4 rounded-xl bg-slate-50 p-4 text-sm text-slate-500 dark:bg-slate-800/50 dark:text-slate-400">
                     {stackBtc <= 0
-                        ? 'Run a calculation with a positive BTC balance to model spending it down.'
-                        : 'Live Bitcoin price unavailable, so the drawdown model cannot run right now.'}
+                        ? 'Run a calculation with some BTC in it first, then come back here.'
+                        : "The live Bitcoin price isn't available, so this can't run right now."}
                 </p>
             </Card>
         );
@@ -413,7 +413,7 @@ export const DrawdownCalculator: React.FC<DrawdownCalculatorProps> = ({ btcAccum
             <CardHeader
                 icon={<Hourglass className="h-4 w-4" />}
                 title="How Long Would Your Stack Last?"
-                subtitle="Spend the stack down instead of building it, and see the month it runs out."
+                subtitle="Sell the stack down instead of building it. See when it runs out."
             />
 
             {/* Inputs */}
@@ -507,7 +507,7 @@ export const DrawdownCalculator: React.FC<DrawdownCalculatorProps> = ({ btcAccum
 
             {model === null ? (
                 <p className="mt-4 rounded-xl bg-slate-50 p-4 text-sm text-slate-500 dark:bg-slate-800/50 dark:text-slate-400">
-                    Enter a monthly withdrawal above to see how long the stack lasts.
+                    Enter a monthly withdrawal to see how long the stack lasts.
                 </p>
             ) : (
                 <>
@@ -530,7 +530,7 @@ export const DrawdownCalculator: React.FC<DrawdownCalculatorProps> = ({ btcAccum
                         </div>
                         <p className="mt-1.5 text-xs text-slate-600 dark:text-slate-300 sm:text-sm">
                             {model.base.neverExhausted
-                                ? `At ${formatPercent(annualGrowth)} a year, the stack grows faster than you spend it — it never runs out inside 100 years. `
+                                ? `At ${formatPercent(annualGrowth)} a year, the stack grows faster than you spend it, so it never runs out inside 100 years. `
                                 : ''}
                             Spending{' '}
                             <span className="font-medium tabular-nums text-slate-800 dark:text-slate-100">
@@ -651,10 +651,10 @@ export const DrawdownCalculator: React.FC<DrawdownCalculatorProps> = ({ btcAccum
 
             {/* Caveat — stated plainly, not buried */}
             <p className="mt-4 text-[11px] leading-relaxed text-slate-500 dark:text-slate-400 sm:text-xs">
-                This assumes a smooth compounding price path, which Bitcoin has never had. Real markets deliver
-                sequence-of-returns risk: an 80% drawdown in your first few years forces you to sell far more BTC at
-                low prices, and the stack can be gone long before this model says. Treat the number as an upper
-                bound, not a plan. Not financial advice.
+                This assumes a smooth compounding price path, which Bitcoin has never had. The order of returns
+                matters: an 80% drawdown in your first few years forces you to sell far more BTC at low prices, and
+                the stack can be gone long before this model says. Read the number as an upper bound, not a plan.
+                Not financial advice.
             </p>
         </Card>
     );

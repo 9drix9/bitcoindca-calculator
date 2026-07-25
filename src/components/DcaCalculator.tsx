@@ -179,7 +179,7 @@ export const DcaCalculator = () => {
                 // Be honest: don't silently price everything at the manual default.
                 setPriceData([]);
                 setLivePrice(null);
-                setError('Live price data is unavailable right now — showing no results. Try again or switch to Manual mode.');
+                setError('Live price data is unavailable right now, so there are no results to show. Try again, or switch to Manual mode.');
             } finally {
                 if (!cancelled) setLoading(false);
             }
@@ -639,8 +639,9 @@ export const DcaCalculator = () => {
                 </Card>
             ) : (
                 <>
-                    {/* Denomination — display only, every BTC figure below follows it */}
-                    <div className="flex items-center justify-end gap-2 -mb-2 sm:-mb-3">
+                    {/* Denomination — display only, every BTC figure below follows it.
+                        No negative margins here: they let this row collide with the result cards. */}
+                    <div className="flex flex-wrap items-center justify-end gap-x-2 gap-y-1">
                         <span id="dca-denomination-label" className="text-[11px] font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">
                             Denomination
                         </span>
@@ -757,8 +758,8 @@ export const DcaCalculator = () => {
                                     {formatCurrency(results.totalInvested)}, stacked{' '}
                                     <span className="font-medium text-slate-700 dark:text-slate-200">{formatBtcAmount(results.btcAccumulated)}</span>,{' '}
                                     and it would now be worth{' '}
-                                    <span className="font-medium text-slate-700 dark:text-slate-200">{formatCurrency(results.currentValue)}</span>{' '}
-                                    &mdash; a <span className={clsx("font-medium", isProfit ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400")}>{results.roi.toFixed(1)}% return</span>.
+                                    <span className="font-medium text-slate-700 dark:text-slate-200">{formatCurrency(results.currentValue)}</span>,{' '}
+                                    a <span className={clsx("font-medium", isProfit ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400")}>{results.roi.toFixed(1)}% return</span>.
                                 </>
                             )}
                         </p>
@@ -782,7 +783,7 @@ export const DcaCalculator = () => {
                     {inflationStats && (
                         <div className="bg-white dark:bg-slate-900 px-4 sm:px-6 py-3 sm:py-4 rounded-xl border border-slate-200 dark:border-slate-800 fade-in">
                             <div className="text-[11px] sm:text-xs font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400 text-center mb-2">
-                                Real (inflation-adjusted) value &mdash; full-period CPI
+                                Real (inflation-adjusted) value, using full-period CPI
                             </div>
                             <div className="grid grid-cols-3 gap-2 sm:gap-4 text-center text-xs sm:text-sm">
                                 <div>

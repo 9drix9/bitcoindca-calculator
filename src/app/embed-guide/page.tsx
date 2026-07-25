@@ -3,16 +3,16 @@ import Link from 'next/link';
 import { Code2, LayoutTemplate, SlidersHorizontal, ScrollText, ArrowRight } from 'lucide-react';
 
 export const metadata: Metadata = {
-    // Root layout template appends "| Bitcoin DCA Calculator" — no suffix here.
+    // Root layout template appends "| Bitcoin DCA Calculator", so no suffix here.
     title: 'Embed the Bitcoin DCA Calculator',
-    description: 'Put a live Bitcoin DCA result card on your own site with one line of HTML. Free, no API key, no tracking — configurable amount, frequency, start date, fees, currency, and theme.',
+    description: 'Put a live Bitcoin DCA result card on your own site with one line of HTML. Free, no API key, no tracking. Set the amount, frequency, start date, fees, currency, and theme.',
     keywords: ['bitcoin dca widget', 'embed bitcoin calculator', 'bitcoin dca iframe', 'btc calculator widget', 'embeddable bitcoin dca calculator'],
     alternates: {
         canonical: '/embed-guide',
     },
     openGraph: {
         title: 'Embed the Bitcoin DCA Calculator',
-        description: 'A live, self-updating Bitcoin DCA result card for your site — one iframe, no API key, free to use.',
+        description: 'A live, self-updating Bitcoin DCA result card for your site. One iframe, no API key, free to use.',
         url: '/embed-guide',
         type: 'article',
         siteName: 'Bitcoin DCA Calculator',
@@ -21,7 +21,7 @@ export const metadata: Metadata = {
     twitter: {
         card: 'summary_large_image',
         title: 'Embed the Bitcoin DCA Calculator',
-        description: 'A live, self-updating Bitcoin DCA result card for your site — one iframe, no API key, free to use.',
+        description: 'A live, self-updating Bitcoin DCA result card for your site. One iframe, no API key, free to use.',
         creator: '@9drix9',
     },
 };
@@ -114,8 +114,8 @@ export default function EmbedGuidePage() {
                         Embed the <span className="text-amber-500">Bitcoin DCA Calculator</span>
                     </h1>
                     <p className="text-base sm:text-lg text-slate-600 dark:text-slate-300 max-w-2xl mx-auto leading-relaxed">
-                        Drop a live Bitcoin dollar-cost-averaging result card into any article, newsletter archive,
-                        or docs page with a single iframe. It recomputes against real market prices every hour.
+                        One iframe drops a live Bitcoin dollar-cost-averaging result card into an article, a newsletter
+                        archive, or a docs page. It recomputes against real market prices every hour.
                         Free, no API key, no accounts, no tracking scripts.
                     </p>
                 </section>
@@ -127,8 +127,9 @@ export default function EmbedGuidePage() {
                         <h2 className="text-xl sm:text-3xl font-bold text-slate-900 dark:text-white">What it looks like</h2>
                     </div>
                     <p className="text-sm sm:text-base text-slate-600 dark:text-slate-400 leading-relaxed">
-                        This is the real widget, running live below — $50 of Bitcoin every week since January 2021,
-                        with no exchange fee. It follows the reader&apos;s light or dark preference by default.
+                        What follows is the real widget, not a screenshot: $50 of Bitcoin every week since January 2021,
+                        with no exchange fee. By default it follows whichever light or dark preference the reader&apos;s
+                        browser reports.
                     </p>
                     <iframe
                         src={`/embed?${DEMO_QUERY}`}
@@ -145,19 +146,19 @@ export default function EmbedGuidePage() {
                         <h2 className="text-xl sm:text-3xl font-bold text-slate-900 dark:text-white">Copy the code</h2>
                     </div>
                     <p className="text-sm sm:text-base text-slate-600 dark:text-slate-400 leading-relaxed">
-                        Paste this wherever you want the card to appear, then change the query parameters to
-                        whatever scenario your piece is about. Click the block once to select all of it.
+                        Paste this wherever the card should appear, then swap the query parameters for whatever
+                        scenario your piece is about. One click on the block selects all of it.
                     </p>
                     <CodeBlock>{SNIPPET}</CodeBlock>
                     <div className="rounded-2xl border border-slate-200 bg-slate-100 p-5 sm:p-6 dark:border-slate-800 dark:bg-slate-900/50">
                         <h3 className="text-sm sm:text-base font-bold text-slate-800 dark:text-white mb-2">Sizing</h3>
                         <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-                            The card is fully responsive and has no fixed pixel width. It is designed for roughly
-                            400&ndash;600&nbsp;px wide and 250&ndash;340&nbsp;px tall; 300&nbsp;px of height is the
-                            sweet spot. Below about 320&nbsp;px wide the text stays legible but gets tight. Give the
-                            iframe a width of <code className="rounded bg-slate-200 px-1.5 py-0.5 text-[11px] dark:bg-slate-800">100%</code>{' '}
-                            and cap it with <code className="rounded bg-slate-200 px-1.5 py-0.5 text-[11px] dark:bg-slate-800">max-width</code>{' '}
-                            so it adapts on mobile.
+                            The card is responsive and has no fixed pixel width. It&apos;s built for roughly
+                            400&ndash;600&nbsp;px wide and 250&ndash;340&nbsp;px tall, and 300&nbsp;px of height is the
+                            sweet spot. Below about 320&nbsp;px wide the text stays legible but gets tight. Set the
+                            iframe width to <code className="rounded bg-slate-200 px-1.5 py-0.5 text-[11px] dark:bg-slate-800">100%</code>,{' '}
+                            cap it with <code className="rounded bg-slate-200 px-1.5 py-0.5 text-[11px] dark:bg-slate-800">max-width</code>,{' '}
+                            and it adapts on mobile.
                         </p>
                     </div>
                 </section>
@@ -169,9 +170,9 @@ export default function EmbedGuidePage() {
                         <h2 className="text-xl sm:text-3xl font-bold text-slate-900 dark:text-white">Parameters</h2>
                     </div>
                     <p className="text-sm sm:text-base text-slate-600 dark:text-slate-400 leading-relaxed">
-                        Every parameter is optional. Anything missing or invalid falls back to its default, so a bare{' '}
+                        Every parameter is optional. Anything missing or invalid falls back to its default, so even a bare{' '}
                         <code className="rounded bg-slate-100 px-1.5 py-0.5 text-[11px] dark:bg-slate-800">/embed</code>{' '}
-                        URL still renders a sensible card.
+                        URL renders a sensible card.
                     </p>
                     <div className="bg-slate-100 dark:bg-slate-900/50 p-5 sm:p-6 rounded-2xl border border-slate-200 dark:border-slate-800">
                         <div className="overflow-x-auto -mx-2 sm:mx-0">
@@ -202,10 +203,10 @@ export default function EmbedGuidePage() {
                         </div>
                     </div>
                     <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
-                        Dates are UTC calendar days. Amounts are denominated in the display currency you pick.
-                        Results use the same engine and data as the main calculator — see the{' '}
+                        Dates are UTC calendar days, and amounts are denominated in whichever display currency you pick.
+                        Results come from the same engine and data as the main calculator; the{' '}
                         <Link href="/methodology" className="text-amber-600 dark:text-amber-400 hover:underline">methodology</Link>{' '}
-                        for exactly how each number is computed.
+                        page spells out exactly how each number is computed.
                     </p>
                 </section>
 
@@ -247,7 +248,7 @@ export default function EmbedGuidePage() {
                         </li>
                         <li className="flex items-start gap-2">
                             <span className="text-amber-500 font-bold mt-0.5 shrink-0">&bull;</span>
-                            <span>Please keep the attribution link inside the card intact &mdash; that link is what pays for the data and hosting.</span>
+                            <span>Please leave the attribution link inside the card intact. That link is what pays for the data and the hosting.</span>
                         </li>
                         <li className="flex items-start gap-2">
                             <span className="text-amber-500 font-bold mt-0.5 shrink-0">&bull;</span>

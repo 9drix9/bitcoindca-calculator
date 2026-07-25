@@ -46,9 +46,9 @@ export const UnitBiasCalculator = ({ btcAccumulated }: UnitBiasCalculatorProps) 
 
                 <div className="bg-white/60 dark:bg-slate-800/60 rounded-xl p-3 sm:p-4 space-y-2">
                     <p className="text-sm sm:text-base text-slate-700 dark:text-slate-300">
-                        Your <span className="font-bold text-amber-600 dark:text-amber-400 tabular-nums">{stats.totalSats.toLocaleString()} sats</span> are{' '}
-                        <span className="font-bold text-emerald-600 dark:text-emerald-400 tabular-nums">{formatMultiple(stats.multiplesOfFairShare)}&times;</span> the global fair share
-                        &mdash; if all 21M BTC were split equally, each person on Earth could own about{' '}
+                        Your stack of <span className="font-bold text-amber-600 dark:text-amber-400 tabular-nums">{stats.totalSats.toLocaleString()} sats</span> is{' '}
+                        <span className="font-bold text-emerald-600 dark:text-emerald-400 tabular-nums">{formatMultiple(stats.multiplesOfFairShare)}&times;</span> the global fair share.
+                        Split all 21M BTC equally and each person on Earth gets about{' '}
                         <span className="font-bold text-slate-800 dark:text-white tabular-nums">{FAIR_SHARE_SATS.toLocaleString()} sats</span>.
                     </p>
 
@@ -65,7 +65,7 @@ export const UnitBiasCalculator = ({ btcAccumulated }: UnitBiasCalculatorProps) 
                 </div>
 
                 <p className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400">
-                    Based on the 21M BTC max supply split across ~8.1B people ({FAIR_SHARE_SATS.toLocaleString()} sats per person)
+                    Fair share assumes the 21M BTC max supply split across ~8.1B people, or {FAIR_SHARE_SATS.toLocaleString()} sats each
                 </p>
             </div>
         </Card>

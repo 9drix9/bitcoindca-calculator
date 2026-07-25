@@ -73,8 +73,8 @@ export const OpportunityCostCalculator = ({ priceData, livePrice }: OpportunityC
     return (
         <Card celebrated className="p-4 sm:p-6">
             <CardHeader
-                title="What If You Skipped...?"
-                subtitle="If you had invested this daily habit into Bitcoin over the past 5 years:"
+                title="What If You Skipped It?"
+                subtitle="Five years of putting this daily habit into Bitcoin instead:"
                 className="mb-4"
             />
 
@@ -160,7 +160,7 @@ export const OpportunityCostCalculator = ({ priceData, livePrice }: OpportunityC
                     </div>
                     {results.truncated && (
                         <p className="mt-3 text-[11px] sm:text-xs text-slate-500 dark:text-slate-400">
-                            Based on available price history from {formatUtc(results.startTs, 'full')}.
+                            Price history only reaches back to {formatUtc(results.startTs, 'full')}, so that&apos;s where this starts.
                         </p>
                     )}
                 </>

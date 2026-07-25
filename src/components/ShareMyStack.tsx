@@ -126,10 +126,6 @@ export const ShareMyStack = ({
         return `${range}: ${formatCurrency(totalInvested)} invested, now worth ${formatCurrency(currentValue)} (${roiText}). ${formattedBtc} stacked.`;
     }, [startDate, endDate, roi, totalInvested, currentValue, formatCurrency, formattedBtc]);
 
-    // The props contract carries results, not inputs (no amount/frequency/fee), so a
-    // `/share?…` permalink cannot be built here without inventing parameters that would
-    // render a wrong preview card. The current URL already carries the params whenever
-    // the visitor arrived from a shared link.
     const buildShareUrl = useCallback(() => {
         const origin = typeof window === 'undefined' ? SITE_URL : window.location.origin;
         // /share renders a preview card built from these exact params. Only use it when
@@ -159,13 +155,13 @@ export const ShareMyStack = ({
         const opened = openTab(`${PRIMAL_COMPOSE}${encodeURIComponent(note)}`);
         const copied = await copyToClipboard(note);
         if (copied) {
-            showStatus('nostr', opened ? 'Note copied and opened in Primal.' : 'Note copied — paste it into your Nostr client.', true);
+            showStatus('nostr', opened ? 'Note copied and opened in Primal.' : 'Note copied. Paste it into your Nostr client.', true);
         } else {
             showStatus(
                 'nostr',
                 opened
                     ? 'Opened in Primal. Clipboard unavailable, so the note was not copied.'
-                    : 'Pop-up blocked and clipboard unavailable — allow pop-ups to post to Nostr.',
+                    : 'Pop-up blocked and clipboard unavailable. Allow pop-ups to post to Nostr.',
                 opened,
             );
         }
@@ -177,7 +173,7 @@ export const ShareMyStack = ({
         if (openTab(intent)) {
             showStatus('x', 'Opened a post on X.', true);
         } else {
-            showStatus('x', 'Pop-up blocked — allow pop-ups to share on X.', false);
+            showStatus('x', 'Pop-up blocked. Allow pop-ups to share on X.', false);
         }
     }, [buildShareUrl, noteText, showStatus]);
 
@@ -185,7 +181,7 @@ export const ShareMyStack = ({
         const copied = await copyToClipboard(buildShareUrl());
         showStatus(
             'link',
-            copied ? 'Link copied to clipboard.' : 'Clipboard unavailable — copy the link from your address bar.',
+            copied ? 'Link copied to clipboard.' : 'Clipboard unavailable. Copy the link from your address bar.',
             copied,
         );
     }, [buildShareUrl, showStatus]);
@@ -232,7 +228,9 @@ export const ShareMyStack = ({
                 </button>
             </div>
 
-            {/* Scrollable wrapper for mobile */}
+            {/* Card keeps a fixed 440px width so every exported PNG is identical; the
+                actions sit beside it on wide screens so the row doesn't end in dead space. */}
+            <div className="grid items-start gap-4 lg:grid-cols-[440px_minmax(0,1fr)]">
             <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
                 <div
                     ref={cardRef}
@@ -296,7 +294,12 @@ export const ShareMyStack = ({
             </div>
 
             {/* Share actions — outside cardRef so they never land in the PNG export */}
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="space-y-3 lg:pt-1">
+                <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
+                    Download the card as an image, or post your result straight to Nostr or X. The link
+                    carries your settings, so anyone who opens it lands on these exact numbers.
+                </p>
+                <div className="flex flex-wrap items-center gap-2">
                 <button
                     type="button"
                     onClick={handleNostr}
@@ -329,14 +332,16 @@ export const ShareMyStack = ({
                         : <Link2 className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />}
                     Copy link
                 </button>
-            </div>
+                </div>
 
-            <div role="status" aria-live="polite">
-                {status && (
-                    <p className={`text-xs sm:text-sm fade-in ${status.ok ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400'}`}>
-                        {status.text}
-                    </p>
-                )}
+                <div role="status" aria-live="polite">
+                    {status && (
+                        <p className={`text-xs sm:text-sm fade-in ${status.ok ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400'}`}>
+                            {status.text}
+                        </p>
+                    )}
+                </div>
+            </div>
             </div>
         </div>
     );

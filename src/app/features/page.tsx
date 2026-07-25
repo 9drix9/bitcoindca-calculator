@@ -34,7 +34,7 @@ import {
 
 export const metadata: Metadata = {
     title: 'Features Guide',
-    description: 'Learn how to use every feature of the Bitcoin DCA Calculator. Comprehensive guide to all tools, widgets, and calculators explained in simple terms.',
+    description: 'How every feature of the Bitcoin DCA Calculator works: the backtester, the comparison tools, the goal trackers, and the live network widgets, explained in plain terms.',
     keywords: ['bitcoin calculator guide', 'dca calculator tutorial', 'bitcoin tools explained', 'crypto calculator features'],
     alternates: {
         canonical: '/features',
@@ -116,8 +116,8 @@ export default function FeaturesPage() {
                     Features Guide
                 </h1>
                 <p className="text-lg text-slate-600 dark:text-slate-300 max-w-2xl mx-auto mb-6">
-                    Everything you need to know about the Bitcoin DCA Calculator.
-                    Learn how each tool works and how it can help you make smarter investment decisions.
+                    A plain-English tour of every tool on the site: what each one does,
+                    what its numbers mean, and when it&apos;s worth your time.
                 </p>
                 <Link
                     href="/"
@@ -133,8 +133,9 @@ export default function FeaturesPage() {
                 <div className="bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-950/20 dark:to-orange-950/20 rounded-2xl border border-amber-200 dark:border-amber-800/50 p-6 sm:p-8">
                     <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-4">What is Dollar Cost Averaging (DCA)?</h2>
                     <p className="text-slate-700 dark:text-slate-300 mb-4 leading-relaxed">
-                        Dollar Cost Averaging is an investment strategy where you invest a fixed amount of money at regular intervals,
-                        regardless of the asset&apos;s price. Instead of trying to &quot;time the market,&quot; you buy consistently over time.
+                        Dollar cost averaging means putting a fixed amount into an asset at regular intervals, whatever the
+                        price happens to be that day. You give up on trying to &quot;time the market&quot; and buy on a
+                        schedule instead, letting the average price work itself out over the long run.
                     </p>
                     <div className="grid sm:grid-cols-3 gap-4 mt-6">
                         <div className="flex items-start gap-3">
@@ -166,43 +167,43 @@ export default function FeaturesPage() {
             <section className="mb-12 sm:mb-16">
                 <SectionHeader
                     title="The DCA Calculator"
-                    subtitle="The core tool that shows you what your Bitcoin investment would be worth."
+                    subtitle="The core tool: what a given buying schedule would have been worth."
                 />
                 <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
                     <FeatureCard
                         icon={DollarSign}
                         title="Investment Amount"
-                        description="Enter how much you want to invest each period. Can be any amount — even $10 or $20 per week adds up over time."
+                        description="How much goes in each period. Any number works, and $10 or $20 a week adds up faster than most people expect."
                         color="green"
                     />
                     <FeatureCard
                         icon={Repeat}
                         title="Frequency Options"
-                        description="Choose how often to invest: Daily, Weekly, Bi-weekly (every 2 weeks), or Monthly. Weekly is most popular for manual investors."
+                        description="Daily, weekly, bi-weekly (every 2 weeks), or monthly. Weekly is the most popular choice among people who buy by hand."
                         color="blue"
                     />
                     <FeatureCard
                         icon={Calendar}
                         title="Date Range"
-                        description="Pick your start and end dates. Use historical dates to see past performance, or future dates to project potential growth."
+                        description="Set a start and an end date. Past dates backtest against real prices; an end date in the future switches the tool over to projections."
                         color="purple"
                     />
                     <FeatureCard
                         icon={Calculator}
                         title="Fee Percentage"
-                        description="Account for exchange fees (typically 0.1% to 1.5%). This gives you a more accurate picture of your real returns."
+                        description="Exchange fees usually land somewhere between 0.1% and 1.5%. Enter yours and every return on the page accounts for the drag."
                         color="amber"
                     />
                     <FeatureCard
                         icon={Globe}
                         title="Currency Support"
-                        description="View results in USD, EUR, GBP, CAD, AUD, or JPY. All calculations are done in USD and converted for display."
+                        description="Results display in USD, EUR, GBP, CAD, AUD, or JPY. The math always runs in USD and converts at display time."
                         color="cyan"
                     />
                     <FeatureCard
                         icon={Database}
                         title="Price Sources"
-                        description="Choose between Kraken or Coinbase historical data. Both are major exchanges with reliable price history going back years."
+                        description="Kraken or Coinbase historical data, your pick. Both are major exchanges with price history going back years."
                         color="red"
                     />
                 </div>
@@ -213,12 +214,12 @@ export default function FeaturesPage() {
                         Preset Scenarios
                     </h4>
                     <p className="text-sm text-slate-600 dark:text-slate-400 mb-3">
-                        Not sure where to start? Click any preset button to instantly see common scenarios:
+                        Not sure where to start? The preset buttons load a common scenario in one click:
                     </p>
                     <ul className="text-sm text-slate-600 dark:text-slate-400 space-y-1">
-                        <li>&bull; <strong>$50/week for 5 years</strong> — A popular long-term strategy</li>
-                        <li>&bull; <strong>$100/week for 3 years</strong> — Medium-term with higher contributions</li>
-                        <li>&bull; <strong>&quot;What if I bought the peak?&quot;</strong> — See how DCA recovers from buying at all-time highs</li>
+                        <li>&bull; <strong>$50/week for 5 years</strong>: the classic long-term schedule</li>
+                        <li>&bull; <strong>$100/week for 3 years</strong>: shorter window, bigger contributions</li>
+                        <li>&bull; <strong>&quot;What if I bought the peak?&quot;</strong>: how DCA recovers when you start at an all-time high</li>
                     </ul>
                 </div>
             </section>
@@ -227,43 +228,43 @@ export default function FeaturesPage() {
             <section className="mb-12 sm:mb-16">
                 <SectionHeader
                     title="Results & Analysis Tools"
-                    subtitle="Understand your investment performance with detailed breakdowns."
+                    subtitle="What the results screen shows you, line by line."
                 />
                 <div className="grid sm:grid-cols-2 gap-4">
                     <FeatureCard
                         icon={Wallet}
                         title="Portfolio Summary"
-                        description="See your total invested, BTC accumulated, current value, and profit/loss at a glance. Toggle between BTC and Satoshis (sats) display."
+                        description="Total invested, BTC accumulated, current value, and profit or loss in a single row. One toggle switches the balance between BTC and satoshis."
                         color="amber"
                     />
                     <FeatureCard
                         icon={LineChart}
                         title="Performance Chart"
-                        description="Visual chart showing your portfolio value over time. Watch how your investment grows with each purchase. Includes M2 money supply overlay option."
+                        description="Portfolio value plotted across the whole period, stepping up with each purchase. There's an optional M2 money supply overlay if you want that comparison."
                         color="blue"
                     />
                     <FeatureCard
                         icon={Table}
                         title="Transaction History"
-                        description="Detailed table of every single purchase: date, BTC price, amount invested, BTC bought, fees paid, and running totals."
+                        description="Every purchase in a table: date, BTC price, amount invested, BTC bought, fees paid, and running totals."
                         color="green"
                     />
                     <FeatureCard
                         icon={Download}
                         title="CSV Export"
-                        description="Download your complete transaction history as a spreadsheet. Perfect for tax records, personal tracking, or importing into other tools."
+                        description="Pull the whole transaction history down as a spreadsheet. Useful for tax records, your own tracking, or importing somewhere else."
                         color="purple"
                     />
                     <FeatureCard
                         icon={Share2}
                         title="Share Link"
-                        description="Generate a shareable link with your exact calculator settings. Great for showing friends or saving your configuration."
+                        description="Generates a URL carrying your exact settings. Handy for showing someone a scenario, or just bookmarking your own."
                         color="cyan"
                     />
                     <FeatureCard
                         icon={Sparkles}
                         title="Future Projections"
-                        description="When your end date is in the future, see projected returns based on conservative (15%), moderate (30%), or aggressive (50%) annual growth scenarios."
+                        description="Set an end date in the future and the tool projects forward at conservative (15%), moderate (30%), or aggressive (50%) annual growth."
                         color="purple"
                     />
                 </div>
@@ -273,31 +274,31 @@ export default function FeaturesPage() {
             <section className="mb-12 sm:mb-16">
                 <SectionHeader
                     title="Comparison Tools"
-                    subtitle="See how Bitcoin stacks up against other investment options."
+                    subtitle="How the same money would have fared somewhere else."
                 />
                 <div className="grid sm:grid-cols-2 gap-4">
                     <FeatureCard
                         icon={Scale}
                         title="DCA vs Lump Sum"
-                        description="Compare your DCA strategy to investing the same total amount all at once on day one. See which approach would have performed better."
+                        description="The same total, dropped in all at once on day one. Sometimes lump sum wins and sometimes DCA does; this tells you which it was for your period."
                         color="blue"
                     />
                     <FeatureCard
                         icon={BarChart3}
                         title="Asset Comparison"
-                        description="Compare Bitcoin returns against S&P 500 index and Gold over the same period. Uses real historical data from financial markets."
+                        description="Bitcoin against the S&P 500 and gold over the same window, using real historical market data."
                         color="green"
                     />
                     <FeatureCard
                         icon={PiggyBank}
                         title="Savings Account Comparison"
-                        description="See how Bitcoin compares to keeping your money in a high-yield savings account (around 4-5% APY, varies — the rate is fully adjustable). Includes compound interest calculations."
+                        description="The same schedule parked in a high-yield savings account instead, with compound interest. Rates sit around 4-5% APY and vary by bank, so the rate is fully adjustable."
                         color="amber"
                     />
                     <FeatureCard
                         icon={TrendingUp}
                         title="Inflation-Adjusted Returns"
-                        description="See your 'real' returns after accounting for inflation using official CPI data from the Federal Reserve. This shows your actual purchasing power gain."
+                        description="Your returns in real terms, deflated by official CPI data from the Federal Reserve. What's left over is the gain in purchasing power."
                         color="red"
                     />
                 </div>
@@ -307,43 +308,43 @@ export default function FeaturesPage() {
             <section className="mb-12 sm:mb-16">
                 <SectionHeader
                     title="Planning & Goal Tools"
-                    subtitle="Plan your Bitcoin journey and track progress toward your goals."
+                    subtitle="Set a target, then find out what it takes to get there."
                 />
                 <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
                     <FeatureCard
                         icon={Target}
                         title="Stacking Goal Tracker"
-                        description="Set a target amount of Bitcoin (like 0.1 BTC or 1 whole coin) and track your progress. See how long until you reach your goal at your current pace."
+                        description="Pick a target: 0.1 BTC, a whole coin, whatever you're after. The tracker shows how far along you are and how long the rest takes at your current pace."
                         color="amber"
                     />
                     <FeatureCard
                         icon={TrendingUp}
                         title="Price Prediction Scenarios"
-                        description="Enter a target Bitcoin price ($100k, $500k, $1M) and instantly see what your current stack would be worth. Great for visualizing long-term potential."
+                        description="Type in a price ($100k, $500k, $1M) and see what your stack would be worth there. It's arithmetic, not a forecast."
                         color="green"
                     />
                     <FeatureCard
                         icon={Flame}
                         title="FIRE Calculator"
-                        description="Financial Independence, Retire Early calculator. Enter your monthly expenses and see at what Bitcoin price you could live off your holdings."
+                        description="Financial Independence, Retire Early. Enter your monthly expenses and it works backward to the Bitcoin price at which your holdings could cover them."
                         color="red"
                     />
                     <FeatureCard
                         icon={Coins}
                         title="Unit Bias Calculator"
-                        description="Bitcoin seems expensive? This shows how many Satoshis (sats) you own. 1 BTC = 100 million sats. Owning 1 million sats is easier than it sounds!"
+                        description="Bitcoin looks expensive until you count in satoshis. One BTC is 100 million sats, and a million sats is a far more reachable target than a whole coin."
                         color="purple"
                     />
                     <FeatureCard
                         icon={Calculator}
                         title="Opportunity Cost Calculator"
-                        description="Curious what you missed? Enter a past date and amount to see what that money would be worth today if you had bought Bitcoin instead."
+                        description="Enter a past date and an amount to see what that money would be worth today had you bought Bitcoin with it. Sometimes reassuring, sometimes not."
                         color="blue"
                     />
                     <FeatureCard
                         icon={ImageIcon}
                         title="Share My Stack"
-                        description="Generate a beautiful shareable image of your DCA results. Perfect for social media — shows your total invested, current value, and returns."
+                        description="Renders your DCA results as an image built for social media: total invested, current value, and return."
                         color="cyan"
                     />
                 </div>
@@ -353,19 +354,19 @@ export default function FeaturesPage() {
             <section className="mb-12 sm:mb-16">
                 <SectionHeader
                     title="Fee & Cost Analysis"
-                    subtitle="Understand and minimize the costs of your Bitcoin purchases."
+                    subtitle="Where the money leaks out on its way in."
                 />
                 <div className="grid sm:grid-cols-2 gap-4">
                     <FeatureCard
                         icon={Calculator}
                         title="Exchange Fee Comparison"
-                        description="Compare fees across major exchanges: Coinbase, Kraken, Binance, Cash App, Strike, Swan, and River. See total fees for your specific investment pattern."
+                        description="Fees side by side across Coinbase, Kraken, Binance, Cash App, Strike, Swan, and River, totalled for your specific buying pattern."
                         color="amber"
                     />
                     <FeatureCard
                         icon={BarChart3}
                         title="Cost Basis Tracker"
-                        description="Track your average purchase price (cost basis) over time. Essential for understanding your break-even point and for tax purposes."
+                        description="Your average purchase price as it moves over time. That number is your break-even line, and it's what tax reporting is built on."
                         color="green"
                     />
                 </div>
@@ -375,67 +376,67 @@ export default function FeaturesPage() {
             <section className="mb-12 sm:mb-16">
                 <SectionHeader
                     title="Live Dashboard Widgets"
-                    subtitle="Real-time Bitcoin network and market data updated automatically."
+                    subtitle="Network and market data, refreshed while you watch."
                 />
                 <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
                     <FeatureCard
                         icon={Clock}
                         title="Halving Countdown"
-                        description="Bitcoin's supply is cut in half roughly every 4 years. This shows the countdown to the next halving event — historically a bullish catalyst."
+                        description="New supply gets cut in half roughly every 4 years. The widget counts down to the next halving, historically a bullish catalyst."
                         color="amber"
                     />
                     <FeatureCard
                         icon={Boxes}
                         title="Live Blocks Feed"
-                        description="Watch new Bitcoin blocks being mined in real-time. Shows block height, time, transaction count, and size. Updates every 30 seconds."
+                        description="New blocks as they're mined, with height, time, transaction count, and size. Refreshes every 30 seconds."
                         color="purple"
                     />
                     <FeatureCard
                         icon={Gauge}
                         title="Fear & Greed Index"
-                        description="Market sentiment indicator from 0 (Extreme Fear) to 100 (Extreme Greed). When others are fearful, it might be a good time to buy."
+                        description="A sentiment gauge running from 0 (Extreme Fear) to 100 (Extreme Greed). When everyone else is fearful, it might be a good time to buy."
                         color="green"
                     />
                     <FeatureCard
                         icon={Activity}
                         title="Mempool Fees"
-                        description="Current Bitcoin transaction fees for fast, medium, and slow confirmation times. Useful for timing your withdrawals from exchanges."
+                        description="What it costs right now to confirm a transaction fast, medium, or slow. Worth a glance before you withdraw from an exchange."
                         color="blue"
                     />
                     <FeatureCard
                         icon={BarChart3}
                         title="Hash Rate & Difficulty"
-                        description="Network security metrics. Higher hash rate = more secure network. Shows current hash rate, difficulty, and next adjustment estimate."
+                        description="The security side of the network: current hash rate, difficulty, and an estimate of the next adjustment. More hash rate means a more expensive chain to attack."
                         color="red"
                     />
                     <FeatureCard
                         icon={Database}
                         title="Supply Scarcity"
-                        description="Track how much of the 21 million Bitcoin cap has been mined — currently around 95% of it. Shows percentage mined and remaining supply."
+                        description="Roughly 95% of the 21 million Bitcoin cap has already been mined. This tracks the exact percentage and how much supply is left."
                         color="amber"
                     />
                     <FeatureCard
                         icon={DollarSign}
                         title="Purchasing Power"
-                        description="Compare how $100 has lost value since 2015 while Bitcoin has gained. Visual demonstration of inflation vs Bitcoin appreciation."
+                        description="What $100 has lost since 2015, set against what Bitcoin gained over the same stretch. Inflation on one line, appreciation on the other."
                         color="green"
                     />
                     <FeatureCard
                         icon={Zap}
                         title="Lightning Network Stats"
-                        description="The Lightning Network enables instant, nearly-free Bitcoin payments. See total nodes, channels, and network capacity."
+                        description="Lightning settles Bitcoin payments instantly and for close to nothing. This shows total nodes, channels, and network capacity."
                         color="cyan"
                     />
                     <FeatureCard
                         icon={Globe}
                         title="Bitcoin Dominance"
-                        description="Bitcoin's share of the total cryptocurrency market cap. Higher dominance often indicates Bitcoin is outperforming altcoins."
+                        description="Bitcoin's share of the total cryptocurrency market cap. Rising dominance often means Bitcoin is outperforming altcoins."
                         color="purple"
                     />
                     <FeatureCard
                         icon={Coins}
                         title="Sat Converter"
-                        description="Quick converter between USD and Satoshis at current prices. Enter any dollar amount to see how many sats you can buy."
+                        description="USD to satoshis at the current price. Type in a dollar amount, get the sat count."
                         color="amber"
                     />
                 </div>
@@ -445,7 +446,7 @@ export default function FeaturesPage() {
             <section className="mb-12 sm:mb-16">
                 <SectionHeader
                     title="Educational Resources"
-                    subtitle="Learn more about Bitcoin and why people are investing."
+                    subtitle="Longer reads, for when the numbers start raising questions."
                 />
                 <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
                     <Link href="/why-bitcoin" className="group">
@@ -458,7 +459,7 @@ export default function FeaturesPage() {
                             </div>
                             <h3 className="font-semibold text-slate-800 dark:text-white mb-2">Why Bitcoin?</h3>
                             <p className="text-sm text-slate-600 dark:text-slate-400">
-                                Understand where Bitcoin&apos;s value comes from: user adoption, network effects, mining costs, and the case for exiting fiat currency.
+                                Where Bitcoin&apos;s value comes from: user adoption, network effects, mining costs, and the case for exiting fiat currency.
                             </p>
                         </div>
                     </Link>
@@ -472,7 +473,7 @@ export default function FeaturesPage() {
                             </div>
                             <h3 className="font-semibold text-slate-800 dark:text-white mb-2">Self-Custody Guide</h3>
                             <p className="text-sm text-slate-600 dark:text-slate-400">
-                                Learn why holding your own keys matters, how hardware wallets work, and how to secure your Bitcoin the right way.
+                                Why holding your own keys matters, how hardware wallets work, and how to store Bitcoin without losing it.
                             </p>
                         </div>
                     </Link>
@@ -486,7 +487,7 @@ export default function FeaturesPage() {
                             </div>
                             <h3 className="font-semibold text-slate-800 dark:text-white mb-2">Mining Guide</h3>
                             <p className="text-sm text-slate-600 dark:text-slate-400">
-                                How proof-of-work secures Bitcoin, why halvings matter, and how difficulty adjustment shapes mining economics.
+                                Proof-of-work, why halvings matter, and how the difficulty adjustment shapes mining economics.
                             </p>
                         </div>
                     </Link>
@@ -496,7 +497,7 @@ export default function FeaturesPage() {
                         </div>
                         <h3 className="font-semibold text-slate-800 dark:text-white mb-2">Bitcoin Adoption Tracker</h3>
                         <p className="text-sm text-slate-600 dark:text-slate-400">
-                            Interactive chart comparing Bitcoin&apos;s adoption curve to early internet growth. See where we are in the adoption cycle.
+                            An interactive chart laying Bitcoin&apos;s adoption curve over early internet growth, so you can judge how early it still is.
                         </p>
                     </div>
                 </div>
@@ -509,8 +510,8 @@ export default function FeaturesPage() {
                         Ready to Start?
                     </h2>
                     <p className="text-slate-300 mb-6 max-w-lg mx-auto">
-                        See what consistent Bitcoin investing could do for your financial future.
-                        No signup required — just enter your numbers and explore.
+                        Enter your numbers and see what a steady buying schedule would have done.
+                        No signup, no email, nothing to install.
                     </p>
                     <Link
                         href="/"

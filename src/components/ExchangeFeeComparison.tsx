@@ -30,7 +30,7 @@ export const ExchangeFeeComparison = ({ totalInvested, purchaseCount }: Exchange
         <Card className="p-4 sm:p-6">
             <CardHeader
                 title="Exchange Fee Comparison"
-                subtitle={<>Fees on {formatCurrency(totalInvested)} across {purchaseCount} purchases</>}
+                subtitle={<>What {formatCurrency(totalInvested)} over {purchaseCount} purchase{purchaseCount === 1 ? '' : 's'} costs you in fees</>}
                 className="mb-3 sm:mb-4"
             />
 
@@ -94,9 +94,9 @@ export const ExchangeFeeComparison = ({ totalInvested, purchaseCount }: Exchange
             </div>
 
             <p className="mt-3 text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-                Rates last verified July 2026 &mdash; maker/taker tiers and price spread vary by exchange and order size;
-                percentages are per-purchase trading fees only. Strike and River&apos;s 0% excludes their price spread,
-                and Cash App&apos;s ~2.2% is an approximation that varies by purchase amount.
+                Rates last verified July 2026. Maker/taker tiers and price spread vary by exchange and order size, so
+                these percentages cover per-purchase trading fees only. Strike and River&apos;s 0% excludes their price
+                spread, and Cash App&apos;s ~2.2% is an approximation that varies by purchase amount.
             </p>
         </Card>
     );

@@ -7,14 +7,14 @@ export const revalidate = 86400;
 
 // Root layout template appends "| Bitcoin DCA Calculator".
 export const metadata: Metadata = {
-    title: 'Bitcoin DCA Scenarios — What Steady Buying Would Be Worth',
+    title: 'Bitcoin DCA Scenarios: What Steady Buying Would Be Worth',
     description:
-        'Browse 104 precomputed Bitcoin dollar-cost averaging scenarios — $10 to $250 every week or month, starting any year from 2013 to 2025 — each refreshed daily with total invested, value today, ROI, and BTC accumulated.',
+        'Browse 104 precomputed Bitcoin dollar-cost averaging scenarios: $10 to $250 every week or month, starting any year from 2013 to 2025. Each one is refreshed daily with total invested, value today, ROI, and BTC accumulated.',
     alternates: {
         canonical: '/dca',
     },
     openGraph: {
-        title: 'Bitcoin DCA Scenarios — What Steady Buying Would Be Worth',
+        title: 'Bitcoin DCA Scenarios: What Steady Buying Would Be Worth',
         description:
             'Precomputed Bitcoin DCA outcomes: $10 to $250 every week or month, starting 2013 to 2025. Real historical prices, refreshed daily.',
         type: 'website',
@@ -23,7 +23,7 @@ export const metadata: Metadata = {
     },
     twitter: {
         card: 'summary_large_image',
-        title: 'Bitcoin DCA Scenarios — What Steady Buying Would Be Worth',
+        title: 'Bitcoin DCA Scenarios: What Steady Buying Would Be Worth',
         description:
             'Precomputed Bitcoin DCA outcomes: $10 to $250 every week or month, starting 2013 to 2025. Real historical prices, refreshed daily.',
         creator: '@9drix9',
@@ -54,9 +54,9 @@ export default function DcaScenariosIndexPage() {
                         Bitcoin <span className="text-amber-500">DCA</span> Scenarios
                     </h1>
                     <p className="text-base sm:text-lg text-slate-600 dark:text-slate-300 leading-relaxed">
-                        What would steady buying have done? Each page below backtests a fixed schedule&mdash;a set
-                        amount of Bitcoin bought every week or month since January 1 of the chosen year&mdash;against
-                        real historical prices, refreshed daily. Pick a plan to see the total invested, what it&apos;s
+                        What would steady buying have done? Each page below takes one fixed schedule (a set amount of
+                        Bitcoin bought every week or month since January 1 of the chosen year) and runs it against real
+                        historical prices. Results refresh daily. Pick a plan to see the total invested, what it&apos;s
                         worth today, and the year-by-year breakdown.
                     </p>
                 </section>
@@ -96,8 +96,9 @@ export default function DcaScenariosIndexPage() {
                         Backtest your own plan
                     </h2>
                     <p className="text-sm sm:text-base text-slate-600 dark:text-slate-400 mb-5 max-w-xl mx-auto">
-                        These pages cover common schedules. The live calculator lets you set any amount, cadence,
-                        date range, and fee&mdash;with the same historical data from Kraken and Coinbase.
+                        These pages cover the common schedules. For anything else, the live calculator takes any
+                        amount, cadence, date range, and fee, running on the same historical data from Kraken
+                        and Coinbase.
                     </p>
                     <Link
                         href="/"
