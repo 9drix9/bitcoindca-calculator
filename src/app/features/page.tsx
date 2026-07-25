@@ -411,7 +411,7 @@ export default function FeaturesPage() {
                     <FeatureCard
                         icon={Database}
                         title="Supply Scarcity"
-                        description="Track how much of the 21 million Bitcoin cap has been mined. Currently ~19.9M exist. Shows percentage mined and remaining supply."
+                        description="Track how much of the 21 million Bitcoin cap has been mined — currently around 95% of it. Shows percentage mined and remaining supply."
                         color="amber"
                     />
                     <FeatureCard
@@ -486,7 +486,7 @@ export default function FeaturesPage() {
                             </div>
                             <h3 className="font-semibold text-slate-800 dark:text-white mb-2">Mining Guide</h3>
                             <p className="text-sm text-slate-600 dark:text-slate-400">
-                                How proof-of-work secures Bitcoin, why halvings matter, and how mining economics create a price floor.
+                                How proof-of-work secures Bitcoin, why halvings matter, and how difficulty adjustment shapes mining economics.
                             </p>
                         </div>
                     </Link>

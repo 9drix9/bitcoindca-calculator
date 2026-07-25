@@ -1,25 +1,26 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { Users, Network, Cpu, BadgeDollarSign, AlertTriangle, ArrowRight } from 'lucide-react';
+import { Users, Network, Cpu, BadgeDollarSign, AlertTriangle, ArrowRight, KeyRound, Scale, HelpCircle, ShieldQuestion } from 'lucide-react';
 
 export const metadata: Metadata = {
     title: 'Why Bitcoin Has Value',
-    description: 'Where does Bitcoin\'s value come from? Explore user adoption, network effects, mining costs, and the case for exiting fiat currency.',
-    keywords: ['why bitcoin has value', 'bitcoin value proposition', 'bitcoin fundamentals', 'bitcoin adoption', 'bitcoin mining cost', 'bitcoin vs fiat', 'bitcoin network effect', 'metcalfe law bitcoin'],
+    description: 'How Bitcoin actually works, where its value comes from, which popular claims the evidence supports, and the open risks — an honest, in-depth explainer.',
+    keywords: ['why bitcoin has value', 'bitcoin value proposition', 'how bitcoin works', 'bitcoin fundamentals', 'bitcoin risks', 'bitcoin security budget', 'bitcoin vs fiat', 'bitcoin misconceptions', 'is bitcoin an inflation hedge'],
     alternates: {
         canonical: '/why-bitcoin',
     },
     openGraph: {
         title: 'Where Does Bitcoin\'s Value Come From?',
-        description: 'User adoption, network effects, cost of mining, and the case for exiting fiat. A data-driven look at Bitcoin\'s fundamentals.',
+        description: 'How the network actually works, what the evidence supports, the common misconceptions, and the open risks. A straight explainer with no hype.',
         type: 'article',
+        url: '/why-bitcoin',
         siteName: 'Bitcoin DCA Calculator',
         locale: 'en_US',
     },
     twitter: {
         card: 'summary_large_image',
         title: 'Where Does Bitcoin\'s Value Come From?',
-        description: 'User adoption, network effects, cost of mining, and the case for exiting fiat. A data-driven look at Bitcoin\'s fundamentals.',
+        description: 'How the network actually works, what the evidence supports, the common misconceptions, and the open risks. A straight explainer with no hype.',
         creator: '@9drix9',
     },
 };
@@ -37,7 +38,7 @@ const articleJsonLd = {
     "@context": "https://schema.org",
     "@type": "Article",
     "headline": "Where Does Bitcoin's Value Come From?",
-    "description": "Where does Bitcoin's value come from? Explore user adoption, network effects, mining costs, and the case for exiting fiat currency.",
+    "description": "How Bitcoin actually works, where its value comes from, which popular claims the evidence supports, and the open risks.",
     "author": {
         "@type": "Organization",
         "name": "Bitcoin DCA Calculator",
@@ -54,8 +55,100 @@ const articleJsonLd = {
     },
     "datePublished": "2025-01-01",
     // Static date — update when the content actually changes. Keep in sync with sitemap.ts.
-    "dateModified": "2026-07-24",
+    "dateModified": "2026-07-25",
 };
+
+const misconceptions = [
+    {
+        q: 'Is Bitcoin anonymous?',
+        a: 'No. Bitcoin is pseudonymous, and the ledger is public forever. Every transaction ever made is visible to anyone, and chain-analysis firms are good at linking addresses to identities — especially once coins touch an exchange that verified your ID. Treat Bitcoin as a permanent public record with a nickname attached, not as cash.',
+    },
+    {
+        q: 'Is Bitcoin "backed by nothing"?',
+        a: 'It is backed by the same thing every modern currency is backed by: the willingness of people to accept it, plus the cost of producing and defending it. What is unusual about Bitcoin is that its supply schedule and settlement rules are enforced by software that thousands of independent nodes verify, rather than by an institution that can change its mind.',
+    },
+    {
+        q: 'Is it too late, or is one bitcoin too expensive?',
+        a: 'You never buy a whole bitcoin unless you want to. Each one divides into 100 million satoshis, and every exchange sells fractions. Whether it is "too late" is a question about future adoption that nobody can answer honestly — but the unit price is not the obstacle people assume it is.',
+    },
+    {
+        q: 'Does Bitcoin waste energy?',
+        a: 'Bitcoin uses real energy on purpose: that expenditure is what makes rewriting its history expensive. Whether that is worthwhile is a value judgment, not a technical fact. The honest numbers: independent estimates put the network in the ballpark of a few tenths of a percent of global electricity use, comparable to a mid-sized country, with an unusually high and rising share of off-peak, stranded, and renewable generation because miners chase the cheapest power.',
+    },
+    {
+        q: 'Is Bitcoin fast and free to use?',
+        a: 'Not on its base layer. Blocks arrive roughly every ten minutes and capacity is deliberately limited, so on-chain fees rise when demand spikes. Bitcoin optimizes for final settlement that anyone can verify, not for speed. Payment speed comes from layers built on top, such as Lightning.',
+    },
+    {
+        q: 'Could a government just ban it?',
+        a: 'Governments can and do restrict on-ramps, exchanges, and banking access, which affects price and accessibility significantly. Banning the protocol itself is much harder — it is software and a peer-to-peer network with no headquarters. Regulatory risk is real, but "ban" and "kill" are different outcomes.',
+    },
+];
+
+const faqJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": misconceptions.map(item => ({
+        "@type": "Question",
+        "name": item.q,
+        "acceptedAnswer": { "@type": "Answer", "text": item.a },
+    })),
+};
+
+const claims: { claim: string; verdict: string; tone: 'solid' | 'mixed' | 'weak'; detail: string }[] = [
+    {
+        claim: 'The supply is capped at 21 million',
+        verdict: 'Well established',
+        tone: 'solid',
+        detail: 'Enforced by every full node independently. Changing it would require essentially all users to adopt new software against their own economic interest. (Slightly fewer than 21M will ever actually be spendable — some coins are provably lost or were never claimed.)',
+    },
+    {
+        claim: 'The ledger is extremely hard to rewrite',
+        verdict: 'Well established',
+        tone: 'solid',
+        detail: 'Rewriting recent history requires out-hashing the entire network. Note the limit of the guarantee: an attacker with majority hashrate could reverse their own recent transactions or censor others, but could not spend coins they do not have keys for.',
+    },
+    {
+        claim: 'Growing adoption drives value (Metcalfe\'s Law)',
+        verdict: 'Directionally sensible, weak as a price model',
+        tone: 'mixed',
+        detail: 'More users plausibly means more value, and network-size measures do correlate with price over long horizons. But correlation on a single asset with a short history is easy to overfit, and "users" is hard to define on a pseudonymous ledger. Useful as intuition, not as a forecast.',
+    },
+    {
+        claim: 'Halvings cause bull markets',
+        verdict: 'Unproven — tiny sample',
+        tone: 'mixed',
+        detail: 'There have been four halvings. Prices did rise substantially in the year or so following most of them, but four observations cannot separate the halving from the macro cycle, liquidity conditions, or reflexive expectations. Halvings are also perfectly predictable, so an efficient market should already price them in.',
+    },
+    {
+        claim: 'Mining costs put a floor under the price',
+        verdict: 'Backwards',
+        tone: 'weak',
+        detail: 'This is the most common mistake in Bitcoin analysis, and causation runs the other way. Difficulty automatically re-targets roughly every two weeks, so if the price falls, unprofitable miners switch off, difficulty drops, and the cost of production falls to meet the price. Mining cost tracks price; it does not support it.',
+    },
+    {
+        claim: 'Bitcoin is an inflation hedge',
+        verdict: 'Not supported short-term',
+        tone: 'weak',
+        detail: 'In 2022, US inflation hit 40-year highs and Bitcoin fell roughly 64%. Over short horizons it has traded like a high-beta risk asset, selling off when liquidity tightens. The stronger version of the argument is about long-horizon debasement of the money supply, not about tracking monthly CPI prints.',
+    },
+    {
+        claim: 'Stock-to-flow predicts the price',
+        verdict: 'Failed',
+        tone: 'weak',
+        detail: 'The S2F model was popular for years and its published forecasts have been badly wrong. It is included here because it still circulates: treat any model that outputs a confident future price with deep skepticism.',
+    },
+];
+
+const toneStyles: Record<'solid' | 'mixed' | 'weak', string> = {
+    solid: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300',
+    mixed: 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300',
+    weak: 'bg-rose-100 text-rose-800 dark:bg-rose-900/40 dark:text-rose-300',
+};
+
+const cardClass = 'bg-white dark:bg-slate-800 p-4 sm:p-5 rounded-xl border border-slate-200 dark:border-slate-700';
+const cardTitle = 'text-sm sm:text-base font-bold text-slate-800 dark:text-white mb-2';
+const cardBody = 'text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed';
 
 export default function WhyBitcoinPage() {
     return (
@@ -68,6 +161,10 @@ export default function WhyBitcoinPage() {
             type="application/ld+json"
             dangerouslySetInnerHTML={{ __html: JSON.stringify(articleJsonLd) }}
         />
+        <script
+            type="application/ld+json"
+            dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
+        />
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 space-y-10 sm:space-y-16">
 
             {/* Hero */}
@@ -76,233 +173,424 @@ export default function WhyBitcoinPage() {
                     Where Does <span className="text-amber-500">Bitcoin&apos;s</span> Value Come From?
                 </h1>
                 <p className="text-base sm:text-lg text-slate-600 dark:text-slate-300 max-w-2xl mx-auto leading-relaxed">
-                    Bitcoin has no CEO, no marketing team, and no physical form&mdash;yet it commands a trillion-dollar market cap.
-                    Its value emerges from four reinforcing pillars: the people who use it, the network they create, the energy that
-                    secures it, and the fiat (government-issued) currency system it offers an alternative to.
+                    Bitcoin has no CEO, no marketing budget, and no physical form, yet it settles trillions of dollars a year
+                    and has survived every obituary written for it. This page explains how it actually works, what its value
+                    rests on, which popular arguments the evidence supports, and what could still go wrong.
+                </p>
+                <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 max-w-2xl mx-auto">
+                    Written to be useful whether you end up buying any or not.
                 </p>
             </section>
 
-            {/* Section 1: User Adoption */}
+            {/* Section 1: How it works */}
             <section className="space-y-4">
                 <div className="flex items-center gap-2 sm:gap-3">
-                    <Users className="w-6 h-6 sm:w-8 sm:h-8 text-amber-500 shrink-0" />
-                    <h2 className="text-xl sm:text-3xl font-bold text-slate-900 dark:text-white">User Adoption</h2>
+                    <KeyRound className="w-6 h-6 sm:w-8 sm:h-8 text-amber-500 shrink-0" />
+                    <h2 className="text-xl sm:text-3xl font-bold text-slate-900 dark:text-white">First, How It Actually Works</h2>
                 </div>
                 <div className="space-y-4 text-sm sm:text-base text-slate-600 dark:text-slate-400 leading-relaxed">
                     <p>
-                        A network is only as valuable as the people who use it. Bitcoin has grown from a small group of
-                        privacy-focused developers in 2009 to <strong className="text-slate-800 dark:text-slate-200">hundreds of millions of crypto users worldwide</strong> (estimates
-                        vary widely; a large share hold BTC). Each new participant adds demand to a mathematically fixed supply.
+                        Most explanations skip the mechanics and jump to the price. The mechanics are the whole argument, so
+                        they are worth five minutes.
                     </p>
                     <div className="grid sm:grid-cols-2 gap-3 sm:gap-4">
-                        <div className="bg-white dark:bg-slate-800 p-4 sm:p-5 rounded-xl border border-slate-200 dark:border-slate-700">
-                            <h3 className="text-sm sm:text-base font-bold text-slate-800 dark:text-white mb-2">Metcalfe&apos;s Law</h3>
-                            <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-                                The value of a communications network grows proportional to the square of its connected
-                                users (n&sup2;). As adoption doubles, the potential value quadruples. Bitcoin&apos;s price
-                                history has tracked this relationship closely.
+                        <div className={cardClass}>
+                            <h3 className={cardTitle}>It is a shared ledger, not a coin</h3>
+                            <p className={cardBody}>
+                                There are no bitcoin files sitting anywhere. There is one public list of every transaction ever
+                                made, copied on tens of thousands of computers. &ldquo;Owning&rdquo; bitcoin means the ledger
+                                records that certain coins can only be moved by whoever holds a specific private key.
                             </p>
                         </div>
-                        <div className="bg-white dark:bg-slate-800 p-4 sm:p-5 rounded-xl border border-slate-200 dark:border-slate-700">
-                            <h3 className="text-sm sm:text-base font-bold text-slate-800 dark:text-white mb-2">Supply Absorption</h3>
-                            <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-                                Every new long-term holder removes coins from the available trading supply. With only 21 million
-                                BTC that will ever exist, growing adoption reduces the amount available for purchase and amplifies scarcity.
+                        <div className={cardClass}>
+                            <h3 className={cardTitle}>Keys are the ownership</h3>
+                            <p className={cardBody}>
+                                A private key is an enormous secret number. It produces a signature that proves you authorized a
+                                spend without revealing the key itself. Nobody can freeze or seize coins they do not have the key
+                                for — which is the same reason losing your key means losing the coins permanently.
+                            </p>
+                        </div>
+                        <div className={cardClass}>
+                            <h3 className={cardTitle}>Miners order transactions</h3>
+                            <p className={cardBody}>
+                                Miners race to find a number that makes a block of transactions hash below a target. Finding it is
+                                pure trial and error and costs real electricity; checking it is instant. The winner appends the next
+                                block and collects the newly issued coins plus fees, roughly every ten minutes.
+                            </p>
+                        </div>
+                        <div className={cardClass}>
+                            <h3 className={cardTitle}>Nodes enforce the rules</h3>
+                            <p className={cardBody}>
+                                This is the part almost everyone misses. Miners propose blocks, but every full node independently
+                                checks them and rejects anything invalid — including a block that pays its miner too much. The
+                                21 million cap is enforced here, by users, not by miners or any authority.
                             </p>
                         </div>
                     </div>
-                </div>
-            </section>
-
-            {/* Section 2: Network Effect */}
-            <section className="space-y-4">
-                <div className="flex items-center gap-2 sm:gap-3">
-                    <Network className="w-6 h-6 sm:w-8 sm:h-8 text-amber-500 shrink-0" />
-                    <h2 className="text-xl sm:text-3xl font-bold text-slate-900 dark:text-white">Network Effect</h2>
-                </div>
-                <div className="space-y-4 text-sm sm:text-base text-slate-600 dark:text-slate-400 leading-relaxed">
                     <p>
-                        More users attract more merchants, which attracts more infrastructure, which attracts more users.
-                        This self-reinforcing flywheel is the engine behind Bitcoin&apos;s growth&mdash;and it&apos;s accelerating.
+                        Two automatic adjustments keep the system on schedule. <strong className="text-slate-800 dark:text-slate-200">Difficulty
+                        re-targets</strong> about every two weeks so blocks keep arriving every ten minutes no matter how much
+                        mining power joins or leaves. And <strong className="text-slate-800 dark:text-slate-200">the block subsidy
+                        halves</strong> every 210,000 blocks, stepping issuance down toward zero. Together they make the supply
+                        schedule predictable decades in advance — see the{' '}
+                        <Link href="/mining" className="text-amber-600 dark:text-amber-400 hover:underline">mining guide</Link>{' '}
+                        for the full timetable.
                     </p>
-                    <div className="bg-slate-100 dark:bg-slate-900/50 p-5 sm:p-6 rounded-2xl border border-slate-200 dark:border-slate-800">
-                        <div className="grid sm:grid-cols-2 gap-4 sm:gap-6">
-                            <div>
-                                <h3 className="text-sm sm:text-base font-bold text-slate-800 dark:text-white mb-2">Lightning Network</h3>
-                                <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-                                    The Lightning Network is a payment layer built on top of Bitcoin that enables near-instant,
-                                    near-free transactions. Thousands of nodes and growing capacity are making BTC viable
-                                    for everyday payments, from coffee to cross-border transfers.
-                                </p>
-                            </div>
-                            <div>
-                                <h3 className="text-sm sm:text-base font-bold text-slate-800 dark:text-white mb-2">Institutional Adoption</h3>
-                                <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-                                    Bitcoin ETFs (exchange-traded funds that let people invest through traditional brokerages),
-                                    corporate treasury allocations (Strategy, Tesla, Block), and sovereign wealth fund interest
-                                    have brought regulated, large-scale capital into the network. This institutional infrastructure
-                                    wasn&apos;t available even a few years ago.
-                                </p>
-                            </div>
-                            <div>
-                                <h3 className="text-sm sm:text-base font-bold text-slate-800 dark:text-white mb-2">Developer Ecosystem</h3>
-                                <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-                                    Bitcoin is open-source software with hundreds of active contributors. Upgrades like Taproot
-                                    (which improved privacy and smart contract flexibility) continue to strengthen the
-                                    network&apos;s capabilities over time.
-                                </p>
-                            </div>
-                            <div>
-                                <h3 className="text-sm sm:text-base font-bold text-slate-800 dark:text-white mb-2">Global Reach</h3>
-                                <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-                                    Bitcoin operates 24/7 across every country. No bank holidays, no wire transfer delays, no
-                                    capital controls. For billions of unbanked or underbanked people, it&apos;s the first
-                                    accessible savings technology.
-                                </p>
-                            </div>
-                        </div>
-                    </div>
                 </div>
             </section>
 
-            {/* Section 3: Cost of Mining */}
+            {/* Section 2: The four pillars */}
             <section className="space-y-4">
                 <div className="flex items-center gap-2 sm:gap-3">
-                    <Cpu className="w-6 h-6 sm:w-8 sm:h-8 text-amber-500 shrink-0" />
-                    <h2 className="text-xl sm:text-3xl font-bold text-slate-900 dark:text-white">Cost of Mining</h2>
+                    <Scale className="w-6 h-6 sm:w-8 sm:h-8 text-amber-500 shrink-0" />
+                    <h2 className="text-xl sm:text-3xl font-bold text-slate-900 dark:text-white">What the Value Rests On</h2>
                 </div>
                 <div className="space-y-4 text-sm sm:text-base text-slate-600 dark:text-slate-400 leading-relaxed">
                     <p>
-                        Bitcoin uses a system called Proof of Work: miners (specialized computers around the world)
-                        compete to solve mathematical puzzles, and the winner gets to add the next batch of transactions
-                        (a &ldquo;block&rdquo;) to Bitcoin&apos;s permanent record. This requires real-world energy expenditure,
-                        which is what makes Bitcoin&apos;s ledger tamper-proof and establishes a production cost floor.
+                        Bitcoin&apos;s price is whatever people will pay, like anything else. The interesting question is what
+                        properties make people willing to pay. Four hold up under scrutiny.
                     </p>
                     <div className="grid sm:grid-cols-2 gap-3 sm:gap-4">
-                        <div className="bg-white dark:bg-slate-800 p-4 sm:p-5 rounded-xl border border-slate-200 dark:border-slate-700">
-                            <h3 className="text-sm sm:text-base font-bold text-slate-800 dark:text-white mb-2">Halving Cycles</h3>
-                            <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-                                Every ~210,000 blocks (~4 years), the mining reward is cut in half. This programmatic supply
-                                reduction has historically preceded major price appreciation as new issuance drops while
-                                demand grows. The most recent halving occurred in April 2024.
+                        <div className={cardClass}>
+                            <h3 className={cardTitle}>1. Verifiable scarcity</h3>
+                            <p className={cardBody}>
+                                Plenty of things are scarce. Bitcoin is scarce in a way you can personally verify: anyone can run
+                                software that audits the entire money supply in minutes, without trusting a single institution.
+                                No commodity or currency offers that. Just over 20 million of the 21 million exist today, and
+                                new issuance is already small and shrinking.
                             </p>
                         </div>
-                        <div className="bg-white dark:bg-slate-800 p-4 sm:p-5 rounded-xl border border-slate-200 dark:border-slate-700">
-                            <h3 className="text-sm sm:text-base font-bold text-slate-800 dark:text-white mb-2">Price Floor Dynamics</h3>
-                            <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-                                Miners have real costs: hardware, electricity, cooling, facilities. They generally won&apos;t
-                                sell below their cost of production for long. This creates a soft price floor that rises over
-                                time as difficulty increases and halvings reduce block rewards.
+                        <div className={cardClass}>
+                            <h3 className={cardTitle}>2. Settlement nobody can reverse</h3>
+                            <p className={cardBody}>
+                                A confirmed transaction is final. There is no chargeback, no correspondent bank, no business-hours
+                                delay, and no one who can decide you are not allowed to receive money. For most people in stable
+                                countries this is abstract; for people under capital controls, sanctions, or a collapsing currency
+                                it is the entire point.
+                            </p>
+                        </div>
+                        <div className={cardClass}>
+                            <h3 className={cardTitle}>3. Portability without permission</h3>
+                            <p className={cardBody}>
+                                Value that fits in a memorized phrase crosses any border. Gold cannot do this, and bank balances
+                                only move where a bank allows. This property has no obvious substitute and is what draws people
+                                to Bitcoin during currency crises rather than during calm markets.
+                            </p>
+                        </div>
+                        <div className={cardClass}>
+                            <h3 className={cardTitle}>4. Network effects</h3>
+                            <p className={cardBody}>
+                                Money is the ultimate coordination game: it is valuable because others treat it as valuable. Every
+                                exchange listing, custodian, ETF, payment processor, and long-term holder deepens liquidity and
+                                raises the cost of switching to a competitor. Bitcoin&apos;s decade-plus head start in security and
+                                liquidity is its widest moat.
                             </p>
                         </div>
                     </div>
                     <p>
-                        The global hashrate&mdash;a measure of the total computational power securing the network&mdash;has
-                        reached all-time highs, meaning more energy than ever is being committed to Bitcoin&apos;s security.
-                        This makes it prohibitively expensive for any bad actor to gain enough computing power to tamper
-                        with the network, reinforcing trust in the system.
+                        Notice what is <em>not</em> on this list: no expectation of a specific price, no promise of returns, and
+                        no claim that adoption is guaranteed. Those are forecasts. These four are properties you can check today.
                     </p>
                 </div>
             </section>
 
-            {/* Section 4: Exiting Fiat */}
+            {/* Section 3: Evidence table */}
+            <section className="space-y-4">
+                <div className="flex items-center gap-2 sm:gap-3">
+                    <ShieldQuestion className="w-6 h-6 sm:w-8 sm:h-8 text-amber-500 shrink-0" />
+                    <h2 className="text-xl sm:text-3xl font-bold text-slate-900 dark:text-white">What the Evidence Actually Supports</h2>
+                </div>
+                <div className="space-y-4 text-sm sm:text-base text-slate-600 dark:text-slate-400 leading-relaxed">
+                    <p>
+                        Bitcoin discussion is full of confident claims of wildly varying quality. Here is an honest scorecard of
+                        the arguments you will encounter most, including two that this site used to repeat before we checked them
+                        properly.
+                    </p>
+                    <div className="space-y-3">
+                        {claims.map((c) => (
+                            <div key={c.claim} className={cardClass}>
+                                <div className="flex flex-wrap items-center gap-2 mb-1.5">
+                                    <h3 className="text-sm sm:text-base font-bold text-slate-800 dark:text-white">{c.claim}</h3>
+                                    <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${toneStyles[c.tone]}`}>
+                                        {c.verdict}
+                                    </span>
+                                </div>
+                                <p className={cardBody}>{c.detail}</p>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </section>
+
+            {/* Section 4: Monetary case */}
             <section className="space-y-4">
                 <div className="flex items-center gap-2 sm:gap-3">
                     <BadgeDollarSign className="w-6 h-6 sm:w-8 sm:h-8 text-amber-500 shrink-0" />
-                    <h2 className="text-xl sm:text-3xl font-bold text-slate-900 dark:text-white">Exiting Fiat</h2>
+                    <h2 className="text-xl sm:text-3xl font-bold text-slate-900 dark:text-white">The Monetary Case, Stated Carefully</h2>
                 </div>
                 <div className="space-y-4 text-sm sm:text-base text-slate-600 dark:text-slate-400 leading-relaxed">
                     <p>
-                        Fiat currencies&mdash;government-issued money like the US dollar, euro, or yen&mdash;are designed
-                        to slowly lose purchasing power over time. The US dollar has lost over 96% of its value since the
-                        Federal Reserve was established in 1913. Central banks target roughly 2% annual inflation as a
-                        matter of policy.
+                        Fiat currencies — government-issued money like the dollar, euro, or yen — are managed to lose purchasing
+                        power slowly and deliberately. Most central banks target around 2% annual inflation, which compounds into
+                        something substantial: the US dollar has lost the large majority of its purchasing power since 1913.
                     </p>
 
                     <div className="bg-amber-50/50 dark:bg-amber-950/20 border-l-4 border-amber-400 px-4 sm:px-6 py-3 sm:py-4 rounded-r-xl">
                         <p className="text-sm sm:text-base text-slate-700 dark:text-slate-300 leading-relaxed">
-                            <strong className="text-slate-800 dark:text-slate-200">$100 in January 2015</strong> buys roughly the
-                            same goods that require <strong className="text-slate-800 dark:text-slate-200">~$130+ today</strong>,
-                            according to Consumer Price Index (CPI) data. That same $100, held in cash, lost about 30% of its
-                            purchasing power. In the same period, Bitcoin went from ~$314 to five- and six-figure prices.
+                            <strong className="text-slate-800 dark:text-slate-200">The honest version of this argument</strong> is
+                            not that cash is a scam. It is that cash is designed to be spent, not saved, and that people who hold
+                            savings in it are quietly taxed. The real comparison is not Bitcoin versus cash under a mattress —
+                            it is Bitcoin versus the other things people already move savings into, like index funds, property, or gold.
                         </p>
                     </div>
 
                     <div className="grid sm:grid-cols-2 gap-3 sm:gap-4">
-                        <div className="bg-white dark:bg-slate-800 p-4 sm:p-5 rounded-xl border border-slate-200 dark:border-slate-700">
-                            <h3 className="text-sm sm:text-base font-bold text-slate-800 dark:text-white mb-2">Fixed Supply</h3>
-                            <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-                                There will only ever be 21 million bitcoin. No central bank can print more. No committee
-                                can vote to change the issuance schedule. This hard cap is enforced by code and consensus,
-                                not by policy makers.
+                        <div className={cardClass}>
+                            <h3 className={cardTitle}>The supply argument</h3>
+                            <p className={cardBody}>
+                                Since 2020 the US M2 money supply expanded by trillions of dollars, and similar expansions happened
+                                worldwide. Bitcoin&apos;s issuance schedule did not react at all — it cannot. That indifference to
+                                policy is the actual product being sold, and it is why the calculator can overlay M2 against your
+                                results.
                             </p>
                         </div>
-                        <div className="bg-white dark:bg-slate-800 p-4 sm:p-5 rounded-xl border border-slate-200 dark:border-slate-700">
-                            <h3 className="text-sm sm:text-base font-bold text-slate-800 dark:text-white mb-2">Monetary Debasement</h3>
-                            <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-                                Since 2020, the US M2 money supply (a broad measure of all cash, checking deposits, and
-                                easily convertible savings) expanded by trillions of dollars. When more units of currency
-                                chase the same goods, each unit buys less. Bitcoin offers an alternative to this cycle
-                                of debasement.
+                        <div className={cardClass}>
+                            <h3 className={cardTitle}>The volatility counterargument</h3>
+                            <p className={cardBody}>
+                                A store of value that can fall 60-80% is a hard sell over any horizon shorter than several years.
+                                Bitcoin has had four such drawdowns. Anyone telling you it protects your savings without mentioning
+                                this is selling, not explaining. This is also precisely the problem dollar-cost averaging is meant
+                                to manage.
                             </p>
                         </div>
                     </div>
+                </div>
+            </section>
 
-                    <div className="bg-slate-100 dark:bg-slate-900/50 p-5 sm:p-6 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-3">
-                        <h3 className="text-sm sm:text-base font-bold text-slate-800 dark:text-white">What Is a Satoshi?</h3>
-                        <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-                            You don&apos;t need to buy a whole bitcoin. Each bitcoin is divisible
-                            into <strong className="text-slate-800 dark:text-slate-200">100,000,000 (100 million) satoshis</strong> (or
-                            &ldquo;sats&rdquo;), named after Bitcoin&apos;s creator Satoshi Nakamoto. Think of them like cents
-                            to a dollar&mdash;except there are a million times more sats per bitcoin than cents per dollar.
-                        </p>
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-xs sm:text-sm">
-                                <thead>
-                                    <tr className="text-left text-slate-500 dark:text-slate-400">
-                                        <th className="pb-2 pr-4 font-medium">If 1 BTC reaches</th>
-                                        <th className="pb-2 font-medium">1 satoshi =</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="font-mono text-slate-700 dark:text-slate-300">
-                                    <tr className="border-t border-slate-200 dark:border-slate-700/50">
-                                        <td className="py-1.5 pr-4">$100,000</td>
-                                        <td className="py-1.5">$0.001</td>
-                                    </tr>
-                                    <tr className="border-t border-slate-200 dark:border-slate-700/50">
-                                        <td className="py-1.5 pr-4">$1,000,000</td>
-                                        <td className="py-1.5">$0.01 <span className="text-slate-500 dark:text-slate-400 font-sans">(one cent)</span></td>
-                                    </tr>
-                                    <tr className="border-t border-slate-200 dark:border-slate-700/50">
-                                        <td className="py-1.5 pr-4">$10,000,000</td>
-                                        <td className="py-1.5">$0.10 <span className="text-slate-500 dark:text-slate-400 font-sans">(one dime)</span></td>
-                                    </tr>
-                                    <tr className="border-t border-slate-200 dark:border-slate-700/50">
-                                        <td className="py-1.5 pr-4">$100,000,000</td>
-                                        <td className="py-1.5">$1.00 <span className="text-slate-500 dark:text-slate-400 font-sans">(one dollar)</span></td>
-                                    </tr>
-                                </tbody>
-                            </table>
+            {/* Section 5: Adoption & network */}
+            <section className="space-y-4">
+                <div className="flex items-center gap-2 sm:gap-3">
+                    <Network className="w-6 h-6 sm:w-8 sm:h-8 text-amber-500 shrink-0" />
+                    <h2 className="text-xl sm:text-3xl font-bold text-slate-900 dark:text-white">Where Adoption Stands</h2>
+                </div>
+                <div className="space-y-4 text-sm sm:text-base text-slate-600 dark:text-slate-400 leading-relaxed">
+                    <p>
+                        Bitcoin went from a mailing-list experiment in 2009 to hundreds of millions of crypto users worldwide
+                        (estimates vary widely and should be treated as rough). More telling than user counts is the
+                        infrastructure that now exists:
+                    </p>
+                    <div className="bg-slate-100 dark:bg-slate-900/50 p-5 sm:p-6 rounded-2xl border border-slate-200 dark:border-slate-800">
+                        <div className="grid sm:grid-cols-2 gap-4 sm:gap-6">
+                            <div>
+                                <h3 className={cardTitle}>Regulated access</h3>
+                                <p className={cardBody}>
+                                    US spot ETFs launched in January 2024, letting pensions, advisors, and ordinary brokerage
+                                    accounts hold exposure without touching a private key. That pulled in a category of capital
+                                    that was structurally unable to participate before — while also concentrating a lot of coins
+                                    with a handful of custodians, which is a genuine centralization trade-off.
+                                </p>
+                            </div>
+                            <div>
+                                <h3 className={cardTitle}>Payments layer</h3>
+                                <p className={cardBody}>
+                                    The Lightning Network moves payments off-chain between pre-funded channels and settles the
+                                    net result on-chain, making small payments fast and cheap. It works, and it adds routing,
+                                    liquidity, and always-online complexity that is still being smoothed out.
+                                </p>
+                            </div>
+                            <div>
+                                <h3 className={cardTitle}>Protocol development</h3>
+                                <p className={cardBody}>
+                                    Bitcoin changes slowly on purpose. SegWit (2017) and Taproot (2021) both shipped through years
+                                    of review and opt-in activation. Conservatism is a feature for money, and it means anyone
+                                    promising fast, dramatic protocol changes is describing a different project.
+                                </p>
+                            </div>
+                            <div>
+                                <h3 className={cardTitle}>Sovereign and corporate holdings</h3>
+                                <p className={cardBody}>
+                                    Public companies hold bitcoin on their balance sheets, and several governments hold it —
+                                    some deliberately, some from seizures. National-level experiments with legal tender status
+                                    have been mixed and politically fragile, so treat any single country&apos;s policy as reversible.
+                                </p>
+                            </div>
                         </div>
-                        <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-                            Some Bitcoiners envision a future where the world prices goods in satoshis rather than
-                            dollars&mdash;where a sat <em>becomes</em> the everyday unit of money. Whether or not that
-                            happens, the math shows that Bitcoin is divisible enough to serve as a global medium of exchange
-                            at virtually any price level. When people say they &ldquo;can&apos;t afford a bitcoin,&rdquo;
-                            the answer is simple: you&apos;re not meant to buy a whole one. You stack sats.
-                        </p>
                     </div>
+                </div>
+            </section>
+
+            {/* Section 6: Risks */}
+            <section className="space-y-4">
+                <div className="flex items-center gap-2 sm:gap-3">
+                    <AlertTriangle className="w-6 h-6 sm:w-8 sm:h-8 text-amber-500 shrink-0" />
+                    <h2 className="text-xl sm:text-3xl font-bold text-slate-900 dark:text-white">Open Questions and Real Risks</h2>
+                </div>
+                <div className="space-y-4 text-sm sm:text-base text-slate-600 dark:text-slate-400 leading-relaxed">
+                    <p>
+                        Any page that lists only reasons to buy is advertising. These are the substantive open problems, roughly
+                        in order of how seriously informed critics take them.
+                    </p>
+                    <div className="grid sm:grid-cols-2 gap-3 sm:gap-4">
+                        <div className={cardClass}>
+                            <h3 className={cardTitle}>The security budget</h3>
+                            <p className={cardBody}>
+                                This is the most interesting unsolved question in Bitcoin. Mining is currently paid mostly by newly
+                                issued coins, but that subsidy halves toward zero. Eventually transaction fees alone must fund
+                                security. Whether fee revenue will be large and stable enough is genuinely unknown — it is decades
+                                away, but it is not hand-waved away by anyone serious.
+                            </p>
+                        </div>
+                        <div className={cardClass}>
+                            <h3 className={cardTitle}>Volatility and correlation</h3>
+                            <p className={cardBody}>
+                                Bitcoin has repeatedly lost more than half its value, and in recent cycles it has often moved with
+                                risk assets rather than against them. If you need the money within a few years, that combination
+                                is the risk that actually shows up in practice.
+                            </p>
+                        </div>
+                        <div className={cardClass}>
+                            <h3 className={cardTitle}>Regulation and access</h3>
+                            <p className={cardBody}>
+                                The protocol is hard to stop; your ability to buy, sell, and hold it is not. Exchange rules, tax
+                                treatment, banking access, and custody regulation can change quickly and vary by country. This is
+                                the risk most likely to affect an ordinary holder.
+                            </p>
+                        </div>
+                        <div className={cardClass}>
+                            <h3 className={cardTitle}>Self-custody mistakes</h3>
+                            <p className={cardBody}>
+                                Statistically, the biggest threat to your bitcoin is you. Lost seed phrases, phishing, bad backups,
+                                and exchange failures have destroyed far more coins than any protocol flaw. Our{' '}
+                                <Link href="/self-custody" className="text-amber-600 dark:text-amber-400 hover:underline">self-custody guide</Link>{' '}
+                                exists because this is where people actually get hurt.
+                            </p>
+                        </div>
+                        <div className={cardClass}>
+                            <h3 className={cardTitle}>Quantum computing</h3>
+                            <p className={cardBody}>
+                                A sufficiently powerful quantum computer could derive private keys from exposed public keys, which
+                                would put some coins at risk — particularly old ones whose public keys are already visible on-chain.
+                                No such machine exists today, and defenses can be adopted through a protocol upgrade, but the
+                                migration would be a large coordination problem.
+                            </p>
+                        </div>
+                        <div className={cardClass}>
+                            <h3 className={cardTitle}>Concentration</h3>
+                            <p className={cardBody}>
+                                Mining pools, exchanges, and ETF custodians each concentrate influence in ways the design tried to
+                                avoid. None of this breaks the rules a node enforces, but a system whose stated virtue is
+                                decentralization deserves ongoing scrutiny about how decentralized it remains.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            {/* Section 7: Misconceptions */}
+            <section className="space-y-4">
+                <div className="flex items-center gap-2 sm:gap-3">
+                    <HelpCircle className="w-6 h-6 sm:w-8 sm:h-8 text-amber-500 shrink-0" />
+                    <h2 className="text-xl sm:text-3xl font-bold text-slate-900 dark:text-white">Common Misconceptions</h2>
+                </div>
+                <div className="space-y-2.5">
+                    {misconceptions.map((item) => (
+                        <details key={item.q} className="group bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 transition-shadow hover:shadow-sm">
+                            <summary className="flex items-center justify-between cursor-pointer p-4 list-none [&::-webkit-details-marker]:hidden">
+                                <h3 className="font-semibold text-sm sm:text-base text-slate-800 dark:text-slate-200 pr-4">{item.q}</h3>
+                                <svg className="w-4 h-4 text-slate-500 dark:text-slate-400 transition-transform duration-200 group-open:rotate-180 shrink-0" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                            </summary>
+                            <div className="px-4 pb-4 -mt-1">
+                                <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">{item.a}</p>
+                            </div>
+                        </details>
+                    ))}
+                </div>
+            </section>
+
+            {/* Section 8: Satoshis */}
+            <section className="space-y-4">
+                <div className="flex items-center gap-2 sm:gap-3">
+                    <Users className="w-6 h-6 sm:w-8 sm:h-8 text-amber-500 shrink-0" />
+                    <h2 className="text-xl sm:text-3xl font-bold text-slate-900 dark:text-white">You Don&apos;t Buy Whole Bitcoin</h2>
+                </div>
+                <div className="bg-slate-100 dark:bg-slate-900/50 p-5 sm:p-6 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-3">
+                    <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+                        Each bitcoin divides into <strong className="text-slate-800 dark:text-slate-200">100,000,000 satoshis</strong> (&ldquo;sats&rdquo;),
+                        named after its pseudonymous creator. Think of them like cents to a dollar, except there are a million
+                        times more sats per bitcoin than cents per dollar. Buying $20 of bitcoin is completely normal.
+                    </p>
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-xs sm:text-sm">
+                            <thead>
+                                <tr className="text-left text-slate-500 dark:text-slate-400">
+                                    <th scope="col" className="pb-2 pr-4 font-medium">If 1 BTC reaches</th>
+                                    <th scope="col" className="pb-2 font-medium">1 satoshi =</th>
+                                </tr>
+                            </thead>
+                            <tbody className="tabular-nums text-slate-700 dark:text-slate-300">
+                                <tr className="border-t border-slate-200 dark:border-slate-700/50">
+                                    <td className="py-1.5 pr-4">$100,000</td>
+                                    <td className="py-1.5">$0.001</td>
+                                </tr>
+                                <tr className="border-t border-slate-200 dark:border-slate-700/50">
+                                    <td className="py-1.5 pr-4">$1,000,000</td>
+                                    <td className="py-1.5">$0.01 <span className="text-slate-500 dark:text-slate-400">(one cent)</span></td>
+                                </tr>
+                                <tr className="border-t border-slate-200 dark:border-slate-700/50">
+                                    <td className="py-1.5 pr-4">$10,000,000</td>
+                                    <td className="py-1.5">$0.10 <span className="text-slate-500 dark:text-slate-400">(one dime)</span></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+                        The table is arithmetic, not a forecast. The point is only that divisibility is not a constraint: when
+                        people say they &ldquo;can&apos;t afford a bitcoin,&rdquo; the answer is that nobody is asking them to buy
+                        a whole one.
+                    </p>
+                </div>
+            </section>
+
+            {/* Section 9: If you decide to buy */}
+            <section className="space-y-4">
+                <div className="flex items-center gap-2 sm:gap-3">
+                    <Cpu className="w-6 h-6 sm:w-8 sm:h-8 text-amber-500 shrink-0" />
+                    <h2 className="text-xl sm:text-3xl font-bold text-slate-900 dark:text-white">If You Decide to Buy Any</h2>
+                </div>
+                <div className="space-y-4 text-sm sm:text-base text-slate-600 dark:text-slate-400 leading-relaxed">
+                    <p>
+                        Nothing here is advice, but the practical consensus among long-term holders is boring and worth stating
+                        plainly:
+                    </p>
+                    <ul className="space-y-2 ml-1">
+                        <li className="flex items-start gap-2">
+                            <span className="text-amber-500 font-bold mt-0.5 shrink-0">&bull;</span>
+                            <span><strong className="text-slate-800 dark:text-slate-200">Size it so a 70% drawdown would not change your life.</strong> That has happened repeatedly and will likely happen again.</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                            <span className="text-amber-500 font-bold mt-0.5 shrink-0">&bull;</span>
+                            <span><strong className="text-slate-800 dark:text-slate-200">Buy on a schedule rather than on conviction.</strong> That is what this site&apos;s <Link href="/" className="text-amber-600 dark:text-amber-400 hover:underline">calculator</Link> models, and you can check how any schedule would actually have performed.</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                            <span className="text-amber-500 font-bold mt-0.5 shrink-0">&bull;</span>
+                            <span><strong className="text-slate-800 dark:text-slate-200">Mind the fees.</strong> A 1.5% fee on every purchase compounds into real money over years — the calculator shows the difference between exchanges.</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                            <span className="text-amber-500 font-bold mt-0.5 shrink-0">&bull;</span>
+                            <span><strong className="text-slate-800 dark:text-slate-200">Learn custody before you need it.</strong> Start with <Link href="/self-custody" className="text-amber-600 dark:text-amber-400 hover:underline">self-custody basics</Link>; exchanges have failed before and will again.</span>
+                        </li>
+                    </ul>
                 </div>
             </section>
 
             {/* CTA */}
             <section className="text-center bg-slate-100 dark:bg-slate-900/50 p-6 sm:p-10 rounded-2xl border border-slate-200 dark:border-slate-800">
                 <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white mb-3">
-                    See How DCA Would Have Grown Your Bitcoin
+                    See What the Numbers Actually Say
                 </h2>
                 <p className="text-sm sm:text-base text-slate-600 dark:text-slate-400 mb-5 max-w-xl mx-auto">
-                    Use the calculator to simulate dollar-cost averaging into Bitcoin with real historical price data from
-                    Kraken and Coinbase.
+                    Test any dollar-cost-averaging schedule against real historical prices — including the drawdowns, the fees,
+                    and how often comparable strategies ended in profit.
                 </p>
                 <Link
                     href="/"
@@ -311,6 +599,10 @@ export default function WhyBitcoinPage() {
                     Open the Calculator
                     <ArrowRight className="w-4 h-4" />
                 </Link>
+                <p className="mt-4 text-xs sm:text-sm text-slate-500 dark:text-slate-400">
+                    Curious how we compute all of it?{' '}
+                    <Link href="/methodology" className="text-amber-600 dark:text-amber-400 hover:underline">Read the methodology</Link>.
+                </p>
             </section>
 
             {/* Disclaimer */}
