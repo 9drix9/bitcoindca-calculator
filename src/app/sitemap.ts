@@ -1,4 +1,5 @@
 import type { MetadataRoute } from 'next';
+import { SCENARIOS } from './dca/scenarios';
 
 // Honest per-page content dates. Update a page's entry when its content
 // actually changes — do NOT use new Date() (fake freshness trains Google
@@ -12,6 +13,7 @@ const PAGE_DATES = {
     methodology: new Date('2026-07-24'),
     privacy: new Date('2026-07-24'),
     terms: new Date('2026-07-24'),
+    dcaIndex: new Date('2026-07-24'),
 } as const;
 
 export default function sitemap(): MetadataRoute.Sitemap {
@@ -61,6 +63,21 @@ export default function sitemap(): MetadataRoute.Sitemap {
             changeFrequency: 'monthly',
             priority: 0.6,
         },
+        {
+            url: `${baseUrl}/dca`,
+            lastModified: PAGE_DATES.dcaIndex,
+            changeFrequency: 'monthly',
+            priority: 0.7,
+        },
+        // Scenario pages recompute against fresh prices every day (ISR, revalidate
+        // 86400), so a live lastModified is honest here — unlike the static
+        // content pages above.
+        ...SCENARIOS.map((s): MetadataRoute.Sitemap[number] => ({
+            url: `${baseUrl}/dca/${s.slug}`,
+            lastModified: new Date(),
+            changeFrequency: 'daily',
+            priority: 0.6,
+        })),
         {
             url: `${baseUrl}/privacy`,
             lastModified: PAGE_DATES.privacy,

@@ -42,7 +42,7 @@ const DATA_SOURCES = [
     { source: 'FRED (St. Louis Fed)', provides: 'CPI inflation and M2 money supply series', cadence: 'Daily' },
     { source: 'Yahoo Finance', provides: 'S&P 500 (^GSPC) and Gold (GC=F) for asset comparisons', cadence: 'Cached ~1 hour' },
     { source: 'alternative.me', provides: 'Fear & Greed Index', cadence: '~5 min' },
-    { source: 'blockchain.info', provides: 'Circulating BTC supply', cadence: '~5 min' },
+    { source: 'blockchain.info', provides: 'Circulating BTC supply; daily market prices 2010-2015 (static snapshot)', cadence: '~5 min / fixed' },
     { source: 'frankfurter.app', provides: 'ECB reference FX rates (EUR, GBP, CAD, AUD, JPY display currencies)', cadence: '~12 hours' },
 ];
 
@@ -171,11 +171,11 @@ export default function MethodologyPage() {
                             candles from 2015 onward.
                         </p>
                         <p>
-                            <strong className="text-slate-800 dark:text-slate-200">Pre-2015 data is synthetic.</strong> Before
-                            real exchange data begins, prices are linearly interpolated from a $0.05 anchor at January 2010.
-                            Simulations that start in 2010&ndash;2014 run partly or largely on these estimated prices — treat
-                            those results as directional, not precise. Bitcoin&apos;s actual early price action was far more
-                            volatile than a straight line.
+                            <strong className="text-slate-800 dark:text-slate-200">Early history uses real market prices.</strong>{' '}
+                            For dates before an exchange&apos;s own candles begin, we use actual daily market prices from
+                            blockchain.info covering August 2010 through mid-2015 (a static snapshot, since this history no
+                            longer changes). No prices are fabricated; the earliest supported simulations start in August 2010
+                            at around $0.07.
                         </p>
                         <p>
                             <strong className="text-slate-800 dark:text-slate-200">Gaps use the last known price.</strong> If a
@@ -230,6 +230,9 @@ export default function MethodologyPage() {
                                 <li className="flex items-start gap-2"><span className="text-amber-500 font-bold mt-0.5 shrink-0">&bull;</span><span>New: live ECB exchange rates (frankfurter.app) replace hardcoded currency rates.</span></li>
                                 <li className="flex items-start gap-2"><span className="text-amber-500 font-bold mt-0.5 shrink-0">&bull;</span><span>New: XIRR (money-weighted annualized return) and max drawdown statistics.</span></li>
                                 <li className="flex items-start gap-2"><span className="text-amber-500 font-bold mt-0.5 shrink-0">&bull;</span><span>New: redesigned charts with single-axis tabs, plus this methodology page.</span></li>
+                                <li className="flex items-start gap-2"><span className="text-amber-500 font-bold mt-0.5 shrink-0">&bull;</span><span>New: real daily market prices (blockchain.info) for 2010&ndash;2015, replacing the earlier synthetic pre-2015 interpolation.</span></li>
+                                <li className="flex items-start gap-2"><span className="text-amber-500 font-bold mt-0.5 shrink-0">&bull;</span><span>New: historical win-rate stat — the share of comparable DCA windows since 2010 that ended in profit.</span></li>
+                                <li className="flex items-start gap-2"><span className="text-amber-500 font-bold mt-0.5 shrink-0">&bull;</span><span>New: result-specific share previews, plan-vs-plan comparison, and prerendered DCA scenario pages.</span></li>
                             </ul>
                         </div>
                         <div className="bg-white dark:bg-slate-900 p-5 sm:p-6 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-3">

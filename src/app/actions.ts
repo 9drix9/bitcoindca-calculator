@@ -65,7 +65,18 @@ function interpolateDaily(points: [number, number][]): [number, number][] {
     return out;
 }
 
-const GENESIS_TS = Date.UTC(2010, 0, 1);
+/**
+ * Prepend real daily market prices (blockchain.info, 2010-2015) for the era
+ * before the provider's own candles begin. Replaces the old synthetic
+ * $0.05-anchor linear interpolation.
+ */
+async function prependHistorical(points: [number, number][]): Promise<[number, number][]> {
+    const { BTC_HISTORICAL_DAILY } = await import('@/data/btcHistorical');
+    if (points.length === 0) return [...BTC_HISTORICAL_DAILY];
+    const firstTs = points[0][0];
+    const pre = BTC_HISTORICAL_DAILY.filter(([ts]) => ts < firstTs);
+    return pre.length > 0 ? [...pre, ...points] : points;
+}
 
 // Both providers fetch their full available history; callers slice per request.
 async function fetchProviderHistory(provider: 'kraken' | 'coinbase'): Promise<[number, number][]> {
@@ -150,12 +161,7 @@ async function fetchProviderHistory(provider: 'kraken' | 'coinbase'): Promise<[n
             // Convert to array and sort
             const coinbaseDailyPrices: [number, number][] = Array.from(map.entries()).sort((a, b) => a[0] - b[0]);
 
-            // Add Genesis Point + interpolate gap (same as Kraken)
-            if (coinbaseDailyPrices.length > 0 && coinbaseDailyPrices[0][0] > GENESIS_TS) {
-                coinbaseDailyPrices.unshift([GENESIS_TS, 0.05]);
-            }
-
-            dailyPrices.push(...interpolateDaily(coinbaseDailyPrices));
+            dailyPrices.push(...interpolateDaily(await prependHistorical(coinbaseDailyPrices)));
 
         } else {
             // Kraken (Existing Logic)
@@ -186,10 +192,7 @@ async function fetchProviderHistory(provider: 'kraken' | 'coinbase'): Promise<[n
 
             if (weeklyPoints.length === 0) throw new Error('Kraken returned no usable candles');
 
-            // Add Genesis Point
-            if (weeklyPoints[0][0] > GENESIS_TS) weeklyPoints.unshift([GENESIS_TS, 0.05]);
-
-            dailyPrices.push(...interpolateDaily(weeklyPoints));
+            dailyPrices.push(...interpolateDaily(await prependHistorical(weeklyPoints)));
         }
     }
 
@@ -651,6 +654,74 @@ export async function getCurrentBitcoinPrice(provider: 'kraken' | 'coinbase' = '
     } catch (error) {
         console.error(`[getCurrentBitcoinPrice] ${provider} failed:`, error);
         throw error;
+    }
+}
+
+// ── Profitable windows ─────────────────────────────────────────────────────────
+// "X% of all N-month DCA windows in history ended in profit" — computed over the
+// full price history, windows stepped weekly. Fee-free (stated in the UI).
+
+let windowsCache: Map<string, { timestamp: number; result: { profitablePercent: number; windowCount: number; durationDays: number } }> | null = null;
+
+export async function getProfitableWindows(
+    frequency: 'daily' | 'weekly' | 'biweekly' | 'monthly',
+    durationDays: number,
+): Promise<{ profitablePercent: number; windowCount: number; durationDays: number } | null> {
+    try {
+        // Bucket duration so the cache stays small and results stable
+        const bucketed = Math.max(90, Math.round(durationDays / 30) * 30);
+        const cacheKey = `${frequency}_${bucketed}`;
+        if (!windowsCache) windowsCache = new Map();
+        const cached = windowsCache.get(cacheKey);
+        if (cached && Date.now() - cached.timestamp < 60 * 60 * 1000) return cached.result;
+
+        const history = await getBitcoinPriceHistory(0, Date.now(), 'kraken');
+        if (!history || history.length < 400) return null;
+
+        // Daily series indexed by UTC day for O(1) lookups
+        const firstDay = Math.floor(history[0][0] / DAY_MS);
+        const lastDay = Math.floor(history[history.length - 1][0] / DAY_MS);
+        const prices = new Float64Array(lastDay - firstDay + 1);
+        let lastPrice = history[0][1];
+        for (const [ts, price] of history) {
+            const idx = Math.floor(ts / DAY_MS) - firstDay;
+            if (idx >= 0 && idx < prices.length) prices[idx] = price;
+        }
+        for (let i = 0; i < prices.length; i++) {
+            if (prices[i] > 0) lastPrice = prices[i];
+            else prices[i] = lastPrice;
+        }
+
+        const stepDays = frequency === 'daily' ? 1 : frequency === 'weekly' ? 7 : frequency === 'biweekly' ? 14 : 30;
+        const totalDays = prices.length;
+        if (bucketed >= totalDays) return null;
+
+        let windowCount = 0;
+        let profitable = 0;
+        // Window start advances weekly; $1 per purchase, profit iff endPrice·Σ(1/pᵢ) > n
+        for (let start = 0; start + bucketed < totalDays; start += 7) {
+            let invSum = 0;
+            let n = 0;
+            for (let d = start; d <= start + bucketed; d += stepDays) {
+                invSum += 1 / prices[d];
+                n++;
+            }
+            const endValue = prices[start + bucketed] * invSum;
+            windowCount++;
+            if (endValue > n) profitable++;
+        }
+
+        if (windowCount === 0) return null;
+        const result = {
+            profitablePercent: (profitable / windowCount) * 100,
+            windowCount,
+            durationDays: bucketed,
+        };
+        windowsCache.set(cacheKey, { timestamp: Date.now(), result });
+        return result;
+    } catch (error) {
+        console.error('[getProfitableWindows] failed:', error);
+        return null;
     }
 }
 
