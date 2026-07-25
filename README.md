@@ -14,9 +14,9 @@ A comprehensive Bitcoin Dollar Cost Averaging calculator with real-time market d
 - **CSV Export** — Download full transaction history with dates, prices, amounts, and portfolio values
 
 ### Charts & Visualization
-- **Interactive Portfolio Chart** — Total Invested vs Portfolio Value over time with Recharts
+- **Interactive Portfolio Chart** — Tabbed single-axis Recharts chart: "Portfolio" (value vs total invested) and "BTC Price" (price with an average-cost reference line and buy markers). Log-scale toggle, brush zoom, and a theme-aware crosshair tooltip
 - **Asset Comparisons** — Overlay S&P 500, Gold, and CPI-adjusted returns on the same chart
-- **M2 Money Supply Overlay** — Normalized Federal Reserve M2 data plotted alongside your portfolio
+- **Multi-Asset Growth Chart** — BTC vs S&P 500 vs Gold DCA growth on one shared axis
 - **Historical Events** — Toggle vertical markers for Mt. Gox collapse, China bans, COVID crash, El Salvador adoption, ETF approval, and $100k milestone
 - **Bitcoin Halving Lines** — Visual halving markers with epoch labels
 - **Power Law Trend** — Optional logarithmic trendline overlay
@@ -34,6 +34,11 @@ A comprehensive Bitcoin Dollar Cost Averaging calculator with real-time market d
 - **Sat/USD Converter** — Bidirectional satoshi-to-fiat converter with live price
 
 ### Advanced Financial Tools
+- **Risk & Return Metrics** — Money-weighted annualized return (XIRR, solved by Newton's method with a bisection fallback), max drawdown, best/worst buy, and total fees paid
+- **Historical Win Rate** — The share of comparable DCA windows since 2010 that ended in profit, computed across the full price history for your chosen frequency and duration
+- **Plan Comparison** — Overlay up to three DCA plans (different amounts, schedules, or start dates) on one shared axis with per-plan summaries
+- **Drawdown / DCA-Out Calculator** — Simulates spending the stack down: how long it lasts at a given monthly withdrawal, with inflation-adjusted withdrawals, bear/base/bull scenarios, and a bisection-solved sustainable withdrawal figure
+- **Sats-First Mode** — A persisted site-wide denomination preference; every Bitcoin amount renders in BTC or satoshis
 - **Future Projection** — When end date is in the future, shows projected returns with conservative (15%), moderate (30%), and aggressive (50%) growth scenarios, plus custom target price mode
 - **FIRE Calculator** — Years until financial independence using the 4% withdrawal rule across three appreciation scenarios (conservative 10%, moderate 25%, aggressive 50%)
 - **Savings Account Comparison** — Side-by-side comparison of BTC DCA vs traditional savings with editable APY
@@ -48,7 +53,8 @@ A comprehensive Bitcoin Dollar Cost Averaging calculator with real-time market d
 
 ### Educational Content
 - **Features Guide Page** — Comprehensive `/features` page explaining every tool and widget in simple, beginner-friendly terms
-- **Why Bitcoin Page** — Dedicated `/why-bitcoin` page explaining Bitcoin's value proposition across four pillars: user adoption, network effects, cost of mining, and exiting fiat. Includes a satoshi explainer with price-level table. Static page with Article JSON-LD for rich search results
+- **Why Bitcoin Page** — `/why-bitcoin` covers how the protocol actually works, what the value rests on, an evidence scorecard grading common claims (including ones this project previously repeated), open risks such as the long-run security budget, and a misconceptions FAQ. Article + FAQPage JSON-LD
+- **Methodology Page** — `/methodology` documents every data source, the exact DCA/XIRR/drawdown formulas, where data is interpolated, known limitations, and a changelog
 - **Bitcoin Adoption Tracker** — Interactive chart comparing Bitcoin's adoption curve to early internet growth, with global owner estimates and Metcalfe's Law context
 - **Rotating Bitcoin Quotes** — Curated quotes from Satoshi Nakamoto, Michael Saylor, Milton Friedman, and others
 - **FAQ with Structured Data** — JSON-LD FAQ schema for rich search results
@@ -58,7 +64,7 @@ A comprehensive Bitcoin Dollar Cost Averaging calculator with real-time market d
 - **Dark Mode** — System-aware theme toggle with localStorage persistence
 - **PWA Ready** — Web app manifest with PNG icons for iOS and Android home screen
 - **Vercel Analytics** — Built-in analytics and speed insights integration
-- **Ad Placements** — Three ad slots with lazy-loaded iframes
+- **Ad Placements** — Two fixed-height, lazy-loaded A-ADS slots. Google AdSense was deliberately removed in July 2026: surveillance display advertising contradicts the site's stated privacy position, and A-ADS is Bitcoin-native and cookieless
 - **Cookie Consent** — GDPR-compliant consent banner
 
 ### SEO & Performance
@@ -67,7 +73,8 @@ A comprehensive Bitcoin Dollar Cost Averaging calculator with real-time market d
 - **Optimized Meta Tags** — Proper title, description, canonical, and Twitter card tags on every page
 - **Sitemap & Robots** — Auto-generated `sitemap.xml` and `robots.txt`
 - **Font Loading** — `display: swap` prevents invisible text during font load
-- **Preconnect Hints** — DNS prefetch and preconnect for external API domains
+- **Programmatic Scenario Pages** — 104 prerendered `/dca/{amount}-per-{week|month}-since-{year}` pages with server-computed results, year-by-year tables, and FAQPage + BreadcrumbList JSON-LD (ISR, revalidated daily)
+- **Result-Specific Share Cards** — `/share` serves Open Graph metadata and a generated `/api/og` image reflecting the shared calculation's actual numbers
 - **Lazy Loading** — Dynamic imports for below-fold charts (`BitcoinAdoption`), on-demand `html-to-image` loading, and lazy ad iframes
 - **Semantic HTML** — Proper heading hierarchy (one h1 per page), `<main>`, `<header>`, `<footer>`, `<article>`, `<section>` elements
 
@@ -91,11 +98,15 @@ npm install
 Create a `.env.local` file in the project root:
 
 ```env
-# Required for M2 Money Supply data and CPI inflation data
+# Required for CPI inflation data (inflation-adjusted returns)
 FRED_API_KEY=your_fred_api_key_here
 
 # Base URL for sitemap and canonical URLs (defaults to https://btcdollarcostaverage.com)
 NEXT_PUBLIC_BASE_URL=https://btcdollarcostaverage.com
+
+# Optional. A Lightning address (e.g. you@walletofsatoshi.com) shown alongside the
+# on-chain donation address in the footer. When unset, the Lightning row is not rendered.
+NEXT_PUBLIC_LIGHTNING_ADDRESS=
 ```
 
 Get a free FRED API key at [fred.stlouisfed.org/docs/api/api_key.html](https://fred.stlouisfed.org/docs/api/api_key.html).
@@ -191,10 +202,14 @@ scripts/
 | blockchain.info | Circulating supply | 5min polling |
 | CoinGecko | BTC dominance, market cap | 5min revalidate |
 | alternative.me | Fear & Greed Index | 5min polling |
-| FRED (Federal Reserve) | M2 money supply, CPI data | 24h LRU cache |
-| Yahoo Finance | S&P 500 historical data | Per-request |
+| FRED (Federal Reserve) | CPI data (inflation-adjusted returns) | 24h LRU cache |
+| Yahoo Finance | S&P 500 and Gold historical data | Per-request |
+| frankfurter.app | ECB reference FX rates for display currencies | 12h cache |
+| Static snapshot | Real daily BTC prices Aug 2010 – Jun 2015 (`src/data/btcHistorical.ts`, sourced from blockchain.info) | Bundled |
 
-All external API calls are made server-side via Next.js server actions. Widgets pass `initialData` from the server and poll for updates client-side. All widgets gracefully return `null` when API data is unavailable.
+All external API calls are made server-side via Next.js server actions. Widgets render from server-supplied `initialData` and poll for updates client-side, gated on tab visibility. When data is unavailable a widget keeps its last known good value and otherwise renders an explicit "Data unavailable" state — it never silently disappears or renders zeros as fact.
+
+Provider history is fetched in full, cached per provider, and sliced per request; Kraken and Coinbase automatically fall back to one another on failure.
 
 ## Deployment
 

@@ -58,30 +58,28 @@ export default function PrivacyPage() {
                 </p>
                 <ul>
                     <li><strong>Essential cookies:</strong> Theme preference and cookie consent status are stored in your browser&apos;s localStorage. These are necessary for the site to function properly.</li>
-                    <li><strong>Advertising cookies:</strong> We use Google AdSense to display advertisements. Google may use cookies to serve ads based on your prior visits to this and other websites. Google&apos;s use of advertising cookies enables it and its partners to serve ads based on your browsing patterns.</li>
+                    <li><strong>Marketing measurement:</strong> If you consent to analytics, Google Ads conversion tracking loads so we can measure whether our own advertising reaches people. It is not loaded at all unless you accept.</li>
                 </ul>
 
                 <h2>Third-Party Advertising</h2>
                 <p>
-                    We use Google AdSense to serve advertisements on this site. Google AdSense uses cookies to serve ads based on
-                    your visits to this site and other sites on the Internet. You may opt out of personalized advertising by visiting{' '}
-                    <a href="https://www.google.com/settings/ads" target="_blank" rel="noopener noreferrer">Google Ads Settings</a>.
+                    We deliberately do not run Google AdSense or any other surveillance-based ad network. Display advertising on this
+                    site is served by <a href="https://a-ads.com" target="_blank" rel="noopener noreferrer">A-ADS</a>, a Bitcoin-native
+                    ad network that does not require cookies, does not build a profile of you, and does not track you across other
+                    websites. Ads are chosen by the page they appear on, not by your browsing history.
                 </p>
                 <p>
-                    Third-party vendors, including Google, use cookies to serve ads based on your prior visits. Google&apos;s use of the
-                    DoubleClick cookie enables it and its partners to serve ads based on your browsing history. You can opt out of the
-                    use of the DoubleClick cookie by visiting the{' '}
-                    <a href="https://adssettings.google.com" target="_blank" rel="noopener noreferrer">Ad Settings page</a>.
+                    We think running behavioural ad networks on a site about financial self-sovereignty would be a contradiction, so
+                    we removed AdSense in July 2026 and accepted the lower revenue.
                 </p>
 
                 <h2>Opt-Out</h2>
                 <p>
                     You can manage your cookie preferences at any time using the cookie consent banner at the bottom of the page.
-                    You may also:
+                    Declining analytics prevents any Google script from loading. You may also:
                 </p>
                 <ul>
                     <li>Opt out of personalized ads at <a href="https://www.google.com/settings/ads" target="_blank" rel="noopener noreferrer">Google Ads Settings</a></li>
-                    <li>Use the <a href="https://optout.networkadvertising.org/" target="_blank" rel="noopener noreferrer">NAI opt-out tool</a> to opt out of interest-based advertising</li>
                     <li>Configure your browser to block third-party cookies</li>
                 </ul>
 

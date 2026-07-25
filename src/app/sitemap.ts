@@ -11,6 +11,7 @@ const PAGE_DATES = {
     mining: new Date('2026-07-25'),
     about: new Date('2026-07-24'),
     methodology: new Date('2026-07-24'),
+    embedGuide: new Date('2026-07-25'),
     privacy: new Date('2026-07-24'),
     terms: new Date('2026-07-24'),
     dcaIndex: new Date('2026-07-24'),
@@ -62,6 +63,14 @@ export default function sitemap(): MetadataRoute.Sitemap {
             lastModified: PAGE_DATES.methodology,
             changeFrequency: 'monthly',
             priority: 0.6,
+        },
+        {
+            // The embeddable widget itself (/embed) is intentionally absent: it is
+            // noindex and only ever meant to load inside someone else's page.
+            url: `${baseUrl}/embed-guide`,
+            lastModified: PAGE_DATES.embedGuide,
+            changeFrequency: 'monthly',
+            priority: 0.5,
         },
         {
             url: `${baseUrl}/dca`,
