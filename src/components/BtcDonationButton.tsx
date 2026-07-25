@@ -5,10 +5,10 @@ import { Copy, Check, Zap } from 'lucide-react';
 
 const BTC_ADDRESS = 'bc1qg9vdwfcn2c4wv6dtfvhjd4j3fmq2kzhrt6cq6k';
 
-// Lightning address (e.g. "you@walletofsatoshi.com"). Set NEXT_PUBLIC_LIGHTNING_ADDRESS
-// in the deployment environment to enable the Lightning option; when unset, the
-// Lightning row simply does not render rather than showing a placeholder nobody can pay.
-const LIGHTNING_ADDRESS = process.env.NEXT_PUBLIC_LIGHTNING_ADDRESS?.trim();
+// Lightning address, verified against its LNURL-pay endpoint
+// (https://strike.me/.well-known/lnurlp/9drix9). Override per-deployment with
+// NEXT_PUBLIC_LIGHTNING_ADDRESS; set it to an empty string to hide the row.
+const LIGHTNING_ADDRESS = (process.env.NEXT_PUBLIC_LIGHTNING_ADDRESS ?? '9drix9@strike.me').trim();
 
 const truncate = (value: string, lead = 6, tail = 6) =>
     value.length <= lead + tail + 1 ? value : `${value.slice(0, lead)}…${value.slice(-tail)}`;
