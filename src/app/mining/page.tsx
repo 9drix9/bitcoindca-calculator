@@ -1,27 +1,39 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { Pickaxe, Zap, Clock, TrendingUp, BarChart3, Cpu, AlertTriangle, ArrowRight, CheckCircle2, ExternalLink } from 'lucide-react';
+import { Pickaxe, Hash, Clock, BarChart3, Users, Cpu, TrendingUp, Coins, ShieldAlert, Leaf, HelpCircle, AlertTriangle, ArrowRight, CheckCircle2, ExternalLink } from 'lucide-react';
 import { WalletImage } from '@/components/WalletImage';
 import { getBlockHeight } from '@/app/actions';
 
 export const metadata: Metadata = {
-    title: 'How Bitcoin Mining Works (Simple Explanation)',
-    description: 'A beginner-friendly guide to Bitcoin mining. Learn what miners do, why halvings matter, and how mining keeps Bitcoin secure and valuable.',
-    keywords: ['bitcoin mining explained', 'bitcoin halving', 'what is bitcoin mining', 'bitcoin for beginners', 'how bitcoin works', 'bitcoin mining simple'],
+    title: 'How Bitcoin Mining Works',
+    description: 'What miners actually compute, how difficulty and halvings control supply, what a 51% attack can and cannot do, and the honest numbers on mining energy use.',
+    keywords: [
+        'bitcoin mining explained',
+        'how bitcoin mining works',
+        'bitcoin halving',
+        'bitcoin difficulty adjustment',
+        'bitcoin mining pools',
+        '51% attack bitcoin',
+        'bitcoin security budget',
+        'bitcoin mining energy use',
+        'hashprice',
+        'is bitcoin mining profitable',
+    ],
     alternates: {
         canonical: '/mining',
     },
     openGraph: {
-        title: 'How Bitcoin Mining Works (Simple Explanation)',
-        description: 'A beginner-friendly guide to Bitcoin mining, halvings, and why it all matters for Bitcoin\'s value.',
+        title: 'How Bitcoin Mining Works',
+        description: 'Hashing, difficulty, pools, ASIC economics, the security budget, and the energy debate — explained straight, with the common myths corrected.',
         type: 'article',
+        url: '/mining',
         siteName: 'Bitcoin DCA Calculator',
         locale: 'en_US',
     },
     twitter: {
         card: 'summary_large_image',
-        title: 'How Bitcoin Mining Works (Simple Explanation)',
-        description: 'A beginner-friendly guide to Bitcoin mining, halvings, and why it all matters for Bitcoin\'s value.',
+        title: 'How Bitcoin Mining Works',
+        description: 'Hashing, difficulty, pools, ASIC economics, the security budget, and the energy debate — explained straight, with the common myths corrected.',
         creator: '@9drix9',
     },
 };
@@ -38,8 +50,8 @@ const breadcrumbJsonLd = {
 const articleJsonLd = {
     "@context": "https://schema.org",
     "@type": "Article",
-    "headline": "How Bitcoin Mining Works (Simple Explanation)",
-    "description": "A beginner-friendly guide to Bitcoin mining. Learn what miners do, why halvings matter, and how mining keeps Bitcoin secure and valuable.",
+    "headline": "How Bitcoin Mining Works",
+    "description": "What miners actually compute, how difficulty and halvings control supply, what a 51% attack can and cannot do, and the honest numbers on mining energy use.",
     "author": {
         "@type": "Organization",
         "name": "Bitcoin DCA Calculator",
@@ -56,7 +68,56 @@ const articleJsonLd = {
     },
     "datePublished": "2026-02-05",
     // Static date — update when the content actually changes. Keep in sync with sitemap.ts.
-    "dateModified": "2026-07-24",
+    "dateModified": "2026-07-25",
+};
+
+const faqs = [
+    {
+        q: 'Is Bitcoin mining still profitable at home?',
+        a: 'Almost never at residential electricity prices. A current-generation machine draws roughly 3.5 kW, or about 2,500 kWh a month — around $430 at a typical US residential rate near $0.17/kWh. Industrial miners buy the same power for $0.03 to $0.05 per kWh, so their cost per bitcoin is three to four times lower, and network difficulty is set by their economics rather than yours. Home mining can make sense as a hobby, as a heat source, or where power is unusually cheap, but treated purely as an investment it is normally beaten by simply buying bitcoin.',
+    },
+    {
+        q: 'What is hashprice?',
+        a: 'Hashprice is mining revenue per unit of hashrate per day, usually quoted in dollars per petahash per day. It compresses bitcoin\'s price, network difficulty, and transaction fees into a single number, and it is what miners actually underwrite hardware purchases and power contracts against. It falls whenever difficulty grows faster than price, spikes when fees surge, and drops by roughly half overnight at each halving.',
+    },
+    {
+        q: 'Do mining costs put a floor under Bitcoin\'s price?',
+        a: 'No — the causation runs the other way. Difficulty re-targets about every two weeks, so when the price falls, unprofitable miners switch off, difficulty drops, and the cost of producing a bitcoin falls to meet the price. Mining cost tracks price rather than supporting it. The real, observable dynamic is miner capitulation: stressed miners sell production and reserves, which adds supply during weakness rather than removing it.',
+    },
+    {
+        q: 'What happens when all 21 million bitcoin are mined?',
+        a: 'The last fraction of a bitcoin is expected to be issued around 2140, after which miners earn only transaction fees. Whether fees alone can fund enough security is the most interesting genuinely open question in Bitcoin. It depends on how much demand there is for on-chain settlement decades from now, and anyone who tells you it is definitely fine — or definitely fatal — is claiming to know something nobody knows.',
+    },
+    {
+        q: 'Does Bitcoin mining waste energy?',
+        a: 'Mining uses real energy on purpose: that expenditure is what makes rewriting history expensive. Model-based estimates put annual consumption somewhere around 100 to 200 TWh, roughly 0.3% to 0.6% of global electricity, though nobody meters the network and the estimates disagree widely. Miners chase the cheapest power available, which pushes them toward stranded, curtailed, off-peak, and flared energy, and some are paid by grid operators to shut down during demand peaks. Whether that use is justified is a value judgment about what you think the network is for, not something the numbers settle.',
+    },
+    {
+        q: 'Can a government ban Bitcoin mining?',
+        a: 'Within its own borders, yes, and several have. China banned mining in mid-2021 and more than half the network\'s hashrate went offline within weeks. Difficulty adjusted downward by about 28% — the largest drop on record — blocks kept being produced, and the hashrate reappeared in the United States, Kazakhstan, Russia and elsewhere over the following year. A national ban relocates mining rather than stopping it, because mining needs only cheap power and an internet connection.',
+    },
+    {
+        q: 'Could someone with 51% of the hashrate steal my bitcoin?',
+        a: 'No. A majority attacker can reverse its own recent transactions, censor transactions, and reorganize recent blocks. It cannot spend coins it does not hold the private keys for, cannot create coins outside the issuance schedule, and cannot raise the 21 million cap. Every full node checks those rules independently and rejects invalid blocks no matter how much work sits behind them. Coins in a wallet you control are not at risk from hashrate.',
+    },
+    {
+        q: 'Why can\'t newly mined bitcoin be spent right away?',
+        a: 'Newly issued coins are subject to a 100-block maturity rule, roughly 16 to 17 hours. If a competing chain later orphans that block, the reward disappears with it, so the rule prevents anyone from spending coins that a chain reorganization might erase.',
+    },
+    {
+        q: 'Can I mine bitcoin with a normal computer or a gaming GPU?',
+        a: 'Not usefully, and not for well over a decade. Mining is done by ASICs — chips that do nothing but SHA-256 hashing — and they outperform general-purpose CPUs and GPUs by many orders of magnitude. Software offering to mine bitcoin on an ordinary computer is either mining a different coin or is malware.',
+    },
+];
+
+const faqJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": faqs.map(item => ({
+        "@type": "Question",
+        "name": item.q,
+        "acceptedAnswer": { "@type": "Answer", "text": item.a },
+    })),
 };
 
 const HALVING_DATA = [
@@ -65,7 +126,7 @@ const HALVING_DATA = [
     { halving: '2nd', block: 420000, date: 'Jul 9, 2016', reward: '12.5 BTC', supplyAfter: '15.75M' },
     { halving: '3rd', block: 630000, date: 'May 11, 2020', reward: '6.25 BTC', supplyAfter: '18.375M' },
     { halving: '4th', block: 840000, date: 'Apr 20, 2024', reward: '3.125 BTC', supplyAfter: '19.6875M' },
-    { halving: '5th', block: 1050000, date: '~2028', reward: '1.5625 BTC', supplyAfter: '20.34M' },
+    { halving: '5th', block: 1050000, date: '~Apr 2028', reward: '1.5625 BTC', supplyAfter: '20.34M' },
     { halving: '6th', block: 1260000, date: '~2032', reward: '0.78125 BTC', supplyAfter: '20.67M' },
     { halving: '7th', block: 1470000, date: '~2036', reward: '0.390625 BTC', supplyAfter: '20.84M' },
     { halving: '8th', block: 1680000, date: '~2040', reward: '0.1953125 BTC', supplyAfter: '20.92M' },
@@ -98,32 +159,83 @@ const HALVING_DATA = [
 
 const GOMINING_DATA = {
     name: 'GoMining',
-    tagline: 'Earn Bitcoin without the hardware',
-    description: 'GoMining lets you earn Bitcoin mining rewards without buying or managing mining equipment. You buy digital shares backed by real mining facilities, and receive daily Bitcoin payouts based on your share.',
-    features: ['No equipment to buy or maintain', 'Get paid in Bitcoin daily', 'Start with as little as ~$30', 'Backed by real data centers'],
+    tagline: 'Hashrate exposure without owning hardware',
+    description: 'GoMining sells tokenized shares of hashrate hosted in its own facilities, paying holders a share of mining output in bitcoin. You are buying exposure to mining revenue — not bitcoin itself — so your return depends on difficulty, price, and the operator staying solvent.',
+    claims: ['No equipment to buy or maintain', 'Payouts made in bitcoin', 'Entry from roughly $30', 'Hashrate hosted in operator-run data centers'],
     price: 'From ~$30',
     href: 'https://gomining.com/?ref=v56m_',
     image: '/wallets/gomining.png',
 };
 
-const orangeColorClasses = {
-    bg: 'bg-orange-50 dark:bg-orange-950/20',
-    border: 'border-orange-200 dark:border-orange-800/50',
-    badge: 'bg-orange-100 dark:bg-orange-900/40 text-orange-700 dark:text-orange-400',
-    button: 'bg-orange-600 hover:bg-orange-700',
-    accent: 'text-orange-600 dark:text-orange-400',
-    check: 'text-orange-500',
+const affiliateClasses = {
+    bg: 'bg-amber-50 dark:bg-amber-950/20',
+    border: 'border-amber-200 dark:border-amber-800/50',
+    badge: 'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400',
+    button: 'bg-amber-500 hover:bg-amber-600',
+    accent: 'text-amber-600 dark:text-amber-400',
+    check: 'text-amber-500',
 };
 
+const cardClass = 'bg-white dark:bg-slate-800 p-4 sm:p-5 rounded-xl border border-slate-200 dark:border-slate-700';
+const cardTitle = 'text-sm sm:text-base font-bold text-slate-800 dark:text-white mb-2';
+const cardBody = 'text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed';
+const sectionHead = 'text-xl sm:text-3xl font-bold text-slate-900 dark:text-white';
+const sectionIcon = 'w-6 h-6 sm:w-8 sm:h-8 text-amber-500 shrink-0';
+const prose = 'space-y-4 text-sm sm:text-base text-slate-600 dark:text-slate-400 leading-relaxed';
+const linkClass = 'text-amber-600 dark:text-amber-400 hover:underline';
+
+const HALVING_INTERVAL = 210_000;
+const INITIAL_SUBSIDY = 50;
+const TOTAL_ERAS = 33; // After 33 halvings integer arithmetic drives the subsidy to zero.
+
 // Static fallback height used when the mempool.space API is unavailable.
-// Any value >= 840,000 keeps the four past halvings rendered as past.
-const FALLBACK_BLOCK_HEIGHT = 905_000; // fallback, July 2026
+// Must stay >= 840,000 so the four past halvings still render as past.
+// Rough estimate for mid-2026: 840,000 + ~2.3 years x ~52,600 blocks/yr.
+const FALLBACK_BLOCK_HEIGHT = 958_000;
+
+/** Block subsidy in BTC at a given height, straight from the halving schedule. */
+function subsidyAtHeight(height: number): number {
+    const era = Math.floor(height / HALVING_INTERVAL);
+    if (era >= TOTAL_ERAS) return 0;
+    return INITIAL_SUBSIDY / 2 ** era;
+}
+
+/**
+ * Total BTC issued by a given height. Includes the genesis block's 50 BTC,
+ * which is famously unspendable — so the spendable supply is slightly lower.
+ */
+function issuedSupply(height: number): number {
+    let total = 0;
+    for (let era = 0; era < TOTAL_ERAS; era++) {
+        const eraStart = era * HALVING_INTERVAL;
+        if (height < eraStart) break;
+        const blocksInEra = Math.min(height - eraStart + 1, HALVING_INTERVAL);
+        total += blocksInEra * (INITIAL_SUBSIDY / 2 ** era);
+    }
+    return total;
+}
 
 export default async function MiningPage() {
     // Fetch current block height to determine which halvings have occurred.
     // || (not ??) so a null OR zero height falls back — height 0 would wrongly
     // mark every past halving as future.
     const currentBlockHeight = (await getBlockHeight()) || FALLBACK_BLOCK_HEIGHT;
+
+    const currentEra = Math.floor(currentBlockHeight / HALVING_INTERVAL);
+    const currentSubsidy = subsidyAtHeight(currentBlockHeight);
+    const issued = issuedSupply(currentBlockHeight);
+    const issuedMillions = (issued / 1_000_000).toFixed(2);
+    const issuedPercent = ((issued / 21_000_000) * 100).toFixed(1);
+    const nextHalvingHeight = (currentEra + 1) * HALVING_INTERVAL;
+    const blocksToHalving = Math.max(nextHalvingHeight - currentBlockHeight, 0);
+    const nextHalvingRow = HALVING_DATA.find((row) => row.block === nextHalvingHeight);
+
+    const stats = [
+        { label: 'Block height', value: currentBlockHeight.toLocaleString(), sub: 'blocks mined so far' },
+        { label: 'Block subsidy', value: `${currentSubsidy} BTC`, sub: `subsidy era ${currentEra + 1} of ${TOTAL_ERAS}` },
+        { label: 'BTC issued', value: `${issuedMillions}M`, sub: `${issuedPercent}% of the 21M cap` },
+        { label: 'Next halving', value: blocksToHalving.toLocaleString(), sub: `blocks away · ${nextHalvingRow?.date ?? 'scheduled'}` },
+    ];
 
     return (
         <>
@@ -135,259 +247,650 @@ export default async function MiningPage() {
                 type="application/ld+json"
                 dangerouslySetInnerHTML={{ __html: JSON.stringify(articleJsonLd) }}
             />
+            <script
+                type="application/ld+json"
+                dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
+            />
             <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 space-y-10 sm:space-y-16">
 
                 {/* Hero */}
-                <section className="text-center space-y-4 sm:space-y-5">
-                    <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 text-xs sm:text-sm font-medium">
+                <section className="text-center max-w-3xl mx-auto space-y-4 sm:space-y-5">
+                    <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 text-xs sm:text-sm font-medium">
                         <Pickaxe className="w-4 h-4" />
-                        Beginner-Friendly Guide
+                        Plain English, no hand-waving
                     </div>
                     <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-slate-900 dark:text-white tracking-tight text-balance">
-                        How Bitcoin <span className="text-orange-500">Mining</span> Works
+                        How Bitcoin <span className="text-amber-500">Mining</span> Works
                     </h1>
                     <p className="text-base sm:text-lg text-slate-600 dark:text-slate-300 max-w-2xl mx-auto leading-relaxed">
-                        Mining is how Bitcoin stays secure and how new bitcoin enters the world.
-                        Don&apos;t worry&mdash;we&apos;ll explain it simply, no tech background needed.
+                        Mining is how new bitcoin is issued and how the transaction history is made expensive to rewrite.
+                        This page covers what miners literally compute, how difficulty and halvings keep issuance on schedule,
+                        what an attacker with a majority of hashrate can and cannot do, and the energy numbers as they
+                        actually stand.
+                    </p>
+                    <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 max-w-2xl mx-auto">
+                        It also corrects the most repeated myth in mining commentary: that production cost puts a floor under the price.
                     </p>
                 </section>
 
-                {/* What is Bitcoin Mining - Simplified */}
-                <section className="space-y-6">
-                    <div className="flex items-center gap-3">
-                        <Cpu className="w-7 h-7 text-orange-500 shrink-0" />
-                        <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white">What Is Mining?</h2>
-                    </div>
+                {/* Live stats strip */}
+                <section aria-label="Current network figures" className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+                    {stats.map((stat) => (
+                        <div key={stat.label} className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800">
+                            <div className="text-xs font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">{stat.label}</div>
+                            <div className="mt-1 text-xl sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-white tabular-nums">{stat.value}</div>
+                            <div className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">{stat.sub}</div>
+                        </div>
+                    ))}
+                </section>
 
-                    <div className="space-y-4 text-sm sm:text-base text-slate-600 dark:text-slate-400 leading-relaxed">
+                {/* 1. What miners actually compute */}
+                <section className="space-y-4">
+                    <div className="flex items-center gap-2 sm:gap-3">
+                        <Hash className={sectionIcon} />
+                        <h2 className={sectionHead}>What Miners Are Actually Computing</h2>
+                    </div>
+                    <div className={prose}>
                         <p>
-                            <strong className="text-slate-800 dark:text-slate-200">Think of miners as Bitcoin&apos;s accountants.</strong> When you send Bitcoin to someone, miners are the ones who check that you actually have the Bitcoin you&apos;re sending, then write it down in Bitcoin&apos;s permanent record book (called the blockchain).
+                            Mining is usually described as &ldquo;solving complex math problems.&rdquo; That is misleading. There is
+                            nothing to solve. Miners are guessing, extremely fast, at an enormous scale.
                         </p>
                         <p>
-                            Every 10 minutes or so, one miner &ldquo;wins&rdquo; the right to add the latest page of transactions. As a reward, they get newly created bitcoin. That&apos;s the <strong className="text-slate-800 dark:text-slate-200">only</strong> way new bitcoin comes into existence.
+                            Every candidate block starts with an 80-byte <strong className="text-slate-800 dark:text-slate-200">block
+                            header</strong>: the previous block&apos;s hash, a Merkle root summarizing every transaction in the block,
+                            a timestamp, the current target, a version field, and a 32-bit nonce. The miner runs SHA-256 over that
+                            header twice, producing a 256-bit number, and checks one thing: is that number below the target?
                         </p>
-                    </div>
-
-                    {/* Simple analogy box */}
-                    <div className="bg-amber-50/50 dark:bg-amber-950/20 border-l-4 border-amber-400 px-4 sm:px-6 py-4 sm:py-5 rounded-r-xl">
-                        <p className="text-sm sm:text-base text-slate-700 dark:text-slate-300 leading-relaxed">
-                            <strong className="text-amber-700 dark:text-amber-400">Simple analogy:</strong> Imagine a lottery where you win by being first to solve a puzzle. The puzzle is hard, so you need powerful computers. Winners get paid in fresh bitcoin. This makes cheating extremely expensive&mdash;you&apos;d have to outspend everyone else combined.
+                        <p>
+                            Almost always it is not. So the miner changes something and hashes again. The nonce gives about 4.3
+                            billion attempts, which a modern machine exhausts in a fraction of a second — so miners also vary the{' '}
+                            <strong className="text-slate-800 dark:text-slate-200">extranonce</strong> inside the coinbase transaction
+                            (which changes the Merkle root, and therefore the entire header), roll the timestamp, and use spare bits
+                            in the version field. There is no strategy and no shortcut. SHA-256 output is unpredictable by design,
+                            so the only method is to try.
                         </p>
-                    </div>
-
-                    <div className="grid sm:grid-cols-3 gap-4">
-                        <div className="bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-xl border border-slate-200 dark:border-slate-800 text-center space-y-2">
-                            <div className="w-12 h-12 mx-auto rounded-full bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center">
-                                <Zap className="w-6 h-6 text-orange-600 dark:text-orange-400" />
+                        <div className="grid sm:grid-cols-2 gap-3 sm:gap-4">
+                            <div className={cardClass}>
+                                <h3 className={cardTitle}>Finding a block: astronomically hard</h3>
+                                <p className={cardBody}>
+                                    Across the whole network, miners are running on the order of a sextillion (10<sup>21</sup>) hashes
+                                    every second — and it still takes about ten minutes for one of them to get lucky. Every failed guess
+                                    consumed real electricity that nobody gets back.
+                                </p>
                             </div>
-                            <h3 className="font-semibold text-sm sm:text-base text-slate-800 dark:text-white">Uses Real Energy</h3>
-                            <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">Miners spend real electricity, so cheating costs real money. This keeps Bitcoin honest.</p>
-                        </div>
-                        <div className="bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-xl border border-slate-200 dark:border-slate-800 text-center space-y-2">
-                            <div className="w-12 h-12 mx-auto rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
-                                <BarChart3 className="w-6 h-6 text-amber-600 dark:text-amber-400" />
+                            <div className={cardClass}>
+                                <h3 className={cardTitle}>Checking a block: instant</h3>
+                                <p className={cardBody}>
+                                    Verification is two SHA-256 operations and one numeric comparison. A phone does it in microseconds.
+                                    Nobody has to trust the miner, replay the search, or take anyone&apos;s word for anything.
+                                </p>
                             </div>
-                            <h3 className="font-semibold text-sm sm:text-base text-slate-800 dark:text-white">No Boss</h3>
-                            <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">Anyone can become a miner. No company or government controls who participates.</p>
                         </div>
-                        <div className="bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-xl border border-slate-200 dark:border-slate-800 text-center space-y-2">
-                            <div className="w-12 h-12 mx-auto rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
-                                <CheckCircle2 className="w-6 h-6 text-green-600 dark:text-green-400" />
+                        <div className="bg-amber-50/50 dark:bg-amber-950/20 border-l-4 border-amber-400 px-4 sm:px-6 py-3 sm:py-4 rounded-r-xl">
+                            <p className="text-sm sm:text-base text-slate-700 dark:text-slate-300 leading-relaxed">
+                                <strong className="text-slate-800 dark:text-slate-200">That asymmetry is the security model.</strong> Each
+                                block header commits to the one before it, so changing an old transaction invalidates every block built on
+                                top of it. Rewriting history means redoing all that work faster than the entire rest of the network is
+                                extending the chain — while anyone in the world can detect the fraud for free.
+                            </p>
+                        </div>
+                    </div>
+                </section>
+
+                {/* 2. Difficulty */}
+                <section className="space-y-4">
+                    <div className="flex items-center gap-2 sm:gap-3">
+                        <BarChart3 className={sectionIcon} />
+                        <h2 className={sectionHead}>Difficulty: The Thermostat</h2>
+                    </div>
+                    <div className={prose}>
+                        <p>
+                            Bitcoin targets one block roughly every ten minutes regardless of how much computing power is pointed at
+                            it. It achieves that with a single automatic rule:{' '}
+                            <strong className="text-slate-800 dark:text-slate-200">every 2,016 blocks — about two weeks — every node
+                            independently recalculates the target</strong> from how long those 2,016 blocks actually took. Faster than
+                            two weeks, and the target tightens. Slower, and it loosens.
+                        </p>
+                        <div className="grid sm:grid-cols-3 gap-3 sm:gap-4">
+                            <div className="bg-emerald-50 dark:bg-emerald-950/20 p-4 sm:p-5 rounded-xl border border-emerald-200 dark:border-emerald-800/50">
+                                <h3 className="text-sm sm:text-base font-bold text-emerald-800 dark:text-emerald-300 mb-2">Hashrate joins</h3>
+                                <p className={cardBody}>
+                                    Blocks arrive early, difficulty rises at the next re-target, and block times return to ten minutes.
+                                    The new machines earn a smaller share, not extra coins.
+                                </p>
                             </div>
-                            <h3 className="font-semibold text-sm sm:text-base text-slate-800 dark:text-white">Can&apos;t Be Undone</h3>
-                            <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">Once a transaction is recorded, it&apos;s there forever. No one can erase or change it.</p>
+                            <div className="bg-rose-50 dark:bg-rose-950/20 p-4 sm:p-5 rounded-xl border border-rose-200 dark:border-rose-800/50">
+                                <h3 className="text-sm sm:text-base font-bold text-rose-800 dark:text-rose-300 mb-2">Hashrate leaves</h3>
+                                <p className={cardBody}>
+                                    Blocks slow down, difficulty falls at the next re-target, and block times return to ten minutes.
+                                    The chain never stalls; it just gets cheaper to mine.
+                                </p>
+                            </div>
+                            <div className={cardClass}>
+                                <h3 className={cardTitle}>Clamped at 4x</h3>
+                                <p className={cardBody}>
+                                    A single adjustment can never move difficulty by more than a factor of four in either direction.
+                                    That caps the damage from timestamp manipulation and smooths genuine shocks.
+                                </p>
+                            </div>
+                        </div>
+                        <p>
+                            <strong className="text-slate-800 dark:text-slate-200">This is what makes issuance predictable decades
+                            ahead.</strong> The supply schedule is denominated in blocks, not calendar time: the subsidy halves every
+                            210,000 blocks, full stop. Difficulty is the mechanism that keeps 210,000 blocks landing close to four
+                            years, no matter how much hashrate arrives. A hundredfold increase in mining power does not produce a
+                            single extra bitcoin — it just makes each block harder to find.
+                        </p>
+                        <div className="bg-slate-100 dark:bg-slate-900/50 p-5 sm:p-6 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-3">
+                            <h3 className={cardTitle}>It has been stress-tested</h3>
+                            <p className={cardBody}>
+                                In mid-2021 China banned mining outright and more than half the network&apos;s hashrate went dark within
+                                weeks. Blocks slowed noticeably, and the next re-target cut difficulty by roughly 28% — the largest single
+                                drop in Bitcoin&apos;s history. No committee met, no emergency patch shipped, and the chain kept producing
+                                blocks the entire time. The hashrate reappeared elsewhere over the following year.
+                            </p>
+                            <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                                A detail for the pedants: the original code measures the elapsed time across 2,015 block intervals rather
+                                than 2,016, so the network runs a hair fast. It is one of the oldest known bugs in Bitcoin, left alone
+                                because fixing it would change consensus rules for no practical benefit.
+                            </p>
                         </div>
                     </div>
                 </section>
 
-                {/* The Halving Cycle - Simplified */}
-                <section className="space-y-6">
-                    <div className="flex items-center gap-3">
-                        <Clock className="w-7 h-7 text-orange-500 shrink-0" />
-                        <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white">The Halving (Why It Matters)</h2>
+                {/* 3. Halving + schedule */}
+                <section className="space-y-4">
+                    <div className="flex items-center gap-2 sm:gap-3">
+                        <Clock className={sectionIcon} />
+                        <h2 className={sectionHead}>The Halving and the Issuance Schedule</h2>
                     </div>
-
-                    <div className="space-y-4 text-sm sm:text-base text-slate-600 dark:text-slate-400 leading-relaxed">
+                    <div className={prose}>
                         <p>
-                            <strong className="text-slate-800 dark:text-slate-200">Every 4 years, the reward for mining gets cut in half.</strong> This is called the &ldquo;halving.&rdquo;
+                            Every 210,000 blocks the block subsidy is cut in half. It started at 50 BTC in 2009, then 25 in 2012, 12.5
+                            in 2016, 6.25 in 2020, and{' '}
+                            <strong className="text-slate-800 dark:text-slate-200">3.125 BTC since block 840,000 on 20 April 2024</strong>.
+                            The next halving takes it to 1.5625 BTC at block 1,050,000, expected around April 2028 — a date estimate,
+                            because the schedule counts blocks, not days.
                         </p>
-                        <p>
-                            When Bitcoin started in 2009, miners earned 50 bitcoin per block. After the first halving in 2012, it dropped to 25. Then 12.5 in 2016. Then 6.25 in 2020. After the April 2024 halving, it&apos;s just 3.125 bitcoin.
-                        </p>
-                    </div>
 
-                    {/* Why it matters - simple explanation */}
-                    <div className="bg-gradient-to-r from-orange-500 to-amber-500 text-white p-6 sm:p-8 rounded-2xl">
-                        <div className="text-xl sm:text-2xl md:text-3xl font-extrabold mb-3">
-                            Why does this matter?
+                        <div className="bg-gradient-to-r from-amber-500 to-amber-600 text-white p-6 sm:p-8 rounded-2xl">
+                            <div className="text-xl sm:text-2xl md:text-3xl font-extrabold mb-3">
+                                What the halving actually buys you
+                            </div>
+                            <p className="text-sm sm:text-base text-white/90 leading-relaxed">
+                                Predictability, not a price trigger. Every full node enforces the schedule independently, so issuance
+                                cannot be accelerated by demand, lobbied for, or voted on. That property is checkable today. The popular
+                                claim — that halvings cause bull markets — is far weaker: there have been four of them, prices rose in
+                                the year or so after most, and four observations cannot separate the halving from the macro cycle. They
+                                are also perfectly foreseeable, so markets have years to price each one in.
+                            </p>
                         </div>
-                        <p className="text-sm sm:text-base text-white/90 leading-relaxed">
-                            <strong>Less new bitcoin = more scarcity.</strong> Think of it like a gold mine that produces less gold each year. If people still want gold but there&apos;s less of it, the price tends to go up. Historically, Bitcoin&apos;s price has risen significantly after each halving.
-                        </p>
-                    </div>
 
-                    {/* Halving table */}
-                    <div className="bg-slate-100 dark:bg-slate-900/50 p-5 sm:p-6 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-4">
-                        <h3 className="text-sm sm:text-base font-bold text-slate-800 dark:text-white">The Complete Halving Schedule</h3>
-                        <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
-                            This schedule is locked in Bitcoin&apos;s code. It can&apos;t be changed by anyone.
-                        </p>
-                        <div className="overflow-x-auto -mx-2 sm:mx-0">
-                            <table className="w-full text-xs sm:text-sm min-w-[480px]">
-                                <thead>
-                                    <tr className="text-left text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-700">
-                                        <th className="pb-2 pr-3 font-medium">Halving</th>
-                                        <th className="pb-2 pr-3 font-medium">When</th>
-                                        <th className="pb-2 pr-3 font-medium">Miner Reward</th>
-                                        <th className="pb-2 font-medium">Total BTC After</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="text-slate-700 dark:text-slate-300">
-                                    {HALVING_DATA.map((row, idx) => {
-                                        const isPast = currentBlockHeight >= row.block;
-                                        return (
-                                            <tr
-                                                key={row.halving}
-                                                className={`border-t border-slate-200 dark:border-slate-700/50 ${isPast ? '' : 'text-slate-400 dark:text-slate-500'}`}
-                                            >
-                                                <td className="py-2 pr-3 font-medium">
-                                                    {row.halving}
-                                                    {isPast && idx > 0 && <span className="ml-1 text-green-500">&#10003;</span>}
-                                                </td>
-                                                <td className="py-2 pr-3">{row.date}</td>
-                                                <td className="py-2 pr-3 font-mono text-xs">{row.reward}</td>
-                                                <td className="py-2 font-mono text-xs">{row.supplyAfter}</td>
-                                            </tr>
-                                        );
-                                    })}
-                                </tbody>
-                            </table>
+                        {/* Halving table */}
+                        <div className="bg-slate-100 dark:bg-slate-900/50 p-5 sm:p-6 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-4">
+                            <h3 className="text-sm sm:text-base font-bold text-slate-800 dark:text-white">The Complete Halving Schedule</h3>
+                            <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
+                                Subsidy shown is the reward <em>after</em> that halving. Dates past the next one are estimates, since
+                                block times drift slightly around the ten-minute target.
+                            </p>
+                            <div className="overflow-x-auto -mx-2 sm:mx-0">
+                                <table className="w-full text-xs sm:text-sm min-w-[480px]">
+                                    <thead>
+                                        <tr className="text-left text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-700">
+                                            <th scope="col" className="pb-2 pr-3 font-medium">Halving</th>
+                                            <th scope="col" className="pb-2 pr-3 font-medium">When</th>
+                                            <th scope="col" className="pb-2 pr-3 font-medium">Block Subsidy</th>
+                                            <th scope="col" className="pb-2 font-medium">Total BTC After</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="text-slate-700 dark:text-slate-300 tabular-nums">
+                                        {HALVING_DATA.map((row, idx) => {
+                                            const isPast = currentBlockHeight >= row.block;
+                                            return (
+                                                <tr
+                                                    key={row.halving}
+                                                    className={`border-t border-slate-200 dark:border-slate-700/50 ${isPast ? '' : 'text-slate-400 dark:text-slate-500'}`}
+                                                >
+                                                    <td className="py-2 pr-3 font-medium">
+                                                        {row.halving}
+                                                        {isPast && idx > 0 && <span className="ml-1 text-emerald-500">&#10003;</span>}
+                                                    </td>
+                                                    <td className="py-2 pr-3">{row.date}</td>
+                                                    <td className="py-2 pr-3 font-mono text-xs">{row.reward}</td>
+                                                    <td className="py-2 font-mono text-xs">{row.supplyAfter}</td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                            </div>
+                            <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                                After 33 halvings the subsidy rounds to zero in integer satoshis, which happens around 2140. Note that
+                                slightly <em>fewer</em> than 21 million will ever be spendable: the genesis block&apos;s 50 BTC can never
+                                be moved because of a quirk in the original code, a handful of miners have claimed less than the full
+                                subsidy they were owed, and an unknowable number of coins are permanently lost.
+                            </p>
                         </div>
-                        <p className="text-xs text-slate-500 dark:text-slate-400">
-                            By around 2140, all 21 million bitcoin will exist. No more will ever be created.
-                        </p>
+
+                        <div className="grid sm:grid-cols-2 gap-3 sm:gap-4">
+                            <div className={cardClass}>
+                                <h3 className={cardTitle}>The coinbase transaction</h3>
+                                <p className={cardBody}>
+                                    Every block&apos;s first transaction is the coinbase. It has no inputs — it creates the subsidy out of
+                                    nothing and sweeps up the fees from every other transaction in the block. It also carries an arbitrary
+                                    data field, which is where Satoshi wrote the 3 January 2009 <em>Times</em> headline into the genesis
+                                    block. (The exchange named itself after the term, not the other way round.)
+                                </p>
+                            </div>
+                            <div className={cardClass}>
+                                <h3 className={cardTitle}>100-block maturity</h3>
+                                <p className={cardBody}>
+                                    Newly mined coins cannot be spent for 100 blocks, about 16 to 17 hours. If a competing chain later
+                                    orphans that block, the reward vanishes with it — so the rule stops anyone from spending coins that a
+                                    reorganization might erase. It is a small detail that shows how carefully the reorg case was thought
+                                    through.
+                                </p>
+                            </div>
+                        </div>
                     </div>
                 </section>
 
-                {/* Difficulty Adjustment - Simplified */}
-                <section className="space-y-6">
-                    <div className="flex items-center gap-3">
-                        <BarChart3 className="w-7 h-7 text-orange-500 shrink-0" />
-                        <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white">How Bitcoin Stays Stable</h2>
+                {/* 4. Mining pools */}
+                <section className="space-y-4">
+                    <div className="flex items-center gap-2 sm:gap-3">
+                        <Users className={sectionIcon} />
+                        <h2 className={sectionHead}>Mining Pools: Selling Certainty</h2>
                     </div>
-
-                    <div className="space-y-4 text-sm sm:text-base text-slate-600 dark:text-slate-400 leading-relaxed">
+                    <div className={prose}>
                         <p>
-                            <strong className="text-slate-800 dark:text-slate-200">Bitcoin is designed to create one new block every 10 minutes, no matter what.</strong>
+                            Solo mining is a lottery with brutal odds. A single top-end machine at roughly 250 TH/s is about one part in
+                            four million of a network running near a zettahash per second. On average it finds a block once every seventy
+                            years or so — and &ldquo;on average&rdquo; hides the real problem, because the process is memoryless. Your
+                            block is equally likely to arrive tomorrow or in year 200.
                         </p>
                         <p>
-                            If lots of new miners join and blocks start coming faster, Bitcoin automatically makes the puzzle harder. If miners leave and blocks slow down, the puzzle gets easier. This adjustment happens every 2 weeks.
+                            Pools exist to sell you out of that variance. Miners submit <strong className="text-slate-800 dark:text-slate-200">shares</strong>:
+                            near-miss hashes that clear a much easier target and statistically prove how much work was done. The pool
+                            aggregates everyone&apos;s hashrate, finds blocks at a steady rate, and pays members in proportion to shares
+                            submitted. A century-scale lottery becomes a predictable daily trickle. That, and nothing else, is the product.
                         </p>
-                    </div>
-
-                    <div className="grid sm:grid-cols-2 gap-4">
-                        <div className="bg-green-50 dark:bg-green-950/20 p-4 sm:p-5 rounded-xl border border-green-200 dark:border-green-800/50">
-                            <h3 className="text-sm sm:text-base font-bold text-green-800 dark:text-green-300 mb-2">More Miners?</h3>
-                            <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-                                Puzzle gets harder. Blocks still come every ~10 minutes.
+                        <div className="grid sm:grid-cols-2 gap-3 sm:gap-4">
+                            <div className={cardClass}>
+                                <h3 className={cardTitle}>PPS and FPPS</h3>
+                                <p className={cardBody}>
+                                    Pay-per-share: the pool pays a fixed rate for every valid share, whether or not the pool finds any
+                                    blocks that day. FPPS adds an average share of transaction fees on top. The pool absorbs all the
+                                    variance and charges a higher fee for carrying that risk. Revenue is smooth and boring, which is
+                                    exactly what a miner with a power bill wants.
+                                </p>
+                            </div>
+                            <div className={cardClass}>
+                                <h3 className={cardTitle}>PPLNS</h3>
+                                <p className={cardBody}>
+                                    Pay-per-last-N-shares: payouts come only out of blocks the pool actually finds, split across the most
+                                    recent N shares. Fees are lower, income is lumpier, and loyalty is rewarded — hopping between pools
+                                    forfeits your position in the share window. Over the long run PPLNS and PPS converge; they differ in
+                                    who holds the risk in the meantime.
+                                </p>
+                            </div>
+                        </div>
+                        <div className="bg-slate-100 dark:bg-slate-900/50 p-5 sm:p-6 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-3">
+                            <h3 className={cardTitle}>The centralization concern, stated fairly</h3>
+                            <p className={cardBody}>
+                                A small number of pools have often directed a majority of the network&apos;s hashrate between them, and
+                                that is a real problem worth naming: pools build the block templates, so they decide which transactions get
+                                included. That makes them the most plausible censorship chokepoint in the system.
+                            </p>
+                            <p className={cardBody}>
+                                Two things bound it. First, <strong className="text-slate-800 dark:text-slate-200">pools do not own the
+                                hashrate</strong> — thousands of independent operators do, and they can repoint their machines at a
+                                different pool in minutes. That has happened when pools have behaved badly. Second,{' '}
+                                <strong className="text-slate-800 dark:text-slate-200">pools cannot break consensus rules</strong>. A pool
+                                that mined a block paying itself extra coins, or spending someone else&apos;s coins, would have that block
+                                rejected by every full node and would have burned the electricity for nothing. Nodes enforce the rules;
+                                miners only order transactions. The{' '}
+                                <Link href="/why-bitcoin" className={linkClass}>why Bitcoin has value</Link> page covers that division of
+                                power in more depth.
+                            </p>
+                            <p className={cardBody}>
+                                Newer pooling protocols (Stratum V2) let individual miners construct their own block templates while still
+                                sharing payouts, moving transaction selection back to the machine owner. Adoption is partial and ongoing.
                             </p>
                         </div>
-                        <div className="bg-red-50 dark:bg-red-950/20 p-4 sm:p-5 rounded-xl border border-red-200 dark:border-red-800/50">
-                            <h3 className="text-sm sm:text-base font-bold text-red-800 dark:text-red-300 mb-2">Fewer Miners?</h3>
-                            <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-                                Puzzle gets easier. Blocks still come every ~10 minutes.
-                            </p>
-                        </div>
-                    </div>
-
-                    <div className="bg-slate-100 dark:bg-slate-900/50 p-5 sm:p-6 rounded-2xl border border-slate-200 dark:border-slate-800">
-                        <p className="text-sm sm:text-base text-slate-700 dark:text-slate-300 leading-relaxed">
-                            <strong className="text-slate-800 dark:text-slate-200">Why this is brilliant:</strong> No one controls this. It&apos;s automatic, based on math. The network self-regulates without any central authority making decisions.
-                        </p>
                     </div>
                 </section>
 
-                {/* Transaction Fees - Simplified */}
-                <section className="space-y-6">
-                    <div className="flex items-center gap-3">
-                        <Zap className="w-7 h-7 text-orange-500 shrink-0" />
-                        <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white">Transaction Fees</h2>
+                {/* 5. ASIC economics */}
+                <section className="space-y-4">
+                    <div className="flex items-center gap-2 sm:gap-3">
+                        <Cpu className={sectionIcon} />
+                        <h2 className={sectionHead}>ASICs and the Economics of Hardware</h2>
                     </div>
-
-                    <div className="space-y-4 text-sm sm:text-base text-slate-600 dark:text-slate-400 leading-relaxed">
+                    <div className={prose}>
                         <p>
-                            <strong className="text-slate-800 dark:text-slate-200">Each block can only fit so many transactions.</strong> When lots of people want to send Bitcoin at once, they compete by offering higher fees. Miners pick the highest-paying transactions first.
+                            Mining ran on CPUs in 2009, moved to GPUs in 2010, briefly to FPGAs, and from 2013 onward to{' '}
+                            <strong className="text-slate-800 dark:text-slate-200">ASICs</strong> — application-specific chips that do
+                            nothing but SHA-256, wired directly into silicon. The gap is not a matter of degree. A general-purpose
+                            processor is behind by many orders of magnitude, which is why hobbyist CPU and GPU mining of bitcoin has been
+                            dead for well over a decade. Anything advertising bitcoin mining on a normal computer today is mining a
+                            different coin or is malware.
                         </p>
-                    </div>
-
-                    <div className="grid sm:grid-cols-2 gap-4">
-                        <div className="bg-white dark:bg-slate-800 p-4 sm:p-5 rounded-xl border border-slate-200 dark:border-slate-700">
-                            <h3 className="text-sm sm:text-base font-bold text-slate-800 dark:text-white mb-2">Busy Times = Higher Fees</h3>
-                            <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-                                During bull markets or big events, everyone wants to transact. Fees spike because people bid against each other for space.
+                        <div className="grid sm:grid-cols-2 gap-3 sm:gap-4">
+                            <div className={cardClass}>
+                                <h3 className={cardTitle}>Joules per terahash is the whole game</h3>
+                                <p className={cardBody}>
+                                    Efficiency is measured in J/TH — energy burned per trillion hashes. The 2016-era S9 generation ran
+                                    near 100 J/TH. Current top-end machines sit in the low-to-mid teens, with sub-10 J/TH designs
+                                    emerging. Every generation lowers the electricity price at which the previous generation breaks even,
+                                    and eventually strands it entirely.
+                                </p>
+                            </div>
+                            <div className={cardClass}>
+                                <h3 className={cardTitle}>Hardware depreciates in two directions</h3>
+                                <p className={cardBody}>
+                                    A miner is a wasting asset. As newer machines come online, difficulty rises and your machine earns
+                                    fewer bitcoin per month even if nothing else changes — and its resale value falls at the same time,
+                                    for the same reason. Operators underwrite purchases against forecasts of difficulty growth and are
+                                    frequently wrong.
+                                </p>
+                            </div>
+                            <div className={cardClass}>
+                                <h3 className={cardTitle}>Hashprice: the one number that matters</h3>
+                                <p className={cardBody}>
+                                    Hashprice is revenue per unit of hashrate per day, usually quoted in dollars per petahash per day. It
+                                    folds price, difficulty, and fees into a single figure, and it is what power contracts and hosting
+                                    deals are underwritten against. It falls whenever difficulty outruns price, spikes when fees do, and
+                                    is roughly halved overnight by every halving.
+                                </p>
+                            </div>
+                            <div className={cardClass}>
+                                <h3 className={cardTitle}>The honest home-mining math</h3>
+                                <p className={cardBody}>
+                                    A current machine draws about 3.5 kW. Run continuously that is roughly 2,500 kWh a month — near $430
+                                    at a US residential rate around $0.17/kWh. An industrial operator on a $0.04/kWh contract pays about
+                                    $100 for identical work. Same bitcoin out, three to four times the cost in, and difficulty is set by
+                                    their economics. Add a few thousand dollars of hardware, roughly vacuum-cleaner-level noise, and 3.5 kW
+                                    of heat you have to move somewhere.
+                                </p>
+                            </div>
+                        </div>
+                        <div className="bg-amber-50/50 dark:bg-amber-950/20 border-l-4 border-amber-400 px-4 sm:px-6 py-3 sm:py-4 rounded-r-xl">
+                            <p className="text-sm sm:text-base text-slate-700 dark:text-slate-300 leading-relaxed">
+                                <strong className="text-slate-800 dark:text-slate-200">The blunt version:</strong> if your goal is exposure
+                                to bitcoin, buying bitcoin is the cheaper trade. Home mining can be worth it as a hobby, as space heating
+                                you were paying for anyway, or where power is unusually cheap — but as an investment it is almost always
+                                dominated by simply buying and holding. You can test what a schedule of ordinary purchases would have done
+                                with the <Link href="/" className={linkClass}>calculator</Link>.
                             </p>
                         </div>
-                        <div className="bg-white dark:bg-slate-800 p-4 sm:p-5 rounded-xl border border-slate-200 dark:border-slate-700">
-                            <h3 className="text-sm sm:text-base font-bold text-slate-800 dark:text-white mb-2">Quiet Times = Low Fees</h3>
-                            <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-                                On weekends or slow periods, fees can drop to just a few cents. Patient users wait for these windows.
-                            </p>
-                        </div>
-                    </div>
-
-                    <div className="bg-amber-50/50 dark:bg-amber-950/20 border-l-4 border-amber-400 px-4 sm:px-6 py-4 sm:py-5 rounded-r-xl">
-                        <p className="text-sm sm:text-base text-slate-700 dark:text-slate-300 leading-relaxed">
-                            <strong className="text-amber-700 dark:text-amber-400">Important for the future:</strong> As mining rewards shrink to zero by 2140, fees will become the only payment miners get. A healthy fee market means Bitcoin stays secure forever.
-                        </p>
                     </div>
                 </section>
 
-                {/* Mining Economics - Simplified */}
-                <section className="space-y-6">
-                    <div className="flex items-center gap-3">
-                        <TrendingUp className="w-7 h-7 text-orange-500 shrink-0" />
-                        <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white">Why Mining Affects Bitcoin&apos;s Price</h2>
+                {/* 6. Mining and price — the correction */}
+                <section className="space-y-4">
+                    <div className="flex items-center gap-2 sm:gap-3">
+                        <TrendingUp className={sectionIcon} />
+                        <h2 className={sectionHead}>Does Mining Cost Put a Floor Under the Price?</h2>
                     </div>
-
-                    <div className="space-y-4 text-sm sm:text-base text-slate-600 dark:text-slate-400 leading-relaxed">
+                    <div className={prose}>
                         <p>
-                            <strong className="text-slate-800 dark:text-slate-200">Mining costs real money.</strong> Miners pay for expensive computers and electricity. If Bitcoin&apos;s price drops too low, they can&apos;t cover their costs and have to shut down.
+                            <strong className="text-slate-800 dark:text-slate-200">No. The causation runs the other way, and this is the
+                            single most repeated mistake in Bitcoin analysis.</strong>
                         </p>
-                    </div>
-
-                    <div className="grid sm:grid-cols-2 gap-4">
-                        <div className="bg-white dark:bg-slate-800 p-4 sm:p-5 rounded-xl border border-slate-200 dark:border-slate-700">
-                            <h3 className="text-sm sm:text-base font-bold text-slate-800 dark:text-white mb-2">The &ldquo;Price Floor&rdquo;</h3>
-                            <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-                                If Bitcoin drops below what it costs to mine, miners stop. Less mining = less new bitcoin being sold = price tends to recover. This creates a natural support level.
+                        <p>
+                            The claim goes: it costs roughly $X of electricity and hardware to produce one bitcoin, so the price cannot
+                            stay below $X for long. It sounds like a standard commodity argument, and it fails for a specific reason.
+                            In an ordinary commodity, production cost is set outside the market — the ore is however deep it is. In
+                            Bitcoin, production cost is set <em>by</em> the market, through difficulty.
+                        </p>
+                        <div className="bg-slate-100 dark:bg-slate-900/50 p-5 sm:p-6 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-3">
+                            <h3 className={cardTitle}>The feedback loop, step by step</h3>
+                            <ol className="space-y-2 text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+                                <li className="flex gap-2.5">
+                                    <span className="font-bold text-amber-500 shrink-0 tabular-nums">1.</span>
+                                    <span>The price falls.</span>
+                                </li>
+                                <li className="flex gap-2.5">
+                                    <span className="font-bold text-amber-500 shrink-0 tabular-nums">2.</span>
+                                    <span>The least efficient miners — worst power contracts, oldest machines — stop covering their electricity bill and switch off.</span>
+                                </li>
+                                <li className="flex gap-2.5">
+                                    <span className="font-bold text-amber-500 shrink-0 tabular-nums">3.</span>
+                                    <span>Hashrate drops and blocks come more slowly.</span>
+                                </li>
+                                <li className="flex gap-2.5">
+                                    <span className="font-bold text-amber-500 shrink-0 tabular-nums">4.</span>
+                                    <span>At the next re-target, within about two weeks, difficulty falls.</span>
+                                </li>
+                                <li className="flex gap-2.5">
+                                    <span className="font-bold text-amber-500 shrink-0 tabular-nums">5.</span>
+                                    <span>The miners still running now produce the same {currentSubsidy} BTC per block for less total energy. Average production cost has fallen to meet the price.</span>
+                                </li>
+                            </ol>
+                            <p className={cardBody}>
+                                The loop runs identically in reverse: a rally pulls hashrate in, difficulty climbs, and production cost
+                                rises to meet the higher price. In both directions cost chases price. Mining cost is an{' '}
+                                <strong className="text-slate-800 dark:text-slate-200">output</strong> of the price, not an input to it.
                             </p>
                         </div>
-                        <div className="bg-white dark:bg-slate-800 p-4 sm:p-5 rounded-xl border border-slate-200 dark:border-slate-700">
-                            <h3 className="text-sm sm:text-base font-bold text-slate-800 dark:text-white mb-2">More Mining = More Security</h3>
-                            <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-                                The more miners there are, the harder (more expensive) it is to attack Bitcoin. Right now, Bitcoin has more mining power than ever&mdash;it&apos;s extremely secure.
+                        <p>
+                            There is a second problem with the claim: there is no such thing as <em>the</em> cost of production. A miner
+                            on flared gas at $0.02/kWh and one paying $0.09 in Europe differ by more than a factor of four. Any single
+                            global figure is an average across a very wide distribution, and it is the marginal miner — the most expensive
+                            one still running — who sets the shutdown point, not the average one.
+                        </p>
+                        <div className="grid sm:grid-cols-2 gap-3 sm:gap-4">
+                            <div className={cardClass}>
+                                <h3 className={cardTitle}>The kernel of truth: capitulation is real</h3>
+                                <p className={cardBody}>
+                                    Deep drawdowns do produce visible hashrate declines and negative difficulty adjustments, and analysts
+                                    watch them closely. That is a genuine, observable market dynamic. But it marks miner{' '}
+                                    <em>stress</em>, not a price level anyone is defending. The largest drop on record, about 28%, followed
+                                    China&apos;s 2021 ban — a regulatory event, not a price floor.
+                                </p>
+                            </div>
+                            <div className={cardClass}>
+                                <h3 className={cardTitle}>Miners sell into weakness, not out of it</h3>
+                                <p className={cardBody}>
+                                    Miners have fiat-denominated power bills and bitcoin-denominated revenue, so they must sell a portion
+                                    of production continuously. Under stress they sell treasury reserves too, and distressed operators
+                                    liquidate. Miner behaviour therefore adds supply during downturns rather than removing it. That is the
+                                    opposite of a floor.
+                                </p>
+                            </div>
+                        </div>
+                        <div className={cardClass}>
+                            <h3 className={cardTitle}>What is actually true about hashrate and security</h3>
+                            <p className={cardBody}>
+                                More hashrate raises the cost of rewriting recent history. That is a security statement, not a price
+                                statement — the two get conflated constantly. Bitcoin is far more expensive to attack than it was a decade
+                                ago, and that fact says nothing about what a coin should be worth. We keep a scorecard of claims like this
+                                one on the <Link href="/why-bitcoin" className={linkClass}>why Bitcoin has value</Link> page.
                             </p>
                         </div>
-                    </div>
-
-                    <div className="bg-gradient-to-r from-slate-900 to-slate-800 dark:from-slate-800 dark:to-slate-700 text-white p-6 sm:p-8 rounded-2xl">
-                        <h3 className="text-lg sm:text-xl font-bold mb-3">The Bottom Line</h3>
-                        <p className="text-sm sm:text-base text-slate-300 leading-relaxed">
-                            Unlike dollars (which the government can print whenever it wants), new bitcoin requires real work and real energy. You can&apos;t fake it or create it from nothing. That&apos;s part of why people trust it.
-                        </p>
                     </div>
                 </section>
 
-                {/* GoMining Section */}
-                <section className="space-y-6" id="gomining">
-                    <div className="text-center space-y-2">
-                        <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white">Can I Earn Mining Rewards?</h2>
-                        <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300">
-                            You don&apos;t need to buy expensive equipment or understand the technical details.
+                {/* 7. Fees and the security budget */}
+                <section className="space-y-4">
+                    <div className="flex items-center gap-2 sm:gap-3">
+                        <Coins className={sectionIcon} />
+                        <h2 className={sectionHead}>Fees and the Security Budget</h2>
+                    </div>
+                    <div className={prose}>
+                        <p>
+                            Miner revenue has two parts: the block subsidy and transaction fees. Blocks hold a limited amount of data by
+                            design, so when more people want to transact than there is space, they bid against each other and the miner
+                            takes the highest bidders. Fees are usually a small fraction of block revenue — often a few percent — but
+                            during congestion episodes they have briefly exceeded the subsidy itself.
+                        </p>
+                        <div className="grid sm:grid-cols-2 gap-3 sm:gap-4">
+                            <div className={cardClass}>
+                                <h3 className={cardTitle}>Busy blockspace, higher fees</h3>
+                                <p className={cardBody}>
+                                    During rallies and novel on-chain activity, the mempool fills and fees spike hard. Wallets that let you
+                                    set your own fee rate, and patience, are worth real money in those windows.
+                                </p>
+                            </div>
+                            <div className={cardClass}>
+                                <h3 className={cardTitle}>Quiet blockspace, cheap fees</h3>
+                                <p className={cardBody}>
+                                    In slow periods a transaction can confirm for a few cents. Fee markets are genuinely volatile, and
+                                    nothing about the protocol smooths them.
+                                </p>
+                            </div>
+                        </div>
+                        <div className="bg-amber-50/50 dark:bg-amber-950/20 border-l-4 border-amber-400 px-4 sm:px-6 py-4 sm:py-5 rounded-r-xl space-y-3">
+                            <h3 className="text-sm sm:text-base font-bold text-slate-800 dark:text-slate-200">
+                                The security budget is Bitcoin&apos;s most interesting open question
+                            </h3>
+                            <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
+                                Today the subsidy pays for the overwhelming majority of mining. It halves every four years: under 1 BTC
+                                per block by the mid-2030s, and zero by around 2140. At some point, fees alone have to fund the entire
+                                cost of making the chain expensive to rewrite.
+                            </p>
+                            <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
+                                Nobody knows whether that works. The optimistic case is that as more value settles on Bitcoin, fee revenue
+                                in dollar terms grows to fill the gap. The pessimistic case is that layers built on top batch activity
+                                off-chain, so on-chain fee demand does not scale with the value being protected, and the security budget
+                                shrinks relative to what is at stake. It is decades away and it is genuinely unresolved — treat anyone
+                                who says it is obviously fine, or obviously fatal, as overstating what is known. The{' '}
+                                <Link href="/why-bitcoin" className={linkClass}>risks section on the why Bitcoin page</Link> covers it
+                                alongside the other open problems.
+                            </p>
+                        </div>
+                    </div>
+                </section>
+
+                {/* 8. 51% attack */}
+                <section className="space-y-4">
+                    <div className="flex items-center gap-2 sm:gap-3">
+                        <ShieldAlert className={sectionIcon} />
+                        <h2 className={sectionHead}>What a 51% Attack Can and Cannot Do</h2>
+                    </div>
+                    <div className={prose}>
+                        <p>
+                            This is one of the most widely misunderstood topics in Bitcoin. A majority of hashrate is genuinely dangerous
+                            — and its powers are much narrower than the headlines suggest.
+                        </p>
+                        <div className="grid sm:grid-cols-2 gap-3 sm:gap-4">
+                            <div className="bg-rose-50 dark:bg-rose-950/20 p-4 sm:p-5 rounded-xl border border-rose-200 dark:border-rose-800/50 space-y-2">
+                                <h3 className="text-sm sm:text-base font-bold text-rose-800 dark:text-rose-300">It CAN</h3>
+                                <ul className="space-y-2 text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+                                    <li className="flex gap-2"><span className="text-rose-500 shrink-0">&bull;</span><span><strong className="text-slate-700 dark:text-slate-300">Reverse its own recent transactions.</strong> Deposit coins somewhere, spend them, then publish a longer chain in which the deposit never happened. This is the double spend — and it only ever works on the attacker&apos;s own coins.</span></li>
+                                    <li className="flex gap-2"><span className="text-rose-500 shrink-0">&bull;</span><span><strong className="text-slate-700 dark:text-slate-300">Censor transactions.</strong> Refuse to include specific transactions and orphan the blocks of miners who do include them. Sustained censorship requires a sustained majority.</span></li>
+                                    <li className="flex gap-2"><span className="text-rose-500 shrink-0">&bull;</span><span><strong className="text-slate-700 dark:text-slate-300">Reorganize recent blocks</strong> and stall confirmations — enormously disruptive even without any theft.</span></li>
+                                </ul>
+                            </div>
+                            <div className="bg-emerald-50 dark:bg-emerald-950/20 p-4 sm:p-5 rounded-xl border border-emerald-200 dark:border-emerald-800/50 space-y-2">
+                                <h3 className="text-sm sm:text-base font-bold text-emerald-800 dark:text-emerald-300">It CANNOT</h3>
+                                <ul className="space-y-2 text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+                                    <li className="flex gap-2"><span className="text-emerald-500 shrink-0">&bull;</span><span><strong className="text-slate-700 dark:text-slate-300">Steal coins it lacks the keys for.</strong> Every node verifies signatures. Hashrate does not forge them.</span></li>
+                                    <li className="flex gap-2"><span className="text-emerald-500 shrink-0">&bull;</span><span><strong className="text-slate-700 dark:text-slate-300">Create coins out of thin air.</strong> A block whose coinbase pays more than the schedule allows is invalid, and every full node rejects it. A majority of hashrate cannot make an invalid block valid.</span></li>
+                                    <li className="flex gap-2"><span className="text-emerald-500 shrink-0">&bull;</span><span><strong className="text-slate-700 dark:text-slate-300">Change the 21 million cap.</strong> Same reason. The cap lives in the software users run, not in miner behaviour.</span></li>
+                                    <li className="flex gap-2"><span className="text-emerald-500 shrink-0">&bull;</span><span><strong className="text-slate-700 dark:text-slate-300">Rewrite deep history.</strong> Undoing a year-old block means redoing a year of accumulated work while simultaneously outrunning the entire network.</span></li>
+                                </ul>
+                            </div>
+                        </div>
+                        <div className="grid sm:grid-cols-2 gap-3 sm:gap-4">
+                            <div className={cardClass}>
+                                <h3 className={cardTitle}>Depth is the defence</h3>
+                                <p className={cardBody}>
+                                    A transaction one block deep is far cheaper to reverse than one six blocks deep, because each
+                                    additional block multiplies the work an attacker must redo. That is exactly why exchanges and
+                                    custodians set confirmation thresholds, and why large settlements wait for more of them.
+                                </p>
+                            </div>
+                            <div className={cardClass}>
+                                <h3 className={cardTitle}>Not hypothetical for small chains</h3>
+                                <p className={cardBody}>
+                                    Smaller proof-of-work chains with thin hashrate have been 51%-attacked repeatedly — Ethereum Classic
+                                    and Bitcoin Gold among them. Bitcoin&apos;s defence is that it is by far the most expensive chain to
+                                    out-hash, and that anyone spending that much would be destroying the value of the asset they get paid
+                                    in while holding a warehouse of purpose-built hardware good for nothing else.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                {/* 9. Energy */}
+                <section className="space-y-4">
+                    <div className="flex items-center gap-2 sm:gap-3">
+                        <Leaf className={sectionIcon} />
+                        <h2 className={sectionHead}>Energy, Without the Spin</h2>
+                    </div>
+                    <div className={prose}>
+                        <p>
+                            Start with the numbers, and with how weak they are. Nobody meters the Bitcoin network. Every published figure
+                            is a model built from observed hashrate plus an assumed mix of hardware, and the leading estimates — Cambridge&apos;s
+                            CBECI is the most cited — disagree with each other by wide margins. The usual range is roughly{' '}
+                            <strong className="text-slate-800 dark:text-slate-200">100 to 200 TWh per year</strong>, which puts Bitcoin
+                            somewhere around <strong className="text-slate-800 dark:text-slate-200">0.3% to 0.6% of global electricity</strong>,
+                            comparable to a mid-sized country. Treat precise figures with suspicion, including the flattering ones.
+                        </p>
+                        <div className="grid sm:grid-cols-2 gap-3 sm:gap-4">
+                            <div className={cardClass}>
+                                <h3 className={cardTitle}>The strongest case for</h3>
+                                <p className={cardBody}>
+                                    Miners are unusually mobile and interruptible buyers of electricity. They do not need to be near
+                                    customers, they run at any hour, and they can shut down within seconds. That pushes them toward power
+                                    nobody else wants: stranded hydro, curtailed wind and solar, off-peak baseload, and gas that would
+                                    otherwise be flared at the wellhead. Grid operators in Texas and elsewhere pay miners to curtail during
+                                    demand peaks, which makes the load function as a controllable, sheddable buyer. Estimates of the
+                                    sustainable-energy share range from roughly 40% to over 50%, and they disagree partly because of who
+                                    commissioned them.
+                                </p>
+                            </div>
+                            <div className={cardClass}>
+                                <h3 className={cardTitle}>The strongest case against</h3>
+                                <p className={cardBody}>
+                                    The best version of the criticism is not about the number at all. It is that energy spent here is
+                                    energy not spent elsewhere, and that &ldquo;it uses power others did not want&rdquo; does not establish
+                                    that the activity is worth doing. There are documented local costs too: mining load has been shown to
+                                    raise wholesale power prices in some markets, noise complaints near facilities are real and recurring,
+                                    and rapid hardware turnover produces electronic waste.
+                                </p>
+                            </div>
+                        </div>
+                        <div className="bg-slate-100 dark:bg-slate-900/50 p-5 sm:p-6 rounded-2xl border border-slate-200 dark:border-slate-800">
+                            <p className="text-sm sm:text-base text-slate-700 dark:text-slate-300 leading-relaxed">
+                                <strong className="text-slate-800 dark:text-slate-200">Where this actually lands:</strong> the energy use is
+                                deliberate, not a bug — it is the thing that makes rewriting history expensive. Whether a settlement system
+                                nobody controls is worth that cost is a value judgment, and the data does not settle it in either direction.
+                                Anyone claiming the numbers alone prove mining is wasteful, or prove it is virtuous, has quietly skipped the
+                                step where they tell you what they think it is for.
+                            </p>
+                        </div>
+                    </div>
+                </section>
+
+                {/* 10. Affiliate / hashrate exposure */}
+                <section className="space-y-5" id="gomining">
+                    <div className="flex items-center gap-2 sm:gap-3">
+                        <Pickaxe className={sectionIcon} />
+                        <h2 className={sectionHead}>Buying Mining Exposure Without Hardware</h2>
+                    </div>
+
+                    <div className="bg-slate-100 dark:bg-slate-900/50 p-5 sm:p-6 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-3">
+                        <h3 className={cardTitle}>Read this before you read the offer</h3>
+                        <p className={cardBody}>
+                            Buying hashrate instead of running it is a real product category, and it is also a category with a long
+                            history of fraud. Cloud-mining and hosted-mining operators have repeatedly taken deposits and vanished, and
+                            plenty of contracts that were not outright scams simply never returned their principal. Even a fully honest
+                            operator is selling you a return driven by difficulty and price — two variables neither you nor they control.
+                        </p>
+                        <p className={cardBody}>
+                            For most people, <strong className="text-slate-800 dark:text-slate-200">simply buying and holding bitcoin gives
+                            the same directional exposure with fewer moving parts and no counterparty</strong>. A hashrate product layers
+                            hashprice risk and operator risk on top of the price risk you already wanted. If you go ahead anyway, at minimum
+                            check: how fees are deducted (usually daily, in bitcoin, so a flat market quietly erodes your position), whether
+                            advertised returns are quoted before or after electricity, whether facility data is independently verifiable, and
+                            what happens to your position if the operator fails.
                         </p>
                     </div>
 
-                    <div className={`${orangeColorClasses.bg} border ${orangeColorClasses.border} rounded-2xl overflow-hidden`}>
+                    <div className={`${affiliateClasses.bg} border ${affiliateClasses.border} rounded-2xl overflow-hidden`}>
                         <div className="p-5 sm:p-8">
                             <div className="flex flex-col sm:flex-row gap-5 sm:gap-8">
                                 {/* Product image */}
@@ -406,9 +909,12 @@ export default async function MiningPage() {
                                     <div>
                                         <div className="flex flex-wrap items-center gap-2 mb-1">
                                             <h3 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">{GOMINING_DATA.name}</h3>
-                                            <span className={`text-[10px] sm:text-xs font-medium px-2 py-0.5 rounded-full ${orangeColorClasses.badge}`}>{GOMINING_DATA.price}</span>
+                                            <span className="text-[10px] sm:text-xs font-semibold px-2 py-0.5 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 uppercase tracking-wider">
+                                                Affiliate / sponsored
+                                            </span>
+                                            <span className={`text-[10px] sm:text-xs font-medium px-2 py-0.5 rounded-full ${affiliateClasses.badge}`}>{GOMINING_DATA.price}</span>
                                         </div>
-                                        <p className={`text-sm font-medium ${orangeColorClasses.accent}`}>{GOMINING_DATA.tagline}</p>
+                                        <p className={`text-sm font-medium ${affiliateClasses.accent}`}>{GOMINING_DATA.tagline}</p>
                                     </div>
 
                                     <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300 leading-relaxed">
@@ -416,21 +922,25 @@ export default async function MiningPage() {
                                     </p>
 
                                     <div className="space-y-1.5">
-                                        {GOMINING_DATA.features.map((feature) => (
-                                            <div key={feature} className="flex items-start gap-2">
-                                                <CheckCircle2 className={`w-4 h-4 ${orangeColorClasses.check} shrink-0 mt-0.5`} />
-                                                <span className="text-xs sm:text-sm text-slate-700 dark:text-slate-300">{feature}</span>
+                                        <p className="text-xs font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">What GoMining advertises</p>
+                                        {GOMINING_DATA.claims.map((claim) => (
+                                            <div key={claim} className="flex items-start gap-2">
+                                                <CheckCircle2 className={`w-4 h-4 ${affiliateClasses.check} shrink-0 mt-0.5`} />
+                                                <span className="text-xs sm:text-sm text-slate-700 dark:text-slate-300">{claim}</span>
                                             </div>
                                         ))}
+                                        <p className="text-xs text-slate-500 dark:text-slate-400 pt-1">
+                                            These are the operator&apos;s own claims, not our findings. We have not audited their facilities.
+                                        </p>
                                     </div>
 
                                     <a
                                         href={GOMINING_DATA.href}
                                         target="_blank"
                                         rel="noopener noreferrer sponsored"
-                                        className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm sm:text-base font-semibold text-white ${orangeColorClasses.button} transition-colors shadow-sm`}
+                                        className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm sm:text-base font-semibold text-white ${affiliateClasses.button} transition-colors shadow-sm`}
                                     >
-                                        Learn More About GoMining (affiliate)
+                                        Visit GoMining (affiliate link)
                                         <ExternalLink className="w-4 h-4" />
                                     </a>
                                 </div>
@@ -438,43 +948,27 @@ export default async function MiningPage() {
                         </div>
                     </div>
 
-                    <p className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 text-center italic">
-                        Affiliate disclosure: The GoMining link above is an affiliate link. We may earn a commission at no extra cost to you. This helps support this free calculator.
+                    <p className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 text-center max-w-2xl mx-auto leading-relaxed">
+                        Affiliate disclosure: we earn a commission if you sign up through the link above, at no extra cost to you. That is
+                        part of how this free calculator is funded — and it is exactly why the caveats above are stated as bluntly as they
+                        are. We would rather you skip it than get hurt by it.
                     </p>
                 </section>
 
-                {/* Common Questions - Simplified */}
-                <section className="space-y-6">
-                    <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white text-center">Common Questions</h2>
-                    <div className="space-y-3">
-                        {[
-                            {
-                                q: 'Is Bitcoin mining bad for the environment?',
-                                a: 'It\'s more nuanced than headlines suggest. Miners seek cheap electricity, which often means renewable energy (solar, hydro, wind) or energy that would otherwise be wasted (like natural gas that\'s burned off at oil wells). Over 50% of mining now uses renewable energy. Some miners even help stabilize power grids by using excess energy during off-peak hours.',
-                            },
-                            {
-                                q: 'What happens when all bitcoin is mined?',
-                                a: 'By around 2140, miners will earn only transaction fees, not new bitcoin. But that\'s okay—if Bitcoin is widely used by then, the fees alone will be enough to keep miners profitable and the network secure.',
-                            },
-                            {
-                                q: 'Can\'t someone just change the rules?',
-                                a: 'No. Bitcoin\'s rules are enforced by thousands of computers around the world. To change something, nearly everyone would have to agree. If someone tried to create more than 21 million bitcoin, everyone else would simply ignore them. This is what makes Bitcoin\'s rules essentially permanent.',
-                            },
-                            {
-                                q: 'What if a country bans mining?',
-                                a: 'Mining moves. When China banned mining in 2021, miners relocated to the US, Kazakhstan, and elsewhere within months. Bitcoin kept working perfectly. No single country can stop it.',
-                            },
-                            {
-                                q: 'Should I mine bitcoin myself?',
-                                a: 'For most people, no. Home mining rarely makes sense because you\'re competing against massive industrial operations with cheap electricity. Most beginners are better off just buying bitcoin through an exchange or using a service like GoMining.',
-                            },
-                        ].map((item) => (
+                {/* 11. FAQ */}
+                <section className="space-y-4">
+                    <div className="flex items-center gap-2 sm:gap-3">
+                        <HelpCircle className={sectionIcon} />
+                        <h2 className={sectionHead}>Common Questions</h2>
+                    </div>
+                    <div className="space-y-2.5">
+                        {faqs.map((item) => (
                             <details key={item.q} className="group bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 transition-shadow hover:shadow-sm">
-                                <summary className="flex items-center justify-between cursor-pointer p-4 sm:p-5 list-none [&::-webkit-details-marker]:hidden">
+                                <summary className="flex items-center justify-between cursor-pointer p-4 list-none [&::-webkit-details-marker]:hidden">
                                     <h3 className="font-semibold text-sm sm:text-base text-slate-800 dark:text-slate-200 pr-4">{item.q}</h3>
                                     <ArrowRight className="w-4 h-4 text-slate-500 dark:text-slate-400 transition-transform duration-200 group-open:rotate-90 shrink-0" />
                                 </summary>
-                                <div className="px-4 sm:px-5 pb-4 sm:pb-5 -mt-1">
+                                <div className="px-4 pb-4 -mt-1">
                                     <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">{item.a}</p>
                                 </div>
                             </details>
@@ -483,27 +977,45 @@ export default async function MiningPage() {
                 </section>
 
                 {/* CTA */}
-                <section className="bg-gradient-to-br from-slate-900 to-slate-800 dark:from-slate-800 dark:to-slate-700 text-white p-6 sm:p-10 rounded-2xl text-center space-y-4">
-                    <h2 className="text-xl sm:text-3xl font-bold">Ready to Start Investing?</h2>
-                    <p className="text-sm sm:text-base text-slate-300 max-w-lg mx-auto">
-                        Use our calculator to see how regular Bitcoin purchases would have grown over time. We also have a live halving countdown widget.
+                <section className="text-center bg-slate-100 dark:bg-slate-900/50 p-6 sm:p-10 rounded-2xl border border-slate-200 dark:border-slate-800">
+                    <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white mb-3">
+                        See What the Numbers Actually Say
+                    </h2>
+                    <p className="text-sm sm:text-base text-slate-600 dark:text-slate-400 mb-5 max-w-xl mx-auto">
+                        Test any dollar-cost-averaging schedule against real historical prices, with the halving dates marked on the
+                        chart and the fees included.
                     </p>
                     <div className="flex flex-wrap justify-center gap-3">
-                        <Link href="/" className="px-5 py-2.5 bg-orange-500 hover:bg-orange-600 text-white font-semibold rounded-xl text-sm sm:text-base transition-colors">
+                        <Link
+                            href="/"
+                            className="inline-flex items-center gap-2 bg-amber-500 hover:bg-amber-600 text-white font-semibold px-6 py-3 rounded-xl transition-colors text-sm sm:text-base"
+                        >
                             Open the Calculator
+                            <ArrowRight className="w-4 h-4" />
                         </Link>
-                        <Link href="/features" className="px-5 py-2.5 bg-white/10 hover:bg-white/20 text-white font-semibold rounded-xl text-sm sm:text-base transition-colors">
-                            See All Features
+                        <Link
+                            href="/why-bitcoin"
+                            className="inline-flex items-center gap-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 font-semibold px-6 py-3 rounded-xl transition-colors text-sm sm:text-base hover:bg-slate-50 dark:hover:bg-slate-700"
+                        >
+                            Why Bitcoin Has Value
                         </Link>
                     </div>
+                    <p className="mt-4 text-xs sm:text-sm text-slate-500 dark:text-slate-400">
+                        Curious how we source and compute all of it?{' '}
+                        <Link href="/methodology" className={linkClass}>Read the methodology</Link>.
+                    </p>
                 </section>
 
                 {/* Disclaimer */}
-                <section className="border-t border-slate-200 dark:border-slate-800 pt-6">
+                <section className="border-t border-slate-200 dark:border-slate-800 pt-6 sm:pt-8">
                     <div className="flex items-start gap-3">
                         <AlertTriangle className="w-5 h-5 text-slate-500 dark:text-slate-400 shrink-0 mt-0.5" />
                         <p className="text-[11px] sm:text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
-                            <strong>Disclaimer:</strong> The GoMining link on this page is an affiliate link. If you purchase through that link, we may earn a commission at no extra cost to you. This page is for educational purposes only and is not financial advice. Bitcoin and mining investments carry risk. Always do your own research. This site may also display ads; see <a href="/about#ads-and-analytics" className="text-amber-600 dark:text-amber-400 hover:underline">/about</a> for full disclosure.
+                            <strong>Disclaimer:</strong> The GoMining link on this page is a paid affiliate link; if you sign up through it
+                            we may earn a commission at no extra cost to you. Nothing here is financial advice. Mining hardware, hosted
+                            hashrate products, and bitcoin itself all carry the risk of total loss, and network figures quoted on this page
+                            are estimates that change over time. Always do your own research. This site also displays ads; see{' '}
+                            <a href="/about#ads-and-analytics" className={linkClass}>/about</a> for the full disclosure.
                         </p>
                     </div>
                 </section>

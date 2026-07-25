@@ -1,14 +1,29 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { Shield, AlertTriangle, Key, Lock, CheckCircle2, ExternalLink, ArrowRight } from 'lucide-react';
+import {
+  Shield,
+  AlertTriangle,
+  Key,
+  Lock,
+  CheckCircle2,
+  ExternalLink,
+  ArrowRight,
+  Scale,
+  Eye,
+  Layers,
+  Users,
+  Send,
+  ShieldAlert,
+} from 'lucide-react';
 import { WalletImage } from '@/components/WalletImage';
 
 export const metadata: Metadata = {
-  title: 'Why Self-Custody Matters',
-  description: 'Learn why self-custody is essential for Bitcoin holders. Understand hardware wallets, the risks of exchanges, and how to secure your Bitcoin with 7 leading devices including Trezor, Ledger, Coldcard, BitBox02, Blockstream Jade, Cypherock, and SeedSigner.',
+  title: 'Self-Custody: How to Hold Bitcoin Without Losing It',
+  description: 'An honest guide to Bitcoin self-custody: what a seed phrase really is, how people actually lose coins, verifying addresses on-device, testing your recovery, passphrases, multisig, inheritance planning, and a current hardware wallet comparison.',
+  keywords: ['bitcoin self custody', 'hardware wallet guide', 'seed phrase backup', 'bip39 recovery phrase', 'bitcoin multisig', 'bitcoin inheritance planning', 'passphrase 25th word', 'best bitcoin hardware wallet 2026'],
   openGraph: {
-    title: 'Why Self-Custody Matters | Protect Your Bitcoin',
-    description: 'Not your keys, not your coins. Learn how to properly secure your Bitcoin with hardware wallets.',
+    title: 'Self-Custody: How to Hold Bitcoin Without Losing It',
+    description: 'Self-custody removes exchange risk and hands you operational risk. Here is how to take it on properly — seed phrases, backups, threat models, inheritance, and which device to buy.',
     url: '/self-custody',
     type: 'article',
     siteName: 'Bitcoin DCA Calculator',
@@ -16,8 +31,8 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Why Self-Custody Matters | Protect Your Bitcoin',
-    description: 'Not your keys, not your coins. Learn how to properly secure your Bitcoin with hardware wallets.',
+    title: 'Self-Custody: How to Hold Bitcoin Without Losing It',
+    description: 'Self-custody removes exchange risk and hands you operational risk. Here is how to take it on properly.',
     creator: '@9drix9',
   },
   alternates: {
@@ -26,123 +41,266 @@ export const metadata: Metadata = {
 };
 
 const EXCHANGE_FAILURES = [
-  { name: 'Mt. Gox', year: '2014', lost: '850,000 BTC', description: 'The largest Bitcoin exchange at the time collapsed after a hack. Users waited over a decade to receive partial recovery.' },
-  { name: 'QuadrigaCX', year: '2019', lost: '$190M', description: 'The founder died with the only passwords to the exchange wallets. All customer funds were permanently locked.' },
-  { name: 'FTX', year: '2022', lost: '$8B+', description: 'One of the world\'s largest crypto exchanges collapsed overnight due to fraud. Millions of users lost access to their funds.' },
-  { name: 'Celsius', year: '2022', lost: '$4.7B', description: 'The lending platform froze all withdrawals, then filed for bankruptcy. Users couldn\'t access their own Bitcoin.' },
+  { name: 'Mt. Gox', year: '2014', lost: '850,000 BTC', description: 'The largest Bitcoin exchange of its era collapsed after years of undetected theft. Creditors waited more than a decade for partial repayment.' },
+  { name: 'QuadrigaCX', year: '2019', lost: '$190M', description: 'The founder died holding the only keys to the exchange wallets. Customer funds were never recovered — the same failure mode as an individual who dies without an inheritance plan.' },
+  { name: 'FTX', year: '2022', lost: '$8B+', description: 'A top-three exchange collapsed in days after customer assets were lent to an affiliated trading firm. Balances shown in the app did not correspond to coins that existed.' },
+  { name: 'Celsius', year: '2022', lost: '$4.7B', description: 'A yield platform froze withdrawals and filed for bankruptcy. Depositors were reclassified as unsecured creditors of the estate.' },
 ];
 
-const WALLETS = [
+const THREATS = [
   {
-    name: 'SeedSigner',
-    tagline: 'DIY, stateless & air-gapped',
-    description: 'SeedSigner is a completely open-source, do-it-yourself Bitcoin signing device built from off-the-shelf parts (Raspberry Pi Zero, camera, and screen). It\'s stateless — it never stores your keys, so there\'s nothing to steal if someone finds it. Perfect for the DIY-minded Bitcoiner who wants full transparency.',
-    features: ['100% open-source hardware & software', 'Stateless — never stores private keys', 'Air-gapped via QR codes only', 'Build it yourself from commodity parts', 'Bitcoin-only, no unnecessary features'],
-    price: '~$50 (DIY build)',
-    href: 'https://seedsigner.com/',
-    color: 'cyan',
-    image: '/wallets/seedsigner.png',
-    bestFor: 'Best for: DIY enthusiasts & maximum transparency',
-    affiliate: false,
+    rank: '1',
+    title: 'Your own mistakes and lost backups',
+    detail: 'By a wide margin the biggest cause of permanent loss. Seed words written down incorrectly, stored somewhere that flooded or burned, thrown out during a house move, or never tested. Nobody attacked these people. Chain-analysis estimates consistently put the number of unrecoverable coins in the millions.',
+    fix: 'Test your recovery before you fund the wallet. Keep two backups in two places.',
   },
   {
-    name: 'Coldcard',
-    tagline: 'Maximum security, Bitcoin only',
-    description: 'Coldcard is built exclusively for Bitcoin and is trusted by some of the most security-conscious Bitcoiners in the world. It supports fully air-gapped operation via MicroSD card, so it never needs to connect to a computer. Made in Canada with a dual secure element design.',
-    features: ['Bitcoin-only (no altcoin distractions)', 'Fully air-gapped via MicroSD', 'Dual secure element chips', 'Open-source firmware', 'Advanced features: multisig, BIP-85, seed XOR'],
-    price: 'From $157.94',
-    href: 'https://coldcard.com/',
-    color: 'blue',
-    image: '/wallets/coldcard.png',
-    bestFor: 'Best for: Security maximalists & advanced users',
-    affiliate: false,
+    rank: '2',
+    title: 'Phishing and impersonation',
+    detail: 'Fake wallet apps in app stores, sponsored search ads pointing at cloned wallet sites, "support agents" who appear within minutes when you post a problem publicly, fake airdrops and forced "migrations", and — since the leak of hardware wallet customer address lists — physical letters with QR codes asking you to re-enter your recovery phrase.',
+    fix: 'No legitimate wallet, support agent, exchange, or airdrop will ever need your recovery phrase. There is no exception to this rule.',
   },
   {
-    name: 'Blockstream Jade',
-    tagline: 'Air-gapped & open-source',
-    description: 'Built by the team behind Bitcoin\'s Liquid Network, Jade offers a fully air-gapped signing experience via camera-based QR codes. It\'s fully open-source, so anyone can audit the code. One of the most affordable ways to start self-custody.',
-    features: ['Fully open-source hardware & software', 'Air-gapped via QR codes (no cables needed)', 'Camera for QR-based signing', 'Built-in battery & Bluetooth', 'Bitcoin & Liquid Network support'],
-    price: 'From $64.99',
-    href: 'https://oshi.link/ETC6DL',
-    color: 'green',
-    image: '/wallets/blockstream-jade.png',
-    bestFor: 'Best for: Privacy & open-source advocates',
-    affiliate: true,
+    rank: '3',
+    title: 'Address-swapping malware',
+    detail: 'Clipboard hijackers and malicious browser extensions silently replace a Bitcoin address you copied with the attacker\'s address. The address on your screen looks right because the malware also rewrites what your browser displays. The transaction is irreversible once broadcast.',
+    fix: 'Confirm every receive and send address on the hardware wallet\'s own screen, which the malware cannot touch.',
   },
+  {
+    rank: '4',
+    title: 'Recovery phrase typed into a website or app',
+    detail: 'The single most efficient theft in Bitcoin. A convincing "wallet validation", "sync tool", or "claim your fork coins" page collects twelve or twenty-four words and empties every account derived from them within seconds — including accounts you have not created yet.',
+    fix: 'Your seed is entered on a hardware wallet, or on nothing at all.',
+  },
+  {
+    rank: '5',
+    title: 'Exchange or custodian failure',
+    detail: 'The risk this page exists to address. It is real and it has repeated, but for an individual holder it is statistically less common than the four items above. Proof-of-reserves attestations show assets at a moment in time; they do not show liabilities, and they are not audits.',
+    fix: 'Hold long-term savings in your own custody. Keep only what you are actively trading on an exchange.',
+  },
+  {
+    rank: '6',
+    title: 'Supply-chain tampering',
+    detail: 'In 2021, criminals working from a leaked customer address list mailed shrink-wrapped "replacement" hardware wallets with official-looking letters to real owners. The devices were modified to capture recovery phrases. Second-hand and marketplace devices can arrive pre-seeded, so the seller already holds the keys.',
+    fix: 'Buy only direct from the manufacturer. Never use a device that arrives with a recovery phrase already printed or set — a genuine device generates its own on first use.',
+  },
+  {
+    rank: '7',
+    title: 'Physical coercion (the "$5 wrench attack")',
+    detail: 'Rare in absolute terms but rising fast. Security firms tracking verified incidents counted dozens of violent robberies, home invasions, and kidnappings targeting known crypto holders in each of the last two years, concentrated heavily in Europe. Almost every victim was identifiable as a holder beforehand.',
+    fix: 'Do not advertise holdings, online or in person. Consider a passphrase-protected wallet or multisig so no single person under duress can move everything.',
+  },
+];
+
+type WalletColor = 'violet' | 'amber' | 'green' | 'blue' | 'cyan' | 'emerald' | 'slate';
+
+interface Wallet {
+  name: string;
+  tagline: string;
+  description: string;
+  features: string[];
+  price: string;
+  lineup: string;
+  caveat: string;
+  href: string;
+  color: WalletColor;
+  image: string;
+  bestFor: string;
+  affiliate: boolean;
+}
+
+// Ordered roughly from most beginner-friendly to most specialist.
+// Prices checked July 2026 and deliberately stated as approximations — vendors discount often.
+const WALLETS: Wallet[] = [
   {
     name: 'Trezor',
-    tagline: 'The original hardware wallet',
-    description: 'Trezor pioneered the hardware wallet industry in 2014 and remains one of the most trusted names in Bitcoin security. Every line of code is open-source and publicly auditable. With a simple interface and strong track record, Trezor is a great choice for anyone stepping into self-custody.',
-    features: ['Fully open-source firmware & software', 'Touchscreen (Model T & Safe 5)', 'Multi-asset support (we only care about the BTC part)', 'Shamir Backup option (Model T & Safe 5)', 'Proven 10+ year track record'],
-    price: 'From $59',
+    tagline: 'Open-source, and the easiest to verify',
+    description: 'Trezor shipped the first hardware wallet in 2014 and its firmware has always been open-source and reproducibly built, meaning independent researchers can confirm the code on your device matches the published source. The current Safe line adds a certified secure element, and every model can run Bitcoin-only firmware that removes the altcoin code entirely.',
+    features: ['Open-source firmware with reproducible builds', 'EAL6+ secure element across the Safe line', 'Bitcoin-only firmware option on every model', 'Shamir backup on Safe 5 and Safe 7', 'Works with Trezor Suite, Sparrow, Electrum, and Nunchuk'],
+    price: 'from ~$79',
+    lineup: 'Safe 3 around $79, Safe 5 around $169, Safe 7 around $249. The older Model One and Model T are retired.',
+    caveat: 'Ledger\'s security team has twice demonstrated laboratory attacks on Trezor silicon — a voltage-glitch on the Safe 3 microcontroller (2025) and a flaw in the Safe 7\'s TROPIC01 chip (2026). Both need physical possession of the device, expensive equipment, and expertise; neither has been seen in the wild. The practical lesson is about tampered and second-hand devices, not about a device you bought direct and set up yourself. Trezor\'s third-party support portal also leaked customer contact details in 2024, which feeds phishing.',
     href: 'https://affil.trezor.io/aff_c?offer_id=238&aff_id=36991',
     color: 'emerald',
     image: '/wallets/trezor.png',
-    bestFor: 'Best for: Open-source trust & ease of use',
+    bestFor: 'Best for: a first hardware wallet you can independently verify',
+    affiliate: true,
+  },
+  {
+    name: 'Blockstream Jade',
+    tagline: 'Bitcoin-focused, fully open, well priced',
+    description: 'Built by Blockstream, Jade is fully open-source in both hardware and firmware. The lineup now splits into three devices: Classic and Core for a fast, simple move off an exchange, and Jade Plus for camera-based QR signing and SD-card air-gapping. All three run identical firmware and the same security model.',
+    features: ['Fully open-source hardware and firmware', 'Bitcoin and Liquid; no altcoin code', 'Air-gapped QR signing and SD card support (Plus)', 'Camera, USB-C, Bluetooth, built-in battery', 'Pairs with Blockstream Green, Sparrow, Electrum, Nunchuk'],
+    price: 'from ~$79',
+    lineup: 'Jade Classic around $79, Jade Core around $99, Jade Plus around $149-$169 depending on the case material.',
+    caveat: 'Jade has no dedicated secure element chip. Instead it encrypts your key material and unlocks it via a handshake with a "blind oracle" PIN server, which learns nothing about your wallet or PIN. Blockstream runs one by default and you can run your own. Signing always happens offline and the seed never leaves the device, but if you want zero third-party dependency in the unlock path, plan to self-host the oracle.',
+    href: 'https://oshi.link/ETC6DL',
+    color: 'green',
+    image: '/wallets/blockstream-jade.png',
+    bestFor: 'Best for: open-source purists and the best value in the category',
     affiliate: true,
   },
   {
     name: 'Ledger',
-    tagline: 'The most popular hardware wallet',
-    description: 'Ledger devices have secured millions of users worldwide. With Ledger Live, you can manage your Bitcoin, check your balance, and send transactions all from a single app. Their secure element chip is certified by independent security labs.',
-    features: ['Certified secure element (CC EAL5+)', 'Bluetooth (Nano X) or USB', 'Ledger Live companion app', 'Multi-asset support (we only care about the BTC part)', 'Large ecosystem & community'],
-    price: 'From $79',
+    tagline: 'The most polished software, with a real trade-off',
+    description: 'Ledger has sold more hardware wallets than anyone and Ledger Live is the most approachable companion app in the category. Its secure element chips carry independent security certifications and no Ledger device has ever been remotely compromised. The trade-off is transparency: the device operating system and secure element firmware are proprietary.',
+    features: ['Certified secure element (CC EAL5+ / EAL6+)', 'Ledger Live handles buy, send, receive, and staking', 'Bluetooth on Nano X and Gen5; NFC on Gen5', 'Very broad multi-asset support', 'Largest ecosystem of third-party integrations'],
+    price: 'from ~$79',
+    lineup: 'Nano S Plus around $79, Nano X around $149, Nano Gen5 around $179, Flex around $249, Stax around $399. The original Nano S reached end of support in 2025.',
+    caveat: 'Two things to weigh honestly. First, you cannot audit Ledger\'s device OS the way you can Trezor\'s, BitBox\'s, or Jade\'s — you are trusting the company\'s implementation, and the 2023 "Ledger Recover" seed-backup service showed that what the firmware is capable of can change. Second, Ledger has leaked customer contact data twice: an e-commerce breach in 2020 exposed roughly 272,000 postal addresses, and a payment-processor breach in January 2026 exposed names, addresses, emails, and phone numbers. No keys or funds were exposed in either, but those lists have driven years of targeted phishing, tampered devices mailed to real customers, and at least one extortion wave. If you buy one, use a delivery address you would not mind being public and treat every unsolicited Ledger message as fraudulent.',
     href: 'https://shop.ledger.com/?r=ee186bc1f36d',
     color: 'amber',
     image: '/wallets/ledger.png',
-    bestFor: 'Best for: Beginners & mobile users',
+    bestFor: 'Best for: people who want the smoothest app and accept the closed-source trade-off',
     affiliate: true,
   },
   {
     name: 'BitBox02',
-    tagline: 'Swiss-made, minimalist & secure',
-    description: 'Built in Switzerland by Shift Crypto, the BitBox02 is a compact, no-nonsense hardware wallet with a strong focus on privacy and simplicity. It comes in a Bitcoin-only edition that strips away everything unnecessary, reducing the attack surface to a minimum.',
-    features: ['Bitcoin-only edition available', 'Fully open-source firmware', 'USB-C with built-in touch sensors', 'MicroSD backup (no writing down seed words)', 'Swiss quality & privacy-focused design'],
-    price: 'From $139',
+    tagline: 'Swiss-made, minimal, quietly excellent',
+    description: 'Shift Crypto builds the BitBox02 in Switzerland with a dual-chip design pairing a secure element with a general microcontroller, so neither alone can release your keys. The Bitcoin-only edition strips out every other coin and costs the same as the multi edition. The newer Nova adds a glass display and native iPhone and iPad support.',
+    features: ['Bitcoin-only edition at no extra cost', 'Open-source firmware, reproducible builds', 'Dual-chip security design', 'microSD backup as well as a written 12-word seed', 'Nova adds iOS/iPadOS support and a glass display'],
+    price: 'from ~$136',
+    lineup: 'BitBox02 around $136, BitBox02 Nova around $159. Bitcoin-only and multi editions are the same price.',
+    caveat: 'The microSD backup is genuinely convenient, but it is still a full copy of your seed sitting on a small piece of plastic that degrades and is easy to misplace. Treat it exactly as you would written words, and keep a durable written or metal copy as well.',
     href: 'https://shop.bitbox.swiss/?ref=pnuwdpiq',
     color: 'slate',
     image: '/wallets/bitbox.png',
-    bestFor: 'Best for: Minimalists & privacy-conscious users',
+    bestFor: 'Best for: minimalists who want Bitcoin-only without the complexity tax',
     affiliate: true,
   },
   {
+    name: 'Coldcard',
+    tagline: 'Bitcoin-only, air-gapped, expert-grade',
+    description: 'Coinkite\'s Coldcard is the device most long-term Bitcoiners graduate to. It can be operated fully air-gapped — signing transactions over microSD or, on the Q, over QR codes — so it never touches a computer. Two secure elements from different vendors must both agree before anything is signed.',
+    features: ['Bitcoin-only, always has been', 'Fully air-gapped via microSD (Q adds QR + keyboard)', 'Two independent secure elements', 'Firmware source published with reproducible builds', 'Multisig, BIP-85, seed XOR, duress and brick-me PINs'],
+    price: 'Mk5 ~$170, Q ~$249',
+    lineup: 'Current models are the Mk5 (around $170) and the Q (around $249). The Mk4 has been superseded.',
+    caveat: 'Two honest notes. The firmware is source-available under MIT plus a Commons Clause restriction rather than a standard open-source licence, so "open-source" is not strictly accurate even though anyone can read and reproduce the build. And the advanced features are double-edged: duress PINs, seed XOR, and BIP-85 will destroy your access as efficiently as they protect it if you use them without fully understanding them. This is not a first device.',
+    href: 'https://coldcard.com/',
+    color: 'blue',
+    image: '/wallets/coldcard.png',
+    bestFor: 'Best for: larger balances, multisig setups, and people who want an air gap',
+    affiliate: false,
+  },
+  {
     name: 'Cypherock X1',
-    tagline: 'No single point of failure',
-    description: 'Cypherock uses Shamir Secret Sharing to split your private key across 4 tamper-proof cards and the device itself. Even if you lose one card, your Bitcoin is safe. No seed phrase to write down or worry about.',
-    features: ['No seed phrase backup needed', 'Shamir Secret Sharing across 4 cards', 'Open-source firmware', 'Multi-asset support (we only care about the BTC part)', 'EAL6+ secure element'],
-    price: 'From $99',
+    tagline: 'Nothing to write down, five things to protect',
+    description: 'Cypherock takes a different approach: instead of one seed phrase you back up on paper, it splits your key material into five shares using Shamir Secret Sharing — one inside the X1 Vault and one on each of four NFC cards. Any two shares reconstruct the wallet, so losing up to three components still leaves you recoverable.',
+    features: ['No written seed phrase required', 'Shamir 2-of-5 across the vault and four cards', 'EAL6+ secure elements', 'Open-source firmware', 'BIP-39 export available as an escape hatch'],
+    price: '~$159-$199',
+    lineup: 'Usually around $199 list, frequently discounted to about $159. Replacement cards and cases are sold separately.',
+    caveat: 'The threshold cuts both ways: any two of the five shares reconstruct your keys, so two cards found together are as good as your whole wallet to a thief. The cards must be geographically separated, which is more work than most people expect from a "no seed phrase" product. The scheme is also newer and less battle-tested than a plain BIP-39 backup — the mitigating factor is that you can export a standard BIP-39 phrase at any time and walk away to another vendor.',
     href: 'https://cypherock.com/store/?ref=BTCDOLLARCOSTAVERAGE',
     color: 'violet',
     image: '/wallets/cypherock.png',
-    bestFor: 'Best for: Eliminating single points of failure',
+    bestFor: 'Best for: people who distrust their ability to protect a single paper backup',
     affiliate: true,
+  },
+  {
+    name: 'SeedSigner',
+    tagline: 'DIY, stateless, and holds nothing',
+    description: 'SeedSigner is a community project rather than a product: you assemble it yourself from a Raspberry Pi Zero, a camera, and a small screen, and flash software you can verify byte-for-byte against the published source. It is stateless, meaning it stores no keys at all — you enter your seed words each time you sign, and the device forgets them when powered off. There is nothing on it to steal.',
+    features: ['Around $50 in commodity parts', 'Stateless: stores no private keys, ever', 'Air-gapped by design — QR codes only, no cables', 'Reproducible builds since v0.7.0', 'Strong multisig and Sparrow/Nunchuk support'],
+    price: '~$50 in parts',
+    lineup: 'A DIY build. Parts costs move with Raspberry Pi availability; pre-assembled units from third parties exist but reintroduce supply-chain risk.',
+    caveat: 'No company, no support line, no warranty, and no one to blame. Statelessness also means your seed backup is in active use every time you sign rather than sealed away in a safe, which is a meaningful trade-off in a home with other people in it. Excellent as a multisig signer or a second device; a demanding choice as your only one.',
+    href: 'https://seedsigner.com/',
+    color: 'cyan',
+    image: '/wallets/seedsigner.png',
+    bestFor: 'Best for: technical users, multisig signers, and maximum verifiability',
+    affiliate: false,
   },
 ];
 
 const STEPS = [
   {
     step: 1,
-    title: 'Choose a hardware wallet',
-    description: 'Pick one from our recommendations below. All seven are reputable, well-reviewed, and purpose-built for securing Bitcoin.',
+    title: 'Decide what actually belongs in self-custody',
+    description: 'Move long-term savings, not trading balance. Start with an amount you would be annoyed but not devastated to lose, and live with the setup for a few weeks before moving the rest.',
   },
   {
     step: 2,
-    title: 'Set up your device',
-    description: 'Follow the manufacturer\'s instructions. The device will generate a private key that never leaves the hardware. Write down your recovery phrase (if applicable) and store it somewhere safe offline.',
+    title: 'Buy the device direct from the manufacturer',
+    description: 'Never from a marketplace, reseller, or second-hand. A genuine device arrives with no recovery phrase — it generates one in front of you on first use. Anything that arrives pre-seeded is a theft in progress.',
   },
   {
     step: 3,
-    title: 'Transfer your Bitcoin',
-    description: 'Send a small test amount first. Once confirmed, transfer the rest of your Bitcoin from the exchange to your wallet address. Always double-check the address.',
+    title: 'Set it up and write the recovery phrase by hand',
+    description: 'Set a PIN, then write the words on the supplied card in order and in your own handwriting. No photos, no cloud, no password manager, no typing them anywhere. Record the wallet type or derivation path the device shows you, if it shows one.',
   },
   {
     step: 4,
-    title: 'Secure your backup',
-    description: 'Store your recovery phrase in a fireproof, waterproof location. Consider a metal backup plate. Never store it digitally, never take a photo of it, and never share it with anyone.',
+    title: 'Wipe the device and restore from your backup',
+    description: 'This is the step almost everyone skips and it is the whole point. Factory reset the device, restore it from the words you just wrote, and confirm the first receive address is identical. Only now do you know you have a backup rather than a hope.',
+  },
+  {
+    step: 5,
+    title: 'Send a small test amount and verify on the device screen',
+    description: 'Generate a receive address, confirm it character-for-character on the hardware wallet\'s own display, and withdraw a small amount from your exchange. Wait for it to confirm and check the balance appears.',
+  },
+  {
+    step: 6,
+    title: 'Move the rest',
+    description: 'Withdraw the remainder in one or a few transactions rather than many small ones — Bitcoin fees are charged per transaction size, not per amount, so lots of tiny deposits cost more to spend later.',
+  },
+  {
+    step: 7,
+    title: 'Secure the backup, then write down where everything is',
+    description: 'Get the words onto something fire- and water-resistant, keep two copies in two separate places, and leave a sealed note for the people who would need to find all of it if you could not explain it to them.',
   },
 ];
 
-const walletColorClasses = {
+const FAQ = [
+  {
+    q: 'What if I lose my hardware wallet?',
+    a: 'Nothing is stored on the device. Your coins live on the blockchain and the device only holds the keys that authorise moving them. Buy a new wallet from any manufacturer, restore your recovery phrase, and your balance reappears. The lost device is a brick to whoever finds it as long as it had a PIN and you have your backup.',
+  },
+  {
+    q: 'What if the company that made my wallet goes out of business?',
+    a: 'Your recovery phrase follows BIP-39, an open standard implemented by every major wallet. You can restore it on a competitor\'s device or in free desktop software such as Sparrow or Electrum. You are never locked to a vendor. The only thing worth noting is the derivation path — if a wallet does not auto-detect your accounts, you may need to tell it whether the wallet was native SegWit, Taproot, or legacy, which is why it is worth writing down.',
+  },
+  {
+    q: 'What if my device breaks or stops turning on?',
+    a: 'Same answer, and this is exactly why step four of the setup is to test your recovery before funding. A dead device is an inconvenience costing the price of a replacement. A dead device plus an untested backup is a permanent loss. The device is a replaceable tool; the seed is the money.',
+  },
+  {
+    q: 'If someone finds my hardware wallet, can they take my Bitcoin?',
+    a: 'Not with the PIN alone protecting it — devices wipe themselves after a small number of wrong attempts. Laboratory attacks that physically extract keys from a stolen device have been demonstrated against several models, but they require possession, specialist equipment, and expertise. If you are worried about a device being stolen, a passphrase defeats every one of those attacks, because the passphrase is not stored on the device at all.',
+  },
+  {
+    q: 'Do I need a passphrase?',
+    a: 'Most people should not start with one. A passphrase creates an entirely separate wallet from the same seed words, which is powerful for plausible deniability and for defending a stolen device — but forgetting or mistyping it is unrecoverable, there is no error message to warn you, and it is one of the more common ways experienced holders lose funds. Add one only once your basic backup discipline is solid, and back the passphrase up separately from the seed.',
+  },
+  {
+    q: 'Is a phone wallet good enough?',
+    a: 'For spending money and small balances, a reputable mobile wallet is a reasonable choice and far better than an exchange. The limitation is that your phone is internet-connected and runs code you did not audit, so a compromised phone can show you one address while signing another. A hardware wallet exists to give you a screen the phone cannot lie to. Rough guide: phone wallet for what you would carry as cash, hardware wallet for savings.',
+  },
+  {
+    q: 'Is self-custody worth it for small amounts?',
+    a: 'Not always, and pretending otherwise does beginners no favours. If you hold a few hundred dollars you are actively trading, a reputable exchange with a hardware security key on the account is a defensible choice — a badly executed self-custody setup loses money more reliably than a well-run exchange does. The moment the balance becomes savings rather than a trading position, or crosses the point where losing it would genuinely hurt, self-custody is worth the effort. Devices on this page run from roughly $50 for a DIY build or about $79 for an entry-level Trezor, Jade, or Ledger, up to around $250 for high-end models.',
+  },
+  {
+    q: 'What happens to my Bitcoin if I die?',
+    a: 'Whatever you have arranged in advance, which for most holders is nothing — and that is how bitcoin quietly disappears. Your heirs need to know the asset exists, where the device and backups are, and how to use them, without any of that being written in a document that becomes public record during probate. Practical options include sealed instructions held by a lawyer, splitting the information so no single document is sufficient, or a 2-of-3 multisig where a trusted party or a collaborative custody service holds one key.',
+  },
+  {
+    q: 'Should I buy a discounted or second-hand hardware wallet?',
+    a: 'No. Buy direct from the manufacturer, every time. Second-hand and marketplace devices can arrive already initialised with a seed the seller kept, and criminals have mailed convincing tampered "replacement" devices to real customers whose addresses leaked in past breaches. A genuine device never arrives with a recovery phrase already written down.',
+  },
+  {
+    q: 'Can I be forced to hand over my Bitcoin?',
+    a: 'Physically, yes — violent robberies targeting known holders have risen sharply in the last two years, mostly against people who were publicly identifiable as holding crypto. The primary defence is not technical: do not discuss your holdings, online or in person. Beyond that, a passphrase wallet lets you surrender a decoy balance, and multisig with keys in separate locations means no one person present in a room can move the funds.',
+  },
+];
+
+const walletColorClasses: Record<WalletColor, {
+  bg: string;
+  border: string;
+  badge: string;
+  button: string;
+  accent: string;
+  check: string;
+}> = {
   violet: {
     bg: 'bg-violet-50 dark:bg-violet-950/20',
     border: 'border-violet-200 dark:border-violet-800/50',
@@ -201,6 +359,23 @@ const walletColorClasses = {
   },
 };
 
+const walletFallbackEmoji: Record<WalletColor, string> = {
+  violet: '\u{1F510}',
+  amber: '\u{1F512}',
+  blue: '\u{2744}️',
+  cyan: '\u{1F331}',
+  emerald: '\u{1F9F0}',
+  slate: '\u{1F4E6}',
+  green: '\u{1F6E1}️',
+};
+
+const cardClass = 'bg-white dark:bg-slate-800 p-4 sm:p-5 rounded-xl border border-slate-200 dark:border-slate-700';
+const cardTitle = 'text-sm sm:text-base font-bold text-slate-800 dark:text-white mb-2';
+const cardBody = 'text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed';
+const sectionIcon = 'w-6 h-6 sm:w-8 sm:h-8 text-amber-500 shrink-0';
+const sectionHeading = 'text-xl sm:text-3xl font-bold text-slate-900 dark:text-white';
+const prose = 'text-sm sm:text-base text-slate-600 dark:text-slate-400 leading-relaxed';
+
 const breadcrumbJsonLd = {
   "@context": "https://schema.org",
   "@type": "BreadcrumbList",
@@ -210,11 +385,35 @@ const breadcrumbJsonLd = {
   ],
 };
 
+const articleJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "Article",
+  "headline": "Self-Custody: How to Hold Bitcoin Without Losing It",
+  "description": "An honest guide to Bitcoin self-custody: seed phrases, on-device verification, tested backups, threat models, passphrases, multisig, inheritance planning, and a current hardware wallet comparison.",
+  "author": {
+    "@type": "Organization",
+    "name": "Bitcoin DCA Calculator",
+    "url": "https://btcdollarcostaverage.com"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "Bitcoin DCA Calculator",
+    "url": "https://btcdollarcostaverage.com"
+  },
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "https://btcdollarcostaverage.com/self-custody"
+  },
+  "datePublished": "2025-01-01",
+  // Static date — update when the content actually changes. Keep in sync with sitemap.ts.
+  "dateModified": "2026-07-25",
+};
+
 const howToJsonLd = {
   "@context": "https://schema.org",
   "@type": "HowTo",
   "name": "How to Set Up Bitcoin Self-Custody",
-  "description": "A step-by-step guide to securing your Bitcoin with a hardware wallet. Learn how to take full control of your private keys.",
+  "description": "A step-by-step guide to moving Bitcoin into your own custody with a hardware wallet, including testing your recovery before you fund the wallet.",
   "step": STEPS.map((s) => ({
     "@type": "HowToStep",
     "position": s.step,
@@ -226,36 +425,23 @@ const howToJsonLd = {
 const faqJsonLd = {
   "@context": "https://schema.org",
   "@type": "FAQPage",
-  "mainEntity": [
-    {
-      "@type": "Question",
-      "name": "What if I lose my hardware wallet?",
-      "acceptedAnswer": { "@type": "Answer", "text": "Your Bitcoin isn't stored \"on\" the device. It's on the blockchain. The device just holds your private key. As long as you have your recovery phrase backed up, you can restore your wallet on a brand new device." }
-    },
-    {
-      "@type": "Question",
-      "name": "What if the hardware wallet company goes out of business?",
-      "acceptedAnswer": { "@type": "Answer", "text": "Your recovery phrase follows an open standard (BIP-39). You can restore your keys on any compatible wallet from any manufacturer. You're never locked in to one company." }
-    },
-    {
-      "@type": "Question",
-      "name": "Is self-custody worth it for small amounts?",
-      "acceptedAnswer": { "@type": "Answer", "text": "A common rule of thumb: if you hold more Bitcoin than you'd be comfortable losing, move it to self-custody. For many people, that threshold is around $500-$1,000. Hardware wallets cost roughly $50-$160 depending on the model." }
-    },
-    {
-      "@type": "Question",
-      "name": "Can't I just use a software wallet on my phone?",
-      "acceptedAnswer": { "@type": "Answer", "text": "Software wallets are better than leaving Bitcoin on an exchange, but your phone is connected to the internet and can be compromised. A hardware wallet keeps your keys completely offline, which is the gold standard for security." }
-    },
-  ],
+  "mainEntity": FAQ.map((item) => ({
+    "@type": "Question",
+    "name": item.q,
+    "acceptedAnswer": { "@type": "Answer", "text": item.a },
+  })),
 };
 
 export default function SelfCustodyPage() {
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 space-y-12 sm:space-y-16">
+    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 space-y-10 sm:space-y-16">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(articleJsonLd) }}
       />
       <script
         type="application/ld+json"
@@ -267,147 +453,618 @@ export default function SelfCustodyPage() {
       />
 
       {/* Hero */}
-      <section className="text-center space-y-4 sm:space-y-5">
+      <section className="text-center max-w-3xl mx-auto space-y-4 sm:space-y-5">
         <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 text-xs sm:text-sm font-medium">
           <Shield className="w-4 h-4" />
-          Essential Knowledge for Every Bitcoiner
+          The part of Bitcoin that actually goes wrong
         </div>
         <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-slate-900 dark:text-white tracking-tight text-balance">
-          Why <span className="text-amber-500">Self-Custody</span> Matters
+          How to Hold Bitcoin <span className="text-amber-500">Without Losing It</span>
         </h1>
         <p className="text-base sm:text-lg text-slate-600 dark:text-slate-300 max-w-2xl mx-auto leading-relaxed">
-          When you buy Bitcoin on an exchange, the exchange holds your Bitcoin for you. Self-custody means <strong>you</strong> hold the keys. Here&apos;s why that matters and how to do it safely.
+          Self-custody does not remove risk. It moves it. You stop trusting an exchange to still exist, and you start
+          being the only thing standing between your savings and a mistake nobody can reverse. That is usually the right
+          trade &mdash; but only if you take the second half of it seriously.
+        </p>
+        <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 max-w-2xl mx-auto">
+          Written for someone who has never done this, with the parts experienced holders get wrong marked clearly.
         </p>
       </section>
 
-      {/* What is Self-Custody */}
-      <section className="space-y-6">
-        <div className="flex items-center gap-3">
-          <Key className="w-7 h-7 text-amber-500 shrink-0" />
-          <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white">What Is Self-Custody?</h2>
+      {/* Section 1: The trade you're making */}
+      <section className="space-y-4">
+        <div className="flex items-center gap-2 sm:gap-3">
+          <Scale className={sectionIcon} />
+          <h2 className={sectionHeading}>The Trade You Are Actually Making</h2>
         </div>
+        <div className={`${prose} space-y-4`}>
+          <p>
+            When you buy Bitcoin on an exchange, the exchange holds it. Your balance is an entry in their database and a
+            promise to pay. Self-custody replaces that promise with a private key that only you control. That is what
+            &ldquo;not your keys, not your coins&rdquo; means, and it is true &mdash; but it is only half a sentence.
+            Both arrangements can fail. They just fail differently.
+          </p>
 
-        <div className="grid sm:grid-cols-2 gap-4 sm:gap-6">
-          <div className="bg-red-50 dark:bg-red-950/20 p-5 sm:p-6 rounded-xl border border-red-200 dark:border-red-800/50">
-            <div className="text-red-600 dark:text-red-400 font-semibold text-sm sm:text-base mb-2">Without Self-Custody</div>
-            <p className="text-sm sm:text-base text-slate-700 dark:text-slate-300 leading-relaxed mb-3">
-              Your Bitcoin sits in the exchange&apos;s wallet. You have an <em>IOU</em> &mdash; a promise that they&apos;ll give it back when you ask. If the exchange gets hacked, goes bankrupt, or freezes withdrawals, you may lose everything.
-            </p>
-            <div className="text-xs sm:text-sm text-red-600 dark:text-red-400 font-medium">
-              Think of it like keeping all your cash in someone else&apos;s safe. They have the combination, not you.
+          <div className="grid sm:grid-cols-2 gap-3 sm:gap-4">
+            <div className="bg-red-50 dark:bg-red-950/20 p-4 sm:p-5 rounded-xl border border-red-200 dark:border-red-800/50">
+              <div className="text-red-600 dark:text-red-400 font-semibold text-sm sm:text-base mb-2">What you give up: counterparty risk</div>
+              <p className="text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
+                Exchange insolvency, fraud, hacks, frozen withdrawals, account closures, and the possibility that the
+                coins backing your balance were lent to someone else. None of these are hypothetical, and none of them
+                are things you can influence from the outside.
+              </p>
+            </div>
+
+            <div className="bg-amber-50 dark:bg-amber-950/20 p-4 sm:p-5 rounded-xl border border-amber-200 dark:border-amber-800/50">
+              <div className="text-amber-700 dark:text-amber-400 font-semibold text-sm sm:text-base mb-2">What you take on: operational risk</div>
+              <p className="text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
+                Lost or destroyed backups, phishing, malware that rewrites addresses, a passphrase you cannot remember,
+                theft, and the possibility that nobody can recover any of it if you die. There is no support line and no
+                password reset. Every one of these is something you can influence &mdash; which is the point.
+              </p>
             </div>
           </div>
 
-          <div className="bg-green-50 dark:bg-green-950/20 p-5 sm:p-6 rounded-xl border border-green-200 dark:border-green-800/50">
-            <div className="text-green-600 dark:text-green-400 font-semibold text-sm sm:text-base mb-2">With Self-Custody</div>
-            <p className="text-sm sm:text-base text-slate-700 dark:text-slate-300 leading-relaxed mb-3">
-              Your Bitcoin is controlled by a <strong>private key</strong> that only you hold. No company, government, or hacker can move your Bitcoin without your key. You are your own bank.
+          <div className="bg-slate-100 dark:bg-slate-900/50 border-l-4 border-amber-400 px-4 sm:px-6 py-3 sm:py-4 rounded-r-xl">
+            <p className="text-sm sm:text-base text-slate-700 dark:text-slate-300 leading-relaxed">
+              <strong className="text-slate-800 dark:text-slate-200">Say the uncomfortable part plainly:</strong> a badly
+              executed self-custody setup is more dangerous than a reputable exchange. Irreversibility cuts both ways.
+              The same property that stops anyone freezing your coins also means a single mistyped word, a house fire, or
+              one moment of trust in a fake support agent ends the story permanently. Almost everyone who loses bitcoin
+              in self-custody loses it to themselves.
             </p>
-            <div className="text-xs sm:text-sm text-green-600 dark:text-green-400 font-medium">
-              Think of it like keeping your cash in your own safe at home. Only you know the combination.
-            </div>
           </div>
-        </div>
 
-        {/* Not your keys callout */}
-        <div className="bg-gradient-to-r from-amber-500 to-orange-500 text-white p-6 sm:p-8 rounded-2xl text-center">
-          <div className="text-2xl sm:text-3xl md:text-4xl font-extrabold mb-2">
-            &ldquo;Not your keys, not your coins.&rdquo;
-          </div>
-          <p className="text-sm sm:text-base text-white/80 max-w-xl mx-auto">
-            This is the most important principle in Bitcoin. If you don&apos;t control the private keys, you don&apos;t truly own the Bitcoin. It&apos;s that simple.
+          <p>
+            The rest of this page is about the second half of the trade. Get the habits right and self-custody becomes
+            boring, which is exactly what you want from money. Skip them and you have simply swapped a risk you
+            understand for one you do not.
           </p>
         </div>
       </section>
 
-      {/* Exchange Failures */}
-      <section className="space-y-6">
-        <div className="flex items-center gap-3">
-          <AlertTriangle className="w-7 h-7 text-red-500 shrink-0" />
-          <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white">What Can Go Wrong?</h2>
+      {/* Section 2: Is it worth it for you yet */}
+      <section className="space-y-4">
+        <div className="flex items-center gap-2 sm:gap-3">
+          <Users className={sectionIcon} />
+          <h2 className={sectionHeading}>Is It Worth It For You Yet?</h2>
         </div>
-        <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300 leading-relaxed">
-          These aren&apos;t hypothetical risks. Billions of dollars have been lost because people trusted exchanges with their Bitcoin:
-        </p>
+        <div className={`${prose} space-y-4`}>
+          <p>
+            &ldquo;Everyone should self-custody everything immediately&rdquo; is dogma, not advice. A hundred dollars
+            someone is actively trading is a different problem from savings that would change their life. The honest
+            heuristic is not about a dollar threshold at all:
+          </p>
 
-        <div className="grid sm:grid-cols-2 gap-3 sm:gap-4">
-          {EXCHANGE_FAILURES.map((event) => (
-            <div key={event.name} className="bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-xl border border-slate-200 dark:border-slate-800">
-              <div className="flex items-center justify-between mb-2">
-                <span className="font-bold text-slate-900 dark:text-white text-sm sm:text-base">{event.name}</span>
-                <span className="text-xs font-mono px-2 py-0.5 rounded bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400">{event.year}</span>
+          <div className="bg-slate-100 dark:bg-slate-900/50 p-5 sm:p-6 rounded-2xl border border-slate-200 dark:border-slate-800">
+            <p className="text-sm sm:text-base text-slate-700 dark:text-slate-300 leading-relaxed">
+              <strong className="text-slate-800 dark:text-slate-200">Ask two questions.</strong> Would losing this money
+              materially change your life? And is this a position you are trading, or savings you intend to still hold in
+              five years? If the answer is &ldquo;yes&rdquo; and &ldquo;savings&rdquo;, the exchange is the weak link.
+              If it is &ldquo;no&rdquo; and &ldquo;trading&rdquo;, your effort is better spent on a hardware security key
+              for the exchange account than on a wallet you will not maintain properly.
+            </p>
+          </div>
+
+          <div className="grid sm:grid-cols-3 gap-3 sm:gap-4">
+            <div className={cardClass}>
+              <h3 className={cardTitle}>Small and active</h3>
+              <p className={cardBody}>
+                Money you are trading, or an amount you could rebuild in a few months. A reputable exchange with a
+                hardware security key (not SMS) on the account is defensible. Withdrawal allowlists on. Do not skip
+                self-custody out of laziness, but do not rush a bad setup either.
+              </p>
+            </div>
+            <div className={cardClass}>
+              <h3 className={cardTitle}>Real savings</h3>
+              <p className={cardBody}>
+                Meaningful money you intend to hold for years. One hardware wallet, a tested recovery, two durable
+                backups in two locations. This is the sweet spot the rest of this page is written for, and it covers the
+                overwhelming majority of holders.
+              </p>
+            </div>
+            <div className={cardClass}>
+              <h3 className={cardTitle}>Life-changing</h3>
+              <p className={cardBody}>
+                More than you could ever earn back. A single seed in a single place is now the risk, not the exchange.
+                This is where 2-of-3 multisig, geographically separated keys, and written inheritance instructions stop
+                being paranoid and start being proportionate.
+              </p>
+            </div>
+          </div>
+
+          <p>
+            Whichever bracket you are in, move in stages. Withdraw an amount you would be annoyed but not devastated to
+            lose, live with the setup for a few weeks, confirm you can find your backup without hunting for it, then move
+            the rest. Nobody has ever regretted a slow migration.
+          </p>
+        </div>
+      </section>
+
+      {/* Section 3: Exchange failures */}
+      <section className="space-y-4">
+        <div className="flex items-center gap-2 sm:gap-3">
+          <AlertTriangle className={sectionIcon} />
+          <h2 className={sectionHeading}>Why Exchanges Are the Weak Link for Savings</h2>
+        </div>
+        <div className={`${prose} space-y-4`}>
+          <p>
+            The case against leaving savings on an exchange is not theoretical. Each of these was, at the time, a
+            reputable place that ordinary people trusted:
+          </p>
+
+          <div className="grid sm:grid-cols-2 gap-3 sm:gap-4">
+            {EXCHANGE_FAILURES.map((event) => (
+              <div key={event.name} className={cardClass}>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="font-bold text-slate-900 dark:text-white text-sm sm:text-base">{event.name}</span>
+                  <span className="text-xs font-mono px-2 py-0.5 rounded bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 tabular-nums">{event.year}</span>
+                </div>
+                <div className="text-xs sm:text-sm font-semibold text-red-600 dark:text-red-400 mb-1.5">
+                  {event.lost} lost
+                </div>
+                <p className={cardBody}>{event.description}</p>
               </div>
-              <div className="text-xs sm:text-sm font-semibold text-red-600 dark:text-red-400 mb-1.5">
-                {event.lost} lost
+            ))}
+          </div>
+
+          <p>
+            Two things are worth noting honestly. Proof-of-reserves attestations, which several exchanges now publish,
+            show assets at a snapshot in time &mdash; they say nothing about liabilities and they are not audits. And
+            regulated custody in some jurisdictions is genuinely safer than it was in 2022, which is why the answer for a
+            trading balance is not automatically &ldquo;withdraw everything today&rdquo;. For savings, though, the
+            pattern is consistent enough that it does not need re-litigating.
+          </p>
+        </div>
+      </section>
+
+      {/* Section 4: Threat model */}
+      <section className="space-y-4">
+        <div className="flex items-center gap-2 sm:gap-3">
+          <ShieldAlert className={sectionIcon} />
+          <h2 className={sectionHeading}>How People Actually Lose Coins</h2>
+        </div>
+        <div className={`${prose} space-y-4`}>
+          <p>
+            This is the section most guides skip, and it is the one that will save you money. Roughly ordered by how
+            often it happens in the real world &mdash; not by how dramatic it sounds:
+          </p>
+
+          <div className="space-y-3">
+            {THREATS.map((t) => (
+              <div key={t.title} className={cardClass}>
+                <div className="flex items-start gap-3">
+                  <span className="shrink-0 w-6 h-6 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold flex items-center justify-center tabular-nums mt-0.5">
+                    {t.rank}
+                  </span>
+                  <div className="min-w-0">
+                    <h3 className={cardTitle}>{t.title}</h3>
+                    <p className={cardBody}>{t.detail}</p>
+                    <p className="mt-2 text-xs sm:text-sm text-emerald-700 dark:text-emerald-400 leading-relaxed">
+                      <strong>What actually helps:</strong> {t.fix}
+                    </p>
+                  </div>
+                </div>
               </div>
-              <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed">{event.description}</p>
+            ))}
+          </div>
+
+          <p>
+            Notice the shape of the list. The exotic threats &mdash; chip-level attacks, quantum computers, protocol
+            bugs &mdash; are at the bottom or absent entirely. The things that empty wallets are mundane: a backup that
+            was never tested, a link that looked official, an address that was never checked on the device screen.
+          </p>
+        </div>
+      </section>
+
+      {/* Section 5: What a seed phrase is */}
+      <section className="space-y-4">
+        <div className="flex items-center gap-2 sm:gap-3">
+          <Key className={sectionIcon} />
+          <h2 className={sectionHeading}>What a Seed Phrase Actually Is</h2>
+        </div>
+        <div className={`${prose} space-y-4`}>
+          <p>
+            Almost every wallet you will encounter follows a standard called <strong className="text-slate-800 dark:text-slate-200">BIP-39</strong>.
+            Your device generates a large random number, then encodes it as 12 or 24 words drawn from a fixed list of
+            2,048. Those words are not a password to an account. They <em>are</em> the number, written in a form a human
+            can copy without error, and every private key and address your wallet will ever produce is derived from it
+            mathematically.
+          </p>
+
+          <div className="grid sm:grid-cols-2 gap-3 sm:gap-4">
+            <div className={cardClass}>
+              <h3 className={cardTitle}>The device is a tool. The seed is the money.</h3>
+              <p className={cardBody}>
+                A hardware wallet is a calculator with a screen and a locked drawer. Smash it, lose it, or let it die in
+                a drawer for a decade and nothing is lost, because the seed regenerates every key it ever held. Lose the
+                seed while the device still works and you are on a countdown to the day it stops working.
+              </p>
+            </div>
+            <div className={cardClass}>
+              <h3 className={cardTitle}>You are not locked to a vendor</h3>
+              <p className={cardBody}>
+                Any BIP-39-compatible wallet can restore your seed &mdash; a competitor&apos;s hardware, or free
+                software like Sparrow or Electrum. This is why &ldquo;what if the company disappears&rdquo; has a boring
+                answer. Write down the wallet type or derivation path your device shows (usually native SegWit or
+                Taproot) so a new wallet finds the right accounts immediately.
+              </p>
+            </div>
+            <div className={cardClass}>
+              <h3 className={cardTitle}>12 words or 24?</h3>
+              <p className={cardBody}>
+                Twelve words encode 128 bits of entropy; twenty-four encode 256. Both are far beyond any conceivable
+                brute-force search &mdash; the difference is theoretical, not practical. Choose whichever you will back
+                up accurately and store properly, because that is the variable that actually decides the outcome.
+              </p>
+            </div>
+            <div className={cardClass}>
+              <h3 className={cardTitle}>The built-in checksum</h3>
+              <p className={cardBody}>
+                Part of the final word is a checksum over the rest, which is why wallets reject a phrase with a mistyped
+                word instead of silently opening an empty wallet. It catches typos, not lost words. If a phrase is
+                rejected on restore, check spelling against the official BIP-39 word list before assuming the worst.
+              </p>
+            </div>
+          </div>
+
+          <div className="bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800/50 p-4 sm:p-5 rounded-xl">
+            <h3 className="text-sm sm:text-base font-bold text-red-700 dark:text-red-400 mb-2">Where a seed phrase must never go</h3>
+            <p className="text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
+              Not a photo. Not iCloud, Google Drive, or any synced folder. Not a note in a password manager. Not an
+              email or a message to yourself. Not a text file. Not typed into any website, browser extension, or app
+              other than a hardware wallet you are deliberately restoring. Anything connected to the internet should be
+              treated as already read by someone else.
+            </p>
+            <p className="mt-2 text-xs sm:text-sm font-semibold text-red-700 dark:text-red-400 leading-relaxed">
+              No legitimate wallet, exchange, support agent, giveaway, or airdrop has ever needed your recovery phrase.
+              Anyone who asks is stealing from you, without exception.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* Section 6: The three habits */}
+      <section className="space-y-4">
+        <div className="flex items-center gap-2 sm:gap-3">
+          <Eye className={sectionIcon} />
+          <h2 className={sectionHeading}>The Three Habits That Matter Most</h2>
+        </div>
+        <div className={`${prose} space-y-4`}>
+          <p>
+            If you remember nothing else from this page, remember these. They cost minutes and they prevent the majority
+            of real-world losses.
+          </p>
+
+          <div className="space-y-3">
+            <div className="bg-white dark:bg-slate-800 p-4 sm:p-5 rounded-xl border-l-4 border-amber-400 border-y border-r border-slate-200 dark:border-slate-700">
+              <h3 className={cardTitle}>1. Verify on the device screen, every time</h3>
+              <p className={cardBody}>
+                This is the highest-value habit in self-custody. Malware and malicious browser extensions swap Bitcoin
+                addresses in your clipboard and rewrite what your browser shows you, so the address on your monitor can
+                be a lie. The hardware wallet&apos;s own screen is the one display an attacker on your computer cannot
+                reach &mdash; that small screen is the entire reason the device exists.
+              </p>
+              <p className={`${cardBody} mt-2`}>
+                When receiving, generate the address in your wallet software and confirm it on the device before you
+                paste it anywhere. When sending, read the destination address <em>and</em> the amount off the device
+                screen before approving. Compare the first six and last six characters, not just the first four &mdash;
+                address-generating malware brute-forces matching prefixes.
+              </p>
+            </div>
+
+            <div className="bg-white dark:bg-slate-800 p-4 sm:p-5 rounded-xl border-l-4 border-amber-400 border-y border-r border-slate-200 dark:border-slate-700">
+              <h3 className={cardTitle}>2. Test your recovery before you fund the wallet</h3>
+              <p className={cardBody}>
+                Set the device up. Write the words down. Then factory-reset the device, restore it from the words you
+                wrote, and confirm the first receive address matches exactly what it showed before. Only then send any
+                bitcoin to it.
+              </p>
+              <p className={`${cardBody} mt-2`}>
+                Almost nobody does this, and it is the entire difference between having a backup and having a hope. A
+                backup you have never restored is an untested assumption about handwriting, word order, and where you
+                actually put the card. Ten minutes now, or a discovery you cannot undo in five years.
+              </p>
+            </div>
+
+            <div className="bg-white dark:bg-slate-800 p-4 sm:p-5 rounded-xl border-l-4 border-amber-400 border-y border-r border-slate-200 dark:border-slate-700">
+              <h3 className={cardTitle}>3. Back it up on something that survives your house</h3>
+              <p className={cardBody}>
+                Paper is fine against forgetting and useless against fire, flood, and time. Stamped or engraved metal
+                backup plates exist precisely because house fires and burst pipes are more common than hackers. They cost
+                a fraction of what they protect.
+              </p>
+              <p className={`${cardBody} mt-2`}>
+                Keep at least two copies in two genuinely separate places &mdash; not two drawers in the same house. A
+                trusted relative, a workplace safe, or a bank box are all reasonable, and a copy that is inconvenient to
+                reach is not a problem, because you should almost never need it. Do not label it &ldquo;Bitcoin&rdquo;.
+                And never split a seed across locations by cutting it in half: the halves weaken each other far more than
+                people assume. If you want split backups, use a scheme designed for it, such as Shamir or multisig.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Section 7: What a hardware wallet does */}
+      <section className="space-y-4">
+        <div className="flex items-center gap-2 sm:gap-3">
+          <Lock className={sectionIcon} />
+          <h2 className={sectionHeading}>What a Hardware Wallet Does and Does Not Do</h2>
+        </div>
+        <div className={`${prose} space-y-4`}>
+          <p>
+            A hardware wallet is a small purpose-built computer that holds your keys and refuses to reveal them. When
+            you send bitcoin, your regular computer builds an unsigned transaction, the device signs it internally, and
+            only the signature comes back. The key never touches an internet-connected machine.
+          </p>
+          <div className="grid sm:grid-cols-2 gap-3 sm:gap-4">
+            <div className={cardClass}>
+              <h3 className={cardTitle}>It does: keep keys off your computer</h3>
+              <p className={cardBody}>
+                Even a fully compromised laptop cannot extract keys from the device. Malware can propose a malicious
+                transaction, but it cannot sign one.
+              </p>
+            </div>
+            <div className={cardClass}>
+              <h3 className={cardTitle}>It does: give you a trusted display</h3>
+              <p className={cardBody}>
+                The device screen shows what you are really signing. This is the defence against address-swapping
+                malware, and it only works if you actually read it.
+              </p>
+            </div>
+            <div className={cardClass}>
+              <h3 className={cardTitle}>It does not: protect a leaked seed</h3>
+              <p className={cardBody}>
+                If your recovery phrase is photographed, typed into a website, or stored in the cloud, the device is
+                irrelevant. Whoever has the words has the coins.
+              </p>
+            </div>
+            <div className={cardClass}>
+              <h3 className={cardTitle}>It does not: stop you approving a bad transaction</h3>
+              <p className={cardBody}>
+                If you confirm a payment to an attacker&apos;s address, the device does its job perfectly and the money
+                is gone. Hardware protects keys; nothing protects a rushed confirmation.
+              </p>
+            </div>
+          </div>
+          <p>
+            One more nuance worth knowing: a &ldquo;secure element&rdquo; is a tamper-resistant chip designed to resist
+            physical extraction of secrets. Most devices use one; Blockstream Jade deliberately does not, using an
+            open-source alternative instead. Secure elements raise the cost of an attack on a <em>stolen</em> device.
+            They do nothing about phishing, malware, or a lost backup &mdash; which is where the losses actually are.
+          </p>
+        </div>
+      </section>
+
+      {/* Section 8: Moving off the exchange */}
+      <section className="space-y-4">
+        <div className="flex items-center gap-2 sm:gap-3">
+          <Send className={sectionIcon} />
+          <h2 className={sectionHeading}>Moving Coins Off an Exchange</h2>
+        </div>
+        <div className={`${prose} space-y-4`}>
+          <div className="grid sm:grid-cols-2 gap-3 sm:gap-4">
+            <div className={cardClass}>
+              <h3 className={cardTitle}>Always send a test amount first</h3>
+              <p className={cardBody}>
+                Withdraw a small amount, wait for it to confirm, and check it appears in your wallet. It costs one
+                network fee and it catches every category of setup error before the rest of your money is at stake. If
+                your exchange offers a withdrawal allowlist, add the address there once it is proven.
+              </p>
+            </div>
+            <div className={cardClass}>
+              <h3 className={cardTitle}>Fees are per byte, not per amount</h3>
+              <p className={cardBody}>
+                Bitcoin fees are priced by transaction size in bytes, not by value. Sending $10 and $10,000 costs the
+                same. That means dozens of tiny withdrawals build a wallet full of small pieces that will be expensive to
+                spend later. Batch your migration into a few larger withdrawals instead.
+              </p>
+            </div>
+            <div className={cardClass}>
+              <h3 className={cardTitle}>Address formats</h3>
+              <p className={cardBody}>
+                Addresses starting <code className="font-mono text-[11px]">bc1q</code> are native SegWit and universally
+                supported. <code className="font-mono text-[11px]">bc1p</code> is Taproot &mdash; cheaper and more
+                private, but a small number of exchanges still cannot send to it. If a withdrawal is rejected as an
+                invalid address, ask your wallet for a SegWit address instead. Same seed, same wallet, same money.
+              </p>
+            </div>
+            <div className={cardClass}>
+              <h3 className={cardTitle}>Confirm the address on the device</h3>
+              <p className={cardBody}>
+                Before pasting a receive address into the exchange, display it on the hardware wallet and compare it
+                character by character. This is the step that defeats clipboard malware, and it is the one people skip
+                because the address &ldquo;looks fine&rdquo; on screen.
+              </p>
+            </div>
+          </div>
+          <p>
+            Withdrawals are usually cheapest when the network is quiet &mdash; typically weekends and off-peak hours.
+            If you are dollar-cost averaging, consolidating a month or a quarter of purchases into one withdrawal is
+            almost always cheaper than withdrawing after every buy. You can model how the fee drag affects results in
+            the <Link href="/" className="text-amber-600 dark:text-amber-400 hover:underline">calculator</Link>, and the{' '}
+            <Link href="/methodology" className="text-amber-600 dark:text-amber-400 hover:underline">methodology page</Link>{' '}
+            explains how fees are handled there.
+          </p>
+        </div>
+      </section>
+
+      {/* Section 9: Beginner path steps */}
+      <section className="space-y-4">
+        <div className="text-center space-y-2">
+          <h2 className={sectionHeading}>The Beginner Path, Step by Step</h2>
+          <p className={prose}>
+            Seven steps. Step four is the one that separates people who have a backup from people who think they do.
+          </p>
+        </div>
+
+        <div className="grid sm:grid-cols-2 gap-4">
+          {STEPS.map((s) => (
+            <div key={s.step} className="bg-white dark:bg-slate-800 p-5 sm:p-6 rounded-xl border border-slate-200 dark:border-slate-700 relative">
+              <div className="absolute -top-3 -left-2 w-8 h-8 rounded-full bg-amber-500 text-white text-sm font-bold flex items-center justify-center shadow-sm tabular-nums">
+                {s.step}
+              </div>
+              <h3 className="font-bold text-sm sm:text-base text-slate-800 dark:text-white mt-2 mb-2">{s.title}</h3>
+              <p className={cardBody}>{s.description}</p>
             </div>
           ))}
         </div>
+      </section>
 
-        <div className="bg-slate-100 dark:bg-slate-800/50 p-4 sm:p-5 rounded-xl border border-slate-200 dark:border-slate-700 text-center">
-          <p className="text-sm sm:text-base text-slate-700 dark:text-slate-300 font-medium">
-            All of these losses could have been prevented with self-custody.
-          </p>
+      {/* Section 10: Advanced */}
+      <section className="space-y-4">
+        <div className="flex items-center gap-2 sm:gap-3">
+          <Layers className={sectionIcon} />
+          <h2 className={sectionHeading}>Beyond the Basics: Passphrases and Multisig</h2>
+        </div>
+        <div className={`${prose} space-y-4`}>
+          <div className="bg-amber-50/50 dark:bg-amber-950/20 border-l-4 border-amber-400 px-4 sm:px-6 py-3 sm:py-4 rounded-r-xl">
+            <p className="text-sm sm:text-base text-slate-700 dark:text-slate-300 leading-relaxed">
+              <strong className="text-slate-800 dark:text-slate-200">Not beginner material.</strong> Both of these
+              genuinely improve security when you understand them, and both have destroyed real savings when adopted too
+              early. Get a single wallet with a tested backup working first, and live with it for a while.
+            </p>
+          </div>
+
+          <div className={cardClass}>
+            <h3 className={cardTitle}>The passphrase (the &ldquo;25th word&rdquo;)</h3>
+            <p className={cardBody}>
+              A BIP-39 passphrase is an extra secret you type in addition to your seed words. It does not unlock your
+              wallet &mdash; it derives an entirely <em>different</em> wallet from the same seed. Change one character
+              and you get a different wallet again. Your seed words alone still open a valid wallet, just not the one
+              holding your money, which is where the plausible-deniability use comes from: keep a small decoy balance on
+              the seed-only wallet and the real balance behind the passphrase.
+            </p>
+            <p className={`${cardBody} mt-2`}>
+              It is also the strongest defence against a stolen device, because the passphrase is never stored on the
+              device &mdash; even a successful laboratory extraction of the seed yields the decoy.
+            </p>
+            <p className="mt-2 text-xs sm:text-sm text-red-600 dark:text-red-400 leading-relaxed">
+              <strong>The blunt warning:</strong> there is no wrong-passphrase error. Mistype it and you simply see an
+              empty wallet, which people reliably mistake for their coins being stolen. Forget it and the money is gone
+              with no recourse whatsoever &mdash; this is one of the most common ways experienced holders lose funds.
+              Back the passphrase up in writing, separately from the seed, and make sure someone you trust can find both
+              if you cannot.
+            </p>
+          </div>
+
+          <div className={cardClass}>
+            <h3 className={cardTitle}>Multisig (2-of-3)</h3>
+            <p className={cardBody}>
+              A multisig wallet requires signatures from several keys before coins can move. The common setup is 2-of-3:
+              three separate keys exist, any two can sign. Losing one key loses nothing, and a thief who compromises one
+              key gets nothing. It removes the single point of failure that every single-seed setup has, and it is the
+              standard answer for balances large enough that one seed in one place is the thing keeping you awake.
+            </p>
+            <p className={`${cardBody} mt-2`}>
+              Sensible practice: use devices from different manufacturers so one vendor&apos;s flaw cannot affect two
+              keys, store the keys in genuinely separate locations, and consider collaborative custody services that hold
+              one of the three so a professional can help your heirs.
+            </p>
+            <p className="mt-2 text-xs sm:text-sm text-amber-700 dark:text-amber-400 leading-relaxed">
+              <strong>The complexity you must not skip:</strong> a multisig wallet is not recoverable from seed phrases
+              alone. You also need the wallet descriptor &mdash; the file listing all the extended public keys (xpubs)
+              and the signing policy. Lose that and you can hold all three seeds and still not reconstruct the wallet.
+              Back the descriptor up alongside every key, in every location, and rehearse a full recovery on a fresh
+              machine before you trust it with real money. Free software such as Sparrow or Nunchuk handles this well.
+            </p>
+          </div>
         </div>
       </section>
 
-      {/* What is a Hardware Wallet */}
-      <section className="space-y-6">
-        <div className="flex items-center gap-3">
-          <Lock className="w-7 h-7 text-amber-500 shrink-0" />
-          <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white">What Is a Hardware Wallet?</h2>
+      {/* Section 11: Inheritance */}
+      <section className="space-y-4">
+        <div className="flex items-center gap-2 sm:gap-3">
+          <Users className={sectionIcon} />
+          <h2 className={sectionHeading}>If You Died Tonight, Could Anyone Recover This?</h2>
         </div>
-
-        <div className="text-sm sm:text-base text-slate-600 dark:text-slate-300 space-y-4 leading-relaxed">
+        <div className={`${prose} space-y-4`}>
           <p>
-            A <strong className="text-slate-800 dark:text-slate-200">hardware wallet</strong> is a small physical device &mdash; about the size of a USB stick &mdash; that stores your Bitcoin private keys completely offline.
+            This is the most neglected topic in Bitcoin and one of the largest causes of permanent loss. The failure is
+            not exotic: someone dies, the family knows there was &ldquo;some Bitcoin&rdquo;, and nobody knows what a seed
+            phrase is or that the metal plate in the safe is not a novelty. QuadrigaCX is the famous version of this
+            story. The version that happens quietly, to individuals, never makes the news.
           </p>
-          <p>
-            Even if your computer is infected with malware, a hacker <em>cannot</em> steal your Bitcoin because the private keys never leave the device. When you want to send Bitcoin, the hardware wallet signs the transaction internally and only sends the signed result back to your computer.
+          <p className="font-medium text-slate-700 dark:text-slate-300">
+            &ldquo;My family will figure it out&rdquo; has destroyed a lot of bitcoin. They will not figure it out. They
+            do not know what they are looking at.
           </p>
-        </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-xl border border-slate-200 dark:border-slate-800 text-center space-y-2">
-            <div className="w-12 h-12 mx-auto rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
-              <Shield className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+          <div className="grid sm:grid-cols-2 gap-3 sm:gap-4">
+            <div className={cardClass}>
+              <h3 className={cardTitle}>Separate the &ldquo;where&rdquo; from the &ldquo;what&rdquo;</h3>
+              <p className={cardBody}>
+                Write a plain-English document that says the asset exists, roughly how much, which wallet software to
+                install, which device model it uses, where the device and each backup are physically located, and who to
+                contact for help. It should contain no seed words. This document can safely be far less protected than
+                the seed itself, because on its own it opens nothing.
+              </p>
             </div>
-            <h3 className="font-semibold text-sm sm:text-base text-slate-800 dark:text-white">Offline Security</h3>
-            <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">Your keys are stored on the device, never exposed to the internet</p>
-          </div>
-          <div className="bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-xl border border-slate-200 dark:border-slate-800 text-center space-y-2">
-            <div className="w-12 h-12 mx-auto rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
-              <CheckCircle2 className="w-6 h-6 text-green-600 dark:text-green-400" />
+            <div className={cardClass}>
+              <h3 className={cardTitle}>Never put the seed in your will</h3>
+              <p className={cardBody}>
+                In many jurisdictions a will becomes a public record during probate, and it is read by more people than
+                you expect long before then. Reference the existence of the asset and the location of sealed instructions
+                &mdash; a lawyer&apos;s sealed envelope, a safe deposit box, an executor&apos;s package &mdash; and keep
+                the secret material outside the document itself.
+              </p>
             </div>
-            <h3 className="font-semibold text-sm sm:text-base text-slate-800 dark:text-white">Easy to Use</h3>
-            <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">Modern wallets have simple companion apps. No technical skills needed.</p>
-          </div>
-          <div className="bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-xl border border-slate-200 dark:border-slate-800 text-center space-y-2">
-            <div className="w-12 h-12 mx-auto rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
-              <Key className="w-6 h-6 text-amber-600 dark:text-amber-400" />
+            <div className={cardClass}>
+              <h3 className={cardTitle}>Multisig is the cleanest answer</h3>
+              <p className={cardBody}>
+                A 2-of-3 where you hold two keys and a trusted person or a collaborative custody service holds the third
+                means no single party can steal it, and your heirs can recover it with professional help after your
+                death. It also removes the awkward problem of an inheritance document that is itself a theft target.
+              </p>
             </div>
-            <h3 className="font-semibold text-sm sm:text-base text-slate-800 dark:text-white">Recoverable</h3>
-            <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">Lost your device? Your recovery phrase lets you restore your Bitcoin on a new one.</p>
+            <div className={cardClass}>
+              <h3 className={cardTitle}>Rehearse it</h3>
+              <p className={cardBody}>
+                Have the person who would actually do this walk through a recovery with a trivial amount, with you in
+                the room but not touching anything. You will discover what is missing from your instructions in twenty
+                minutes. An inheritance plan nobody has tested is exactly as reliable as a backup nobody has restored.
+              </p>
+            </div>
           </div>
+
+          <p>
+            One more practical point: tell at least one person the asset exists. Every mitigation above assumes someone
+            eventually goes looking. Perfect operational security that nobody survives you knowing about is
+            indistinguishable from having burned the money.
+          </p>
         </div>
       </section>
 
       {/* Hardware Wallet Recommendations */}
       <section className="space-y-6" id="wallets">
         <div className="text-center space-y-2">
-          <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white">Recommended Hardware Wallets</h2>
-          <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300">
-            These are some of the most trusted hardware wallets in the Bitcoin community.
+          <h2 className={sectionHeading}>Hardware Wallets Worth Buying</h2>
+          <p className={prose}>
+            Ordered roughly from most beginner-friendly to most specialist. Every one of these is a reasonable choice
+            and the differences matter far less than whether you test your backup &mdash; but the trade-offs are real,
+            so each entry lists the caveat as well as the pitch.
           </p>
           <p className="text-xs text-slate-500 dark:text-slate-400">
-            Links marked <strong className="text-slate-600 dark:text-slate-300">(affiliate)</strong> support the project at no extra cost to you.
+            Prices checked July 2026 and stated as approximations; vendors discount frequently, so confirm current
+            pricing on the manufacturer&apos;s site. Links marked <strong className="text-slate-600 dark:text-slate-300">(affiliate)</strong> support this project at no extra cost to you.
+          </p>
+        </div>
+
+        <div className="bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800/50 p-4 sm:p-5 rounded-xl flex items-start gap-3">
+          <AlertTriangle className="w-5 h-5 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
+          <p className="text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
+            <strong className="text-red-700 dark:text-red-400">Buy direct from the manufacturer, every time.</strong>{' '}
+            Not Amazon, not eBay, not a reseller, not second-hand, however good the discount. Tampered devices are a
+            documented attack: in 2021 criminals mailed convincing counterfeit &ldquo;replacements&rdquo; to real
+            customers using leaked address lists. A genuine device never arrives with a recovery phrase already written
+            down &mdash; it generates one in front of you.
           </p>
         </div>
 
         <div className="space-y-6">
           {WALLETS.map((wallet) => {
-            const colors = walletColorClasses[wallet.color as keyof typeof walletColorClasses];
+            const colors = walletColorClasses[wallet.color];
             return (
               <div
                 key={wallet.name}
@@ -421,15 +1078,7 @@ export default function SelfCustodyPage() {
                         <WalletImage
                           src={wallet.image}
                           alt={wallet.name}
-                          fallbackEmoji={
-                            wallet.color === 'violet' ? '\u{1F510}' :
-                            wallet.color === 'amber' ? '\u{1F512}' :
-                            wallet.color === 'blue' ? '\u{2744}\uFE0F' :
-                            wallet.color === 'cyan' ? '\u{1F331}' :
-                            wallet.color === 'emerald' ? '\u{1F9F0}' :
-                            wallet.color === 'slate' ? '\u{1F4E6}' :
-                            '\u{1F6E1}\uFE0F'
-                          }
+                          fallbackEmoji={walletFallbackEmoji[wallet.color]}
                         />
                       </div>
                     </div>
@@ -457,6 +1106,15 @@ export default function SelfCustodyPage() {
                         ))}
                       </div>
 
+                      <div className="bg-white/70 dark:bg-slate-900/40 rounded-lg p-3 space-y-2 border border-slate-200/70 dark:border-slate-700/60">
+                        <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+                          <strong className="text-slate-700 dark:text-slate-300">Lineup and pricing:</strong> {wallet.lineup}
+                        </p>
+                        <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+                          <strong className="text-slate-700 dark:text-slate-300">Know this too:</strong> {wallet.caveat}
+                        </p>
+                      </div>
+
                       <div className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 italic">
                         {wallet.bestFor}
                       </div>
@@ -479,60 +1137,24 @@ export default function SelfCustodyPage() {
         </div>
 
         <p className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 text-center italic">
-          Affiliate disclosure: Some links above are affiliate links (Trezor, Ledger, BitBox02, Blockstream Jade, Cypherock). We may earn a commission at no extra cost to you. This helps support the development of this free calculator. SeedSigner and Coldcard links are not affiliate links.
+          Affiliate disclosure: the Trezor, Blockstream Jade, Ledger, BitBox02, and Cypherock links are affiliate links.
+          We may earn a commission at no extra cost to you, and it helps keep this calculator free. The Coldcard and
+          SeedSigner links are not affiliate links. Affiliate status did not decide what appears here or what is said
+          about it &mdash; the caveats above are attached to the affiliate products too.
         </p>
       </section>
 
-      {/* Getting Started Steps */}
-      <section className="space-y-6">
-        <div className="text-center space-y-2">
-          <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white">Getting Started in 4 Steps</h2>
-          <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300">
-            Self-custody might sound intimidating, but it&apos;s simpler than you think.
-          </p>
-        </div>
-
-        <div className="grid sm:grid-cols-2 gap-4">
-          {STEPS.map((s) => (
-            <div key={s.step} className="bg-white dark:bg-slate-900 p-5 sm:p-6 rounded-xl border border-slate-200 dark:border-slate-800 relative">
-              <div className="absolute -top-3 -left-2 w-8 h-8 rounded-full bg-amber-500 text-white text-sm font-bold flex items-center justify-center shadow-sm">
-                {s.step}
-              </div>
-              <h3 className="font-bold text-sm sm:text-base text-slate-800 dark:text-white mt-2 mb-2">{s.title}</h3>
-              <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed">{s.description}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
       {/* Common Concerns */}
-      <section className="space-y-6">
-        <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white text-center">Common Concerns</h2>
-        <div className="space-y-3">
-          {[
-            {
-              q: 'What if I lose my hardware wallet?',
-              a: 'Your Bitcoin isn\'t stored "on" the device. It\'s on the blockchain. The device just holds your private key. As long as you have your recovery phrase backed up, you can restore your wallet on a brand new device. The lost device is useless to anyone without your PIN.',
-            },
-            {
-              q: 'What if the hardware wallet company goes out of business?',
-              a: 'Your recovery phrase follows an open standard (BIP-39). You can restore your keys on any compatible wallet from any manufacturer. You\'re never locked in to one company.',
-            },
-            {
-              q: 'Is self-custody worth it for small amounts?',
-              a: 'A common rule of thumb: if you hold more Bitcoin than you\'d be comfortable losing, move it to self-custody. For many people, that threshold is around $500-$1,000. Hardware wallets cost roughly $50-$160 depending on the model, which is a small price for peace of mind.',
-            },
-            {
-              q: 'Can\'t I just use a software wallet on my phone?',
-              a: 'Software wallets (like BlueWallet or Sparrow) are better than leaving Bitcoin on an exchange, but your phone is connected to the internet and can be compromised. A hardware wallet keeps your keys completely offline, which is the gold standard for security.',
-            },
-          ].map((item) => (
+      <section className="space-y-4">
+        <h2 className={`${sectionHeading} text-center`}>Common Questions</h2>
+        <div className="space-y-2.5">
+          {FAQ.map((item) => (
             <details key={item.q} className="group bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 transition-shadow hover:shadow-sm">
-              <summary className="flex items-center justify-between cursor-pointer p-4 sm:p-5 list-none [&::-webkit-details-marker]:hidden">
+              <summary className="flex items-center justify-between cursor-pointer p-4 list-none [&::-webkit-details-marker]:hidden">
                 <h3 className="font-semibold text-sm sm:text-base text-slate-800 dark:text-slate-200 pr-4">{item.q}</h3>
                 <ArrowRight className="w-4 h-4 text-slate-500 dark:text-slate-400 transition-transform duration-200 group-open:rotate-90 shrink-0" />
               </summary>
-              <div className="px-4 sm:px-5 pb-4 sm:pb-5 -mt-1">
+              <div className="px-4 pb-4 -mt-1">
                 <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">{item.a}</p>
               </div>
             </details>
@@ -541,27 +1163,42 @@ export default function SelfCustodyPage() {
       </section>
 
       {/* CTA */}
-      <section className="bg-gradient-to-br from-slate-900 to-slate-800 dark:from-slate-800 dark:to-slate-700 text-white p-6 sm:p-10 rounded-2xl text-center space-y-4">
-        <h2 className="text-xl sm:text-3xl font-bold">Ready to Secure Your Bitcoin?</h2>
-        <p className="text-sm sm:text-base text-slate-300 max-w-lg mx-auto">
-          Don&apos;t wait until the next exchange collapse. Take control of your Bitcoin today.
+      <section className="text-center bg-slate-100 dark:bg-slate-900/50 p-6 sm:p-10 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-4">
+        <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">
+          Do the Boring Version Properly
+        </h2>
+        <p className="text-sm sm:text-base text-slate-600 dark:text-slate-400 max-w-xl mx-auto">
+          One device bought direct, one recovery you have actually tested, two backups in two places, and every address
+          checked on the device screen. That covers almost every way this goes wrong.
         </p>
         <div className="flex flex-wrap justify-center gap-3">
-          <a href="#wallets" className="px-5 py-2.5 bg-amber-500 hover:bg-amber-600 text-white font-semibold rounded-xl text-sm sm:text-base transition-colors">
-            View Hardware Wallets
+          <a href="#wallets" className="inline-flex items-center gap-2 px-5 py-2.5 bg-amber-500 hover:bg-amber-600 text-white font-semibold rounded-xl text-sm sm:text-base transition-colors">
+            Compare Hardware Wallets
           </a>
-          <Link href="/" className="px-5 py-2.5 bg-white/10 hover:bg-white/20 text-white font-semibold rounded-xl text-sm sm:text-base transition-colors">
-            Calculate Your DCA
+          <Link href="/" className="inline-flex items-center gap-2 px-5 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 font-semibold rounded-xl text-sm sm:text-base transition-colors hover:bg-slate-50 dark:hover:bg-slate-700">
+            Open the Calculator
+            <ArrowRight className="w-4 h-4" />
           </Link>
         </div>
+        <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
+          New to all of this? Start with{' '}
+          <Link href="/why-bitcoin" className="text-amber-600 dark:text-amber-400 hover:underline">where Bitcoin&apos;s value comes from</Link>, or read the{' '}
+          <Link href="/methodology" className="text-amber-600 dark:text-amber-400 hover:underline">methodology</Link>{' '}
+          behind the calculator.
+        </p>
       </section>
 
       {/* Disclaimer */}
-      <section className="border-t border-slate-200 dark:border-slate-800 pt-6">
+      <section className="border-t border-slate-200 dark:border-slate-800 pt-6 sm:pt-8">
         <div className="flex items-start gap-3">
           <AlertTriangle className="w-5 h-5 text-slate-500 dark:text-slate-400 shrink-0 mt-0.5" />
           <p className="text-[11px] sm:text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
-            <strong>Disclaimer:</strong> Some links on this page are affiliate links (Trezor, Ledger, BitBox02, Blockstream Jade, Cypherock). If you purchase through those links, we may earn a commission at no additional cost to you. This page is for educational purposes only and does not constitute financial advice. Always do your own research before purchasing any hardware wallet or making investment decisions. This site may also display ads; see <a href="/about#ads-and-analytics" className="text-amber-600 dark:text-amber-400 hover:underline">/about</a> for full disclosure.
+            <strong>Disclaimer:</strong> This page is educational and is not financial, legal, or security advice. Some
+            links are affiliate links (Trezor, Blockstream Jade, Ledger, BitBox02, Cypherock); if you buy through them
+            we may earn a commission at no additional cost to you. Prices, product lineups, and security disclosures
+            change &mdash; verify current details with the manufacturer before purchasing. Inheritance and estate
+            arrangements vary by jurisdiction; consult a qualified professional. This site may also display ads; see{' '}
+            <a href="/about#ads-and-analytics" className="text-amber-600 dark:text-amber-400 hover:underline">/about</a> for full disclosure.
           </p>
         </div>
       </section>

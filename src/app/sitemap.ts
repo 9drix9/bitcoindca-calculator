@@ -5,10 +5,10 @@ import { SCENARIOS } from './dca/scenarios';
 // actually changes — do NOT use new Date() (fake freshness trains Google
 // to ignore lastmod for the whole domain).
 const PAGE_DATES = {
-    features: new Date('2026-07-24'),
-    whyBitcoin: new Date('2026-07-24'),
-    selfCustody: new Date('2026-07-24'),
-    mining: new Date('2026-07-24'),
+    features: new Date('2026-07-25'),
+    whyBitcoin: new Date('2026-07-25'),
+    selfCustody: new Date('2026-07-25'),
+    mining: new Date('2026-07-25'),
     about: new Date('2026-07-24'),
     methodology: new Date('2026-07-24'),
     privacy: new Date('2026-07-24'),
