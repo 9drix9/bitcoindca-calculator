@@ -5,10 +5,10 @@ import { format, subYears, subMonths, startOfToday, differenceInMonths } from 'd
 import { Frequency, PriceMode, AssetDcaResult, DcaStats } from '@/types';
 import { useCurrency, CurrencyCode } from '@/context/CurrencyContext';
 import { calculateDca, calculateLumpSum, calculateAssetDca } from '@/utils/dca';
-import { getBitcoinPriceHistory, getCurrentBitcoinPrice, getAssetPriceHistory, getCpiData } from '@/app/actions';
+import { getBitcoinPriceHistory, getCurrentBitcoinPrice, getAssetPriceHistory, getCpiData, getProfitableWindows } from '@/app/actions';
 import { generateCsvContent, downloadCsv } from '@/utils/csv';
 import { encodeParams, decodeParams } from '@/utils/urlParams';
-import { formatUtc, parseUtcDate } from '@/utils/dates';
+import { formatUtc, parseUtcDate, DAY_MS } from '@/utils/dates';
 import dynamic from 'next/dynamic';
 import { SkeletonCard, SkeletonChart } from './Skeleton';
 import { AdSlot } from './AdSlot';
@@ -27,6 +27,7 @@ const SavingsComparison = dynamic(() => import('./SavingsComparison').then(m => 
 const OpportunityCostCalculator = dynamic(() => import('./OpportunityCostCalculator').then(m => m.OpportunityCostCalculator));
 const FireCalculator = dynamic(() => import('./FireCalculator').then(m => m.FireCalculator));
 const CostBasisTracker = dynamic(() => import('./CostBasisTracker').then(m => m.CostBasisTracker));
+const PlanComparison = dynamic(() => import('./PlanComparison').then(m => m.PlanComparison));
 const FutureProjection = dynamic(() => import('./FutureProjection').then(m => m.FutureProjection));
 import { TrendingUp, TrendingDown, DollarSign, Activity, Repeat, Download, Share2, RefreshCw } from 'lucide-react';
 import clsx from 'clsx';
@@ -312,7 +313,9 @@ export const DcaCalculator = () => {
 
     const handleShare = useCallback(async () => {
         const paramStr = encodeParams({ amount, frequency, startDate, endDate, feePercentage, priceMode, provider, manualPrice, currency: currencyConfig.code });
-        const url = `${window.location.origin}${window.location.pathname}?${paramStr}`;
+        // /share serves a result-specific OG card to link unfurlers, then forwards
+        // humans to the calculator with the same params.
+        const url = `${window.location.origin}/share?${paramStr}`;
         if (typeof navigator.share === 'function') {
             try {
                 await navigator.share({ title: 'Bitcoin DCA Calculator', url });
@@ -690,6 +693,11 @@ export const DcaCalculator = () => {
                         <StatsStrip stats={pastResults.stats} />
                     )}
 
+                    {/* Historical profitability of comparable windows */}
+                    {purchaseCount > 0 && priceMode === 'api' && (
+                        <ProfitableWindows frequency={frequency} startDate={startDate} endDate={endDate} />
+                    )}
+
                     {/* Stats Banner */}
                     {purchaseCount > 0 && (
                         <div className="text-center text-xs sm:text-sm text-slate-500 dark:text-slate-400 py-1">
@@ -838,6 +846,20 @@ export const DcaCalculator = () => {
                     {/* Transaction Table */}
                     <TransactionTable breakdown={results.breakdown} unit={unit} />
 
+                    {/* Plan-vs-plan comparison */}
+                    {priceMode === 'api' && !dateError && (
+                        <PlanComparison
+                            basePlan={{
+                                amountUsd,
+                                frequency,
+                                startDate,
+                                endDate,
+                                feePercentage: deferredFee,
+                                provider,
+                            }}
+                        />
+                    )}
+
                     {/* Price Prediction */}
                     <PricePredictionScenario btcAmount={results.btcAccumulated} totalInvested={results.totalInvested} />
 
@@ -968,6 +990,46 @@ const StatsStrip = memo(function StatsStrip({ stats }: { stats: DcaStats }) {
                 </div>
             </div>
         </Card>
+    );
+});
+
+const ProfitableWindows = memo(function ProfitableWindows({ frequency, startDate, endDate }: { frequency: Frequency; startDate: string; endDate: string }) {
+    const [data, setData] = useState<{ profitablePercent: number; windowCount: number; durationDays: number } | null>(null);
+
+    useEffect(() => {
+        let cancelled = false;
+        const timer = setTimeout(async () => {
+            const startTs = parseUtcDate(startDate);
+            const endTs = Math.min(parseUtcDate(endDate), Date.now());
+            const durationDays = Math.round((endTs - startTs) / DAY_MS);
+            if (!Number.isFinite(startTs) || !Number.isFinite(endTs) || endTs <= startTs || durationDays < 90) {
+                if (!cancelled) setData(null);
+                return;
+            }
+            try {
+                const result = await getProfitableWindows(frequency, durationDays);
+                if (!cancelled) setData(result);
+            } catch {
+                if (!cancelled) setData(null);
+            }
+        }, 800);
+        return () => {
+            cancelled = true;
+            clearTimeout(timer);
+        };
+    }, [frequency, startDate, endDate]);
+
+    if (!data) return null;
+    const months = Math.round(data.durationDays / 30);
+    return (
+        <p className="text-center text-xs sm:text-sm text-slate-500 dark:text-slate-400 fade-in">
+            Historically,{' '}
+            <span className="font-semibold text-emerald-600 dark:text-emerald-400 tabular-nums">
+                {data.profitablePercent.toFixed(0)}%
+            </span>{' '}
+            of all {months}-month {frequency} DCA windows since 2010 ended in profit
+            <span className="text-slate-400 dark:text-slate-500"> · {data.windowCount.toLocaleString('en-US')} windows, before fees</span>
+        </p>
     );
 });
 
