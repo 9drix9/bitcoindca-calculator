@@ -17,11 +17,14 @@
 }
 
 /* Visible focus ring for keyboard navigation (accessibility).
-   amber-700 clears 3:1 non-text contrast on light surfaces; amber-400 on dark. */
+   amber-700 clears 3:1 non-text contrast on light surfaces; amber-400 on dark.
+   No `border-radius` here: this rule is unlayered, so it would outrank every
+   Tailwind `rounded-*` utility (which live in @layer utilities) and square off
+   pills/circles the moment they take focus. Browsers already follow the
+   element's own border-radius when drawing the outline. */
 :focus-visible {
   outline: 2px solid #b45309;
   outline-offset: 2px;
-  border-radius: 4px;
 }
 .dark :focus-visible {
   outline-color: #fbbf24;
@@ -143,7 +146,12 @@ input[type="number"]::-webkit-outer-spin-button {
   opacity: 1;
 }
 
-/* Better touch targets for small buttons on mobile */
+/* Better touch targets for small buttons on mobile.
+   CAUTION: these rules are unlayered, and unlayered author styles outrank
+   everything in @layer utilities — so `min-h-[44px]` on a <button> loses to
+   the 36px below. Size touch targets that must exceed 36px with `h-11`/`w-11`
+   (height/width are different properties, so they are not overridden) rather
+   than with a `min-h-*` utility. */
 @media (max-width: 640px) {
   button {
     min-height: 36px;
@@ -181,10 +189,12 @@ input[type="number"]::-webkit-outer-spin-button {
   padding-bottom: max(env(safe-area-inset-bottom), 12px);
 }
 
-/* Page content clearance so nothing hides behind the fixed nav.
-   76px = 64 nav + 12 baseline; calc line upgrades on capable browsers. */
+/* Clearance for the fixed bottom nav. It belongs on the LAST element in the page
+   flow, which is the footer, not #main-content: padding under <main> only pushes
+   the footer down, leaving dead space while the footer itself still runs under
+   the nav. First line is the fallback for browsers without max()/env(). */
 @media (max-width: 767px) {
-  #main-content {
+  #site-footer {
     padding-bottom: 76px;
     padding-bottom: calc(var(--bottom-nav-h) + max(env(safe-area-inset-bottom), 12px));
   }

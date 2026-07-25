@@ -26,7 +26,9 @@ export function ResponsiveNav() {
 
       {/* Mobile top bar */}
       <header className="md:hidden border-b border-slate-200 dark:border-slate-800 bg-white/85 dark:bg-slate-950/85 backdrop-blur-md sticky top-0 z-50">
-        <div className="flex items-center justify-between px-4 h-14">
+        {/* Horizontal insets keep the logo and menu button clear of the notch
+            and rounded corners when a notched phone is held in landscape. */}
+        <div className="flex items-center justify-between h-14 pl-[max(env(safe-area-inset-left),1rem)] pr-[max(env(safe-area-inset-right),1rem)]">
           <Link href="/" className="flex items-center gap-2 group">
             <div
               className="w-8 h-8 bg-gradient-to-br from-amber-400 to-orange-500 rounded-full flex items-center justify-center text-white font-bold text-sm shrink-0 group-hover:scale-105 transition-transform"
@@ -44,7 +46,7 @@ export function ResponsiveNav() {
             <button
               ref={menuButtonRef}
               onClick={() => setDrawerOpen(true)}
-              className="p-2 -m-1 text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white transition-colors"
+              className="-mr-1 h-11 w-11 flex items-center justify-center rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white transition-colors"
               aria-label="Open menu"
               aria-haspopup="dialog"
               aria-expanded={drawerOpen}
