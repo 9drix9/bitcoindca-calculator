@@ -45,56 +45,6 @@
   --color-info: #1d4ed8; /* 6.70:1 on #ffffff */
 }
 
-:root {
-  /* Tells the UA to render native controls in the light scheme: <select>
-     popups, the date input's calendar glyph, scrollbars and spinners. */
-  color-scheme: light;
-
-  --hairline: rgb(15 23 42 / 0.1);
-  --hairline-strong: rgb(15 23 42 / 0.14);
-
-  /* Slate-blue tinted, not black — a pure-black shadow greys out on a slate
-     palette and reads as dirt rather than depth. */
-  --elev-1: 0 1px 2px rgb(50 50 93 / 0.05), 0 1px 1px rgb(50 50 93 / 0.04);
-  --elev-2: 0 2px 4px rgb(50 50 93 / 0.06), 0 8px 16px -6px rgb(50 50 93 / 0.1);
-
-  /* amber-600 — 3.19:1 on #ffffff, clears the 3:1 non-text floor. Allowed as a
-     rule or border ONLY; as text it would fail. Inset so it follows the
-     element's border-radius with no corner miter. */
-  --accent-rule: inset 0 3px 0 0 #d97706;
-
-  --text-strong: #0f172a; /* 17.85:1 on #ffffff */
-  --flash: rgb(217 119 6 / 0.14);
-
-  --dur-fast: 120ms;
-  --dur-base: 200ms;
-  --dur-slow: 320ms;
-  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
-  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
-}
-
-.dark {
-  color-scheme: dark;
-
-  --color-gain: #34d399; /* 10.49:1 on #020617 — the light value is 3.68:1 here, so this flip is mandatory */
-  --color-loss: #fb7185; /* 7.50:1 on #020617 — the light value is 3.21:1 here */
-  --color-info: #60a5fa; /* 7.93:1 on #020617 */
-
-  --hairline: rgb(255 255 255 / 0.09);
-  --hairline-strong: rgb(255 255 255 / 0.145);
-
-  /* Dark mode gets a REAL shadow. The previous `dark:shadow-none` left a card
-     at 1.13:1 against the page with only a 1.22:1 border, which is why ten
-     stacked widgets read as one undifferentiated wireframe column. */
-  --elev-1: 0 1px 2px rgb(0 0 0 / 0.4);
-  --elev-2: 0 2px 4px rgb(0 0 0 / 0.5), 0 12px 24px -8px rgb(0 0 0 / 0.45);
-
-  --accent-rule: inset 0 3px 0 0 #f59e0b; /* 8.31:1 on #0f172a */
-
-  --text-strong: #e6edf7; /* 17.12:1 on #020617 — ~12% less glare than pure white on a 60px numeral */
-  --flash: rgb(245 158 11 / 0.16);
-}
-
 @layer utilities {
   .text-balance {
     text-wrap: balance;
@@ -111,6 +61,17 @@
   .measure > :where(p, ul, ol, blockquote, h2, h3, h4) {
     max-width: 68ch;
   }
+
+  /* Hand-authored, NOT left to @theme codegen.
+     A Vercel build once emitted the generated utilities from the source scan but
+     dropped this file's own @theme/:root blocks, so every gain and loss figure
+     shipped with no colour rule at all and rendered grey in production. These
+     three lines cannot be tree-shaken away by that path. The @theme entries stay
+     as well, because variants like `hover:text-loss` need Tailwind to know the
+     colour name — a duplicate declaration is harmless, a missing one is not. */
+  .text-gain { color: var(--color-gain); }
+  .text-loss { color: var(--color-loss); }
+  .text-info { color: var(--color-info); }
 }
 
 /* Remove tap highlight on mobile */
@@ -411,4 +372,54 @@ input[type="number"]::-webkit-outer-spin-button {
   header.sticky {
     position: static;
   }
+}
+
+:root {
+  /* Tells the UA to render native controls in the light scheme: <select>
+     popups, the date input's calendar glyph, scrollbars and spinners. */
+  color-scheme: light;
+
+  --hairline: rgb(15 23 42 / 0.1);
+  --hairline-strong: rgb(15 23 42 / 0.14);
+
+  /* Slate-blue tinted, not black — a pure-black shadow greys out on a slate
+     palette and reads as dirt rather than depth. */
+  --elev-1: 0 1px 2px rgb(50 50 93 / 0.05), 0 1px 1px rgb(50 50 93 / 0.04);
+  --elev-2: 0 2px 4px rgb(50 50 93 / 0.06), 0 8px 16px -6px rgb(50 50 93 / 0.1);
+
+  /* amber-600 — 3.19:1 on #ffffff, clears the 3:1 non-text floor. Allowed as a
+     rule or border ONLY; as text it would fail. Inset so it follows the
+     element's border-radius with no corner miter. */
+  --accent-rule: inset 0 3px 0 0 #d97706;
+
+  --text-strong: #0f172a; /* 17.85:1 on #ffffff */
+  --flash: rgb(217 119 6 / 0.14);
+
+  --dur-fast: 120ms;
+  --dur-base: 200ms;
+  --dur-slow: 320ms;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+}
+
+.dark {
+  color-scheme: dark;
+
+  --color-gain: #34d399; /* 10.49:1 on #020617 — the light value is 3.68:1 here, so this flip is mandatory */
+  --color-loss: #fb7185; /* 7.50:1 on #020617 — the light value is 3.21:1 here */
+  --color-info: #60a5fa; /* 7.93:1 on #020617 */
+
+  --hairline: rgb(255 255 255 / 0.09);
+  --hairline-strong: rgb(255 255 255 / 0.145);
+
+  /* Dark mode gets a REAL shadow. The previous `dark:shadow-none` left a card
+     at 1.13:1 against the page with only a 1.22:1 border, which is why ten
+     stacked widgets read as one undifferentiated wireframe column. */
+  --elev-1: 0 1px 2px rgb(0 0 0 / 0.4);
+  --elev-2: 0 2px 4px rgb(0 0 0 / 0.5), 0 12px 24px -8px rgb(0 0 0 / 0.45);
+
+  --accent-rule: inset 0 3px 0 0 #f59e0b; /* 8.31:1 on #0f172a */
+
+  --text-strong: #e6edf7; /* 17.12:1 on #020617 — ~12% less glare than pure white on a 60px numeral */
+  --flash: rgb(245 158 11 / 0.16);
 }

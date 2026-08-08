@@ -307,7 +307,7 @@ export const CostBasisTracker = ({ priceData, livePrice, priceMode, provider }: 
                                         <td className="py-2 text-right">
                                             <button
                                                 onClick={() => removePosition(position.id)}
-                                                className="inline-flex items-center justify-center w-9 h-9 text-base leading-none rounded-md text-slate-500 dark:text-slate-400 hover:text-loss hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                                                className="inline-flex items-center justify-center w-9 h-9 text-base leading-none rounded-md text-slate-500 dark:text-slate-400 hover:text-[var(--color-loss)] hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                                                 title="Remove position"
                                                 aria-label={`Remove position ${position.label}`}
                                             >
