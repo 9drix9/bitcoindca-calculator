@@ -5,11 +5,17 @@ import { usePathname } from 'next/navigation';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { LogoLockup } from '@/components/brand/Logo';
 
+// Labels here are for scanning a horizontal list, so they must be visually
+// distinct at a glance — "Calculator" next to "Calculators" differed by one
+// character and read as a duplicate. The hub keeps the name "Calculators"
+// everywhere it identifies itself (page h1, breadcrumbs, BreadcrumbList JSON-LD,
+// the footer's "All Calculators" link), which is also the anchor text that helps
+// it rank; only the nav chip is shortened. Matches the mobile tab bar.
 const links = [
   { href: '/', label: 'Calculator' },
   // /calculators and /dca were both orphaned: 105 scenario pages and the tool
   // hub had sitemap entries but no link path from anywhere on the site.
-  { href: '/calculators', label: 'Calculators' },
+  { href: '/calculators', label: 'Tools' },
   { href: '/dca', label: 'Scenarios' },
   { href: '/why-bitcoin', label: 'Learn' },
   { href: '/self-custody', label: 'Self-Custody' },
@@ -29,7 +35,13 @@ export function TopNav() {
           </Link>
 
           {links.map(({ href, label }) => {
-            const isActive = pathname === href;
+            // Prefix match on section roots, exact only for "/". Exact-matching
+            // everything meant no nav item lit up on /calculators/bitcoin-fire or
+            // /dca/100-per-week-since-2020 — the deepest pages on the site had no
+            // "you are here". The mobile tab bar already worked this way.
+            const isActive = href === '/'
+              ? pathname === '/'
+              : pathname === href || pathname?.startsWith(`${href}/`);
             return (
               <Link
                 key={href}
