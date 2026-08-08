@@ -498,8 +498,8 @@ export default async function BitcoinFirePage({ searchParams }: PageProps) {
                                     sub={data.xirrPercent != null ? `${fmtPct(data.xirrPercent, true)} annualized` : 'Period too short to annualize'}
                                     valueClassName={
                                         data.roi >= 0
-                                            ? 'text-emerald-600 dark:text-emerald-400'
-                                            : 'text-rose-600 dark:text-rose-400'
+                                            ? 'text-gain'
+                                            : 'text-loss'
                                     }
                                 />
                                 <StatCard
@@ -667,8 +667,8 @@ export default async function BitcoinFirePage({ searchParams }: PageProps) {
                                                         <td className={clsx(
                                                             'py-2 text-right font-semibold',
                                                             c.percent >= 0
-                                                                ? 'text-emerald-600 dark:text-emerald-400'
-                                                                : 'text-rose-600 dark:text-rose-400',
+                                                                ? 'text-gain'
+                                                                : 'text-loss',
                                                         )}>
                                                             {fmtPct(c.percent, true)}
                                                         </td>

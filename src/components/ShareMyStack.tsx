@@ -256,8 +256,8 @@ export const ShareMyStack = ({
                             </span>
                             <span className={`text-sm font-semibold px-2 py-0.5 rounded-full tabular-nums ${
                                 isProfit
-                                    ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
-                                    : 'bg-rose-500/10 text-rose-600 dark:text-rose-400'
+                                    ? 'bg-emerald-500/10 text-gain'
+                                    : 'bg-rose-500/10 text-loss'
                             }`}>
                                 {isProfit ? '+' : ''}{roi.toFixed(1)}%
                             </span>
@@ -272,7 +272,7 @@ export const ShareMyStack = ({
                         </div>
                         <div className="flex items-baseline justify-between text-sm">
                             <span className="text-slate-500 dark:text-slate-400">{isProfit ? 'Profit' : 'Loss'}</span>
-                            <span className={`font-semibold tabular-nums ${isProfit ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                            <span className={`font-semibold tabular-nums ${isProfit ? 'text-gain' : 'text-loss'}`}>
                                 {isProfit ? '+' : ''}{formatCurrency(profit)}
                             </span>
                         </div>
@@ -328,7 +328,7 @@ export const ShareMyStack = ({
                     aria-label="Copy link to this page"
                 >
                     {linkCopied
-                        ? <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" aria-hidden="true" />
+                        ? <Check className="w-3.5 h-3.5 text-gain shrink-0" aria-hidden="true" />
                         : <Link2 className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />}
                     Copy link
                 </button>
@@ -336,7 +336,7 @@ export const ShareMyStack = ({
 
                 <div role="status" aria-live="polite">
                     {status && (
-                        <p className={`text-xs sm:text-sm fade-in ${status.ok ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400'}`}>
+                        <p className={`text-xs sm:text-sm fade-in ${status.ok ? 'text-gain' : 'text-slate-500 dark:text-slate-400'}`}>
                             {status.text}
                         </p>
                     )}

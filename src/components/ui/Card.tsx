@@ -18,8 +18,17 @@ export function Card({
             className={clsx(
                 'rounded-2xl border transition-shadow',
                 celebrated
-                    ? 'border-amber-500/30 dark:border-amber-500/25 bg-gradient-to-br from-amber-50 to-white dark:from-amber-500/[0.07] dark:to-slate-900'
-                    : 'bg-white dark:bg-slate-900 border-slate-200/80 dark:border-slate-800 shadow-sm dark:shadow-none',
+                    // The accent is an EDGE, not a wash. This was a gradient from
+                    // amber-50 to white — a 1.04:1 tint that read as banding rather
+                    // than emphasis, and vanished entirely on dark. A 3px inset rule
+                    // at amber-600/amber-500 clears the 3:1 graphic floor in both
+                    // themes and says "this is the answer" without tinting the
+                    // surface the numbers sit on.
+                    ? 'bg-white dark:bg-slate-900 border-[var(--hairline)] shadow-[var(--accent-rule),var(--elev-2)]'
+                    // dark:shadow-none is deliberately GONE: a slate-900 card on a
+                    // slate-950 page is 1.13:1, so with no shadow the ten stacked
+                    // sidebar widgets read as one undifferentiated wireframe column.
+                    : 'bg-white dark:bg-slate-900 border-[var(--hairline)] shadow-[var(--elev-1)]',
                 className,
             )}
         >
@@ -54,6 +63,31 @@ export function CardHeader({
         </div>
     );
 }
+
+/**
+ * One chip language for the whole site.
+ *
+ * There were three incompatible pill styles, and one collision actively misled:
+ * the fee chip's SELECTED state was byte-for-byte the preset chip's RESTING
+ * state, so a user who had learned "amber-tinted pill = not selected" from the
+ * preset row read the selected exchange as unselected 200px lower.
+ *
+ * The rule now: SOLID amber means selected. Everything else is a neutral
+ * outline. No tinted middle ground.
+ */
+export const chipBase =
+    'inline-flex items-center justify-center gap-1.5 rounded-full border px-2.5 py-1 ' +
+    'text-2xs font-medium transition-colors min-h-[28px] whitespace-nowrap';
+
+export const chipRest =
+    'bg-white text-slate-700 border-[var(--hairline-strong)] hover:bg-slate-50 ' +
+    'dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700';
+
+/** slate-950 on amber-500 = 9.39:1. Never white on amber (2.15:1). */
+export const chipSelected = 'bg-amber-500 text-slate-950 border-amber-500 hover:bg-amber-400';
+
+export const chip = (selected: boolean): string =>
+    `${chipBase} ${selected ? chipSelected : chipRest}`;
 
 /** Muted label / tabular value row used inside widget cards. */
 export function StatRow({ label, value, valueClassName }: { label: ReactNode; value: ReactNode; valueClassName?: string }) {

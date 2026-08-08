@@ -229,8 +229,8 @@ export default async function DcaScenarioPage({ params }: PageProps) {
     const stats = result?.stats;
     const yearRows = result ? buildYearRows(result.breakdown) : [];
     const profitClass = result && result.profit >= 0
-        ? 'text-emerald-600 dark:text-emerald-400'
-        : 'text-rose-600 dark:text-rose-400';
+        ? 'text-gain'
+        : 'text-loss';
 
     const breadcrumbJsonLd = {
         '@context': 'https://schema.org',
@@ -405,8 +405,8 @@ export default async function DcaScenarioPage({ params }: PageProps) {
                                                 <td className={clsx(
                                                     'py-2 text-right font-medium',
                                                     row.roi >= 0
-                                                        ? 'text-emerald-600 dark:text-emerald-400'
-                                                        : 'text-rose-600 dark:text-rose-400',
+                                                        ? 'text-gain'
+                                                        : 'text-loss',
                                                 )}>
                                                     {fmtPct(row.roi, true)}
                                                 </td>

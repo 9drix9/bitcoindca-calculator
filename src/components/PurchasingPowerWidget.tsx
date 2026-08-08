@@ -75,7 +75,7 @@ export const PurchasingPowerWidget = ({ initialData }: PurchasingPowerWidgetProp
                     <div className="grid grid-cols-2 gap-2">
                         {/* Fiat side */}
                         <div className="rounded-lg bg-rose-50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-800/50 p-2.5 text-center">
-                            <div className="text-[11px] sm:text-xs text-rose-600 dark:text-rose-400 font-medium mb-0.5">
+                            <div className="text-[11px] sm:text-xs text-loss font-medium mb-0.5">
                                 {currencyConfig.code}
                             </div>
                             <div className="text-sm sm:text-lg font-bold text-slate-900 dark:text-white tabular-nums">
@@ -84,14 +84,14 @@ export const PurchasingPowerWidget = ({ initialData }: PurchasingPowerWidgetProp
                             <div className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400">
                                 needed today
                             </div>
-                            <div className="text-[11px] sm:text-xs font-medium text-rose-600 dark:text-rose-400 mt-1 tabular-nums">
+                            <div className="text-[11px] sm:text-xs font-medium text-loss mt-1 tabular-nums">
                                 &minus;{purchasingPowerLoss}% purchasing power (US CPI)
                             </div>
                         </div>
 
                         {/* BTC side */}
                         <div className="rounded-lg bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800/50 p-2.5 text-center">
-                            <div className="text-[11px] sm:text-xs text-emerald-600 dark:text-emerald-400 font-medium mb-0.5">
+                            <div className="text-[11px] sm:text-xs text-gain font-medium mb-0.5">
                                 Bitcoin
                             </div>
                             <div className="text-sm sm:text-lg font-bold text-slate-900 dark:text-white tabular-nums">
@@ -100,7 +100,7 @@ export const PurchasingPowerWidget = ({ initialData }: PurchasingPowerWidgetProp
                             <div className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400">
                                 value today
                             </div>
-                            <div className="text-[11px] sm:text-xs font-medium text-emerald-600 dark:text-emerald-400 mt-1 tabular-nums">
+                            <div className="text-[11px] sm:text-xs font-medium text-gain mt-1 tabular-nums">
                                 +{btcGainPct.toLocaleString()}%
                             </div>
                         </div>

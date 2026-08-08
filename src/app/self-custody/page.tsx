@@ -457,7 +457,7 @@ const walletColorClasses: Record<WalletColor, {
     border: 'border-emerald-200 dark:border-emerald-800/50',
     badge: 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-400',
     button: 'bg-emerald-600 hover:bg-emerald-700',
-    accent: 'text-emerald-600 dark:text-emerald-400',
+    accent: 'text-gain',
     check: 'text-emerald-500',
   },
   slate: {

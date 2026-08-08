@@ -66,7 +66,7 @@ export const UnitBiasCalculator = ({ btcAccumulated }: UnitBiasCalculatorProps) 
                 <div className="bg-white/60 dark:bg-slate-800/60 rounded-xl p-3 sm:p-4 space-y-2">
                     <p className="text-sm sm:text-base text-slate-700 dark:text-slate-300">
                         Your stack of <span className="font-bold text-amber-700 dark:text-amber-400 tabular-nums">{stats.totalSats.toLocaleString()} sats</span> is{' '}
-                        <span className="font-bold text-emerald-600 dark:text-emerald-400 tabular-nums">{shareLabel}</span> an equal split.
+                        <span className="font-bold text-gain tabular-nums">{shareLabel}</span> an equal split.
                         Divide every bitcoin that will ever exist among everyone alive today and each person gets about{' '}
                         <span className="font-bold text-slate-800 dark:text-white tabular-nums">{FAIR_SHARE_SATS.toLocaleString()} sats</span>.
                     </p>

@@ -52,7 +52,7 @@ export const BtcDonationButton = () => {
                         aria-label={copied === 'lightning' ? 'Lightning address copied' : 'Copy Lightning donation address'}
                     >
                         {copied === 'lightning'
-                            ? <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                            ? <Check className="w-3.5 h-3.5 text-gain" />
                             : <Copy className="w-3.5 h-3.5" />}
                     </button>
                 </div>
@@ -67,7 +67,7 @@ export const BtcDonationButton = () => {
                     aria-label={copied === 'onchain' ? 'Bitcoin address copied' : 'Copy on-chain BTC donation address'}
                 >
                     {copied === 'onchain'
-                        ? <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                        ? <Check className="w-3.5 h-3.5 text-gain" />
                         : <Copy className="w-3.5 h-3.5" />}
                 </button>
             </div>

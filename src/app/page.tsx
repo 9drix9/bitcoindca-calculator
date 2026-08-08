@@ -116,7 +116,7 @@ async function HeroLive() {
           {usd(stat.invested)} invested, worth{' '}
           <strong className="font-bold text-slate-900 dark:text-white">{usd(stat.value)}</strong> today
           {Number.isFinite(stat.roi) && (
-            <span className={stat.roi >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}>
+            <span className={stat.roi >= 0 ? 'text-gain' : 'text-loss'}>
               {' '}({stat.roi >= 0 ? '+' : ''}{stat.roi.toFixed(0)}%)
             </span>
           )}.
@@ -237,9 +237,16 @@ export default function Home() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-8 sm:space-y-12">
 
         {/* Hero Section */}
-        <section className="hero-glow text-center max-w-3xl mx-auto space-y-3 sm:space-y-4 pt-2 sm:pt-6">
-          <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-slate-900 dark:text-white tracking-tight text-balance">
-            <span className="bg-gradient-to-r from-amber-500 to-orange-600 bg-clip-text text-transparent">Bitcoin</span> DCA Calculator
+        {/* No hero-glow: the radial wash was a 1.04:1 tint that read as gradient
+            banding rather than depth. The amber Sat Ladder in the nav carries the
+            brand; the H1's job is to be read. */}
+        <section className="text-center max-w-3xl mx-auto space-y-3 sm:space-y-4 pt-2 sm:pt-6">
+          {/* Flat, not bg-clip-text. Logo.tsx already documents why that technique
+              was removed from the wordmark: clipping a gradient to text discards
+              the text's real colour, so it fails contrast checks and disappears
+              entirely in forced-colors mode. The H1 had been missed. */}
+          <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-slate-900 dark:text-[var(--text-strong)] text-balance">
+            Bitcoin DCA Calculator
           </h1>
           <p className="text-sm sm:text-base text-slate-500 dark:text-slate-400 max-w-2xl mx-auto">
             Backtest a dollar-cost-averaging strategy against real market history.

@@ -262,8 +262,8 @@ export default async function EmbedPage({ searchParams }: EmbedPageProps) {
     const ctaHref = params ? `${SITE_URL}/?${encodeShareQuery(params)}` : `${SITE_URL}/`;
     const isProfit = !!result && result.profit >= 0;
     const toneClass = isProfit
-        ? 'text-emerald-600 dark:text-emerald-400'
-        : 'text-rose-600 dark:text-rose-400';
+        ? 'text-gain'
+        : 'text-loss';
 
     return (
         <div className={clsx(theme === 'dark' && 'dark')}>
@@ -293,8 +293,8 @@ export default async function EmbedPage({ searchParams }: EmbedPageProps) {
                                         className={clsx(
                                             'rounded-full px-2 py-0.5 text-xs font-semibold tabular-nums',
                                             isProfit
-                                                ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
-                                                : 'bg-rose-500/10 text-rose-600 dark:text-rose-400',
+                                                ? 'bg-emerald-500/10 text-gain'
+                                                : 'bg-rose-500/10 text-loss',
                                         )}
                                     >
                                         {fmtPct(result.roi)}

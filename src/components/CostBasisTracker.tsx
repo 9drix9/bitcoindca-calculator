@@ -301,13 +301,13 @@ export const CostBasisTracker = ({ priceData, livePrice, priceMode, provider }: 
                                         <td className="py-2 pr-2 text-right tabular-nums whitespace-nowrap text-slate-700 dark:text-slate-300">{formatCurrency(result.totalInvested)}</td>
                                         <td className="py-2 pr-2 text-right tabular-nums whitespace-nowrap text-slate-700 dark:text-slate-300">{result.btcAccumulated.toFixed(6)}</td>
                                         <td className="py-2 pr-2 text-right tabular-nums whitespace-nowrap text-slate-700 dark:text-slate-300">{formatCurrency(result.currentValue)}</td>
-                                        <td className={clsx("py-2 pr-2 text-right tabular-nums whitespace-nowrap font-medium", result.roi >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400")}>
+                                        <td className={clsx("py-2 pr-2 text-right tabular-nums whitespace-nowrap font-medium", result.roi >= 0 ? "text-gain" : "text-loss")}>
                                             {result.roi >= 0 ? '+' : ''}{result.roi.toFixed(1)}%
                                         </td>
                                         <td className="py-2 text-right">
                                             <button
                                                 onClick={() => removePosition(position.id)}
-                                                className="inline-flex items-center justify-center w-9 h-9 text-base leading-none rounded-md text-slate-500 dark:text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                                                className="inline-flex items-center justify-center w-9 h-9 text-base leading-none rounded-md text-slate-500 dark:text-slate-400 hover:text-loss hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                                                 title="Remove position"
                                                 aria-label={`Remove position ${position.label}`}
                                             >
@@ -324,7 +324,7 @@ export const CostBasisTracker = ({ priceData, livePrice, priceMode, provider }: 
                                         <td className="pt-2 pr-2 text-right tabular-nums whitespace-nowrap text-slate-800 dark:text-white">{formatCurrency(totals.totalInvested)}</td>
                                         <td className="pt-2 pr-2 text-right tabular-nums whitespace-nowrap text-slate-800 dark:text-white">{totals.totalBtc.toFixed(6)}</td>
                                         <td className="pt-2 pr-2 text-right tabular-nums whitespace-nowrap text-slate-800 dark:text-white">{formatCurrency(totals.totalValue)}</td>
-                                        <td className={clsx("pt-2 pr-2 text-right tabular-nums whitespace-nowrap", totals.roi >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400")}>
+                                        <td className={clsx("pt-2 pr-2 text-right tabular-nums whitespace-nowrap", totals.roi >= 0 ? "text-gain" : "text-loss")}>
                                             {totals.roi >= 0 ? '+' : ''}{totals.roi.toFixed(1)}%
                                         </td>
                                         <td></td>

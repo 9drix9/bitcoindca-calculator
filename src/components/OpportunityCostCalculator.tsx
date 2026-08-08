@@ -140,7 +140,7 @@ export const OpportunityCostCalculator = ({ priceData, livePrice }: OpportunityC
                         </div>
                         <div className="bg-white/60 dark:bg-slate-800/60 rounded-xl p-3 text-center">
                             <div className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 mb-0.5">BTC Value Today</div>
-                            <div className="text-sm sm:text-lg font-bold text-emerald-600 dark:text-emerald-400 truncate tabular-nums">
+                            <div className="text-sm sm:text-lg font-bold text-gain truncate tabular-nums">
                                 <span className="sm:hidden">{formatCompact(results.btcValue)}</span>
                                 <span className="hidden sm:inline">{formatCurrency(results.btcValue)}</span>
                             </div>

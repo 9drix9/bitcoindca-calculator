@@ -268,9 +268,9 @@ function ScenarioCard({
                 className={clsx(
                     'mt-1.5 text-xl font-bold tracking-tight sm:text-2xl',
                     good
-                        ? 'text-emerald-600 dark:text-emerald-400'
+                        ? 'text-gain'
                         : bad
-                          ? 'text-rose-600 dark:text-rose-400'
+                          ? 'text-loss'
                           : 'text-slate-800 dark:text-slate-100',
                 )}
             >
@@ -488,7 +488,7 @@ export const DrawdownCalculator: React.FC<DrawdownCalculatorProps> = ({ btcAccum
                                     // min-h-8: the label alone is a ~16px target, so the chip carries the tap area.
                                     'inline-flex min-h-8 items-center rounded-lg px-2.5 py-1 text-xs font-medium tabular-nums transition-colors',
                                     active
-                                        ? 'bg-amber-500 text-white'
+                                        ? 'bg-amber-500 text-slate-950'
                                         : 'border border-slate-200 bg-white text-slate-600 hover:border-amber-500/60 hover:text-amber-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-amber-500/40 dark:hover:text-amber-400',
                                 )}
                             >
@@ -515,7 +515,7 @@ export const DrawdownCalculator: React.FC<DrawdownCalculatorProps> = ({ btcAccum
                             className={clsx(
                                 'mt-1 text-2xl font-bold tracking-tight sm:text-3xl',
                                 model.base.neverExhausted
-                                    ? 'text-emerald-600 dark:text-emerald-400'
+                                    ? 'text-gain'
                                     : 'text-slate-900 dark:text-white',
                             )}
                         >
@@ -635,7 +635,7 @@ export const DrawdownCalculator: React.FC<DrawdownCalculatorProps> = ({ btcAccum
                                 <dt className="text-slate-500 dark:text-slate-400">
                                     Sustainable for {TARGET_MONTHS / 12} years
                                 </dt>
-                                <dd className="text-right font-medium tabular-nums text-emerald-600 dark:text-emerald-400">
+                                <dd className="text-right font-medium tabular-nums text-gain">
                                     {formatCurrency(model.sustainableUsd)} / month
                                 </dd>
                             </div>

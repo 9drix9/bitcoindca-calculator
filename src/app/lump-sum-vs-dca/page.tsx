@@ -302,7 +302,7 @@ function StatCard({ label, value, sub, celebrated = false }: { label: string; va
 }
 
 const diffClass = (value: number): string =>
-    value >= 0 ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400';
+    value >= 0 ? 'text-emerald-700 dark:text-emerald-400' : 'text-loss';
 
 export default async function LumpSumVsDcaPage() {
     const analysis = await computeAnalysis();

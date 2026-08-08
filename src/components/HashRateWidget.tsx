@@ -81,7 +81,7 @@ export const HashRateWidget = ({ initialData }: HashRateWidgetProps) => {
                     <StatRow
                         label="Next Adjustment"
                         value={`${data.adjustmentPercent > 0 ? '+' : ''}${data.adjustmentPercent.toFixed(2)}%`}
-                        valueClassName={isNegativeAdj ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}
+                        valueClassName={isNegativeAdj ? 'text-gain' : 'text-loss'}
                     />
                     <StatRow label="Blocks Until Retarget" value={data.blocksUntilAdjustment.toLocaleString()} />
                 </div>

@@ -117,7 +117,7 @@ export const FireCalculator = ({
                 </div>
                 <div className="text-xs text-slate-500 dark:text-slate-400 space-y-1">
                     <div>That&apos;s <strong className="text-slate-700 dark:text-slate-300 tabular-nums">{formatCurrency(annualExpensesUsd)}/year</strong> in expenses</div>
-                    <div>You&apos;d need <strong className="text-emerald-600 dark:text-emerald-400 tabular-nums">{formatCurrency(fireNumberUsd)}</strong> to retire on the 4% rule</div>
+                    <div>You&apos;d need <strong className="text-gain tabular-nums">{formatCurrency(fireNumberUsd)}</strong> to retire on the 4% rule</div>
                 </div>
             </div>
 
@@ -170,7 +170,7 @@ export const FireCalculator = ({
                             <div className={clsx(
                                 "text-xs font-bold mb-1",
                                 result.label === 'Conservative' && "text-blue-600 dark:text-blue-400",
-                                result.label === 'Moderate' && "text-emerald-600 dark:text-emerald-400",
+                                result.label === 'Moderate' && "text-gain",
                                 result.label === 'Aggressive' && "text-amber-700 dark:text-amber-400",
                             )}>
                                 {(result.rate * 100).toFixed(0)}% per year
@@ -178,12 +178,12 @@ export const FireCalculator = ({
                             <div className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-800 dark:text-white">
                                 {result.reached ? (
                                     result.years === 0 ? (
-                                        <span className="text-emerald-600 dark:text-emerald-400">Now</span>
+                                        <span className="text-gain">Now</span>
                                     ) : (
                                         <span>{result.years} <span className="text-base">{result.years === 1 ? 'year' : 'years'}</span></span>
                                     )
                                 ) : (
-                                    <span className="text-rose-600 dark:text-rose-400 text-xl">100+ years</span>
+                                    <span className="text-loss text-xl">100+ years</span>
                                 )}
                             </div>
                             <div className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 mt-1">

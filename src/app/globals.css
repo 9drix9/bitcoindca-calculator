@@ -2,12 +2,114 @@
 
 @custom-variant dark (&:where(.dark, .dark *));
 
+/* ── Design tokens ──────────────────────────────────────────────────────────
+   Governing rule: the accent is ink, fill, or edge — never a wash. Amber is a
+   link colour, a solid button with slate-950 text, or a hairline/rule. It is
+   never a gradient behind text and never a low-opacity tint standing in for
+   hierarchy. Emphasis and depth come from the semantic ramp and the elevation
+   scale below, both of which are measured rather than eyeballed.
+
+   Every colour here carries its computed WCAG ratio against #ffffff (light
+   page surface) and #020617 (dark page surface). Do not substitute a value
+   without recomputing — several pairs below are theme-flipped BECAUSE the
+   light-mode value fails on dark and vice versa. */
+
+@theme {
+  /* Names for the two off-scale sizes already hand-written 126 times. */
+  --text-3xs: 0.625rem;              /* 10px */
+  --text-3xs--line-height: 0.875rem;
+  --text-2xs: 0.6875rem;             /* 11px */
+  --text-2xs--line-height: 1rem;
+  --text-2xs--letter-spacing: 0.005em;
+
+  /* Inter's own dynamic-tracking curve: larger text needs tighter tracking.
+     This replaces ~140 hand-applied flat `tracking-tight`, which over-tightens
+     body copy and under-tightens display figures. */
+  --text-sm--letter-spacing: -0.006em;
+  --text-base--letter-spacing: -0.011em;
+  --text-lg--letter-spacing: -0.014em;
+  --text-xl--letter-spacing: -0.017em;
+  --text-2xl--line-height: 1.15;
+  --text-2xl--letter-spacing: -0.019em;
+  --text-3xl--line-height: 1.12;
+  --text-3xl--letter-spacing: -0.021em;
+  --text-4xl--line-height: 1.1;
+  --text-4xl--letter-spacing: -0.022em;
+  --text-5xl--line-height: 1.05;
+  --text-5xl--letter-spacing: -0.022em;
+
+  /* Semantic ramp. NOT `@theme inline` — these must stay resolvable so the
+     `.dark` block below can re-point them per theme. */
+  --color-gain: #047857; /* 5.48:1 on #ffffff — replaces emerald-600 (3.77:1, failed AA) */
+  --color-loss: #be123c; /* 6.29:1 on #ffffff */
+  --color-info: #1d4ed8; /* 6.70:1 on #ffffff */
+}
+
+:root {
+  /* Tells the UA to render native controls in the light scheme: <select>
+     popups, the date input's calendar glyph, scrollbars and spinners. */
+  color-scheme: light;
+
+  --hairline: rgb(15 23 42 / 0.1);
+  --hairline-strong: rgb(15 23 42 / 0.14);
+
+  /* Slate-blue tinted, not black — a pure-black shadow greys out on a slate
+     palette and reads as dirt rather than depth. */
+  --elev-1: 0 1px 2px rgb(50 50 93 / 0.05), 0 1px 1px rgb(50 50 93 / 0.04);
+  --elev-2: 0 2px 4px rgb(50 50 93 / 0.06), 0 8px 16px -6px rgb(50 50 93 / 0.1);
+
+  /* amber-600 — 3.19:1 on #ffffff, clears the 3:1 non-text floor. Allowed as a
+     rule or border ONLY; as text it would fail. Inset so it follows the
+     element's border-radius with no corner miter. */
+  --accent-rule: inset 0 3px 0 0 #d97706;
+
+  --text-strong: #0f172a; /* 17.85:1 on #ffffff */
+  --flash: rgb(217 119 6 / 0.14);
+
+  --dur-fast: 120ms;
+  --dur-base: 200ms;
+  --dur-slow: 320ms;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+}
+
+.dark {
+  color-scheme: dark;
+
+  --color-gain: #34d399; /* 10.49:1 on #020617 — the light value is 3.68:1 here, so this flip is mandatory */
+  --color-loss: #fb7185; /* 7.50:1 on #020617 — the light value is 3.21:1 here */
+  --color-info: #60a5fa; /* 7.93:1 on #020617 */
+
+  --hairline: rgb(255 255 255 / 0.09);
+  --hairline-strong: rgb(255 255 255 / 0.145);
+
+  /* Dark mode gets a REAL shadow. The previous `dark:shadow-none` left a card
+     at 1.13:1 against the page with only a 1.22:1 border, which is why ten
+     stacked widgets read as one undifferentiated wireframe column. */
+  --elev-1: 0 1px 2px rgb(0 0 0 / 0.4);
+  --elev-2: 0 2px 4px rgb(0 0 0 / 0.5), 0 12px 24px -8px rgb(0 0 0 / 0.45);
+
+  --accent-rule: inset 0 3px 0 0 #f59e0b; /* 8.31:1 on #0f172a */
+
+  --text-strong: #e6edf7; /* 17.12:1 on #020617 — ~12% less glare than pure white on a 60px numeral */
+  --flash: rgb(245 158 11 / 0.16);
+}
+
 @layer utilities {
   .text-balance {
     text-wrap: balance;
   }
   .contain-layout-paint {
     contain: layout paint;
+  }
+
+  /* Caps the MEASURE of running text without narrowing the container, so the
+     same section can still hold a full-width table or chart. Long-form pages
+     were running ~100 characters per line against a comfortable 45-75.
+     Deliberately targets only text children — direct descendants that are
+     layout (grids, tables, figures) keep the container's full width. */
+  .measure > :where(p, ul, ol, blockquote, h2, h3, h4) {
+    max-width: 68ch;
   }
 }
 
@@ -66,20 +168,41 @@
   touch-action: none !important;
 }
 
-/* Fade-in animation used by conditional sections */
+/* Opacity-only. The old keyframe also translated 4px, which meant every
+   conditional results panel nudged the layout each time it appeared — on a page
+   where panels mount and unmount as you type. Peripheral chrome that genuinely
+   benefits from movement uses .rise-in below. */
 .fade-in {
-  animation: fadeIn 0.2s ease-out;
+  animation: fadeIn var(--dur-base) var(--ease-out);
 }
 
 @keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(4px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* For transient chrome only — toasts and popovers, never content that contains
+   a figure. */
+.rise-in {
+  animation: riseIn var(--dur-base) var(--ease-out);
+}
+
+@keyframes riseIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* A value changed. Replaces counting up to it: a financial figure that
+   interpolates is displaying numbers that are not true, and a tabular figure
+   that animates still redraws ~20 times through Intl.NumberFormat. Flash the
+   background instead — it signals "this updated" without ever lying. */
+@keyframes valueFlash {
+  from { background-color: var(--flash); }
+  to { background-color: transparent; }
+}
+.value-flash {
+  animation: valueFlash var(--dur-slow) var(--ease-out);
+  border-radius: 0.375rem;
 }
 
 /* Compositor-friendly pulse for live indicator (opacity-only, no layout) */
@@ -111,12 +234,16 @@ html {
   }
 }
 
-/* Respect reduced-motion for every animation this stylesheet defines */
+/* A POLICY, not a list. This previously named three animations explicitly, so
+   any keyframe added later silently escaped it — which is how a reduced-motion
+   guarantee rots. Blanket rule: nothing animates. */
 @media (prefers-reduced-motion: reduce) {
-  .fade-in,
-  .animate-pulse-dot,
-  .animate-pulse {
-    animation: none !important;
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
   }
   * {
     transition-duration: 0.01ms !important;
@@ -128,20 +255,9 @@ html {
   background: rgba(245, 158, 11, 0.25);
 }
 
-/* Soft radial glow behind the hero — visible mostly in dark mode.
-   Horizontal inset must stay >= 0: negative values widen the page and let
-   mobile Safari pan sideways. */
-.hero-glow {
-  position: relative;
-}
-.hero-glow::before {
-  content: '';
-  position: absolute;
-  inset: -40% 0;
-  pointer-events: none;
-  background: radial-gradient(ellipse 70% 60% at 50% 30%, rgba(245, 158, 11, 0.07), transparent 70%);
-  z-index: -1;
-}
+/* .hero-glow removed: a radial amber wash at 0.07 alpha measured ~1.04:1
+   against the page and read as gradient banding, not depth. Emphasis now comes
+   from the elevation scale and the accent rule, per the design thesis. */
 
 /* Custom scrollbar for overflow tables */
 .overflow-x-auto {

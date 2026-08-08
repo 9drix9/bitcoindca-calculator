@@ -320,7 +320,7 @@ export default async function ExchangeFeesPage() {
                                                     <td className="px-3 sm:px-4 py-2 text-right whitespace-nowrap">{fmtUsd(row.currentValue)}</td>
                                                     <td className={clsx(
                                                         'px-3 sm:px-4 py-2 text-right whitespace-nowrap',
-                                                        row.rate === 0 ? 'text-slate-400 dark:text-slate-500' : 'text-rose-600 dark:text-rose-400',
+                                                        row.rate === 0 ? 'text-slate-400 dark:text-slate-500' : 'text-loss',
                                                     )}>
                                                         {row.rate === 0 ? '—' : `${fmtInt(row.satsVsZero)} (${fmtUsd(row.valueVsZero)})`}
                                                     </td>

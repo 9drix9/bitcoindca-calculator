@@ -513,8 +513,8 @@ export default async function BitcoinDrawdownPage({ searchParams }: PageProps) {
                                     sub="Current drawdown"
                                     valueClassName={
                                         data.fromAthPercent < 0.05
-                                            ? 'text-emerald-600 dark:text-emerald-400'
-                                            : 'text-rose-600 dark:text-rose-400'
+                                            ? 'text-gain'
+                                            : 'text-loss'
                                     }
                                 />
                                 <StatCard
@@ -608,7 +608,7 @@ export default async function BitcoinDrawdownPage({ searchParams }: PageProps) {
                                                             </span>
                                                             <span className="block text-slate-500 dark:text-slate-400">{fmtUsd(e.troughPrice)}</span>
                                                         </td>
-                                                        <td className="py-2 pr-4 text-right font-semibold text-rose-600 dark:text-rose-400">
+                                                        <td className="py-2 pr-4 text-right font-semibold text-loss">
                                                             −{fmtPct(e.depthPercent)}
                                                         </td>
                                                         <td className="py-2 pr-4 text-right">{fmtDays(e.daysToTrough)}</td>
@@ -654,7 +654,7 @@ export default async function BitcoinDrawdownPage({ searchParams }: PageProps) {
                                                 <p className="text-sm text-slate-500 dark:text-slate-400">
                                                     Bitcoin price, worst fall since {formatUtc(data.reference.startTs, 'monthYear')}
                                                 </p>
-                                                <p className="mt-1 text-2xl font-bold tracking-tight text-rose-600 dark:text-rose-400 tabular-nums">
+                                                <p className="mt-1 text-2xl font-bold tracking-tight text-loss tabular-nums">
                                                     −{fmtPct(data.reference.priceDrawdownPercent)}
                                                 </p>
                                             </div>

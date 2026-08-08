@@ -124,7 +124,7 @@ export const StackingGoalTracker = ({
                                     )}
                                     <span className={clsx(
                                         "font-medium tabular-nums",
-                                        completed ? "text-emerald-600 dark:text-emerald-400" : "text-slate-700 dark:text-slate-300"
+                                        completed ? "text-gain" : "text-slate-700 dark:text-slate-300"
                                     )}>
                                         {formatBtcLabel(milestone, unit)}
                                     </span>

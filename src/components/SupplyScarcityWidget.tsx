@@ -90,7 +90,7 @@ export const SupplyScarcityWidget = ({ initialSupply, blockHeight }: SupplyScarc
                     <StatRow
                         label="Est. Lost"
                         value={`${ESTIMATED_LOST.toLocaleString()} BTC`}
-                        valueClassName="font-normal text-rose-600 dark:text-rose-400"
+                        valueClassName="font-normal text-loss"
                     />
                     <StatRow
                         label="Block Reward"

@@ -565,7 +565,7 @@ export default async function BestDayToBuyBitcoinPage() {
                                                             'py-2 text-right font-medium',
                                                             row.vsMeanPercent >= 0
                                                                 ? 'text-emerald-700 dark:text-emerald-400'
-                                                                : 'text-rose-600 dark:text-rose-400',
+                                                                : 'text-loss',
                                                         )}
                                                     >
                                                         {fmtPct(row.vsMeanPercent, true)}

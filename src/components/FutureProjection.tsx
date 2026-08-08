@@ -335,7 +335,7 @@ export const FutureProjection = ({
                             </div>
                             <div className="flex justify-between pt-1 border-t border-slate-200 dark:border-slate-700 mt-1">
                                 <span>ROI under this assumption</span>
-                                <span className={clsx("font-semibold tabular-nums", scenario.projectedRoi >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400")}>
+                                <span className={clsx("font-semibold tabular-nums", scenario.projectedRoi >= 0 ? "text-gain" : "text-loss")}>
                                     {scenario.projectedRoi >= 0 ? '+' : ''}{scenario.projectedRoi.toFixed(1)}%
                                 </span>
                             </div>

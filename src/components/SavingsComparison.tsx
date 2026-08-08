@@ -137,7 +137,7 @@ export const SavingsComparison = ({
                         <span className="sm:hidden">{formatCompact(btcCurrentValue)}</span>
                         <span className="hidden sm:inline">{formatCurrency(btcCurrentValue)}</span>
                     </div>
-                    <div className={clsx("text-xs sm:text-sm mt-1 tabular-nums", btcRoi >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400")}>
+                    <div className={clsx("text-xs sm:text-sm mt-1 tabular-nums", btcRoi >= 0 ? "text-gain" : "text-loss")}>
                         {btcRoi >= 0 ? '+' : ''}{btcRoi.toFixed(1)}% ROI
                     </div>
                 </div>
@@ -153,7 +153,7 @@ export const SavingsComparison = ({
                         <span className="sm:hidden">{formatCompact(savingsResult.balance)}</span>
                         <span className="hidden sm:inline">{formatCurrency(savingsResult.balance)}</span>
                     </div>
-                    <div className={clsx("text-xs sm:text-sm mt-1 tabular-nums", savingsResult.roi >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400")}>
+                    <div className={clsx("text-xs sm:text-sm mt-1 tabular-nums", savingsResult.roi >= 0 ? "text-gain" : "text-loss")}>
                         {savingsResult.roi >= 0 ? '+' : ''}{savingsResult.roi.toFixed(1)}% ROI
                     </div>
                 </div>
@@ -161,7 +161,7 @@ export const SavingsComparison = ({
 
             <div className="mt-3 text-center text-xs sm:text-sm text-slate-500 dark:text-slate-400">
                 {btcWins ? (
-                    <span>Bitcoin is ahead by <span className="font-semibold text-emerald-600 dark:text-emerald-400 tabular-nums">{formatCurrency(difference)}</span></span>
+                    <span>Bitcoin is ahead by <span className="font-semibold text-gain tabular-nums">{formatCurrency(difference)}</span></span>
                 ) : (
                     <span>The savings account is ahead by <span className="font-semibold text-blue-600 dark:text-blue-400 tabular-nums">{formatCurrency(difference)}</span></span>
                 )}

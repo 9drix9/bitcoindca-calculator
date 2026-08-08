@@ -20,8 +20,7 @@ import {
 import dynamic from 'next/dynamic';
 import { SkeletonCard, SkeletonChart } from './Skeleton';
 import { AdSlot } from './AdSlot';
-import { Card } from './ui/Card';
-import { useCountUp } from '@/hooks/useCountUp';
+import { Card, chip } from './ui/Card';
 
 // Lazy-load result sub-components — none render until after a calculation
 // ssr:false is load-bearing here. Now that the calculator itself server-renders,
@@ -130,10 +129,16 @@ function ResultTabs({
                             title={t.hint}
                             onClick={() => setActive(t.id)}
                             className={clsx(
-                                'flex-1 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+                                'flex-1 rounded-lg px-3 py-2 text-sm transition-colors',
                                 selected
-                                    ? 'bg-white text-slate-900 shadow-sm dark:bg-slate-700 dark:text-white'
-                                    : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100',
+                                    // The selected thumb was white on a slate-100
+                                    // track — 1.096:1, so under any glare the only
+                                    // marker was a sub-2% shadow, on a control that
+                                    // decides which of three panels is mounted.
+                                    // Carry the state on colour and weight, matching
+                                    // how the nav already marks "you are here".
+                                    ? 'bg-white shadow-[var(--elev-1)] font-semibold text-amber-700 dark:bg-slate-700 dark:text-amber-400'
+                                    : 'font-medium text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100',
                             )}
                         >
                             {t.label}
@@ -551,7 +556,7 @@ export const DcaCalculator = ({ initialPriceData, initialLivePrice }: DcaCalcula
     const showSkeleton = loading || (apiDataMissing && !error);
     const showEmptyError = !loading && apiDataMissing && !!error;
 
-    const profitClass = isProfit ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400';
+    const profitClass = isProfit ? 'text-gain' : 'text-loss';
 
     return (
         <div className="space-y-6 sm:space-y-8">
@@ -598,12 +603,7 @@ export const DcaCalculator = ({ initialPriceData, initialLivePrice }: DcaCalcula
                                             type="button"
                                             onClick={() => applyPreset(preset)}
                                             aria-pressed={isActive}
-                                            className={clsx(
-                                                'px-2.5 sm:px-3 py-1.5 min-h-[32px] text-xs font-medium rounded-full border transition-colors',
-                                                isActive
-                                                    ? 'bg-amber-500 text-slate-950 border-amber-500'
-                                                    : 'bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/40 border-amber-200/60 dark:border-amber-800/40',
-                                            )}
+                                            className={chip(isActive)}
                                         >
                                             {preset.label}
                                         </button>
@@ -679,12 +679,7 @@ export const DcaCalculator = ({ initialPriceData, initialLivePrice }: DcaCalcula
                                     type="button"
                                     onClick={() => setFeePercentage(p.fee)}
                                     aria-pressed={feePercentage === p.fee}
-                                    className={clsx(
-                                        'px-2.5 py-1 min-h-[28px] text-[11px] font-medium rounded-full border transition-colors',
-                                        feePercentage === p.fee
-                                            ? 'bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 border-amber-200/60 dark:border-amber-800/40'
-                                            : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700'
-                                    )}
+                                    className={chip(feePercentage === p.fee)}
                                 >
                                     {p.name} {p.fee}%
                                 </button>
@@ -741,7 +736,7 @@ export const DcaCalculator = ({ initialPriceData, initialLivePrice }: DcaCalcula
                                 dateError ? "border-rose-400 dark:border-rose-600" : "border-slate-200 dark:border-slate-700"
                             )}
                         />
-                        {dateError && <p id="dca-date-error" className="text-xs text-rose-600 dark:text-rose-400">{dateError}</p>}
+                        {dateError && <p id="dca-date-error" className="text-xs text-loss">{dateError}</p>}
                     </div>
 
                     {/* Price Mode + Provider */}
@@ -838,7 +833,7 @@ export const DcaCalculator = ({ initialPriceData, initialLivePrice }: DcaCalcula
                     </div>
                 </div>
                 <div role="status" aria-live="polite">
-                    {shareMessage && <div className="mt-2 text-xs sm:text-sm text-emerald-600 dark:text-emerald-400 fade-in">{shareMessage}</div>}
+                    {shareMessage && <div className="mt-2 text-xs sm:text-sm text-gain fade-in">{shareMessage}</div>}
                 </div>
             </div>
 
@@ -914,15 +909,27 @@ export const DcaCalculator = ({ initialPriceData, initialLivePrice }: DcaCalcula
                         figures subordinate to it — and puts Share next to the result
                         instead of a thousand pixels further down the page. */}
                     {purchaseCount > 0 && (
-                        <Card celebrated className="p-5 sm:p-8 text-center fade-in">
+                        // @container establishes the query context the hero figure's
+                        // cqw sizing resolves against.
+                        <Card celebrated className="@container p-5 sm:p-8 text-center fade-in">
                             <p className="text-xs sm:text-sm font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">
                                 {isFutureEndDate ? 'Projected value at today’s price' : 'Worth today'}
                             </p>
                             {/* The exact figure, never abbreviated — this is the whole
                                 point of the page, and "$19.9K" hides the number the
                                 visitor came for. clamp() scales it to fit instead of
-                                switching to a compact form on small screens. */}
-                            <p className="mt-1.5 text-[clamp(2rem,11vw,3.75rem)] leading-tight font-extrabold tracking-tight text-slate-900 dark:text-white tabular-nums">
+                                switching to a compact form on small screens.
+
+                                Sized in `cqw` (container width), not `vw`: at 11vw the
+                                clamp hit its 3.75rem ceiling at a 545px viewport, so
+                                on every desktop it was a flat 60px that scaled with
+                                the WINDOW while the thing constraining it is the CARD.
+                                leading-[1.05] rather than leading-tight — at 60px,
+                                1.25 leading puts ~30px of empty box around a single
+                                line of digits whose ink is only ~44px tall, so the
+                                figure read as floating. Tracking is -0.022em, the
+                                display end of Inter's curve. */}
+                            <p className="mt-1.5 text-[clamp(2rem,9cqw,4.5rem)] leading-[1.05] tracking-[-0.022em] font-extrabold text-slate-900 dark:text-[var(--text-strong)] tabular-nums">
                                 {formatCurrency(results.currentValue)}
                             </p>
                             <p className="mt-2 text-sm sm:text-base text-slate-600 dark:text-slate-300">
@@ -978,7 +985,10 @@ export const DcaCalculator = ({ initialPriceData, initialLivePrice }: DcaCalcula
                             formatShort={formatCompact}
                             subValue={priceMode === 'api' && livePrice ? `@ ${formatCurrency(livePrice)}` : undefined}
                             subValueClassName="text-amber-700 dark:text-amber-400 font-medium"
-                            celebrated
+                            /* Deliberately NOT `celebrated`. The accent rule means
+                               "this is the answer", and the hero card above already
+                               carries it — for the very same figure. Firing it twice
+                               within 150px halves what it signals. */
                             icon={<Activity className="w-4 h-4 sm:w-5 sm:h-5 text-amber-500 shrink-0" />}
                         />
                         <ResultCard
@@ -988,8 +998,8 @@ export const DcaCalculator = ({ initialPriceData, initialLivePrice }: DcaCalcula
                             formatShort={(n) => `${n >= 0 ? '+' : ''}${formatCompact(n)}`}
                             valueClassName={profitClass}
                             icon={isProfit
-                                ? <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                                : <TrendingDown className="w-4 h-4 sm:w-5 sm:h-5 text-rose-600 dark:text-rose-400 shrink-0" />}
+                                ? <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5 text-gain shrink-0" />
+                                : <TrendingDown className="w-4 h-4 sm:w-5 sm:h-5 text-loss shrink-0" />}
                             subValue={isFutureEndDate ? "if price stays same" : `${results.roi.toFixed(1)}% ROI`}
                             subValueClassName={profitClass}
                         />
@@ -1045,7 +1055,7 @@ export const DcaCalculator = ({ initialPriceData, initialLivePrice }: DcaCalcula
                                     <span className="font-medium text-slate-700 dark:text-slate-200">{formatBtcAmount(results.btcAccumulated)}</span>,{' '}
                                     and it would now be worth{' '}
                                     <span className="font-medium text-slate-700 dark:text-slate-200">{formatCurrency(results.currentValue)}</span>,{' '}
-                                    a <span className={clsx("font-medium", isProfit ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400")}>{results.roi.toFixed(1)}% return</span>.
+                                    a <span className={clsx("font-medium", isProfit ? "text-gain" : "text-loss")}>{results.roi.toFixed(1)}% return</span>.
                                 </>
                             )}
                         </p>
@@ -1081,13 +1091,13 @@ export const DcaCalculator = ({ initialPriceData, initialLivePrice }: DcaCalcula
                                 </div>
                                 <div>
                                     <div className="text-slate-500 dark:text-slate-400 mb-0.5">Real ROI</div>
-                                    <div className={clsx("font-semibold tabular-nums", inflationStats.adjustedRoi >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400")}>
+                                    <div className={clsx("font-semibold tabular-nums", inflationStats.adjustedRoi >= 0 ? "text-gain" : "text-loss")}>
                                         {inflationStats.adjustedRoi.toFixed(1)}%
                                     </div>
                                 </div>
                                 <div>
                                     <div className="text-slate-500 dark:text-slate-400 mb-0.5">Inflation</div>
-                                    <div className="font-semibold text-rose-600 dark:text-rose-400 tabular-nums">
+                                    <div className="font-semibold text-loss tabular-nums">
                                         {inflationStats.cumulativeInflation.toFixed(1)}%
                                     </div>
                                 </div>
@@ -1106,7 +1116,7 @@ export const DcaCalculator = ({ initialPriceData, initialLivePrice }: DcaCalcula
                                         <span className="sm:hidden">{formatCompact(results.currentValue)}</span>
                                         <span className="hidden sm:inline">{formatCurrency(results.currentValue)}</span>
                                     </div>
-                                    <div className={clsx("text-xs sm:text-sm mt-1 truncate tabular-nums", results.profit >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400")}>
+                                    <div className={clsx("text-xs sm:text-sm mt-1 truncate tabular-nums", results.profit >= 0 ? "text-gain" : "text-loss")}>
                                         <span className="sm:hidden">{results.profit >= 0 ? '+' : '-'}{formatCompact(Math.abs(results.profit))} ({results.roi.toFixed(1)}%)</span>
                                         <span className="hidden sm:inline">{results.profit >= 0 ? '+' : '-'}{formatCurrency(Math.abs(results.profit))} ({results.roi.toFixed(1)}%)</span>
                                     </div>
@@ -1117,7 +1127,7 @@ export const DcaCalculator = ({ initialPriceData, initialLivePrice }: DcaCalcula
                                         <span className="sm:hidden">{formatCompact(lumpSumResult.currentValue)}</span>
                                         <span className="hidden sm:inline">{formatCurrency(lumpSumResult.currentValue)}</span>
                                     </div>
-                                    <div className={clsx("text-xs sm:text-sm mt-1 truncate tabular-nums", lumpSumResult.profit >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400")}>
+                                    <div className={clsx("text-xs sm:text-sm mt-1 truncate tabular-nums", lumpSumResult.profit >= 0 ? "text-gain" : "text-loss")}>
                                         <span className="sm:hidden">{lumpSumResult.profit >= 0 ? '+' : '-'}{formatCompact(Math.abs(lumpSumResult.profit))} ({lumpSumResult.roi.toFixed(1)}%)</span>
                                         <span className="hidden sm:inline">{lumpSumResult.profit >= 0 ? '+' : '-'}{formatCurrency(Math.abs(lumpSumResult.profit))} ({lumpSumResult.roi.toFixed(1)}%)</span>
                                     </div>
@@ -1261,7 +1271,14 @@ export const DcaCalculator = ({ initialPriceData, initialLivePrice }: DcaCalcula
 
 interface AnimatedResultCardProps {
     label: string;
-    /** Raw numeric value — animated with useCountUp, then formatted. */
+    /**
+     * Raw numeric value, formatted and shown exactly. Deliberately NOT animated:
+     * a count-up displays figures that are not true for the duration of the
+     * animation, and re-formats through Intl.NumberFormat ~20 times per card
+     * while the fetch response is being parsed on the same thread. The hero
+     * figure never counted up either. The change is signalled with a background
+     * flash instead, which says "this updated" without ever lying.
+     */
     value: number;
     format: (n: number) => string;
     /** Compact formatter used below the sm breakpoint (replaces truncation). */
@@ -1275,25 +1292,28 @@ interface AnimatedResultCardProps {
 }
 
 const ResultCard = ({ label, value, format, formatShort, subValue, celebrated, valueClassName, icon, subValueClassName, action }: AnimatedResultCardProps) => {
-    const animated = useCountUp(value);
     return (
         <Card celebrated={celebrated} className="p-3 sm:p-5">
             <div className="flex justify-between items-start gap-1 mb-1">
-                <div className="text-xs font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400 leading-tight">{label}</div>
+                {/* Level 1: the card's own label. Smallest, uppercase, tracked out. */}
+                <div className="text-2xs font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400 leading-tight">{label}</div>
                 {action && <div className="shrink-0">{action}</div>}
             </div>
             <div className="flex items-center gap-1.5 min-w-0">
-                <div className={clsx("text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100 min-w-0", valueClassName)}>
+                {/* Level 2: the figure. tabular-nums so digits never reflow as it changes. */}
+                <div className={clsx('text-2xl sm:text-3xl font-bold tabular-nums text-slate-900 dark:text-[var(--text-strong)] min-w-0', valueClassName)}>
                     {formatShort ? (
                         <>
-                            <span className="sm:hidden">{formatShort(animated)}</span>
-                            <span className="hidden sm:inline">{format(animated)}</span>
+                            <span className="sm:hidden">{formatShort(value)}</span>
+                            <span className="hidden sm:inline">{format(value)}</span>
                         </>
-                    ) : format(animated)}
+                    ) : format(value)}
                 </div>
                 {icon}
             </div>
-            {subValue && <div className={clsx("text-[11px] sm:text-sm mt-0.5 sm:mt-1", subValueClassName || "text-slate-500 dark:text-slate-400")}>{subValue}</div>}
+            {/* Level 3: subordinate note. Was text-sm at the sm breakpoint, which made
+                it larger than the card's own label — three levels reading as two. */}
+            {subValue && <div className={clsx('text-2xs sm:text-xs mt-0.5 sm:mt-1 tabular-nums', subValueClassName || 'text-slate-500 dark:text-slate-400')}>{subValue}</div>}
         </Card>
     );
 };
@@ -1312,7 +1332,7 @@ const StatsStrip = memo(function StatsStrip({ stats }: { stats: DcaStats }) {
                         "text-sm sm:text-base font-semibold tabular-nums",
                         xirr === null
                             ? "text-slate-500 dark:text-slate-400"
-                            : xirr >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"
+                            : xirr >= 0 ? "text-gain" : "text-loss"
                     )}>
                         {xirr === null ? '—' : `${xirr >= 0 ? '+' : ''}${xirr.toFixed(1)}%`}
                     </div>
@@ -1370,7 +1390,7 @@ const ProfitableWindows = memo(function ProfitableWindows({ frequency, startDate
     return (
         <p className="text-center text-xs sm:text-sm text-slate-500 dark:text-slate-400 fade-in">
             Historically,{' '}
-            <span className="font-semibold text-emerald-600 dark:text-emerald-400 tabular-nums">
+            <span className="font-semibold text-gain tabular-nums">
                 {data.profitablePercent.toFixed(0)}%
             </span>{' '}
             of all {months}-month {frequency} DCA windows since 2010 ended in profit
@@ -1421,7 +1441,7 @@ const PricePredictionScenario = memo(function PricePredictionScenario({ btcAmoun
     return (
         <div className="bg-gradient-to-br from-slate-50 to-white dark:from-slate-900 dark:to-slate-800 text-slate-900 dark:text-white p-4 sm:p-6 rounded-2xl shadow-sm dark:shadow-lg border border-slate-200 dark:border-slate-700">
             <h3 className="text-base sm:text-xl font-bold mb-3 sm:mb-4 flex items-center gap-2">
-                <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5 text-gain shrink-0" />
                 Price Prediction
             </h3>
 
@@ -1463,14 +1483,14 @@ const PricePredictionScenario = memo(function PricePredictionScenario({ btcAmoun
                 <div className="space-y-3 bg-slate-50 dark:bg-slate-800/50 p-4 sm:p-5 rounded-xl border border-slate-200 dark:border-slate-700/50">
                     <div className="flex justify-between items-end border-b border-slate-200 dark:border-slate-700 pb-3">
                         <span className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">Portfolio Value</span>
-                        <span className="text-xl sm:text-3xl font-bold text-emerald-600 dark:text-emerald-400 ml-2">
+                        <span className="text-xl sm:text-3xl font-bold text-gain ml-2">
                             <span className="sm:hidden">{formatCompact(projectedValue)}</span>
                             <span className="hidden sm:inline">{formatCurrency(projectedValue)}</span>
                         </span>
                     </div>
                     <div className="flex justify-between items-center">
                         <span className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">Profit</span>
-                        <span className={clsx("text-sm sm:text-lg font-semibold ml-2 tabular-nums", projectedProfit >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400")}>
+                        <span className={clsx("text-sm sm:text-lg font-semibold ml-2 tabular-nums", projectedProfit >= 0 ? "text-gain" : "text-loss")}>
                             <span className="sm:hidden">{projectedProfit >= 0 ? '+' : ''}{formatCompact(projectedProfit)}</span>
                             <span className="hidden sm:inline">{projectedProfit >= 0 ? '+' : ''}{formatCurrency(projectedProfit)}</span>
                         </span>

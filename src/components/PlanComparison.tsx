@@ -317,8 +317,8 @@ function SummaryCard({
                         value={`${result.roi >= 0 ? '+' : ''}${result.roi.toFixed(1)}%`}
                         valueClassName={
                             result.roi >= 0
-                                ? 'text-emerald-600 dark:text-emerald-400'
-                                : 'text-rose-600 dark:text-rose-400'
+                                ? 'text-gain'
+                                : 'text-loss'
                         }
                     />
                     <SummaryStat label="BTC" value={formatBtc(result.btcAccumulated)} />

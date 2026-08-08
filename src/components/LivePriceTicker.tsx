@@ -83,8 +83,8 @@ export const LivePriceTicker = ({ initialData = null }: LivePriceTickerProps) =>
     const formattedChange = `${isPositive ? '+' : ''}${formatCurrency(changeUsd)}`;
 
     const changeColor = isPositive
-        ? 'text-emerald-600 dark:text-emerald-400'
-        : 'text-rose-600 dark:text-rose-400';
+        ? 'text-gain'
+        : 'text-loss';
 
     return (
         // flex-wrap + max-w-full: a long value (JPY runs to "¥9,588,000" plus a

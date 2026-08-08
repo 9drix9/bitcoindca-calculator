@@ -70,13 +70,13 @@ export const ExchangeFeeComparison = ({ totalInvested, purchaseCount }: Exchange
                                     </td>
                                     <td className={clsx(
                                         "px-3 sm:px-4 py-2 text-right whitespace-nowrap tabular-nums",
-                                        isZeroFee ? "text-emerald-600 dark:text-emerald-400 font-medium" : isHighest ? "text-rose-600 dark:text-rose-400 font-medium" : "text-slate-600 dark:text-slate-400"
+                                        isZeroFee ? "text-gain font-medium" : isHighest ? "text-loss font-medium" : "text-slate-600 dark:text-slate-400"
                                     )}>
                                         {exchange.feeRate}%
                                     </td>
                                     <td className={clsx(
                                         "px-3 sm:px-4 py-2 text-right whitespace-nowrap tabular-nums",
-                                        isZeroFee ? "text-emerald-600 dark:text-emerald-400" : isHighest ? "text-rose-600 dark:text-rose-400" : "text-slate-600 dark:text-slate-400"
+                                        isZeroFee ? "text-gain" : isHighest ? "text-loss" : "text-slate-600 dark:text-slate-400"
                                     )}>
                                         {formatCurrency(totalFees)}
                                     </td>
