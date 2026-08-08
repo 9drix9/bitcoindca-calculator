@@ -110,7 +110,7 @@ export const LiveBlocksWidget = ({ initialData }: LiveBlocksWidgetProps) => {
                             }`}
                         >
                             <div className="flex flex-col">
-                                <span className="text-xs sm:text-sm font-semibold text-amber-600 dark:text-amber-400 tabular-nums">
+                                <span className="text-xs sm:text-sm font-semibold text-amber-700 dark:text-amber-400 tabular-nums">
                                     {block.height.toLocaleString()}
                                 </span>
                                 {/* Relative time drifts between SSR and hydration — mismatch is expected */}

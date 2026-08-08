@@ -1,4 +1,5 @@
 import { CalculatorSearchParams, Frequency, PriceMode } from '@/types';
+import { EARLIEST_PRICE_DATE } from '@/utils/dates';
 
 const VALID_FREQUENCIES: Frequency[] = ['daily', 'weekly', 'biweekly', 'monthly'];
 const VALID_MODES: PriceMode[] = ['api', 'manual'];
@@ -69,7 +70,12 @@ export function decodeParams(searchParams: CalculatorSearchParams): {
         result.frequency = searchParams.frequency as Frequency;
     }
     if (searchParams.startDate && isValidDateString(searchParams.startDate)) {
-        result.startDate = searchParams.startDate;
+        // Clamp rather than reject: a shared link with an out-of-range start still
+        // renders a real (if shifted) result instead of silently fabricating prices.
+        // ISO dates compare correctly as strings.
+        result.startDate = searchParams.startDate < EARLIEST_PRICE_DATE
+            ? EARLIEST_PRICE_DATE
+            : searchParams.startDate;
     }
     if (searchParams.endDate && isValidDateString(searchParams.endDate)) {
         result.endDate = searchParams.endDate;

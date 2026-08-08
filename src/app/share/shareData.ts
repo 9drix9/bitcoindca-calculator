@@ -3,22 +3,16 @@ import { decodeParams, encodeParams, UrlCurrency } from '@/utils/urlParams';
 import { calculateDca } from '@/utils/dca';
 import { parseUtcDate, formatUtc, DAY_MS } from '@/utils/dates';
 import { getBitcoinPriceHistory, getCurrentBitcoinPrice } from '@/app/actions';
+import { resolveServerCurrency, type ServerCurrencyConfig } from '@/utils/serverCurrency';
 
 // Server-side share-card computation, used by both /share (metadata) and
 // /api/og (image). Mirrors DcaCalculator semantics: `amount` is entered in the
 // sharer's display currency (divided by the rate before USD math), while
 // `manualPrice` and all engine math stay in USD.
 
-// Hardcoded fallback rates copied from CurrencyContext — good enough for a
-// share card; the client context (with live ECB rates) cannot run here.
-const SHARE_CURRENCIES: Record<UrlCurrency, { symbol: string; rate: number }> = {
-    USD: { symbol: '$', rate: 1 },
-    EUR: { symbol: '€', rate: 0.92 },
-    GBP: { symbol: '£', rate: 0.79 },
-    CAD: { symbol: 'C$', rate: 1.36 },
-    AUD: { symbol: 'A$', rate: 1.53 },
-    JPY: { symbol: '¥', rate: 149.5 },
-};
+// Currency config now comes from utils/serverCurrency, which prefers live ECB
+// rates and keeps constants only as an outage fallback. The table that used to
+// live here had drifted ~18 months and skewed every non-USD share card.
 
 const FREQUENCY_TITLE_SUFFIX: Record<Frequency, string> = {
     daily: '/day',
@@ -117,8 +111,7 @@ export function encodeShareQuery(p: ResolvedShareParams): string {
 }
 
 /** Format a USD value in the share currency (converted via the hardcoded rate). */
-function formatShareCurrency(usd: number, currency: UrlCurrency): string {
-    const cfg = SHARE_CURRENCIES[currency];
+function formatShareCurrency(usd: number, currency: UrlCurrency, cfg: ServerCurrencyConfig): string {
     const converted = usd * cfg.rate;
     const sign = converted < 0 ? '-' : '';
     const abs = Math.abs(converted);
@@ -128,8 +121,7 @@ function formatShareCurrency(usd: number, currency: UrlCurrency): string {
 }
 
 /** Format an amount already denominated in the share currency (no conversion). */
-function formatDisplayAmount(amount: number, currency: UrlCurrency): string {
-    const cfg = SHARE_CURRENCIES[currency];
+function formatDisplayAmount(amount: number, cfg: ServerCurrencyConfig): string {
     return `${cfg.symbol}${amount.toLocaleString('en-US', { maximumFractionDigits: 2 })}`;
 }
 
@@ -164,7 +156,7 @@ export async function computeShareCard(p: ResolvedShareParams): Promise<ShareCar
             currentPrice = price && price > 0 ? price : null;
         }
 
-        const cfg = SHARE_CURRENCIES[p.currency];
+        const cfg = await resolveServerCurrency(p.currency);
         const amountUsd = p.amount / cfg.rate;
 
         const result = calculateDca(
@@ -190,9 +182,9 @@ export async function computeShareCard(p: ResolvedShareParams): Promise<ShareCar
             return null;
         }
 
-        const currentValueText = formatShareCurrency(result.currentValue, p.currency);
-        const investedText = formatShareCurrency(result.totalInvested, p.currency);
-        const amountText = formatDisplayAmount(p.amount, p.currency);
+        const currentValueText = formatShareCurrency(result.currentValue, p.currency, cfg);
+        const investedText = formatShareCurrency(result.totalInvested, p.currency, cfg);
+        const amountText = formatDisplayAmount(p.amount, cfg);
         const btcText = formatBtcAmount(result.btcAccumulated);
         const since = formatUtc(startTs, 'monthYear');
         const until = formatUtc(endTs, 'monthYear');
@@ -202,7 +194,7 @@ export async function computeShareCard(p: ResolvedShareParams): Promise<ShareCar
         const roiWhole = `${roiSign}${Math.round(result.roi)}%`;
         const roiFull = `${roiSign}${result.roi.toFixed(1)}%`;
 
-        const profitAbs = formatShareCurrency(Math.abs(result.profit), p.currency);
+        const profitAbs = formatShareCurrency(Math.abs(result.profit), p.currency, cfg);
         const profitText = `${isProfit ? '+' : '-'}${profitAbs} (${roiFull})`;
 
         return {

@@ -84,7 +84,7 @@ export const HalvingCountdownWidget = ({ initialHeight }: HalvingCountdownWidget
                     <StatRow
                         label="Blocks Remaining"
                         value={stats.blocksRemaining.toLocaleString()}
-                        valueClassName="text-amber-600 dark:text-amber-400"
+                        valueClassName="text-amber-700 dark:text-amber-400"
                     />
                     <StatRow
                         label="Est. Date"

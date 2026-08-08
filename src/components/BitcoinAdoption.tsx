@@ -3,6 +3,7 @@
 import { useSyncExternalStore } from 'react';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { Card } from '@/components/ui/Card';
+import { useIsDark } from '@/hooks/useIsDark';
 
 const INTERNET_ADOPTION = [
     { year: 1990, internet: 0.05, bitcoin: null as number | null },
@@ -41,16 +42,9 @@ const emptySubscribe = () => () => {};
 const getTrue = () => true;
 const getFalse = () => false;
 
-const subscribeToThemeChanges = (callback: () => void) => {
-    const observer = new MutationObserver(callback);
-    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
-    return () => observer.disconnect();
-};
-const getIsDark = () => document.documentElement.classList.contains('dark');
-
 export const BitcoinAdoption = () => {
     const mounted = useSyncExternalStore(emptySubscribe, getTrue, getFalse);
-    const isDark = useSyncExternalStore(subscribeToThemeChanges, getIsDark, getFalse);
+    const isDark = useIsDark();
 
     const internetColor = isDark ? INTERNET_COLOR.dark : INTERNET_COLOR.light;
 

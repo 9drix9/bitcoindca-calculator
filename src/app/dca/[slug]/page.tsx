@@ -294,9 +294,9 @@ export default async function DcaScenarioPage({ params }: PageProps) {
                 {/* Breadcrumb */}
                 <nav aria-label="Breadcrumb" className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
                     <ol className="flex flex-wrap items-center gap-1.5">
-                        <li><Link href="/" className="hover:text-amber-600 dark:hover:text-amber-400 transition-colors">Home</Link></li>
+                        <li><Link href="/" className="hover:text-amber-700 dark:hover:text-amber-400 transition-colors">Home</Link></li>
                         <li aria-hidden="true">/</li>
-                        <li><Link href="/dca" className="hover:text-amber-600 dark:hover:text-amber-400 transition-colors">DCA Scenarios</Link></li>
+                        <li><Link href="/dca" className="hover:text-amber-700 dark:hover:text-amber-400 transition-colors">DCA Scenarios</Link></li>
                         <li aria-hidden="true">/</li>
                         <li aria-current="page" className="text-slate-700 dark:text-slate-300">{scenario.shortLabel}</li>
                     </ol>
@@ -426,7 +426,7 @@ export default async function DcaScenarioPage({ params }: PageProps) {
                             purchases are simulated on UTC calendar days against Kraken weekly candles interpolated to daily
                             prices, with real daily market data covering 2010&ndash;2015. Amounts are in USD. No exchange fees
                             are applied. The full{' '}
-                            <Link href="/methodology" className="text-amber-600 dark:text-amber-400 hover:underline">methodology</Link>{' '}
+                            <Link href="/methodology" className="text-amber-700 dark:text-amber-400 hover:underline">methodology</Link>{' '}
                             covers the rest.
                         </p>
                     </>
@@ -458,7 +458,7 @@ export default async function DcaScenarioPage({ params }: PageProps) {
                     </p>
                     <Link
                         href={ctaHref}
-                        className="inline-flex items-center gap-2 bg-amber-500 hover:bg-amber-600 text-white font-semibold px-6 py-3 rounded-xl transition-colors text-sm sm:text-base"
+                        className="inline-flex items-center gap-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-semibold px-6 py-3 rounded-xl transition-colors text-sm sm:text-base"
                     >
                         Open the calculator
                         <ArrowRight className="w-4 h-4" />
@@ -475,14 +475,14 @@ export default async function DcaScenarioPage({ params }: PageProps) {
                             <Link
                                 key={s.slug}
                                 href={`/dca/${s.slug}`}
-                                className="rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-2.5 text-sm font-medium text-slate-700 dark:text-slate-300 hover:border-amber-500/50 hover:text-amber-600 dark:hover:text-amber-400 transition-colors tabular-nums"
+                                className="rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-2.5 text-sm font-medium text-slate-700 dark:text-slate-300 hover:border-amber-500/50 hover:text-amber-700 dark:hover:text-amber-400 transition-colors tabular-nums"
                             >
                                 {s.shortLabel}
                             </Link>
                         ))}
                     </div>
                     <p className="text-sm">
-                        <Link href="/dca" className="inline-flex items-center gap-1.5 text-amber-600 dark:text-amber-400 hover:underline font-medium">
+                        <Link href="/dca" className="inline-flex items-center gap-1.5 text-amber-700 dark:text-amber-400 hover:underline font-medium">
                             Browse all DCA scenarios
                             <ArrowRight className="w-3.5 h-3.5" />
                         </Link>

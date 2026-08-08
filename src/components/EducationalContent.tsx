@@ -34,7 +34,7 @@ export const EducationalContent = () => {
                 </div>
                 <p className="text-sm sm:text-lg text-slate-600 dark:text-slate-300 leading-relaxed">
                     Dollar cost averaging means buying a fixed amount on a schedule, whatever the price that day. It suits volatile assets like Bitcoin because it takes the timing decision, and most of the second-guessing, off your plate. New to the asset itself? Start with{' '}
-                    <Link href="/why-bitcoin" className="text-amber-600 dark:text-amber-400 hover:underline font-medium">where Bitcoin&apos;s value comes from</Link>.
+                    <Link href="/why-bitcoin" className="text-amber-700 dark:text-amber-400 hover:underline font-medium">where Bitcoin&apos;s value comes from</Link>.
                 </p>
                 <div className="grid sm:grid-cols-2 gap-3 sm:gap-6 mt-4 sm:mt-8">
                     <div className="bg-white dark:bg-slate-800 p-4 sm:p-6 rounded-xl border border-slate-200 dark:border-slate-700">
@@ -73,8 +73,8 @@ export const EducationalContent = () => {
                         Bitcoin moves in cycles, loosely tied to the four-year &quot;halving&quot;. The long-term trend has been up, but getting there meant drawdowns of 50%, 70%, even 80%.
                     </p>
                     <p>
-                        This calculator runs on <strong className="text-slate-800 dark:text-slate-200">real historical data</strong> from Kraken and Coinbase, so you can see how a DCA plan would have held up through those stretches. Price history reaches back to 2010, though pre-2015 values are interpolated estimates rather than real exchange candles. Our{' '}
-                        <Link href="/methodology" className="text-amber-600 dark:text-amber-400 hover:underline font-medium">Methodology</Link>{' '}
+                        This calculator runs on <strong className="text-slate-800 dark:text-slate-200">real historical data</strong> from Kraken and Coinbase, so you can see how a DCA plan would have held up through those stretches. Price history reaches back to 18 August 2010, and the pre-2015 era now uses real daily market prices from blockchain.info rather than the synthetic estimates it used to. The one caveat worth knowing: Coinbase mode reads real daily candles, while Kraken mode interpolates weekly closes into daily ones. Our{' '}
+                        <Link href="/methodology" className="text-amber-700 dark:text-amber-400 hover:underline font-medium">Methodology</Link>{' '}
                         page covers how the data is built. Start at the 2017 peak or the 2020 crash and the results still tend to surprise people who assume they missed the boat.
                     </p>
                 </div>
@@ -91,7 +91,7 @@ export const EducationalContent = () => {
                         <strong>Set amount &amp; frequency:</strong> How much per buy (say $50) and how often (daily, weekly, bi-weekly, monthly).
                     </li>
                     <li>
-                        <strong>Select dates:</strong> Pick a start date in the past. Price history goes back to 2010, though pre-2015 values are interpolated estimates.
+                        <strong>Select dates:</strong> Pick a start date in the past. Price history goes back to 18 August 2010, the first day with a real market price.
                     </li>
                     <li>
                         <strong>Adjust parameters:</strong> Add an estimated exchange fee (standard is 0.5% - 1.5%) to see net results.
@@ -101,7 +101,7 @@ export const EducationalContent = () => {
                     </li>
                     <li>
                         <strong>Withdraw &amp; secure:</strong> Stacking is half the job. Once the balance matters to you, move it to your own keys. Our{' '}
-                        <Link href="/self-custody" className="text-amber-600 dark:text-amber-400 hover:underline font-medium">self-custody guide</Link>{' '}
+                        <Link href="/self-custody" className="text-amber-700 dark:text-amber-400 hover:underline font-medium">self-custody guide</Link>{' '}
                         covers how.
                     </li>
                 </ol>

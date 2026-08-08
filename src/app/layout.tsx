@@ -10,6 +10,7 @@ import { BtcDonationButton } from '@/components/BtcDonationButton';
 import { Providers } from '@/components/Providers';
 import { ResponsiveNav } from '@/components/nav/ResponsiveNav';
 import { PwaInstallPrompt } from '@/components/PwaInstallPrompt';
+import { Logo } from '@/components/brand/Logo';
 import clsx from 'clsx';
 
 const inter = Inter({ subsets: ['latin'], display: 'swap' });
@@ -51,6 +52,12 @@ export const viewport = {
   width: 'device-width',
   initialScale: 1,
   viewportFit: 'cover' as const,
+  // `interactive-widget=resizes-content` makes the on-screen keyboard shrink the
+  // LAYOUT viewport, not just the visual one. Chrome Android's default
+  // (resizes-visual) leaves `position:fixed; bottom:0` pinned to the pre-keyboard
+  // bottom, so the tab bar appeared to float halfway up the screen with a gap
+  // beneath it whenever a number or date field was focused.
+  interactiveWidget: 'resizes-content' as const,
   themeColor: [
     { media: '(prefers-color-scheme: dark)', color: '#020617' },
     { media: '(prefers-color-scheme: light)', color: '#f8fafc' },
@@ -68,13 +75,22 @@ const themeScript = `
 })();
 `;
 
+// Skips /embed: that route runs inside third-party pages, and /embed-guide
+// promises publishers it "collects nothing from your readers" — quietly
+// installing a service worker on their visitors would contradict that.
 const swRegisterScript = `
-if('serviceWorker' in navigator){
+var p = location.pathname;
+if('serviceWorker' in navigator && p !== '/embed' && p.indexOf('/embed/') !== 0){
   window.addEventListener('load',function(){
     navigator.serviceWorker.register('/sw.js');
   });
 }
 `;
+
+// amber-700 rather than amber-600: amber-600 on white measures 3.1:1, under the
+// 4.5:1 AA floor for body text.
+const footerLink =
+  'text-sm text-slate-500 dark:text-slate-400 hover:text-amber-700 dark:hover:text-amber-400 transition-colors';
 
 export default function RootLayout({
   children,
@@ -98,7 +114,9 @@ export default function RootLayout({
         `}} />
         <script dangerouslySetInnerHTML={{ __html: swRegisterScript }} />
         <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
-        <link rel="icon" href="/favicon.ico" sizes="32x32" />
+        {/* No manual favicon <link>: src/app/favicon.ico is an App Router metadata
+            file, so Next emits the tag itself. Declaring it here as sizes="32x32"
+            also mislabelled what is really a 16/32/48 multi-frame ICO. */}
         {/* No preconnect hints: all market-data fetches happen server-side via actions,
             so the browser never contacts those origins directly. */}
         <script
@@ -106,28 +124,60 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{
             __html: JSON.stringify({
               "@context": "https://schema.org",
-              "@type": "WebSite",
-              "name": "Bitcoin DCA Calculator",
-              "url": "https://btcdollarcostaverage.com",
-              "description": "Free Bitcoin DCA calculator with real historical price data. Compare BTC vs S&P 500, Gold, and savings.",
-              "publisher": {
-                "@type": "Organization",
-                "name": "Bitcoin DCA Calculator",
-                "url": "https://btcdollarcostaverage.com",
-                "logo": {
-                  "@type": "ImageObject",
-                  "url": "https://btcdollarcostaverage.com/icon-512.png"
+              "@graph": [
+                {
+                  "@type": "WebSite",
+                  "@id": "https://btcdollarcostaverage.com/#website",
+                  "name": "Bitcoin DCA Calculator",
+                  "url": "https://btcdollarcostaverage.com",
+                  "description": "Free Bitcoin DCA calculator with real historical price data. Compare BTC vs S&P 500, Gold, and savings.",
+                  "inLanguage": "en-US",
+                  "publisher": { "@id": "https://btcdollarcostaverage.com/#organization" }
                 },
-                "sameAs": ["https://x.com/9drix9"]
-              }
+                {
+                  // Named founder + contact point: on YMYL financial content an
+                  // anonymous publisher is a documented quality-rater negative.
+                  "@type": "Organization",
+                  "@id": "https://btcdollarcostaverage.com/#organization",
+                  "name": "Bitcoin DCA Calculator",
+                  "url": "https://btcdollarcostaverage.com",
+                  "logo": {
+                    "@type": "ImageObject",
+                    "url": "https://btcdollarcostaverage.com/icon-512.png",
+                    "width": 512,
+                    "height": 512
+                  },
+                  "founder": { "@id": "https://btcdollarcostaverage.com/author#person" },
+                  "sameAs": [
+                    "https://x.com/9drix9",
+                    "https://github.com/9drix9/bitcoindca-calculator"
+                  ],
+                  "contactPoint": {
+                    "@type": "ContactPoint",
+                    "contactType": "customer support",
+                    "url": "https://btcdollarcostaverage.com/contact",
+                    "availableLanguage": ["en"]
+                  }
+                },
+                {
+                  "@type": "Person",
+                  "@id": "https://btcdollarcostaverage.com/author#person",
+                  "name": "Ricky Thach",
+                  "url": "https://btcdollarcostaverage.com/author",
+                  "sameAs": [
+                    "https://x.com/9drix9",
+                    "https://github.com/9drix9"
+                  ]
+                }
+              ]
             })
           }}
         />
       </head>
       <body className={clsx(inter.className, "bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-50 antialiased")}>
         <Providers>
-        <div className="min-h-screen flex flex-col">
-          <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-[100] focus:px-4 focus:py-2 focus:bg-amber-500 focus:text-white focus:rounded-lg focus:text-sm focus:font-semibold">
+        <div className="app-shell min-h-screen flex flex-col">
+          <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-[100] focus:px-4 focus:py-2 focus:bg-amber-500 focus:text-slate-950 focus:rounded-lg focus:text-sm focus:font-semibold">
             Skip to main content
           </a>
           {/* Navigation */}
@@ -142,59 +192,78 @@ export default function RootLayout({
               for the safe-area inset that a flat pb-20 cannot. */}
           <footer id="site-footer" className="bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 mt-12">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10">
-              <nav aria-label="Footer navigation" className="grid grid-cols-2 md:grid-cols-4 gap-6 sm:gap-8 mb-8">
+              {/* 5 columns now (brand + Tools + Learn + Site + Support), so the
+                  breakpoint moves to lg — at md they were 5-across and cramped. */}
+              <nav aria-label="Footer navigation" className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6 sm:gap-8 mb-8">
                 {/* Brand */}
-                <div className="col-span-2 md:col-span-1 space-y-2">
+                <div className="col-span-2 md:col-span-3 lg:col-span-1 space-y-2">
                   <div className="flex items-center gap-2">
-                    <div className="w-6 h-6 bg-amber-500 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0" aria-hidden="true">₿</div>
+                    <Logo className="w-6 h-6 shrink-0 text-amber-700 dark:text-amber-400" />
                     <span className="font-semibold text-slate-800 dark:text-white text-sm">Bitcoin DCA Calculator</span>
                   </div>
+                  {/* Internal link to the author entity from every page — that is
+                      what associates a named person with the site for E-E-A-T. */}
                   <p className="text-sm text-slate-500 dark:text-slate-400">
                     Built by{' '}
-                    <a href="https://x.com/9drix9" target="_blank" rel="noopener noreferrer" className="text-amber-600 dark:text-amber-400 hover:underline">
-                      @9drix9
+                    <Link href="/author" className="text-amber-700 dark:text-amber-400 hover:underline">
+                      Ricky Thach
+                    </Link>{' '}
+                    <a href="https://x.com/9drix9" target="_blank" rel="noopener noreferrer" className="text-slate-500 dark:text-slate-400 hover:underline">
+                      (@9drix9)
                     </a>
                   </p>
+                </div>
+
+                {/* Tools — the entry point into the calculator and scenario clusters,
+                    which previously had no link path from anywhere on the site. */}
+                <div className="space-y-2">
+                  <h4 className="text-xs font-semibold text-slate-800 dark:text-white uppercase tracking-wider">Tools</h4>
+                  <div className="flex flex-col gap-1.5">
+                    {[
+                      { href: '/calculators', label: 'All Calculators' },
+                      { href: '/dca', label: 'DCA Scenarios' },
+                      { href: '/lump-sum-vs-dca', label: 'Lump Sum vs DCA' },
+                      { href: '/best-day-to-buy-bitcoin', label: 'Best Day to Buy' },
+                      { href: '/dca/start-date-heatmap', label: 'Start-Date Heatmap' },
+                      { href: '/embed-guide', label: 'Embed the Widget' },
+                    ].map(({ href, label }) => (
+                      <Link key={href} href={href} className={footerLink}>{label}</Link>
+                    ))}
+                  </div>
                 </div>
 
                 {/* Learn */}
                 <div className="space-y-2">
                   <h4 className="text-xs font-semibold text-slate-800 dark:text-white uppercase tracking-wider">Learn</h4>
                   <div className="flex flex-col gap-1.5">
-                    <Link href="/features" className="text-sm text-slate-500 dark:text-slate-400 hover:text-amber-600 dark:hover:text-amber-400 transition-colors">
-                      Features Guide
-                    </Link>
-                    <Link href="/why-bitcoin" className="text-sm text-slate-500 dark:text-slate-400 hover:text-amber-600 dark:hover:text-amber-400 transition-colors">
-                      Why Bitcoin
-                    </Link>
-                    <Link href="/self-custody" className="text-sm text-slate-500 dark:text-slate-400 hover:text-amber-600 dark:hover:text-amber-400 transition-colors">
-                      Self-Custody
-                    </Link>
-                    <Link href="/mining" className="text-sm text-slate-500 dark:text-slate-400 hover:text-amber-600 dark:hover:text-amber-400 transition-colors">
-                      Mining Guide
-                    </Link>
-                    <Link href="/methodology" className="text-sm text-slate-500 dark:text-slate-400 hover:text-amber-600 dark:hover:text-amber-400 transition-colors">
-                      Methodology &amp; Data
-                    </Link>
-                    <Link href="/about" className="text-sm text-slate-500 dark:text-slate-400 hover:text-amber-600 dark:hover:text-amber-400 transition-colors">
-                      About
-                    </Link>
+                    {[
+                      { href: '/why-bitcoin', label: 'Why Bitcoin' },
+                      { href: '/self-custody', label: 'Self-Custody' },
+                      { href: '/mining', label: 'Mining Guide' },
+                      { href: '/bitcoin-dca-tax', label: 'DCA & Taxes' },
+                      { href: '/features', label: 'Features Guide' },
+                      { href: '/methodology', label: 'Methodology & Data' },
+                    ].map(({ href, label }) => (
+                      <Link key={href} href={href} className={footerLink}>{label}</Link>
+                    ))}
                   </div>
                 </div>
 
-                {/* Links */}
+                {/* Site — authorship and contact are the E-E-A-T signals Google
+                    looks for on financial content, so they get top billing here. */}
                 <div className="space-y-2">
-                  <h4 className="text-xs font-semibold text-slate-800 dark:text-white uppercase tracking-wider">Legal</h4>
+                  <h4 className="text-xs font-semibold text-slate-800 dark:text-white uppercase tracking-wider">Site</h4>
                   <div className="flex flex-col gap-1.5">
-                    <Link href="/privacy" className="text-sm text-slate-500 dark:text-slate-400 hover:text-amber-600 dark:hover:text-amber-400 transition-colors">
-                      Privacy Policy
-                    </Link>
-                    <Link href="/terms" className="text-sm text-slate-500 dark:text-slate-400 hover:text-amber-600 dark:hover:text-amber-400 transition-colors">
-                      Terms of Service
-                    </Link>
-                    <Link href="/about#affiliate-disclosure" className="text-sm text-slate-500 dark:text-slate-400 hover:text-amber-600 dark:hover:text-amber-400 transition-colors">
-                      Ads &amp; Disclosure
-                    </Link>
+                    {[
+                      { href: '/about', label: 'About' },
+                      { href: '/author', label: 'Who Built This' },
+                      { href: '/contact', label: 'Contact' },
+                      { href: '/privacy', label: 'Privacy Policy' },
+                      { href: '/terms', label: 'Terms of Service' },
+                      { href: '/about#affiliate-disclosure', label: 'Ads & Disclosure' },
+                    ].map(({ href, label }) => (
+                      <Link key={href} href={href} className={footerLink}>{label}</Link>
+                    ))}
                   </div>
                 </div>
 

@@ -171,7 +171,7 @@ export const FireCalculator = ({
                                 "text-xs font-bold mb-1",
                                 result.label === 'Conservative' && "text-blue-600 dark:text-blue-400",
                                 result.label === 'Moderate' && "text-emerald-600 dark:text-emerald-400",
-                                result.label === 'Aggressive' && "text-amber-600 dark:text-amber-400",
+                                result.label === 'Aggressive' && "text-amber-700 dark:text-amber-400",
                             )}>
                                 {(result.rate * 100).toFixed(0)}% per year
                             </div>

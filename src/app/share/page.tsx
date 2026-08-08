@@ -84,7 +84,7 @@ export default async function SharePage({ searchParams }: SharePageProps) {
                 </p>
                 <Link
                     href={target}
-                    className="mt-6 inline-block rounded-lg bg-amber-500 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-amber-600"
+                    className="mt-6 inline-block rounded-lg bg-amber-500 px-4 py-2 text-sm font-semibold text-slate-950 transition-colors hover:bg-amber-600"
                 >
                     Open the calculator
                 </Link>

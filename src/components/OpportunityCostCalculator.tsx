@@ -87,7 +87,7 @@ export const OpportunityCostCalculator = ({ priceData, livePrice }: OpportunityC
                         aria-pressed={selected === h.label}
                         className={`px-3 py-1.5 text-xs sm:text-sm font-medium rounded-full border transition-colors ${
                             selected === h.label
-                                ? 'bg-amber-500 text-white border-amber-500'
+                                ? 'bg-amber-500 text-slate-950 border-amber-500'
                                 : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-amber-400'
                         }`}
                     >
@@ -99,7 +99,7 @@ export const OpportunityCostCalculator = ({ priceData, livePrice }: OpportunityC
                     aria-pressed={selected === 'Custom'}
                     className={`px-3 py-1.5 text-xs sm:text-sm font-medium rounded-full border transition-colors ${
                         selected === 'Custom'
-                            ? 'bg-amber-500 text-white border-amber-500'
+                            ? 'bg-amber-500 text-slate-950 border-amber-500'
                             : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-amber-400'
                     }`}
                 >
@@ -147,7 +147,7 @@ export const OpportunityCostCalculator = ({ priceData, livePrice }: OpportunityC
                         </div>
                         <div className="bg-white/60 dark:bg-slate-800/60 rounded-xl p-3 text-center">
                             <div className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 mb-0.5">Multiplier</div>
-                            <div className="text-sm sm:text-lg font-bold text-amber-600 dark:text-amber-400 tabular-nums">
+                            <div className="text-sm sm:text-lg font-bold text-amber-700 dark:text-amber-400 tabular-nums">
                                 {results.multiplier.toFixed(1)}x
                             </div>
                         </div>

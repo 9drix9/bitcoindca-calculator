@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useId } from 'react';
 import { Frequency } from '@/types';
-import { DAY_MS, parseUtcDate, addUtcMonths } from '@/utils/dates';
+import { DAY_MS, parseUtcDate, addUtcMonths, utcDayStart, formatUtc } from '@/utils/dates';
 import { useCurrency } from '@/context/CurrencyContext';
 import { Card } from '@/components/ui/Card';
 import clsx from 'clsx';
@@ -16,6 +16,17 @@ interface SavingsComparisonProps {
     frequency: Frequency;
     startDate: string;
     endDate: string;
+    /**
+     * The date both legs are marked to, as 'yyyy-MM-dd' UTC.
+     *
+     * The bitcoin figure this compares against is `DcaResult.currentValue`, which the
+     * engine computes as `totalBtc * livePrice` — the whole stack marked to TODAY's
+     * market, not to the backtest's end date. Stopping the savings balance at the end
+     * date measured the two legs at different instants: a 2015–2018 backtest showed
+     * bitcoin's 2026 value against a savings balance frozen in 2018, handing bitcoin
+     * eight free years of compounding. Defaults to today, which matches the engine.
+     */
+    valuationDate?: string;
 }
 
 export const SavingsComparison = ({
@@ -26,6 +37,7 @@ export const SavingsComparison = ({
     frequency,
     startDate,
     endDate,
+    valuationDate,
 }: SavingsComparisonProps) => {
     const { formatCurrency, formatCompact } = useCurrency();
     // APY is a rate, not a money amount — no currency conversion needed.
@@ -39,6 +51,9 @@ export const SavingsComparison = ({
         const endTs = parseUtcDate(endDate);
         if (!Number.isFinite(startTs) || !Number.isFinite(endTs) || endTs < startTs) return null;
 
+        const requested = valuationDate ? parseUtcDate(valuationDate) : NaN;
+        const markTs = Number.isFinite(requested) ? requested : utcDayStart(Date.now());
+
         const anchorDay = new Date(startTs).getUTCDate();
         const depositTs = (i: number): number => {
             switch (frequency) {
@@ -50,29 +65,38 @@ export const SavingsComparison = ({
         };
 
         const dailyRate = Math.pow(1 + apy / 100, 1 / 365) - 1;
+        const grow = (from: number, to: number) =>
+            Math.pow(1 + dailyRate, Math.max(0, Math.round((to - from) / DAY_MS)));
+
         let balance = 0;
         let totalDeposited = 0;
+        let lastDepositTs = -1;
 
+        // Deposits run on the same schedule as the DCA purchases and stop at the end date.
         for (let i = 0; ; i++) {
             const ts = depositTs(i);
             if (ts > endTs || i > 40_000) break;
-
-            // Deposit
+            if (lastDepositTs >= 0) balance *= grow(lastDepositTs, ts);
             balance += amount;
             totalDeposited += amount;
-
-            // Compound until the next deposit, capped at the end date. A deposit
-            // landing exactly on the end date earns zero days of interest.
-            const compoundEnd = Math.min(depositTs(i + 1), endTs);
-            const daysUntilNext = Math.max(0, Math.round((compoundEnd - ts) / DAY_MS));
-            balance *= Math.pow(1 + dailyRate, daysUntilNext);
+            lastDepositTs = ts;
         }
+
+        if (lastDepositTs < 0 || totalDeposited <= 0) return null;
+
+        // Then the balance keeps earning to the valuation date, exactly as the bitcoin
+        // stack keeps being marked to the live price. A schedule that runs into the
+        // future is already past the mark date, so this is a no-op there — mirroring
+        // the engine's `max(now, lastPurchase)` terminal date.
+        const valuedAtTs = Math.max(markTs, lastDepositTs);
+        balance *= grow(lastDepositTs, valuedAtTs);
 
         const profit = balance - totalDeposited;
         const roi = totalDeposited > 0 ? (profit / totalDeposited) * 100 : 0;
+        const idleDays = Math.max(0, Math.round((valuedAtTs - lastDepositTs) / DAY_MS));
 
-        return { balance, totalDeposited, profit, roi };
-    }, [apy, amount, frequency, startDate, endDate, totalInvested]);
+        return { balance, totalDeposited, profit, roi, valuedAtTs, lastDepositTs, idleDays };
+    }, [apy, amount, frequency, startDate, endDate, totalInvested, valuationDate]);
 
     if (!savingsResult || totalInvested <= 0) return null;
 
@@ -84,7 +108,7 @@ export const SavingsComparison = ({
             <div className="flex flex-wrap items-center justify-between gap-2 mb-3 sm:mb-4">
                 <h3 className="text-sm sm:text-base font-semibold text-slate-800 dark:text-slate-100">BTC vs Savings Account</h3>
                 <div className="flex items-center gap-2">
-                    <label htmlFor={apyInputId} className="text-xs text-slate-500 dark:text-slate-400">APY:</label>
+                    <label htmlFor={apyInputId} className="text-xs text-slate-500 dark:text-slate-400">Assumed APY:</label>
                     <input
                         id={apyInputId}
                         type="number"
@@ -142,6 +166,22 @@ export const SavingsComparison = ({
                     <span>The savings account is ahead by <span className="font-semibold text-blue-600 dark:text-blue-400 tabular-nums">{formatCurrency(difference)}</span></span>
                 )}
             </div>
+
+            <p className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                Both sides are valued on{' '}
+                <span className="font-medium text-slate-700 dark:text-slate-300">{formatUtc(savingsResult.valuedAtTs, 'full')}</span>:
+                the bitcoin at its live price, the deposits compounded daily to the same day.
+                {savingsResult.idleDays > 0 && (
+                    <>
+                        {' '}Deposits stop on <span className="font-medium text-slate-700 dark:text-slate-300">{formatUtc(savingsResult.lastDepositTs, 'full')}</span>{' '}
+                        with the end of your schedule; the balance then sits and earns for another{' '}
+                        <span className="tabular-nums">{savingsResult.idleDays.toLocaleString()}</span> days so the two legs
+                        are measured at the same instant.
+                    </>
+                )}{' '}
+                The APY is a flat assumption you set — real accounts move their rate, and interest is usually taxable, which
+                this does not model.
+            </p>
         </Card>
     );
 };

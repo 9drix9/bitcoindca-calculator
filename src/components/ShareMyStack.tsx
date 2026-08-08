@@ -221,7 +221,7 @@ export const ShareMyStack = ({
                 <button
                     onClick={handleDownload}
                     disabled={downloading}
-                    className="inline-flex items-center gap-1.5 min-h-9 shrink-0 px-3 py-2 text-xs sm:text-sm font-medium rounded-lg bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white transition-colors"
+                    className="inline-flex items-center gap-1.5 min-h-9 shrink-0 px-3 py-2 text-xs sm:text-sm font-medium rounded-lg bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-slate-950 transition-colors"
                 >
                     <Download className="w-3.5 h-3.5" aria-hidden="true" />
                     {downloading ? 'Generating...' : 'Download PNG'}
@@ -239,7 +239,7 @@ export const ShareMyStack = ({
                 >
                     {/* Header */}
                     <div className="flex items-center gap-2.5 mb-6">
-                        <div className="w-8 h-8 rounded-full bg-amber-500 flex items-center justify-center text-lg font-bold text-white" aria-hidden="true">
+                        <div className="w-8 h-8 rounded-full bg-amber-500 flex items-center justify-center text-lg font-bold text-slate-950" aria-hidden="true">
                             &#8383;
                         </div>
                         <span className="text-base font-bold tracking-tight text-slate-900 dark:text-white">
@@ -251,7 +251,7 @@ export const ShareMyStack = ({
                     <div className="mb-5">
                         <div className="text-[11px] font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">Current Value</div>
                         <div className="flex items-baseline gap-2.5">
-                            <span className="text-3xl font-bold tracking-tight text-amber-600 dark:text-amber-400">
+                            <span className="text-3xl font-bold tracking-tight text-amber-700 dark:text-amber-400">
                                 {formatCurrency(currentValue)}
                             </span>
                             <span className={`text-sm font-semibold px-2 py-0.5 rounded-full tabular-nums ${
@@ -287,7 +287,7 @@ export const ShareMyStack = ({
                     </div>
 
                     <div className="border-t border-amber-500/20 dark:border-slate-700 pt-2.5 flex justify-between items-center">
-                        <span className="text-[11px] font-medium text-amber-600 dark:text-amber-400">btcdollarcostaverage.com</span>
+                        <span className="text-[11px] font-medium text-amber-700 dark:text-amber-400">btcdollarcostaverage.com</span>
                         <span className="text-[11px] text-slate-500 dark:text-slate-400">@9drix9</span>
                     </div>
                 </div>

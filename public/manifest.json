@@ -2,16 +2,15 @@
   "id": "/",
   "name": "Bitcoin DCA Calculator",
   "short_name": "BTC DCA",
-  "description": "Calculate your Bitcoin dollar cost averaging returns with real historical data",
+  "description": "Backtest Bitcoin dollar-cost averaging against real historical prices. Compare against the S&P 500, gold and savings.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
-  "display_override": ["standalone"],
-  "orientation": "portrait-primary",
+  "display_override": ["standalone", "minimal-ui"],
   "lang": "en",
   "dir": "ltr",
   "background_color": "#0f172a",
-  "theme_color": "#f59e0b",
+  "theme_color": "#0f172a",
   "icons": [
     {
       "src": "/icon-192.png",
@@ -24,6 +23,12 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
+    },
+    {
+      "src": "/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ],
   "shortcuts": [
@@ -34,15 +39,15 @@
       "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
     },
     {
-      "name": "Why Bitcoin",
-      "short_name": "Learn",
-      "url": "/why-bitcoin",
+      "name": "All Calculators",
+      "short_name": "Tools",
+      "url": "/calculators",
       "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
     },
     {
-      "name": "Self-Custody Guide",
-      "short_name": "Self-Custody",
-      "url": "/self-custody",
+      "name": "DCA Scenarios",
+      "short_name": "Scenarios",
+      "url": "/dca",
       "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
     }
   ],

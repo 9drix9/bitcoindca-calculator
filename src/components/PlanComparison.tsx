@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useId, useMemo, useState, useSyncExternalStore } from 'react';
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import {
     CartesianGrid,
     Legend,
@@ -16,6 +16,7 @@ import clsx from 'clsx';
 import { getBitcoinPriceHistory } from '@/app/actions';
 import { Card, CardHeader } from '@/components/ui/Card';
 import { useCurrency } from '@/context/CurrencyContext';
+import { useIsDark } from '@/hooks/useIsDark';
 import { DcaResult, Frequency } from '@/types';
 import { calculateDca } from '@/utils/dca';
 import { DAY_MS, formatUtc, parseUtcDate, utcDayStart } from '@/utils/dates';
@@ -29,6 +30,14 @@ export interface BasePlan {
     endDate: string; // 'yyyy-MM-dd'
     feePercentage: number;
     provider: 'kraken' | 'coinbase';
+    /**
+     * Live spot price. Without it every plan here was valued at the last historical
+     * bar while the headline result cards used the live price, so the same schedule
+     * showed two different "current value" figures on screen at once.
+     * Deliberately kept out of `specsJson` — it ticks continuously and would
+     * re-trigger the fetch effect on every update.
+     */
+    livePrice: number | null;
 }
 
 // ── Internal types ────────────────────────────────────────────────────────────
@@ -112,19 +121,8 @@ const labelClass = 'mb-1 block text-xs font-medium text-slate-500 dark:text-slat
 
 const addButtonClass =
     'flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-slate-300 ' +
-    'py-2.5 text-sm font-medium text-amber-600 transition-colors hover:border-amber-500/60 hover:bg-amber-50 ' +
+    'py-2.5 text-sm font-medium text-amber-700 dark:text-amber-400 transition-colors hover:border-amber-500/60 hover:bg-amber-50 ' +
     'dark:border-slate-700 dark:text-amber-400 dark:hover:border-amber-500/40 dark:hover:bg-amber-500/5';
-
-// ── Theme detection: observe the `dark` class on <html> (same as DcaChart) ────
-
-const themeSubscribe = (onChange: () => void) => {
-    const observer = new MutationObserver(onChange);
-    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
-    return () => observer.disconnect();
-};
-const getIsDark = () => document.documentElement.classList.contains('dark');
-const getIsDarkServer = () => false;
-const useIsDark = () => useSyncExternalStore(themeSubscribe, getIsDark, getIsDarkServer);
 
 // ── Tooltip (card-styled, theme-aware via dark: classes) ──────────────────────
 
@@ -422,6 +420,13 @@ export const PlanComparison: React.FC<{ basePlan: BasePlan }> = ({ basePlan }) =
                   ],
               } satisfies SpecPayload);
 
+    // Read through a ref so a ticking spot price values the plans correctly without
+    // re-running the debounced fetch effect on every tick.
+    const livePriceRef = useRef(basePlan.livePrice);
+    useEffect(() => {
+        livePriceRef.current = basePlan.livePrice;
+    }, [basePlan.livePrice]);
+
     useEffect(() => {
         if (specsJson === null) return; // collapsed — removeAltPlan already cleared results
         const { endTs, provider, specs } = JSON.parse(specsJson) as SpecPayload;
@@ -447,6 +452,7 @@ export const PlanComparison: React.FC<{ basePlan: BasePlan }> = ({ basePlan }) =
                                 manualPrice: 0,
                             },
                             history,
+                            livePriceRef.current,
                         );
                         return { key: spec.key, result: result.breakdown.length > 0 ? result : null };
                     } catch {

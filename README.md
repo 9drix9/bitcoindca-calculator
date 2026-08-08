@@ -39,7 +39,7 @@ A comprehensive Bitcoin Dollar Cost Averaging calculator with real-time market d
 - **Plan Comparison** — Overlay up to three DCA plans (different amounts, schedules, or start dates) on one shared axis with per-plan summaries
 - **Drawdown / DCA-Out Calculator** — Simulates spending the stack down: how long it lasts at a given monthly withdrawal, with inflation-adjusted withdrawals, bear/base/bull scenarios, and a bisection-solved sustainable withdrawal figure
 - **Sats-First Mode** — A persisted site-wide denomination preference; every Bitcoin amount renders in BTC or satoshis
-- **Future Projection** — When end date is in the future, shows projected returns with conservative (15%), moderate (30%), and aggressive (50%) growth scenarios, plus custom target price mode
+- **Future Projection** — When end date is in the future, projects forward from three editable annual rates that bracket a loss, no change and a gain (−20%, 0%, +20% by default). These are stated assumptions, not forecasts, plus custom target price mode
 - **FIRE Calculator** — Years until financial independence using the 4% withdrawal rule across three appreciation scenarios (conservative 10%, moderate 25%, aggressive 50%)
 - **Savings Account Comparison** — Side-by-side comparison of BTC DCA vs traditional savings with editable APY
 - **Cost Basis Tracker** — Track multiple DCA positions with independent date ranges, amounts, and fees (persisted in localStorage)
@@ -88,8 +88,8 @@ A comprehensive Bitcoin Dollar Cost Averaging calculator with real-time market d
 ### Installation
 
 ```bash
-git clone https://github.com/yourusername/bitcoin-dca-calculator.git
-cd bitcoin-dca-calculator
+git clone https://github.com/9drix9/bitcoindca-calculator.git
+cd bitcoindca-calculator
 npm install
 ```
 
@@ -132,6 +132,35 @@ npm start
 ```bash
 npm run lint
 ```
+
+### Testing
+
+The DCA engine has a [Vitest](https://vitest.dev/) suite at `src/utils/dca.test.ts` covering
+`calculateDca`, `calculateLumpSum`, and `calculateXirr` — UTC day bucketing, fee handling,
+frequency schedules, drawdown, and XIRR convergence.
+
+```bash
+npm test        # single run
+npm run test:watch
+```
+
+The engine is pure and deterministic, so the suite needs no network access or API keys. Run it
+before any change to `src/utils/dca.ts` or `src/utils/dates.ts`.
+
+## Brand assets
+
+`scripts/generate-icons.js` is the single source for every rasterised icon — the multi-frame
+`src/app/favicon.ico`, `public/icon-192.png`, `public/icon-512.png`, `public/apple-touch-icon.png`,
+and the `public/icon-*.svg` vector fallbacks referenced by the manifest. None of those files are
+hand-edited; they are all generated.
+
+```bash
+node scripts/generate-icons.js
+```
+
+The script's geometry mirrors `src/components/brand/Logo.tsx`, which renders the mark in-app. **If
+you change the logo, change both and re-run the script** — otherwise the in-app mark and the icons
+the OS and browser chrome show will drift apart.
 
 ## Architecture
 
@@ -187,10 +216,12 @@ src/
     index.ts              # Shared TypeScript types
   utils/
     dca.ts                # Core DCA calculation logic
+    dca.test.ts           # Vitest suite for the DCA engine
+    dates.ts              # UTC date helpers (every rendered date goes through here)
     csv.ts                # CSV export helpers
     urlParams.ts          # URL state encoding/decoding
 scripts/
-  generate-icons.js       # PWA icon generator (PNG from SVG)
+  generate-icons.js       # Single source for every icon — re-run after any logo change
 ```
 
 ## External APIs

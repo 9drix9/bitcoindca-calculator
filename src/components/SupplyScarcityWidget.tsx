@@ -95,7 +95,7 @@ export const SupplyScarcityWidget = ({ initialSupply, blockHeight }: SupplyScarc
                     <StatRow
                         label="Block Reward"
                         value={`${stats.blockReward} BTC`}
-                        valueClassName="text-amber-600 dark:text-amber-400"
+                        valueClassName="text-amber-700 dark:text-amber-400"
                     />
                 </div>
             ) : (

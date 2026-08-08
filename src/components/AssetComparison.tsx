@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useSyncExternalStore } from 'react';
+import { useMemo } from 'react';
 import {
     ResponsiveContainer,
     LineChart,
@@ -15,6 +15,7 @@ import { AssetDcaResult } from '@/types';
 import { useCurrency } from '@/context/CurrencyContext';
 import { formatUtc } from '@/utils/dates';
 import { Card } from '@/components/ui/Card';
+import { useIsDark } from '@/hooks/useIsDark';
 import clsx from 'clsx';
 
 interface AssetComparisonProps {
@@ -23,16 +24,6 @@ interface AssetComparisonProps {
     goldResult: AssetDcaResult | null;
     loading: boolean;
 }
-
-// ── Theme detection: observe the `dark` class on <html> ──────────────────────
-const themeSubscribe = (onChange: () => void) => {
-    const observer = new MutationObserver(onChange);
-    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
-    return () => observer.disconnect();
-};
-const getIsDark = () => document.documentElement.classList.contains('dark');
-const getIsDarkServer = () => false;
-const useIsDark = () => useSyncExternalStore(themeSubscribe, getIsDark, getIsDarkServer);
 
 type SeriesKey = 'btc' | 'sp500' | 'gold';
 

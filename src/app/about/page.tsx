@@ -270,7 +270,7 @@ export default function AboutPage() {
                                 href="https://x.com/9drix9"
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="text-amber-600 dark:text-amber-400 hover:underline font-medium"
+                                className="text-amber-700 dark:text-amber-400 hover:underline font-medium"
                             >
                                 @9drix9
                             </a>.
@@ -287,7 +287,7 @@ export default function AboutPage() {
                         </p>
                         <Link
                             href="/"
-                            className="inline-block px-6 py-3 bg-white text-amber-600 font-semibold rounded-xl text-sm sm:text-base hover:bg-amber-50 transition-colors"
+                            className="inline-block px-6 py-3 bg-white text-amber-700 dark:text-amber-400 font-semibold rounded-xl text-sm sm:text-base hover:bg-amber-50 transition-colors"
                         >
                             Open the Calculator
                         </Link>

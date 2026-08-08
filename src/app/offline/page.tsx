@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { OfflineActions } from './OfflineActions';
+import { Logo } from '@/components/brand/Logo';
 
 export const metadata: Metadata = {
   title: 'Offline',
@@ -15,12 +16,7 @@ export default function OfflinePage() {
     <div className="min-h-[60vh] flex items-center justify-center px-4 py-12">
       <div className="text-center max-w-md space-y-6">
         <div className="w-16 h-16 bg-amber-500/10 rounded-full flex items-center justify-center mx-auto">
-          <div
-            className="w-10 h-10 bg-gradient-to-br from-amber-400 to-orange-500 rounded-full flex items-center justify-center text-white text-lg font-bold"
-            aria-hidden="true"
-          >
-            ₿
-          </div>
+          <Logo className="w-8 h-8 text-amber-700 dark:text-amber-400" />
         </div>
 
         <div className="space-y-2">

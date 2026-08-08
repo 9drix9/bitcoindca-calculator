@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useId, useMemo, useState, useSyncExternalStore } from 'react';
+import { useCallback, useId, useMemo, useState } from 'react';
 import {
     CartesianGrid,
     Line,
@@ -14,6 +14,7 @@ import { Hourglass } from 'lucide-react';
 import clsx from 'clsx';
 import { Card, CardHeader } from '@/components/ui/Card';
 import { useCurrency } from '@/context/CurrencyContext';
+import { useIsDark } from '@/hooks/useIsDark';
 
 // ── Props contract (wired into DcaCalculator by the orchestrator) ─────────────
 
@@ -182,14 +183,7 @@ const formatPercent = (rate: number): string => {
 
 // ── Theme detection: observe the `dark` class on <html> (same as PlanComparison) ─
 
-const themeSubscribe = (onChange: () => void) => {
-    const observer = new MutationObserver(onChange);
-    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
-    return () => observer.disconnect();
-};
-const getIsDark = () => document.documentElement.classList.contains('dark');
-const getIsDarkServer = () => false;
-const useIsDark = () => useSyncExternalStore(themeSubscribe, getIsDark, getIsDarkServer);
+// Now shared — see src/hooks/useIsDark.ts. This was the fifth copy.
 
 // ── Styling shorthands (spec §1) ──────────────────────────────────────────────
 

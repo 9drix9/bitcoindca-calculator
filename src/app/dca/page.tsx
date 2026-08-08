@@ -79,7 +79,7 @@ export default function DcaScenariosIndexPage() {
                                             <Link
                                                 key={s.slug}
                                                 href={`/dca/${s.slug}`}
-                                                className="rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-2.5 text-sm font-medium text-slate-700 dark:text-slate-300 hover:border-amber-500/50 hover:text-amber-600 dark:hover:text-amber-400 transition-colors tabular-nums"
+                                                className="rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-2.5 text-sm font-medium text-slate-700 dark:text-slate-300 hover:border-amber-500/50 hover:text-amber-700 dark:hover:text-amber-400 transition-colors tabular-nums"
                                             >
                                                 {s.shortLabel}
                                             </Link>
@@ -102,7 +102,7 @@ export default function DcaScenariosIndexPage() {
                     </p>
                     <Link
                         href="/"
-                        className="inline-flex items-center gap-2 bg-amber-500 hover:bg-amber-600 text-white font-semibold px-6 py-3 rounded-xl transition-colors text-sm sm:text-base"
+                        className="inline-flex items-center gap-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-semibold px-6 py-3 rounded-xl transition-colors text-sm sm:text-base"
                     >
                         Open the calculator
                         <ArrowRight className="w-4 h-4" />

@@ -44,7 +44,47 @@ class LRUCache {
 
 const memoryCache = new LRUCache(MAX_CACHE_ENTRIES);
 
+/**
+ * Request coalescing for the expensive full-history fetches.
+ *
+ * A static build renders ~130 pages across many workers, and a cold serverless
+ * instance can take several concurrent requests before the first one populates
+ * the cache. Each of those would independently kick off the same ~14-request
+ * Coinbase crawl and rate-limit the others out. Callers that arrive while a
+ * fetch is already in flight now await that same promise instead.
+ */
+const inflight = new Map<string, Promise<[number, number][]>>();
+
+function coalesced(key: string, run: () => Promise<[number, number][]>): Promise<[number, number][]> {
+    const existing = inflight.get(key);
+    if (existing) return existing;
+    const promise = run().finally(() => inflight.delete(key));
+    inflight.set(key, promise);
+    return promise;
+}
+
 const COINBASE_CACHE_DURATION = 3600; // 1 hour
+
+export type Provider = 'kraken' | 'coinbase';
+
+/**
+ * Coerce an untrusted `provider` argument to a known value.
+ *
+ * A TypeScript union is erased at runtime, and every exported function in a
+ * 'use server' file is a PUBLIC HTTP endpoint that anyone can call with
+ * arbitrary arguments. That mattered here: `keyFor` mapped every string that
+ * was not exactly 'kraken' to the COINBASE cache key, while
+ * `fetchProviderHistory` ran its KRAKEN branch for anything that was not
+ * exactly 'coinbase'. So a single call with provider="pwned" wrote Kraken's
+ * weekly-interpolated series into the Coinbase slot, and for the next hour
+ * every visitor asking for Coinbase got straight-lined data instead of real
+ * daily candles.
+ *
+ * Normalising once at every entry point means the cache key and the branch that
+ * produced the data can never disagree again.
+ */
+const normalizeProvider = (provider: unknown): Provider =>
+    provider === 'coinbase' ? 'coinbase' : 'kraken';
 
 /** Fill day gaps between points with linear interpolation. Pure UTC ms math — no local-time day shifts. */
 function interpolateDaily(points: [number, number][]): [number, number][] {
@@ -127,16 +167,31 @@ async function fetchProviderHistory(provider: 'kraken' | 'coinbase'): Promise<[n
             // 2. Fetch chunks with limited concurrency to avoid 429s
             const fetchChunk = async (chunk: { start: string, end: string }) => {
                 const url = `https://api.exchange.coinbase.com/products/BTC-USD/candles?granularity=86400&start=${chunk.start}&end=${chunk.end}`;
-                const res = await fetchWithTimeout(url, { headers: { 'User-Agent': 'BitcoinDcaBot/1.0' }, next: { revalidate: COINBASE_CACHE_DURATION } }, 15_000);
+                // Coinbase rate-limits hard, and a static build fans out across many
+                // workers at once. Without a backoff the whole Coinbase path 429s and
+                // silently degrades to Kraken — whose series is interpolated from
+                // WEEKLY closes, which would quietly flatten any day-of-week analysis.
+                let lastStatus = 0;
+                for (let attempt = 0; attempt < 4; attempt++) {
+                    if (attempt > 0) {
+                        await new Promise((r) => setTimeout(r, 400 * 2 ** (attempt - 1)));
+                    }
+                    const res = await fetchWithTimeout(url, { headers: { 'User-Agent': 'BitcoinDcaBot/1.0' }, next: { revalidate: COINBASE_CACHE_DURATION } }, 15_000);
+                    if (res.ok) {
+                        const json = await res.json();
+                        if (!Array.isArray(json)) throw new Error('Coinbase returned unexpected candle payload');
+                        return json;
+                    }
+                    lastStatus = res.status;
+                    // Only 429 and 5xx are worth retrying; a 400 will never succeed.
+                    if (res.status !== 429 && res.status < 500) break;
+                }
                 // A dropped chunk must fail the whole fetch — returning [] here would leave a
                 // 300-day hole that gets silently interpolated as a straight line.
-                if (!res.ok) throw new Error(`Coinbase chunk ${chunk.start} failed: ${res.status}`);
-                const json = await res.json();
-                if (!Array.isArray(json)) throw new Error('Coinbase returned unexpected candle payload');
-                return json;
+                throw new Error(`Coinbase chunk ${chunk.start} failed: ${lastStatus}`);
             };
 
-            const CONCURRENCY = 5;
+            const CONCURRENCY = 3;
             const chunkResults: number[][][] = [];
             for (let i = 0; i < chunks.length; i += CONCURRENCY) {
                 const batch = chunks.slice(i, i + CONCURRENCY);
@@ -151,15 +206,24 @@ async function fetchProviderHistory(provider: 'kraken' | 'coinbase'): Promise<[n
             const map = new Map<number, number>(); // timestamp -> close
             candles.forEach((c: number[]) => {
                 // Coinbase: [time, low, high, open, close, volume]. time is seconds.
-                const ts = c[0] * 1000;
-                const close = c[4];
-                if (Number.isFinite(ts) && Number.isFinite(close) && close > 0) {
+                // A non-array element (an error object inside an otherwise-array body)
+                // used to index to undefined and slip through as NaN.
+                if (!Array.isArray(c)) return;
+                const ts = Number(c[0]) * 1000;
+                const close = Number(c[4]);
+                if (Number.isFinite(ts) && ts > 0 && Number.isFinite(close) && close > 0) {
                     map.set(ts, close);
                 }
             });
 
             // Convert to array and sort
             const coinbaseDailyPrices: [number, number][] = Array.from(map.entries()).sort((a, b) => a[0] - b[0]);
+
+            // If every chunk parsed to zero usable candles the payload shape changed.
+            // Without this the fetch still "succeeded" on the strength of the
+            // blockchain.info prepend alone, and the UI presented a 2010-2015 series
+            // as if it were current history.
+            if (coinbaseDailyPrices.length === 0) throw new Error('Coinbase returned no usable candles');
 
             dailyPrices.push(...interpolateDaily(await prependHistorical(coinbaseDailyPrices)));
 
@@ -179,15 +243,29 @@ async function fetchProviderHistory(provider: 'kraken' | 'coinbase'): Promise<[n
                 throw new Error(`API Error: ${json.error.join(', ')}`);
             }
 
-            const result = json.result;
+            // Object.keys(undefined) throws a bare TypeError; when Kraken answers with
+            // an envelope that has no `result` we want the named error so the provider
+            // fallback below logs something meaningful.
+            const result = json?.result;
+            if (!result || typeof result !== 'object') throw new Error('Invalid data format from Kraken');
             const pairKey = Object.keys(result).find(k => k !== 'last');
             if (!pairKey || !Array.isArray(result[pairKey])) throw new Error('Invalid data format from Kraken');
 
             const weeklyCandles = result[pairKey];
             weeklyCandles.sort((a: number[], b: number[]) => a[0] - b[0]);
 
+            // Kraken's item[0] is the interval START but item[4] is its CLOSE, so
+            // pairing them dates each weekly close ~6 days early — a look-ahead that
+            // makes the interpolated daily series systematically wrong. Anchor the
+            // close at the end of its week, and clamp the still-open final candle to
+            // now so it is not dated in the future.
+            const WEEK_SECONDS = 604_800;
+            const nowMs = Date.now();
             const weeklyPoints: [number, number][] = weeklyCandles
-                .map((item: number[]): [number, number] => [item[0] * 1000, parseFloat(String(item[4]))])
+                .map((item: number[]): [number, number] => [
+                    Math.min((item[0] + WEEK_SECONDS) * 1000, nowMs),
+                    parseFloat(String(item[4])),
+                ])
                 .filter(([ts, price]: [number, number]) => Number.isFinite(ts) && Number.isFinite(price) && price > 0);
 
             if (weeklyPoints.length === 0) throw new Error('Kraken returned no usable candles');
@@ -200,9 +278,11 @@ async function fetchProviderHistory(provider: 'kraken' | 'coinbase'): Promise<[n
     return dailyPrices;
 }
 
-export async function getBitcoinPriceHistory(from: number, to: number, provider: 'kraken' | 'coinbase' = 'kraken'): Promise<[number, number][]> {
+export async function getBitcoinPriceHistory(from: number, to: number, providerArg: Provider = 'kraken'): Promise<[number, number][]> {
+    // Untrusted input — see normalizeProvider. Everything below uses `provider`.
+    const provider = normalizeProvider(providerArg);
     // Both providers now return their full history, so cache provider-wide and slice per request.
-    const keyFor = (p: 'kraken' | 'coinbase') => p === 'kraken' ? 'kraken_full_v2' : 'coinbase_full_v2';
+    const keyFor = (p: Provider) => p === 'kraken' ? 'kraken_full_v2' : 'coinbase_full_v2';
     const cacheKey = keyFor(provider);
 
     const readCache = (): [number, number][] | null => {
@@ -225,14 +305,19 @@ export async function getBitcoinPriceHistory(from: number, to: number, provider:
 
     const fallback: 'kraken' | 'coinbase' = provider === 'kraken' ? 'coinbase' : 'kraken';
     try {
-        const data = await fetchProviderHistory(provider);
+        const data = await coalesced(cacheKey, () => fetchProviderHistory(provider));
         memoryCache.set(cacheKey, { timestamp: Date.now(), data });
         return slice(data);
     } catch (error) {
         console.error(`[getBitcoinPriceHistory] ${provider} failed, trying ${fallback}:`, error);
         try {
-            const data = await fetchProviderHistory(fallback);
-            memoryCache.set(keyFor(fallback), { timestamp: Date.now(), data });
+            const fallbackKey = keyFor(fallback);
+            const cachedFallback = memoryCache.get(fallbackKey);
+            if (cachedFallback && differenceInMinutes(Date.now(), cachedFallback.timestamp) < CACHE_DURATION_MINUTES) {
+                return slice(cachedFallback.data);
+            }
+            const data = await coalesced(fallbackKey, () => fetchProviderHistory(fallback));
+            memoryCache.set(fallbackKey, { timestamp: Date.now(), data });
             return slice(data);
         } catch (fallbackError) {
             console.error(`[getBitcoinPriceHistory] fallback ${fallback} also failed:`, fallbackError);
@@ -241,20 +326,41 @@ export async function getBitcoinPriceHistory(from: number, to: number, provider:
     }
 }
 
+// Comparison series are fetched ONCE over the full usable range and sliced per
+// request. Keying the cache on exact `from`/`to` milliseconds (as this used to)
+// minted a fresh key for every date range a user touched, so the cache never hit
+// and thrashed the 50-entry LRU — every keystroke re-hit Yahoo.
+const ASSET_HISTORY_START = Date.UTC(2009, 0, 1);
+
+/**
+ * The only symbols this site actually charts. Same reasoning as
+ * normalizeProvider: `symbol` arrives from a public endpoint, is interpolated
+ * into an outbound URL, AND becomes a cache key. Unbounded keys would let a
+ * caller evict the real series from the 50-entry LRU at will, and an
+ * unrestricted symbol turns the action into a generic Yahoo Finance proxy.
+ */
+const ALLOWED_ASSET_SYMBOLS = new Set(['^SP500TR', '^GSPC', 'GC=F']);
+
 export async function getAssetPriceHistory(symbol: string, from: number, to: number): Promise<[number, number][] | null> {
-    const cacheKey = `asset_${symbol}_${from}_${to}`;
+    if (!ALLOWED_ASSET_SYMBOLS.has(symbol)) return null;
+    const cacheKey = `asset_${symbol}`;
+
+    // A short lead-in guarantees a last-known bar for the first purchase date even
+    // when the range starts on a weekend or market holiday.
+    const slice = (data: [number, number][]): [number, number][] =>
+        data.filter(([ts]) => ts >= from - 14 * DAY_MS && ts <= to);
 
     const cached = memoryCache.get(cacheKey);
     if (cached) {
         const age = differenceInMinutes(Date.now(), cached.timestamp);
         if (age < CACHE_DURATION_MINUTES) {
-            return cached.data;
+            return slice(cached.data);
         }
     }
 
     try {
-        const period1 = Math.floor(from / 1000);
-        const period2 = Math.floor(to / 1000);
+        const period1 = Math.floor(ASSET_HISTORY_START / 1000);
+        const period2 = Math.floor(Date.now() / 1000);
 
         // Use Yahoo Finance v8 chart API (more reliable than v7 download)
         const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?period1=${period1}&period2=${period2}&interval=1d`;
@@ -275,13 +381,18 @@ export async function getAssetPriceHistory(symbol: string, from: number, to: num
         const timestamps = result.timestamp;
         const closes = result.indicators?.quote?.[0]?.close;
 
-        if (!timestamps || !closes || timestamps.length === 0) return null;
+        // Yahoo sometimes returns the chart envelope with `null` (or an object) where
+        // the arrays should be. `.length` on those is undefined, so the old truthiness
+        // check passed and the loop silently produced an empty series.
+        if (!Array.isArray(timestamps) || !Array.isArray(closes) || timestamps.length === 0) return null;
 
         const data: [number, number][] = [];
         for (let i = 0; i < timestamps.length; i++) {
-            const ts = timestamps[i] * 1000; // Convert to milliseconds
-            const close = closes[i];
-            if (ts && close && !isNaN(close) && close > 0) {
+            const ts = Number(timestamps[i]) * 1000; // Convert to milliseconds
+            // `!isNaN(close)` passed for numeric *strings*, which then flowed into the
+            // charts as strings. Coerce first, then require a finite positive number.
+            const close = Number(closes[i]);
+            if (Number.isFinite(ts) && ts > 0 && Number.isFinite(close) && close > 0) {
                 data.push([ts, close]);
             }
         }
@@ -290,7 +401,7 @@ export async function getAssetPriceHistory(symbol: string, from: number, to: num
 
         data.sort((a, b) => a[0] - b[0]);
         memoryCache.set(cacheKey, { timestamp: Date.now(), data });
-        return data;
+        return slice(data);
     } catch {
         return null;
     }
@@ -300,19 +411,23 @@ export async function getCpiData(from: number, to: number): Promise<[number, num
     const apiKey = process.env.FRED_API_KEY;
     if (!apiKey) return null;
 
-    const cacheKey = `cpi_${from}_${to}`;
+    // Same fix as getAssetPriceHistory: one cached series, sliced per request.
+    const cacheKey = 'cpi_full';
+
+    const slice = (data: [number, number][]): [number, number][] =>
+        data.filter(([ts]) => ts >= from - 40 * DAY_MS && ts <= to);
 
     const cached = memoryCache.get(cacheKey);
     if (cached) {
         const age = differenceInMinutes(Date.now(), cached.timestamp);
         if (age < 1440) { // 24h cache for CPI (monthly data)
-            return cached.data;
+            return slice(cached.data);
         }
     }
 
     try {
-        const startDate = new Date(from).toISOString().split('T')[0];
-        const endDate = new Date(to).toISOString().split('T')[0];
+        const startDate = new Date(ASSET_HISTORY_START).toISOString().split('T')[0];
+        const endDate = new Date(Date.now()).toISOString().split('T')[0];
         const url = `https://api.stlouisfed.org/fred/series/observations?series_id=CPIAUCSL&api_key=${apiKey}&file_type=json&observation_start=${startDate}&observation_end=${endDate}`;
 
         const response = await fetch(url, {
@@ -326,9 +441,12 @@ export async function getCpiData(from: number, to: number): Promise<[number, num
 
         const data: [number, number][] = [];
         for (const obs of json.observations) {
+            // A non-object entry made `obs.date` throw and killed the whole series.
+            if (!obs || typeof obs !== 'object') continue;
             const dateTs = new Date(obs.date).getTime();
-            const value = parseFloat(obs.value);
-            if (!isNaN(dateTs) && !isNaN(value) && value > 0) {
+            // FRED writes "." for a month with no reading; Number(".") is NaN so it drops.
+            const value = Number(obs.value);
+            if (Number.isFinite(dateTs) && Number.isFinite(value) && value > 0) {
                 data.push([dateTs, value]);
             }
         }
@@ -337,7 +455,7 @@ export async function getCpiData(from: number, to: number): Promise<[number, num
 
         data.sort((a, b) => a[0] - b[0]);
         memoryCache.set(cacheKey, { timestamp: Date.now(), data });
-        return data;
+        return slice(data);
     } catch {
         return null;
     }
@@ -350,11 +468,15 @@ export async function getMempoolFees(): Promise<{ highFee: number; mediumFee: nu
         });
         if (!response.ok) return null;
         const json = await response.json();
-        return {
-            highFee: json.fastestFee,
-            mediumFee: json.halfHourFee,
-            lowFee: json.hourFee,
-        };
+        // These three were handed to the widget completely unchecked. When
+        // mempool.space answers with an error envelope ({"error":"..."}) or renames a
+        // field, the values are undefined and the widget rendered "NaN sat/vB" in
+        // place of its own "Data unavailable" state.
+        const highFee = Number(json?.fastestFee);
+        const mediumFee = Number(json?.halfHourFee);
+        const lowFee = Number(json?.hourFee);
+        if (![highFee, mediumFee, lowFee].every((f) => Number.isFinite(f) && f > 0)) return null;
+        return { highFee, mediumFee, lowFee };
     } catch {
         return null;
     }
@@ -369,10 +491,15 @@ export async function getFearGreedIndex(): Promise<{ value: number; classificati
         const json = await response.json();
         if (!json.data || !Array.isArray(json.data) || json.data.length === 0) return null;
         const entry = json.data[0];
-        return {
-            value: parseInt(entry.value, 10),
-            classification: entry.value_classification,
-        };
+        // parseInt(undefined, 10) is NaN, so a renamed field rendered "NaN/100" next
+        // to an empty classification. Both fields must be present and in range.
+        const value = Number(entry?.value);
+        const classification = typeof entry?.value_classification === 'string'
+            ? entry.value_classification.trim()
+            : '';
+        if (!Number.isFinite(value) || value < 0 || value > 100) return null;
+        if (classification === '') return null;
+        return { value: Math.round(value), classification };
     } catch {
         return null;
     }
@@ -385,8 +512,14 @@ export async function getBlockHeight(): Promise<number | null> {
         });
         if (!response.ok) return null;
         const text = await response.text();
-        const height = parseInt(text, 10);
-        return isNaN(height) ? null : height;
+        // The endpoint answers with bare plaintext digits. parseInt would happily
+        // accept a digit-prefixed error body ("503 Service Unavailable" -> 503) and
+        // hand the halving countdown a nonsense block height, so require the whole
+        // body to be an integer.
+        const trimmed = text.trim();
+        if (!/^\d+$/.test(trimmed)) return null;
+        const height = Number(trimmed);
+        return Number.isSafeInteger(height) && height > 0 ? height : null;
     } catch {
         return null;
     }
@@ -407,17 +540,35 @@ export async function getHashRateDifficulty(): Promise<{
         if (!diffRes.ok || !hashRes.ok) return null;
         const diffJson = await diffRes.json();
         const hashJson = await hashRes.json();
+        if (!diffJson || typeof diffJson !== 'object') return null;
+        if (!hashJson || typeof hashJson !== 'object') return null;
 
         // Missing required fields mean the API shape drifted — say "unavailable",
         // never render a zero hashrate as fact.
-        if (!Number.isFinite(hashJson.currentHashrate) || hashJson.currentHashrate <= 0) return null;
+        const hashrate = Number(hashJson.currentHashrate);
+        if (!Number.isFinite(hashrate) || hashrate <= 0) return null;
+
+        const difficulty = Number(hashJson.currentDifficulty);
+        const adjustmentPercent = Number(diffJson.difficultyChange);
+        const blocksUntilAdjustment = Number(diffJson.remainingBlocks);
+
+        // `new Date(garbage).toISOString()` throws a RangeError, which the catch below
+        // turned into a null for the entire widget. mempool.space sends an epoch in ms,
+        // but accept a date string too; anything unparseable becomes the empty string
+        // the UI already treats as "no date".
+        const rawRetarget = diffJson.estimatedRetargetDate;
+        let estimatedRetargetDate = '';
+        if (typeof rawRetarget === 'number' || typeof rawRetarget === 'string') {
+            const parsed = new Date(rawRetarget);
+            if (Number.isFinite(parsed.getTime())) estimatedRetargetDate = parsed.toISOString();
+        }
 
         return {
-            hashrate: hashJson.currentHashrate,
-            difficulty: Number.isFinite(hashJson.currentDifficulty) ? hashJson.currentDifficulty : 0,
-            adjustmentPercent: Number.isFinite(diffJson.difficultyChange) ? diffJson.difficultyChange : 0,
-            blocksUntilAdjustment: Number.isFinite(diffJson.remainingBlocks) ? diffJson.remainingBlocks : 0,
-            estimatedRetargetDate: diffJson.estimatedRetargetDate ? new Date(diffJson.estimatedRetargetDate).toISOString() : '',
+            hashrate,
+            difficulty: Number.isFinite(difficulty) && difficulty > 0 ? difficulty : 0,
+            adjustmentPercent: Number.isFinite(adjustmentPercent) ? adjustmentPercent : 0,
+            blocksUntilAdjustment: Number.isFinite(blocksUntilAdjustment) && blocksUntilAdjustment >= 0 ? blocksUntilAdjustment : 0,
+            estimatedRetargetDate,
         };
     } catch {
         return null;
@@ -431,8 +582,15 @@ export async function getCirculatingSupply(): Promise<number | null> {
         });
         if (!response.ok) return null;
         const text = await response.text();
-        const sats = parseInt(text, 10);
-        return isNaN(sats) ? null : sats;
+        // blockchain.info serves bare plaintext satoshis, but returns an HTML/plaintext
+        // error page under load. parseInt accepted a digit-prefixed error body and the
+        // scarcity widget rendered the result as circulating supply, so require the
+        // whole body to be an integer and bound it by the 21M cap.
+        const trimmed = text.trim();
+        if (!/^\d+$/.test(trimmed)) return null;
+        const sats = Number(trimmed);
+        if (!Number.isFinite(sats) || sats <= 0 || sats > 21_000_000 * 100_000_000) return null;
+        return sats;
     } catch {
         return null;
     }
@@ -449,13 +607,20 @@ export async function getLightningStats(): Promise<{
         });
         if (!response.ok) return null;
         const json = await response.json();
-        const latest = json.latest;
+        const latest = json?.latest;
         // Shape drift must read as "unavailable", not a Lightning network of zero nodes
-        if (!latest || !Number.isFinite(latest.node_count) || latest.node_count <= 0) return null;
+        if (!latest || typeof latest !== 'object') return null;
+        // mempool.space returns these as numeric strings on some deployments, which
+        // Number.isFinite rejected outright — coerce first so a valid string payload
+        // still renders, and only then decide whether the value is usable.
+        const nodeCount = Number(latest.node_count);
+        if (!Number.isFinite(nodeCount) || nodeCount <= 0) return null;
+        const channelCount = Number(latest.channel_count);
+        const totalCapacitySats = Number(latest.total_capacity);
         return {
-            nodeCount: latest.node_count,
-            channelCount: Number.isFinite(latest.channel_count) ? latest.channel_count : 0,
-            totalCapacityBtc: (Number.isFinite(latest.total_capacity) ? latest.total_capacity : 0) / 100_000_000,
+            nodeCount,
+            channelCount: Number.isFinite(channelCount) && channelCount >= 0 ? channelCount : 0,
+            totalCapacityBtc: (Number.isFinite(totalCapacitySats) && totalCapacitySats >= 0 ? totalCapacitySats : 0) / 100_000_000,
         };
     } catch {
         return null;
@@ -473,11 +638,15 @@ export async function getBitcoinDominance(): Promise<{
         });
         if (!response.ok) return null;
         const json = await response.json();
-        const data = json.data;
-        if (!data) return null;
-        const totalMarketCapUsd = data.total_market_cap?.usd ?? 0;
-        const dominancePct = data.market_cap_percentage?.btc ?? 0;
-        if (!Number.isFinite(dominancePct) || dominancePct <= 0) return null;
+        const data = json?.data;
+        if (!data || typeof data !== 'object') return null;
+        // `?? 0` only defended against null/undefined: any other junk (a string, an
+        // error object) flowed through and produced a NaN btcMarketCap rendered as
+        // "$NaN" beside a plausible-looking dominance percentage.
+        const totalMarketCapUsd = Number(data.total_market_cap?.usd);
+        const dominancePct = Number(data.market_cap_percentage?.btc);
+        if (!Number.isFinite(dominancePct) || dominancePct <= 0 || dominancePct > 100) return null;
+        if (!Number.isFinite(totalMarketCapUsd) || totalMarketCapUsd <= 0) return null;
         return {
             dominancePercent: dominancePct,
             btcMarketCap: totalMarketCapUsd * (dominancePct / 100),
@@ -506,9 +675,16 @@ export async function getPurchasingPowerData(): Promise<{
             getCurrentBitcoinPrice(),
         ]);
         if (!cpiData || cpiData.length < 2) return null;
+        const cpiStart = cpiData[0][1];
+        const cpiNow = cpiData[cpiData.length - 1][1];
+        // The widget divides by cpiStart, so a zero or non-finite reading would render
+        // "Infinity%" / "$NaN" instead of the card's own empty state.
+        if (!Number.isFinite(cpiStart) || cpiStart <= 0) return null;
+        if (!Number.isFinite(cpiNow) || cpiNow <= 0) return null;
+        if (!Number.isFinite(btcPriceNow) || btcPriceNow <= 0) return null;
         return {
-            cpiStart: cpiData[0][1],
-            cpiNow: cpiData[cpiData.length - 1][1],
+            cpiStart,
+            cpiNow,
             btcPriceStart: 314, // BTC price Jan 2015 — historical fact
             btcPriceNow,
         };
@@ -530,18 +706,36 @@ export async function getRecentBlocks(): Promise<{
         if (!response.ok) return null;
         const json = await response.json();
         if (!Array.isArray(json) || json.length === 0) return null;
-        return json.slice(0, 5).map((block: { height: number; timestamp: number; tx_count: number; size: number }) => ({
-            height: block.height,
-            timestamp: block.timestamp,
-            txCount: block.tx_count,
-            size: block.size,
-        }));
+        // This used to assert the element shape with a type annotation and return it
+        // unchecked. A renamed field (or an error object inside the array) yielded
+        // `height: undefined`, and the widget crashed outright on
+        // `block.height.toLocaleString()` — a whole-page error, not an empty state.
+        const blocks: { height: number; timestamp: number; txCount: number; size: number }[] = [];
+        for (const block of json.slice(0, 5)) {
+            if (!block || typeof block !== 'object') continue;
+            const height = Number(block.height);
+            const timestamp = Number(block.timestamp);
+            const txCount = Number(block.tx_count);
+            const size = Number(block.size);
+            // height and timestamp are load-bearing (React key + "time ago"); the
+            // other two only affect a label, so they degrade to 0.
+            if (!Number.isFinite(height) || height < 0) continue;
+            if (!Number.isFinite(timestamp) || timestamp <= 0) continue;
+            blocks.push({
+                height,
+                timestamp,
+                txCount: Number.isFinite(txCount) && txCount >= 0 ? txCount : 0,
+                size: Number.isFinite(size) && size >= 0 ? size : 0,
+            });
+        }
+        return blocks.length > 0 ? blocks : null;
     } catch {
         return null;
     }
 }
 
-export async function getCurrentBitcoinPriceWithChange(provider: 'kraken' | 'coinbase' = 'kraken'): Promise<{ price: number; open24h: number }> {
+export async function getCurrentBitcoinPriceWithChange(providerArg: Provider = 'kraken'): Promise<{ price: number; open24h: number }> {
+    const provider = normalizeProvider(providerArg);
     try {
         let url = '';
         if (provider === 'coinbase') {
@@ -580,7 +774,8 @@ export async function getCurrentBitcoinPriceWithChange(provider: 'kraken' | 'coi
     }
 }
 
-export async function getCurrentBitcoinPrice(provider: 'kraken' | 'coinbase' = 'kraken'): Promise<number> {
+export async function getCurrentBitcoinPrice(providerArg: Provider = 'kraken'): Promise<number> {
+    const provider = normalizeProvider(providerArg);
     try {
         let url = '';
         if (provider === 'coinbase') {
@@ -639,6 +834,10 @@ export async function getProfitableWindows(
         const firstDay = Math.floor(history[0][0] / DAY_MS);
         const lastDay = Math.floor(history[history.length - 1][0] / DAY_MS);
         const prices = new Float64Array(lastDay - firstDay + 1);
+        // The gap-fill below seeds every empty day from this value, and the window
+        // loop divides by it. A zero/non-finite first price would make every 1/pᵢ
+        // Infinity and report 100% of windows profitable.
+        if (!Number.isFinite(history[0][1]) || history[0][1] <= 0) return null;
         let lastPrice = history[0][1];
         for (const [ts, price] of history) {
             const idx = Math.floor(ts / DAY_MS) - firstDay;
@@ -669,8 +868,10 @@ export async function getProfitableWindows(
         }
 
         if (windowCount === 0) return null;
+        const profitablePercent = (profitable / windowCount) * 100;
+        if (!Number.isFinite(profitablePercent)) return null;
         const result = {
-            profitablePercent: (profitable / windowCount) * 100,
+            profitablePercent,
             windowCount,
             durationDays: bucketed,
         };
@@ -713,7 +914,10 @@ export async function getHeroStat(): Promise<{
             history,
             price,
         );
+        // roi and btcAccumulated are rendered directly in the hero; a non-finite one
+        // would print "NaN%" above the fold rather than falling back to static copy.
         if (result.totalInvested <= 0 || !Number.isFinite(result.currentValue)) return null;
+        if (!Number.isFinite(result.roi) || !Number.isFinite(result.btcAccumulated)) return null;
         return {
             invested: result.totalInvested,
             value: result.currentValue,
