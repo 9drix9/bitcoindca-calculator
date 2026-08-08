@@ -3,13 +3,17 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import { LogoLockup } from '@/components/brand/Logo';
 
 const links = [
   { href: '/', label: 'Calculator' },
+  // /calculators and /dca were both orphaned: 105 scenario pages and the tool
+  // hub had sitemap entries but no link path from anywhere on the site.
+  { href: '/calculators', label: 'Calculators' },
+  { href: '/dca', label: 'Scenarios' },
   { href: '/why-bitcoin', label: 'Learn' },
   { href: '/self-custody', label: 'Self-Custody' },
   { href: '/mining', label: 'Mining' },
-  { href: '/features', label: 'Features' },
   { href: '/about', label: 'About' },
 ] as const;
 
@@ -20,16 +24,8 @@ export function TopNav() {
     <header className="hidden md:block border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-950/80 backdrop-blur-md sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
         <nav aria-label="Main navigation" className="flex items-center gap-6">
-          <Link href="/" className="flex items-center gap-2 group">
-            <div
-              className="w-8 h-8 bg-gradient-to-br from-amber-400 to-orange-500 rounded-full flex items-center justify-center text-white font-bold text-sm shrink-0 group-hover:scale-105 transition-transform"
-              aria-hidden="true"
-            >
-              ₿
-            </div>
-            <span className="text-xl font-bold bg-gradient-to-r from-amber-600 to-orange-700 dark:from-amber-500 dark:to-orange-600 bg-clip-text text-transparent">
-              Bitcoin DCA
-            </span>
+          <Link href="/" className="group" aria-label="Bitcoin DCA Calculator — home">
+            <LogoLockup />
           </Link>
 
           {links.map(({ href, label }) => {

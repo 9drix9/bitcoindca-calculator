@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useRef, useCallback, useState, useSyncExternalStore, memo } from 'react';
+import { useMemo, useRef, useCallback, useEffect, useId, useState, useSyncExternalStore, memo } from 'react';
 import {
     ResponsiveContainer,
     Area,
@@ -20,6 +20,7 @@ import clsx from 'clsx';
 import { useCurrency, Denomination } from '@/context/CurrencyContext';
 import { formatUtc } from '@/utils/dates';
 import { Card } from '@/components/ui/Card';
+import { useIsDark } from '@/hooks/useIsDark';
 
 type ChartTab = 'portfolio' | 'price';
 
@@ -131,17 +132,7 @@ function snapToChartDate(points: ChartPoint[], targetTs: number): string {
     return points[closestIdx].date;
 }
 
-// ── Theme detection: observe the `dark` class on <html> ──────────────────────
-const themeSubscribe = (onChange: () => void) => {
-    const observer = new MutationObserver(onChange);
-    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
-    return () => observer.disconnect();
-};
-const getIsDark = () => document.documentElement.classList.contains('dark');
-const getIsDarkServer = () => false;
-const useIsDark = () => useSyncExternalStore(themeSubscribe, getIsDark, getIsDarkServer);
-
-// ── Viewport: the brush is hidden under 640px where it fights touch scrolling ─
+// ── Viewport: the brush is sized for fingers below 640px, for pixels above ────
 const resizeSubscribe = (onChange: () => void) => {
     window.addEventListener('resize', onChange);
     return () => window.removeEventListener('resize', onChange);
@@ -149,6 +140,39 @@ const resizeSubscribe = (onChange: () => void) => {
 const getIsWide = () => window.innerWidth >= 640;
 const getIsWideServer = () => false;
 const useIsWideViewport = () => useSyncExternalStore(resizeSubscribe, getIsWide, getIsWideServer);
+
+// ── Text alternative ──────────────────────────────────────────────────────────
+
+/** Rows in the screen-reader table. One row per day would be unnavigable. */
+const TEXT_TABLE_ROWS = 18;
+
+/** Evenly spaced sample that always keeps the first and last element. */
+function sampleEvenly<T>(rows: readonly T[], target: number): T[] {
+    if (rows.length <= target) return [...rows];
+    const step = (rows.length - 1) / (target - 1);
+    const out: T[] = [];
+    for (let i = 0; i < target; i++) out.push(rows[Math.round(i * step)]);
+    return out;
+}
+
+/**
+ * Largest peak-to-trough decline in a series, as a positive percentage.
+ * Returns null when there is nothing meaningful to measure.
+ */
+function maxDrawdownPct(values: readonly number[]): number | null {
+    let peak = 0;
+    let worst = 0;
+    let seen = false;
+    for (const v of values) {
+        if (!Number.isFinite(v) || v <= 0) continue;
+        seen = true;
+        if (v > peak) peak = v;
+        else if (peak > 0) worst = Math.max(worst, (peak - v) / peak);
+    }
+    return seen ? worst * 100 : null;
+}
+
+const signedPct = (pct: number): string => `${pct >= 0 ? 'up ' : 'down '}${Math.abs(pct).toFixed(1)}%`;
 
 // ── Custom tooltip (styled like the site cards, theme-aware via dark: classes) ─
 interface SeriesColors {
@@ -272,10 +296,15 @@ const toggleLabelClass =
     'flex min-h-8 cursor-pointer select-none items-center gap-1.5 whitespace-nowrap py-1 pr-1 text-[11px] text-slate-500 dark:text-slate-400';
 
 export const DcaChart = memo(function DcaChart({ data, unit }: DcaChartProps) {
-    const { currencyConfig, convertFromUsd, denomination } = useCurrency();
+    const { currencyConfig, convertFromUsd, denomination, formatCurrency, formatBtc, formatSats } = useCurrency();
     // Falls back to the site-wide preference when the call site doesn't pin a unit.
     const activeUnit: Denomination = unit ?? denomination;
     const chartRef = useRef<HTMLDivElement>(null);
+    const plotRef = useRef<HTMLDivElement>(null);
+    // This component renders more than once per page, so the wiring ids must be unique.
+    const uid = useId();
+    const captionId = `${uid}-caption`;
+    const summaryId = `${uid}-summary`;
     const [tab, setTab] = useState<ChartTab>('portfolio');
     const [showPowerLaw, setShowPowerLaw] = useState(false);
     const [showEvents, setShowEvents] = useState(false);
@@ -381,14 +410,72 @@ export const DcaChart = memo(function DcaChart({ data, unit }: DcaChartProps) {
         return candidates;
     }, [chartData, showEvents]);
 
-    const chartAriaLabel = useMemo(() => {
+    // ── Text alternative: caption, prose summary, and a downsampled data table ──
+    // A Recharts SVG carries nothing an assistive technology can read, so the
+    // figure is labelled and described in text and the series is repeated as a
+    // small table. The chart itself is collapsed to a single node (see role="img"
+    // below) so the axis ticks are not read out on top of the table.
+
+    const textRows = useMemo(() => sampleEvenly(data ?? [], TEXT_TABLE_ROWS), [data]);
+
+    const chartCaption = useMemo(() => {
         if (!data || data.length === 0) return 'DCA performance chart';
         const start = formatUtc(data[0].date, 'full');
         const end = formatUtc(data[data.length - 1].date, 'full');
         return tab === 'portfolio'
-            ? `Portfolio value versus total invested chart from ${start} to ${end}`
-            : `Bitcoin price chart with average cost from ${start} to ${end}`;
+            ? `Portfolio value versus total invested, ${start} to ${end}`
+            : `Bitcoin price versus average cost, ${start} to ${end}`;
     }, [data, tab]);
+
+    const chartSummary = useMemo(() => {
+        if (!data || data.length === 0) return '';
+        const first = data[0];
+        const last = data[data.length - 1];
+        const startLabel = formatUtc(first.date, 'full');
+        const endLabel = formatUtc(last.date, 'full');
+        const parts: string[] = [];
+
+        if (tab === 'portfolio') {
+            const drawdown = maxDrawdownPct(data.map((d) => d.portfolioValue));
+            const pl = last.portfolioValue - last.totalInvested;
+            const plPct = last.totalInvested > 0 ? (pl / last.totalInvested) * 100 : null;
+            parts.push(
+                `Portfolio value moves from ${formatCurrency(first.portfolioValue)} on ${startLabel} to ` +
+                    `${formatCurrency(last.portfolioValue)} on ${endLabel}, against ` +
+                    `${formatCurrency(last.totalInvested)} invested.`,
+            );
+            parts.push(
+                plPct === null
+                    ? `That is a difference of ${formatCurrency(pl)}.`
+                    : `That is ${formatCurrency(Math.abs(pl))} ${pl >= 0 ? 'above' : 'below'} the amount invested, ` +
+                      `${signedPct(plPct)}.`,
+            );
+            if (drawdown !== null && drawdown > 0) {
+                parts.push(`Largest peak-to-trough fall in portfolio value over the period: ${drawdown.toFixed(1)}%.`);
+            }
+        } else {
+            const drawdown = maxDrawdownPct(data.map((d) => d.price));
+            const pct = first.price > 0 ? ((last.price - first.price) / first.price) * 100 : null;
+            parts.push(
+                `Bitcoin price moves from ${formatCurrency(first.price)} on ${startLabel} to ` +
+                    `${formatCurrency(last.price)} on ${endLabel}${pct === null ? '' : `, ${signedPct(pct)}`}.`,
+            );
+            if (avgCostUsd !== null) parts.push(`Average cost paid: ${formatCurrency(avgCostUsd)}.`);
+            if (drawdown !== null && drawdown > 0) {
+                parts.push(`Largest peak-to-trough fall in price over the period: ${drawdown.toFixed(1)}%.`);
+            }
+        }
+
+        parts.push(`A table of ${textRows.length} evenly spaced sample points follows the chart.`);
+        return parts.join(' ');
+    }, [data, tab, formatCurrency, avgCostUsd, textRows.length]);
+
+    // Short label for the SVG itself — the detail lives in the caption, summary
+    // and table, so repeating it here would make every reader hear it twice.
+    const chartAriaLabel =
+        tab === 'portfolio'
+            ? 'Portfolio value chart. The underlying figures are in the data table that follows.'
+            : 'Bitcoin price chart. The underlying figures are in the data table that follows.';
 
     const handleExport = useCallback(async () => {
         if (!chartRef.current) return;
@@ -409,9 +496,46 @@ export const DcaChart = memo(function DcaChart({ data, unit }: DcaChartProps) {
         }
     }, []);
 
+    // The brush now renders at every width. Below 640px it has to fight the global
+    // chart touch rules in globals.css (`.recharts-wrapper *` gets
+    // `touch-action: manipulation`, `.recharts-surface` gets `pan-x pan-y`), which
+    // let the browser claim a drag for scrolling and fire touchcancel mid-gesture.
+    // React attaches touchstart/touchmove passively at the root, so Recharts' own
+    // handlers cannot preventDefault. This non-passive listener does it for them,
+    // and only while a traveller or the slide is actually being dragged — a drag
+    // anywhere else on the chart still scrolls the page normally.
+    const showBrush = (data?.length ?? 0) > BRUSH_MIN_POINTS;
+
+    useEffect(() => {
+        const el = plotRef.current;
+        if (!el || !showBrush) return;
+        let dragging = false;
+        const onStart = (e: TouchEvent) => {
+            const target = e.target;
+            dragging =
+                target instanceof Element &&
+                target.closest('.recharts-brush-traveller, .recharts-brush-slide') !== null;
+        };
+        const onMove = (e: TouchEvent) => {
+            if (dragging && e.cancelable) e.preventDefault();
+        };
+        const onEnd = () => {
+            dragging = false;
+        };
+        el.addEventListener('touchstart', onStart, { passive: true });
+        el.addEventListener('touchmove', onMove, { passive: false });
+        el.addEventListener('touchend', onEnd, { passive: true });
+        el.addEventListener('touchcancel', onEnd, { passive: true });
+        return () => {
+            el.removeEventListener('touchstart', onStart);
+            el.removeEventListener('touchmove', onMove);
+            el.removeEventListener('touchend', onEnd);
+            el.removeEventListener('touchcancel', onEnd);
+        };
+    }, [showBrush]);
+
     if (!data || data.length === 0) return null;
 
-    const showBrush = isWide && data.length > BRUSH_MIN_POINTS;
     const showBuyDots = chartData.length <= BUY_DOT_MAX_POINTS;
     // Legend only when the active tab draws ≥ 2 series
     const showLegend = tab === 'portfolio' || showPowerLaw;
@@ -429,8 +553,13 @@ export const DcaChart = memo(function DcaChart({ data, unit }: DcaChartProps) {
             <Card className="relative flex h-[340px] w-full flex-col overflow-hidden p-3 select-none touch-manipulation contain-layout-paint sm:h-[460px] sm:p-4">
                 {/* Header: title + tab switcher */}
                 <div className="mb-2 flex shrink-0 items-center justify-between gap-2">
-                    <h3 className="min-w-0 truncate text-sm font-semibold text-slate-800 dark:text-slate-100 sm:text-base">
-                        Performance Over Time
+                    {/* "Performance Over Time" does not fit beside the Portfolio /
+                        BTC Price switcher at 390px and was rendering as
+                        "Performance Over Ti…". Shortened on small screens rather
+                        than truncated mid-word. */}
+                    <h3 className="min-w-0 text-sm font-semibold text-slate-800 dark:text-slate-100 sm:text-base">
+                        <span className="sm:hidden">Performance</span>
+                        <span className="hidden sm:inline">Performance Over Time</span>
                     </h3>
                     <div
                         role="group"
@@ -463,7 +592,7 @@ export const DcaChart = memo(function DcaChart({ data, unit }: DcaChartProps) {
                             type="checkbox"
                             checked={isLog}
                             onChange={(e) => setIsLog(e.target.checked)}
-                            className="h-4 w-4 rounded border-slate-300 text-amber-600 focus:ring-amber-500 dark:border-slate-600"
+                            className="h-4 w-4 rounded border-slate-300 text-amber-700 dark:text-amber-400 focus:ring-amber-500 dark:border-slate-600"
                         />
                         Log
                     </label>
@@ -499,166 +628,246 @@ export const DcaChart = memo(function DcaChart({ data, unit }: DcaChartProps) {
                     </button>
                 </div>
 
-                <div className="min-h-0 flex-1 tabular-nums" role="img" aria-label={chartAriaLabel}>
-                    <ResponsiveContainer width="100%" height="100%" debounce={150}>
-                        {/* accessibilityLayer off: the region is exposed as a labeled image and the
-                            full data lives in the transaction table below the chart. */}
-                        <ComposedChart
-                            data={chartData}
-                            margin={{ top: 8, right: 12, left: 0, bottom: 0 }}
-                            accessibilityLayer={false}
-                        >
-                            <defs>
-                                <linearGradient id="dcaPortfolioFill" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="0%" stopColor="#d97706" stopOpacity={0.25} />
-                                    <stop offset="100%" stopColor="#d97706" stopOpacity={0} />
-                                </linearGradient>
-                            </defs>
-                            {/* Horizontal-only SOLID hairlines */}
-                            <CartesianGrid vertical={false} stroke={colors.grid} />
-                            <XAxis
-                                dataKey="date"
-                                tickFormatter={(d: string) => formatUtc(d, 'shortMonthYear')}
-                                minTickGap={40}
-                                tick={{ fontSize: 11, fill: colors.axis }}
-                                tickLine={false}
-                                axisLine={{ stroke: colors.grid }}
-                            />
-                            <YAxis
-                                scale={isLog ? 'log' : 'auto'}
-                                domain={isLog ? ['auto', 'auto'] : [0, 'auto']}
-                                allowDataOverflow={isLog}
-                                width={48}
-                                tickFormatter={formatAxisTick}
-                                tick={{ fontSize: 11, fill: colors.axis }}
-                                tickLine={false}
-                                axisLine={false}
-                            />
-                            <Tooltip
-                                content={<ChartTooltip tab={tab} unit={activeUnit} colors={colors} />}
-                                cursor={{ stroke: colors.cursor, strokeWidth: 1 }}
-                            />
-                            {showLegend && (
-                                <Legend
-                                    verticalAlign="top"
-                                    height={24}
-                                    iconSize={8}
-                                    wrapperStyle={{ fontSize: 11 }}
-                                    formatter={(value) => <span style={{ color: colors.axis }}>{value}</span>}
-                                />
-                            )}
-                            {halvingLines.map((h) => (
-                                <ReferenceLine
-                                    key={h.date}
-                                    x={h.snappedDate}
-                                    stroke={colors.halving}
-                                    strokeDasharray="4 4"
-                                    strokeWidth={1.5}
-                                    label={{ value: h.label, position: 'insideTop', fill: colors.halving, fontSize: 10 }}
-                                />
-                            ))}
-                            {eventLines.map((e, i) => (
-                                <ReferenceLine
-                                    key={e.date}
-                                    x={e.snappedDate}
-                                    stroke={e.color}
-                                    strokeDasharray="3 3"
-                                    strokeWidth={1}
-                                    label={{
-                                        value: e.label,
-                                        position: i % 2 === 0 ? 'insideTopRight' : 'insideBottomRight',
-                                        fill: e.color,
-                                        fontSize: 10,
-                                    }}
-                                />
-                            ))}
-                            {tab === 'price' && avgCostUsd !== null && (
-                                <ReferenceLine
-                                    y={avgCostUsd}
-                                    stroke={colors.neutral}
-                                    strokeDasharray="4 4"
-                                    strokeWidth={1.5}
-                                    ifOverflow="extendDomain"
-                                    label={{
-                                        value: `Avg cost ${formatAxisTick(avgCostUsd)}`,
-                                        position: 'insideBottomLeft',
-                                        fill: colors.axis,
-                                        fontSize: 10,
-                                    }}
-                                />
-                            )}
-                            {tab === 'portfolio' && !isLog && (
-                                <Area
-                                    type="monotone"
-                                    dataKey="portfolioValue"
-                                    name="Portfolio Value"
-                                    stroke={colors.portfolio}
-                                    strokeWidth={2}
-                                    fill="url(#dcaPortfolioFill)"
-                                    fillOpacity={1}
-                                    isAnimationActive={false}
-                                />
-                            )}
-                            {tab === 'portfolio' && isLog && (
-                                // Log scale: area baselines to zero are undefined, draw a line instead
-                                <Line
-                                    type="monotone"
-                                    dataKey="portfolioValue"
-                                    name="Portfolio Value"
-                                    stroke={colors.portfolio}
-                                    strokeWidth={2}
-                                    dot={false}
-                                    isAnimationActive={false}
-                                />
-                            )}
-                            {tab === 'portfolio' && (
-                                <Line
-                                    type="monotone"
-                                    dataKey="totalInvested"
-                                    name="Total Invested"
-                                    stroke={colors.neutral}
-                                    strokeWidth={1.5}
-                                    strokeDasharray="4 4"
-                                    dot={false}
-                                    isAnimationActive={false}
-                                />
-                            )}
-                            {tab === 'price' && (
-                                <Line
-                                    type="monotone"
-                                    dataKey="price"
-                                    name="BTC Price"
-                                    stroke={colors.price}
-                                    strokeWidth={2}
-                                    dot={showBuyDots ? { r: 2.5, fill: colors.portfolio, stroke: 'none' } : false}
-                                    activeDot={{ r: 4, strokeWidth: 0 }}
-                                    isAnimationActive={false}
-                                />
-                            )}
-                            {tab === 'price' && showPowerLaw && (
-                                <Line
-                                    type="monotone"
-                                    dataKey="powerLaw"
-                                    name="Power Law"
-                                    stroke={colors.powerLaw}
-                                    strokeWidth={1.5}
-                                    strokeDasharray="4 4"
-                                    dot={false}
-                                    isAnimationActive={false}
-                                />
-                            )}
-                            {showBrush && (
-                                <Brush
+                <div
+                    className="flex min-h-0 flex-1 flex-col tabular-nums"
+                    role="figure"
+                    aria-labelledby={captionId}
+                    aria-describedby={summaryId}
+                >
+                    {/* sr-only: the visible caption is the card heading above. */}
+                    <p id={captionId} className="sr-only">
+                        {chartCaption}
+                    </p>
+                    <p id={summaryId} className="sr-only">
+                        {chartSummary}
+                    </p>
+                    {/* role="img" collapses the whole SVG — axis ticks, legend, reference-line
+                        labels, brush ticks — into one node, so none of it is read out a second
+                        time next to the table below. */}
+                    <div ref={plotRef} className="min-h-0 flex-1" role="img" aria-label={chartAriaLabel}>
+                        <ResponsiveContainer width="100%" height="100%" debounce={150}>
+                            {/* accessibilityLayer off: Recharts' own keyboard layer would fight the
+                                role="img" collapse above. The text alternative is the caption,
+                                summary and sr-only table in this same figure. */}
+                            <ComposedChart
+                                data={chartData}
+                                margin={{ top: 8, right: 12, left: 0, bottom: 0 }}
+                                accessibilityLayer={false}
+                            >
+                                <defs>
+                                    <linearGradient id="dcaPortfolioFill" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="0%" stopColor="#d97706" stopOpacity={0.25} />
+                                        <stop offset="100%" stopColor="#d97706" stopOpacity={0} />
+                                    </linearGradient>
+                                </defs>
+                                {/* Horizontal-only SOLID hairlines */}
+                                <CartesianGrid vertical={false} stroke={colors.grid} />
+                                <XAxis
                                     dataKey="date"
-                                    height={24}
-                                    travellerWidth={8}
-                                    stroke={colors.portfolio}
-                                    fill={isDark ? 'rgba(217, 119, 6, 0.08)' : 'rgba(217, 119, 6, 0.06)'}
                                     tickFormatter={(d: string) => formatUtc(d, 'shortMonthYear')}
+                                    minTickGap={40}
+                                    tick={{ fontSize: 11, fill: colors.axis }}
+                                    tickLine={false}
+                                    axisLine={{ stroke: colors.grid }}
                                 />
-                            )}
-                        </ComposedChart>
-                    </ResponsiveContainer>
+                                <YAxis
+                                    scale={isLog ? 'log' : 'auto'}
+                                    domain={isLog ? ['auto', 'auto'] : [0, 'auto']}
+                                    allowDataOverflow={isLog}
+                                    width={48}
+                                    tickFormatter={formatAxisTick}
+                                    tick={{ fontSize: 11, fill: colors.axis }}
+                                    tickLine={false}
+                                    axisLine={false}
+                                />
+                                <Tooltip
+                                    content={<ChartTooltip tab={tab} unit={activeUnit} colors={colors} />}
+                                    cursor={{ stroke: colors.cursor, strokeWidth: 1 }}
+                                />
+                                {showLegend && (
+                                    <Legend
+                                        verticalAlign="top"
+                                        height={24}
+                                        iconSize={8}
+                                        wrapperStyle={{ fontSize: 11 }}
+                                        formatter={(value) => <span style={{ color: colors.axis }}>{value}</span>}
+                                    />
+                                )}
+                                {halvingLines.map((h) => (
+                                    <ReferenceLine
+                                        key={h.date}
+                                        x={h.snappedDate}
+                                        stroke={colors.halving}
+                                        strokeDasharray="4 4"
+                                        strokeWidth={1.5}
+                                        label={{ value: h.label, position: 'insideTop', fill: colors.halving, fontSize: 10 }}
+                                    />
+                                ))}
+                                {eventLines.map((e, i) => (
+                                    <ReferenceLine
+                                        key={e.date}
+                                        x={e.snappedDate}
+                                        stroke={e.color}
+                                        strokeDasharray="3 3"
+                                        strokeWidth={1}
+                                        label={{
+                                            value: e.label,
+                                            position: i % 2 === 0 ? 'insideTopRight' : 'insideBottomRight',
+                                            fill: e.color,
+                                            fontSize: 10,
+                                        }}
+                                    />
+                                ))}
+                                {tab === 'price' && avgCostUsd !== null && (
+                                    <ReferenceLine
+                                        y={avgCostUsd}
+                                        stroke={colors.neutral}
+                                        strokeDasharray="4 4"
+                                        strokeWidth={1.5}
+                                        ifOverflow="extendDomain"
+                                        label={{
+                                            value: `Avg cost ${formatAxisTick(avgCostUsd)}`,
+                                            position: 'insideBottomLeft',
+                                            fill: colors.axis,
+                                            fontSize: 10,
+                                        }}
+                                    />
+                                )}
+                                {tab === 'portfolio' && !isLog && (
+                                    <Area
+                                        type="monotone"
+                                        dataKey="portfolioValue"
+                                        name="Portfolio Value"
+                                        stroke={colors.portfolio}
+                                        strokeWidth={2}
+                                        fill="url(#dcaPortfolioFill)"
+                                        fillOpacity={1}
+                                        isAnimationActive={false}
+                                    />
+                                )}
+                                {tab === 'portfolio' && isLog && (
+                                    // Log scale: area baselines to zero are undefined, draw a line instead
+                                    <Line
+                                        type="monotone"
+                                        dataKey="portfolioValue"
+                                        name="Portfolio Value"
+                                        stroke={colors.portfolio}
+                                        strokeWidth={2}
+                                        dot={false}
+                                        isAnimationActive={false}
+                                    />
+                                )}
+                                {tab === 'portfolio' && (
+                                    <Line
+                                        type="monotone"
+                                        dataKey="totalInvested"
+                                        name="Total Invested"
+                                        stroke={colors.neutral}
+                                        strokeWidth={1.5}
+                                        strokeDasharray="4 4"
+                                        dot={false}
+                                        isAnimationActive={false}
+                                    />
+                                )}
+                                {tab === 'price' && (
+                                    <Line
+                                        type="monotone"
+                                        dataKey="price"
+                                        name="BTC Price"
+                                        stroke={colors.price}
+                                        strokeWidth={2}
+                                        dot={showBuyDots ? { r: 2.5, fill: colors.portfolio, stroke: 'none' } : false}
+                                        activeDot={{ r: 4, strokeWidth: 0 }}
+                                        isAnimationActive={false}
+                                    />
+                                )}
+                                {tab === 'price' && showPowerLaw && (
+                                    <Line
+                                        type="monotone"
+                                        dataKey="powerLaw"
+                                        name="Power Law"
+                                        stroke={colors.powerLaw}
+                                        strokeWidth={1.5}
+                                        strokeDasharray="4 4"
+                                        dot={false}
+                                        isAnimationActive={false}
+                                    />
+                                )}
+                                {showBrush && (
+                                    // Touch sizing below sm: a 24px-wide, 30px-tall traveller clears
+                                    // the 24x24 CSS-pixel minimum target size for a finger.
+                                    <Brush
+                                        dataKey="date"
+                                        // Recharts' default traveller label reads `data[i].name`,
+                                        // which our rows do not have — it would announce
+                                        // "Min value: undefined". Override it.
+                                        ariaLabel="Zoom the chart to a date range"
+                                        height={isWide ? 24 : 30}
+                                        travellerWidth={isWide ? 8 : 24}
+                                        stroke={colors.portfolio}
+                                        fill={isDark ? 'rgba(217, 119, 6, 0.08)' : 'rgba(217, 119, 6, 0.06)'}
+                                        tickFormatter={(d: string) => formatUtc(d, 'shortMonthYear')}
+                                    />
+                                )}
+                            </ComposedChart>
+                        </ResponsiveContainer>
+                    </div>
+
+                    {/* Text alternative for the series. Downsampled to TEXT_TABLE_ROWS
+                        evenly spaced points (first and last always included) so it can
+                        actually be walked through row by row. */}
+                    <table className="sr-only">
+                        <caption>
+                            {tab === 'portfolio'
+                                ? `Portfolio value and total invested at ${textRows.length} sample dates`
+                                : `Bitcoin price and holdings at ${textRows.length} sample dates`}
+                        </caption>
+                        <thead>
+                            <tr>
+                                <th scope="col">Date</th>
+                                {tab === 'portfolio' ? (
+                                    <>
+                                        <th scope="col">Total invested</th>
+                                        <th scope="col">Portfolio value</th>
+                                        <th scope="col">Difference</th>
+                                    </>
+                                ) : (
+                                    <>
+                                        <th scope="col">Bitcoin price</th>
+                                        <th scope="col">{activeUnit === 'SATS' ? 'Sats held' : 'Bitcoin held'}</th>
+                                        <th scope="col">Portfolio value</th>
+                                    </>
+                                )}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {textRows.map((row) => (
+                                <tr key={row.date}>
+                                    <th scope="row">{formatUtc(row.date, 'full')}</th>
+                                    {tab === 'portfolio' ? (
+                                        <>
+                                            <td>{formatCurrency(row.totalInvested)}</td>
+                                            <td>{formatCurrency(row.portfolioValue)}</td>
+                                            <td>
+                                                {row.portfolioValue >= row.totalInvested ? 'up ' : 'down '}
+                                                {formatCurrency(Math.abs(row.portfolioValue - row.totalInvested))}
+                                            </td>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <td>{formatCurrency(row.price)}</td>
+                                            <td>
+                                                {activeUnit === 'SATS'
+                                                    ? formatSats(row.totalAccumulated)
+                                                    : formatBtc(row.totalAccumulated)}
+                                            </td>
+                                            <td>{formatCurrency(row.portfolioValue)}</td>
+                                        </>
+                                    )}
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
                 </div>
                 <div className="pointer-events-none absolute bottom-0.5 right-2 select-none text-[9px] text-slate-400/40 dark:text-slate-600/40">
                     btcdollarcostaverage.com

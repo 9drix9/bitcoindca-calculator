@@ -1,4 +1,5 @@
 import { ImageResponse } from 'next/og';
+import { SAT_LADDER_OG_PATH } from '@/components/brand/Logo';
 
 export const runtime = 'edge';
 export const alt = 'Bitcoin DCA Calculator';
@@ -21,23 +22,20 @@ export default function Image() {
                     padding: 80,
                 }}
             >
-                {/* Amber Bitcoin mark */}
+                {/* Sat Ladder mark */}
                 <div
                     style={{
                         width: 120,
                         height: 120,
-                        borderRadius: 60,
-                        backgroundColor: '#f59e0b',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        fontSize: 72,
-                        fontWeight: 800,
-                        color: '#020617',
                         marginBottom: 48,
                     }}
                 >
-                    &#8383;
+                    <svg width={108} height={108} viewBox="0 0 24 24" fill="#f59e0b">
+                        <path d={SAT_LADDER_OG_PATH} />
+                    </svg>
                 </div>
 
                 {/* Title */}

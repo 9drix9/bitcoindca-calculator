@@ -1,4 +1,5 @@
 import { ImageResponse } from 'next/og';
+import { SAT_LADDER_OG_PATH } from '@/components/brand/Logo';
 import {
     computeShareCard,
     resolveShareParams,
@@ -19,17 +20,14 @@ function Header() {
                 style={{
                     width: 72,
                     height: 72,
-                    borderRadius: 36,
-                    backgroundColor: '#f59e0b',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    fontSize: 44,
-                    fontWeight: 800,
-                    color: '#020617',
                 }}
             >
-                {'B'}
+                <svg width={64} height={64} viewBox="0 0 24 24" fill="#f59e0b">
+                    <path d={SAT_LADDER_OG_PATH} />
+                </svg>
             </div>
             <div style={{ display: 'flex', fontSize: 30, fontWeight: 700, color: '#f8fafc', letterSpacing: -0.5 }}>
                 Bitcoin DCA Calculator
@@ -129,18 +127,15 @@ function GenericCard() {
                 style={{
                     width: 120,
                     height: 120,
-                    borderRadius: 60,
-                    backgroundColor: '#f59e0b',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    fontSize: 72,
-                    fontWeight: 800,
-                    color: '#020617',
                     marginBottom: 48,
                 }}
             >
-                {'B'}
+                <svg width={108} height={108} viewBox="0 0 24 24" fill="#f59e0b">
+                    <path d={SAT_LADDER_OG_PATH} />
+                </svg>
             </div>
             <div
                 style={{

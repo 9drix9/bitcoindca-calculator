@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { usePathname } from 'next/navigation';
 import Script from 'next/script';
 
 declare global {
@@ -26,6 +27,8 @@ function getConsent(): ConsentData | null {
 }
 
 export const ConsentGatedScripts = () => {
+    const pathname = usePathname();
+    const isEmbed = pathname === '/embed' || pathname?.startsWith('/embed/');
     const [analyticsGranted, setAnalyticsGranted] = useState(false);
 
     useEffect(() => {
@@ -55,7 +58,10 @@ export const ConsentGatedScripts = () => {
         });
     }, [analyticsGranted]);
 
-    if (!analyticsGranted) return null;
+    // Never inside the embeddable widget — /embed-guide promises publishers it
+    // loads no third-party scripts and sets no cookies. Consent given on this
+    // site is also not consent from a third party's readers.
+    if (isEmbed || !analyticsGranted) return null;
 
     return (
         <>

@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import Link from 'next/link';
 
 export const metadata: Metadata = {
     title: 'Terms of Service',
@@ -61,9 +62,14 @@ export default function TermsPage() {
 
                 <h2>Intellectual Property</h2>
                 <p>
-                    The content, design, and code of Bitcoin DCA Calculator are the property of its creators. You may use
-                    the calculator freely for personal, educational, or informational purposes. You may not reproduce, distribute,
-                    or create derivative works from this site without permission.
+                    The source code of Bitcoin DCA Calculator is released under the{' '}
+                    <a href="https://github.com/9drix9/bitcoindca-calculator/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">MIT License</a>.
+                    You may use, copy, modify, and redistribute the code on those terms, including commercially — the licence
+                    text governs, not this page.
+                </p>
+                <p>
+                    Written content and the site&apos;s branding are not covered by that licence and remain the property of
+                    their creators. You are welcome to quote or cite the site&apos;s published figures with attribution and a link.
                 </p>
 
                 <h2>Third-Party Services</h2>
@@ -107,7 +113,8 @@ export default function TermsPage() {
 
                 <h2>Contact</h2>
                 <p>
-                    If you have questions about these terms, you can reach us on X (Twitter) at{' '}
+                    If you have questions about these terms, see the{' '}
+                    <Link href="/contact">contact page</Link>, or reach us on X (Twitter) at{' '}
                     <a href="https://x.com/9drix9" target="_blank" rel="noopener noreferrer">@9drix9</a>.
                 </p>
             </article>

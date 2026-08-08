@@ -1,18 +1,22 @@
 'use client';
 
-import { useState, useMemo, useCallback, useId } from 'react';
+import { useState, useMemo, useCallback, useEffect, useId } from 'react';
 import { CostBasisPosition, Frequency, PriceMode } from '@/types';
 import { calculateDca } from '@/utils/dca';
-import { parseUtcDate } from '@/utils/dates';
+import { parseUtcDate, DAY_MS } from '@/utils/dates';
+import { getBitcoinPriceHistory } from '@/app/actions';
 import { useCurrency } from '@/context/CurrencyContext';
 import { Card, CardHeader } from '@/components/ui/Card';
 import clsx from 'clsx';
 
 
 interface CostBasisTrackerProps {
+    /** Fallback series (the calculator's window) used until this component's own
+     *  position-spanning history arrives. */
     priceData: [number, number][];
     livePrice: number | null;
     priceMode: PriceMode;
+    provider: 'kraken' | 'coinbase';
 }
 
 const STORAGE_KEY = 'btc-dca-cost-basis-positions';
@@ -51,7 +55,7 @@ const savePositions = (positions: CostBasisPosition[]) => {
     } catch { /* ignore */ }
 };
 
-export const CostBasisTracker = ({ priceData, livePrice, priceMode }: CostBasisTrackerProps) => {
+export const CostBasisTracker = ({ priceData, livePrice, priceMode, provider }: CostBasisTrackerProps) => {
     const { formatCurrency, currencyConfig } = useCurrency();
     // Stored position amounts are always USD; the form input is in the selected
     // display currency and converted once on save.
@@ -97,6 +101,40 @@ export const CostBasisTracker = ({ priceData, livePrice, priceMode }: CostBasisT
         savePositions(updated);
     }, [positions]);
 
+    /**
+     * Saved positions have arbitrary dates, but the series handed down from the
+     * calculator only covers the calculator's own window. A position starting
+     * before that window had no price to look up, so it silently reported zero
+     * invested. Fetch a series that actually spans every saved position instead;
+     * the action is cached server-side, so this is close to free.
+     */
+    const [ownPriceData, setOwnPriceData] = useState<[number, number][] | null>(null);
+
+    const positionSpan = useMemo(() => {
+        if (positions.length === 0) return null;
+        let min = Infinity;
+        let max = -Infinity;
+        for (const p of positions) {
+            const s = parseUtcDate(p.startDate);
+            const e = parseUtcDate(p.endDate);
+            if (Number.isFinite(s)) min = Math.min(min, s);
+            if (Number.isFinite(e)) max = Math.max(max, e);
+        }
+        return Number.isFinite(min) && Number.isFinite(max) ? { min, max } : null;
+    }, [positions]);
+
+    useEffect(() => {
+        if (priceMode !== 'api' || !positionSpan) return;
+        let cancelled = false;
+        getBitcoinPriceHistory(positionSpan.min, positionSpan.max + DAY_MS, provider)
+            .then(data => { if (!cancelled) setOwnPriceData(data); })
+            // Fall back to the calculator's window rather than showing nothing.
+            .catch(() => { if (!cancelled) setOwnPriceData(null); });
+        return () => { cancelled = true; };
+    }, [positionSpan, provider, priceMode]);
+
+    const effectivePriceData = ownPriceData ?? priceData;
+
     const positionResults = useMemo(() => {
         return positions.map(pos => {
             const result = calculateDca(
@@ -109,12 +147,12 @@ export const CostBasisTracker = ({ priceData, livePrice, priceMode }: CostBasisT
                     priceMode: priceMode === 'api' ? 'api' : 'manual',
                     manualPrice: 50000,
                 },
-                priceData,
+                effectivePriceData,
                 livePrice
             );
             return { position: pos, result };
         });
-    }, [positions, priceData, livePrice, priceMode]);
+    }, [positions, effectivePriceData, livePrice, priceMode]);
 
     const totals = useMemo(() => {
         let totalInvested = 0;
@@ -229,7 +267,7 @@ export const CostBasisTracker = ({ priceData, livePrice, priceMode }: CostBasisT
                     <button
                         onClick={addPosition}
                         disabled={!label.trim() || !formStartDate || !formEndDate}
-                        className="flex h-11 w-full items-center justify-center py-2 text-sm font-medium rounded-lg bg-amber-500 hover:bg-amber-600 text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        className="flex h-11 w-full items-center justify-center py-2 text-sm font-medium rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     >
                         Add Position
                     </button>

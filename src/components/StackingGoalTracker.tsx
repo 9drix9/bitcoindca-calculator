@@ -3,20 +3,34 @@
 import { useMemo } from 'react';
 import { CheckCircle2 } from 'lucide-react';
 import { useCurrency } from '@/context/CurrencyContext';
-import { parseUtcDate } from '@/utils/dates';
 import { Card, CardHeader } from '@/components/ui/Card';
 import clsx from 'clsx';
 
 interface StackingGoalTrackerProps {
     btcAccumulated: number;
-    totalInvested: number;
     purchaseCount: number;
+    /**
+     * Retained for call-site compatibility only. These described the backtest window
+     * and used to drive the time-to-goal estimate (btc accumulated ÷ days elapsed).
+     * That was circular — it priced future sats at the average price of a window the
+     * price had already risen through — so the estimate now uses `currentPrice`
+     * instead and these no longer affect any number on screen.
+     */
+    totalInvested: number;
     startDate: string;
     endDate: string;
     /** Contribution amount per purchase, in USD (parent passes amountUsd) */
     amount: number;
     frequency: string;
     unit: 'BTC' | 'SATS';
+    /**
+     * Live BTC price in USD. The time-to-goal estimate is priced at TODAY's market,
+     * not at the average price of the backtest window — extrapolating the historical
+     * accumulation rate assumes future sats keep costing what past sats cost, which
+     * flatters every window in which the price rose. Without a live price there is
+     * no honest rate to project at, so the estimate is simply not shown.
+     */
+    currentPrice?: number;
 }
 
 const MILESTONES = [0.001, 0.01, 0.1, 0.21, 0.5, 1];
@@ -26,6 +40,14 @@ const FREQUENCY_LABELS: Record<string, string> = {
     weekly: 'week',
     biweekly: '2 weeks',
     monthly: 'month',
+};
+
+/** Purchases per year for each supported cadence. */
+const PERIODS_PER_YEAR: Record<string, number> = {
+    daily: 365,
+    weekly: 52,
+    biweekly: 26,
+    monthly: 12,
 };
 
 const formatBtcLabel = (btc: number, unit: 'BTC' | 'SATS') => {
@@ -44,37 +66,38 @@ const formatMonths = (months: number): string => {
 
 export const StackingGoalTracker = ({
     btcAccumulated,
-    totalInvested,
     purchaseCount,
-    startDate,
-    endDate,
     amount,
     frequency,
     unit,
+    currentPrice,
 }: StackingGoalTrackerProps) => {
     const { formatCurrency } = useCurrency();
 
     const projection = useMemo(() => {
-        if (purchaseCount < 2 || btcAccumulated <= 0 || totalInvested <= 0) return null;
+        if (purchaseCount < 1 || btcAccumulated <= 0) return null;
+        if (!currentPrice || !Number.isFinite(currentPrice) || currentPrice <= 0) return null;
+        if (!Number.isFinite(amount) || amount <= 0) return null;
 
-        const start = parseUtcDate(startDate);
-        const end = parseUtcDate(endDate);
-        if (!Number.isFinite(start) || !Number.isFinite(end)) return null;
-        const daysElapsed = (end - start) / (1000 * 60 * 60 * 24);
-        if (daysElapsed <= 0) return null;
-
-        const btcPerDay = btcAccumulated / daysElapsed;
-        if (btcPerDay <= 0) return null;
+        const periodsPerYear = PERIODS_PER_YEAR[frequency];
+        if (!periodsPerYear) return null;
 
         const nextMilestone = MILESTONES.find(m => btcAccumulated < m);
         if (!nextMilestone) return null;
 
-        const btcNeeded = nextMilestone - btcAccumulated;
-        const daysNeeded = btcNeeded / btcPerDay;
-        const monthsNeeded = Math.ceil(daysNeeded / 30);
+        // Every future purchase buys amount/currentPrice worth of BTC — i.e. the
+        // price is held flat at today's. That is an assumption, not a forecast,
+        // but it is one the reader can check against the ticker.
+        const btcPerPeriod = amount / currentPrice;
+        if (btcPerPeriod <= 0) return null;
 
-        return { target: nextMilestone, monthsNeeded };
-    }, [btcAccumulated, totalInvested, purchaseCount, startDate, endDate]);
+        const btcNeeded = nextMilestone - btcAccumulated;
+        const periodsNeeded = btcNeeded / btcPerPeriod;
+        const monthsNeeded = Math.ceil((periodsNeeded / periodsPerYear) * 12);
+        if (!Number.isFinite(monthsNeeded) || monthsNeeded <= 0) return null;
+
+        return { target: nextMilestone, monthsNeeded, btcPerPeriod };
+    }, [btcAccumulated, purchaseCount, amount, frequency, currentPrice]);
 
     if (purchaseCount === 0 || btcAccumulated <= 0) return null;
 
@@ -124,15 +147,29 @@ export const StackingGoalTracker = ({
                 })}
             </div>
 
-            {projection && (
-                <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-slate-100 dark:border-slate-800">
+            {projection && currentPrice && (
+                <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-slate-100 dark:border-slate-800 space-y-1.5">
                     <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-                        At <span className="font-medium text-amber-600 dark:text-amber-400 tabular-nums">{amountLabel}/{frequencyLabel}</span>,
-                        you&apos;ll reach{' '}
-                        <span className="font-medium text-amber-600 dark:text-amber-400 tabular-nums">{formatBtcLabel(projection.target, unit)}</span>
-                        {' '}in ~<span className="font-medium text-amber-600 dark:text-amber-400 tabular-nums">
-                            {formatMonths(projection.monthsNeeded)}
-                        </span>
+                        Keep buying <span className="font-medium text-amber-700 dark:text-amber-400 tabular-nums">{amountLabel} every {frequencyLabel}</span>{' '}
+                        and, at today&apos;s price of <span className="font-medium text-amber-700 dark:text-amber-400 tabular-nums">{formatCurrency(currentPrice)}</span>,
+                        each buy adds about{' '}
+                        <span className="font-medium tabular-nums text-slate-700 dark:text-slate-300">
+                            {Math.round(projection.btcPerPeriod * 100_000_000).toLocaleString()} sats
+                        </span>. Reaching{' '}
+                        <span className="font-medium text-amber-700 dark:text-amber-400 tabular-nums">{formatBtcLabel(projection.target, unit)}</span>
+                        {' '}would take{' '}
+                        {projection.monthsNeeded > 1200 ? (
+                            <span className="font-medium text-amber-700 dark:text-amber-400">over 100 years</span>
+                        ) : (
+                            <span className="font-medium text-amber-700 dark:text-amber-400 tabular-nums">
+                                about {formatMonths(projection.monthsNeeded)}
+                            </span>
+                        )}.
+                    </p>
+                    <p className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                        That figure holds the price flat at today&apos;s. It is arithmetic, not a forecast: if bitcoin gets
+                        more expensive your contribution buys fewer sats and the goal takes longer; if it gets cheaper it
+                        arrives sooner. Exchange fees are not deducted, so treat it as a floor on the time required.
                     </p>
                 </div>
             )}

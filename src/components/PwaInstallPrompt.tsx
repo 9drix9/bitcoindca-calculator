@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useSyncExternalStore } from 'react';
 import { Download, X, Share } from 'lucide-react';
+import { Logo } from '@/components/brand/Logo';
 
 // Stores the dismissal timestamp (ms). Legacy value '1' parses as an
 // expired timestamp, so previously-permanent dismissals become re-offerable.
@@ -174,11 +175,8 @@ export function PwaInstallPrompt() {
     >
       <div className="max-w-4xl mx-auto">
         <div className="flex items-center gap-3">
-          <div
-            className="w-9 h-9 bg-gradient-to-br from-amber-400 to-orange-500 rounded-lg flex items-center justify-center text-white font-bold text-sm shrink-0"
-            aria-hidden="true"
-          >
-            ₿
+          <div className="w-9 h-9 rounded-lg bg-slate-900 dark:bg-slate-800 flex items-center justify-center shrink-0">
+            <Logo className="w-5 h-5 text-amber-400" />
           </div>
           <div className="flex-1 min-w-0">
             {deferredPrompt ? (
@@ -208,7 +206,7 @@ export function PwaInstallPrompt() {
             {deferredPrompt && (
               <button
                 onClick={handleInstall}
-                className="flex items-center gap-1.5 h-11 px-3 py-2 text-xs sm:text-sm font-medium rounded-lg bg-amber-500 hover:bg-amber-600 text-white transition-colors"
+                className="flex items-center gap-1.5 h-11 px-3 py-2 text-xs sm:text-sm font-medium rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 transition-colors"
               >
                 <Download size={14} />
                 Install

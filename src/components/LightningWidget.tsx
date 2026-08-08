@@ -62,7 +62,7 @@ export const LightningWidget = ({ initialData }: LightningWidgetProps) => {
                     <StatRow
                         label="Capacity"
                         value={`${data.totalCapacityBtc.toLocaleString(undefined, { maximumFractionDigits: 1 })} BTC`}
-                        valueClassName="text-amber-600 dark:text-amber-400"
+                        valueClassName="text-amber-700 dark:text-amber-400"
                     />
                 </div>
             ) : (

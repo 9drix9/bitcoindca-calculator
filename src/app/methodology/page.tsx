@@ -40,7 +40,7 @@ const DATA_SOURCES = [
     { source: 'mempool.space', provides: 'Block height, transaction fees, hash rate, difficulty, Lightning stats', cadence: '30s - 5 min' },
     { source: 'CoinGecko', provides: 'Global market cap and Bitcoin dominance', cadence: '~5 min' },
     { source: 'FRED (St. Louis Fed)', provides: 'CPI inflation series (inflation-adjusted returns)', cadence: 'Daily' },
-    { source: 'Yahoo Finance', provides: 'S&P 500 (^GSPC) and Gold (GC=F) for asset comparisons', cadence: 'Cached ~1 hour' },
+    { source: 'Yahoo Finance', provides: 'S&P 500 total return (^SP500TR, dividends reinvested) and Gold (GC=F) for asset comparisons', cadence: 'Cached ~1 hour' },
     { source: 'alternative.me', provides: 'Fear & Greed Index', cadence: '~5 min' },
     { source: 'blockchain.info', provides: 'Circulating BTC supply; daily market prices 2010-2015 (static snapshot)', cadence: '~5 min / fixed' },
     { source: 'frankfurter.app', provides: 'ECB reference FX rates (EUR, GBP, CAD, AUD, JPY display currencies)', cadence: '~12 hours' },
@@ -260,7 +260,7 @@ export default function MethodologyPage() {
                     </p>
                     <Link
                         href="/"
-                        className="inline-flex items-center gap-2 bg-amber-500 hover:bg-amber-600 text-white font-semibold px-6 py-3 rounded-xl transition-colors text-sm sm:text-base"
+                        className="inline-flex items-center gap-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-semibold px-6 py-3 rounded-xl transition-colors text-sm sm:text-base"
                     >
                         Open the Calculator
                         <ArrowRight className="w-4 h-4" />

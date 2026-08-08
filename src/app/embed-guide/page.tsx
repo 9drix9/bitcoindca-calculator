@@ -101,7 +101,7 @@ export default function EmbedGuidePage() {
                 <nav aria-label="Breadcrumb" className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
                     <ol className="flex flex-wrap items-center gap-1.5">
                         <li>
-                            <Link href="/" className="hover:text-amber-600 dark:hover:text-amber-400 transition-colors">Home</Link>
+                            <Link href="/" className="hover:text-amber-700 dark:hover:text-amber-400 transition-colors">Home</Link>
                         </li>
                         <li aria-hidden="true">/</li>
                         <li aria-current="page" className="text-slate-700 dark:text-slate-300">Embed Widget</li>
@@ -205,7 +205,7 @@ export default function EmbedGuidePage() {
                     <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
                         Dates are UTC calendar days, and amounts are denominated in whichever display currency you pick.
                         Results come from the same engine and data as the main calculator; the{' '}
-                        <Link href="/methodology" className="text-amber-600 dark:text-amber-400 hover:underline">methodology</Link>{' '}
+                        <Link href="/methodology" className="text-amber-700 dark:text-amber-400 hover:underline">methodology</Link>{' '}
                         page spells out exactly how each number is computed.
                     </p>
                 </section>
@@ -272,7 +272,7 @@ export default function EmbedGuidePage() {
                     </p>
                     <Link
                         href="/"
-                        className="inline-flex items-center gap-2 bg-amber-500 hover:bg-amber-600 text-white font-semibold px-6 py-3 rounded-xl transition-colors text-sm sm:text-base"
+                        className="inline-flex items-center gap-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-semibold px-6 py-3 rounded-xl transition-colors text-sm sm:text-base"
                     >
                         Open the Calculator
                         <ArrowRight className="w-4 h-4" />

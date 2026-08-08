@@ -67,7 +67,7 @@ const FeatureCard = ({
     color?: 'amber' | 'blue' | 'green' | 'purple' | 'red' | 'cyan';
 }) => {
     const colorClasses = {
-        amber: 'bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400',
+        amber: 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400',
         blue: 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400',
         green: 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400',
         purple: 'bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400',
@@ -121,7 +121,7 @@ export default function FeaturesPage() {
                 </p>
                 <Link
                     href="/"
-                    className="inline-flex items-center gap-2 bg-amber-500 hover:bg-amber-600 text-white font-semibold px-6 py-3 rounded-xl transition-colors"
+                    className="inline-flex items-center gap-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-semibold px-6 py-3 rounded-xl transition-colors"
                 >
                     Try the Calculator
                     <ArrowRight className="w-4 h-4" />
@@ -264,7 +264,7 @@ export default function FeaturesPage() {
                     <FeatureCard
                         icon={Sparkles}
                         title="Future Projections"
-                        description="Set an end date in the future and the tool projects forward at conservative (15%), moderate (30%), or aggressive (50%) annual growth."
+                        description="Set an end date in the future and the tool projects forward from three editable annual rates that bracket a loss, no change and a gain (−20%, 0%, +20% by default). They are assumptions you can change, not forecasts."
                         color="purple"
                     />
                 </div>
@@ -452,7 +452,7 @@ export default function FeaturesPage() {
                     <Link href="/why-bitcoin" className="group">
                         <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5 h-full hover:border-amber-300 dark:hover:border-amber-700 transition-colors">
                             <div className="flex items-center justify-between mb-3">
-                                <div className="w-10 h-10 rounded-lg bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 flex items-center justify-center">
+                                <div className="w-10 h-10 rounded-lg bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 flex items-center justify-center">
                                     <TrendingUp className="w-5 h-5" />
                                 </div>
                                 <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-amber-500 transition-colors" />
@@ -515,7 +515,7 @@ export default function FeaturesPage() {
                     </p>
                     <Link
                         href="/"
-                        className="inline-flex items-center gap-2 bg-amber-500 hover:bg-amber-600 text-white font-semibold px-8 py-4 rounded-xl transition-colors text-lg"
+                        className="inline-flex items-center gap-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-semibold px-8 py-4 rounded-xl transition-colors text-lg"
                     >
                         Open the Calculator
                         <ArrowRight className="w-5 h-5" />

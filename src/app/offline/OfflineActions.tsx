@@ -18,7 +18,7 @@ export function OfflineActions() {
     <div className="flex flex-wrap items-center justify-center gap-3">
       <button
         onClick={() => window.location.reload()}
-        className="inline-flex items-center gap-2 min-h-[44px] px-5 py-2.5 bg-amber-500 hover:bg-amber-600 text-white text-sm font-medium rounded-lg transition-colors"
+        className="inline-flex items-center gap-2 min-h-[44px] px-5 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 text-sm font-medium rounded-lg transition-colors"
       >
         <RotateCw size={16} aria-hidden="true" />
         Try Again

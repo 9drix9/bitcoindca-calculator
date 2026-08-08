@@ -3,11 +3,27 @@
 import { useCallback, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { X, Sparkles, FileText, Info, Github } from 'lucide-react';
+import {
+  X, Sparkles, FileText, Info, Github, Scale, CalendarDays, User, Mail,
+  Shield, Pickaxe, Receipt, Grid3x3, FlaskConical, Code2,
+} from 'lucide-react';
 
+// This is the "More" overflow behind the bottom bar's last tab, so it must NOT
+// repeat the four primary destinations (/, /calculators, /dca, /why-bitcoin).
+// Self-Custody and Mining live here now that Learn is a single tab.
 const drawerLinks = [
+  { href: '/self-custody', label: 'Self-Custody', icon: Shield },
+  { href: '/mining', label: 'Mining', icon: Pickaxe },
+  { href: '/bitcoin-dca-tax', label: 'DCA & Taxes', icon: Receipt },
+  { href: '/lump-sum-vs-dca', label: 'Lump Sum vs DCA', icon: Scale },
+  { href: '/best-day-to-buy-bitcoin', label: 'Best Day to Buy', icon: CalendarDays },
+  { href: '/dca/start-date-heatmap', label: 'Start-Date Heatmap', icon: Grid3x3 },
+  { href: '/methodology', label: 'Methodology & Data', icon: FlaskConical },
   { href: '/features', label: 'Features', icon: Sparkles },
+  { href: '/embed-guide', label: 'Embed the Widget', icon: Code2 },
   { href: '/about', label: 'About', icon: Info },
+  { href: '/author', label: 'Who Built This', icon: User },
+  { href: '/contact', label: 'Contact', icon: Mail },
   { href: '/privacy', label: 'Privacy Policy', icon: FileText },
   { href: '/terms', label: 'Terms of Service', icon: FileText },
 ] as const;
@@ -57,6 +73,54 @@ export function MobileMenuDrawer({ open, onClose, triggerRef }: MobileMenuDrawer
     };
     mq.addEventListener('change', handler);
     return () => mq.removeEventListener('change', handler);
+  }, [open, onClose]);
+
+  // Android hardware/gesture back must close the drawer, not leave the site.
+  // Opening pushes a throwaway history entry so `back` has something to pop;
+  // popstate then closes the drawer instead of navigating away.
+  //
+  // CRITICAL: the entry must only be popped when the drawer closes WITHOUT a
+  // navigation. Tapping a link in the drawer changes the route, which closes
+  // the drawer via the route-change effect — and popping there would rewind the
+  // navigation the user just made, dumping them back on the page they started
+  // from. That made every link in this menu appear broken.
+  //
+  // So the cleanup compares the route now against the route when we opened, and
+  // pops only if it is unchanged (tap outside, X, ESC). After a navigation the
+  // throwaway entry is buried under the new route and is harmless — going back
+  // from the new page lands on the URL the user opened the drawer from, which is
+  // where they expect to land anyway.
+  const ownEntry = useRef(false);
+  const pathAtOpen = useRef<string | null>(null);
+  const livePath = useRef(pathname);
+
+  // Kept current in an effect (not during render) so the cleanup below reads the
+  // post-navigation route. React flushes this before the `open` effect's cleanup.
+  useEffect(() => {
+    livePath.current = pathname;
+  }, [pathname]);
+
+  useEffect(() => {
+    if (!open) return;
+    pathAtOpen.current = livePath.current;
+    window.history.pushState({ drawer: true }, '');
+    ownEntry.current = true;
+
+    const onPop = () => {
+      // The browser already popped our entry — do not pop again on cleanup.
+      ownEntry.current = false;
+      onClose();
+    };
+    window.addEventListener('popstate', onPop);
+
+    return () => {
+      window.removeEventListener('popstate', onPop);
+      const navigated = livePath.current !== pathAtOpen.current;
+      if (ownEntry.current && !navigated) {
+        window.history.back();
+      }
+      ownEntry.current = false;
+    };
   }, [open, onClose]);
 
   // iOS-safe body scroll lock: fix the body in place while open, restore

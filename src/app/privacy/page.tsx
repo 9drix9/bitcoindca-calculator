@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import Link from 'next/link';
 
 export const metadata: Metadata = {
     title: 'Privacy Policy',
@@ -94,7 +95,7 @@ export default function PrivacyPage() {
                 <p>
                     This website is not directed at children under 13 years of age. We do not knowingly collect personal information
                     from children. If you are a parent or guardian and believe your child has provided us with personal information,
-                    please contact us so we can take appropriate action.
+                    please <Link href="/contact">contact us</Link> so we can take appropriate action.
                 </p>
 
                 <h2>Changes to This Policy</h2>
@@ -105,7 +106,8 @@ export default function PrivacyPage() {
 
                 <h2>Contact</h2>
                 <p>
-                    If you have questions about this privacy policy, you can reach us on X (Twitter) at{' '}
+                    If you have questions about this privacy policy, see the{' '}
+                    <Link href="/contact">contact page</Link>, or reach us on X (Twitter) at{' '}
                     <a href="https://x.com/9drix9" target="_blank" rel="noopener noreferrer">@9drix9</a>.
                 </p>
             </article>

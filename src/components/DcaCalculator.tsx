@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo, useCallback, useDeferredValue, useRef, memo } from 'react';
+import { useState, useEffect, useMemo, useCallback, useDeferredValue, useId, useRef, memo } from 'react';
 import { format, subYears, subMonths, startOfToday, differenceInMonths } from 'date-fns';
 import { Frequency, PriceMode, AssetDcaResult, DcaStats } from '@/types';
 import { useCurrency, CurrencyCode } from '@/context/CurrencyContext';
@@ -8,7 +8,15 @@ import { calculateDca, calculateLumpSum, calculateAssetDca } from '@/utils/dca';
 import { getBitcoinPriceHistory, getCurrentBitcoinPrice, getAssetPriceHistory, getCpiData, getProfitableWindows } from '@/app/actions';
 import { generateCsvContent, downloadCsv } from '@/utils/csv';
 import { encodeParams, decodeParams } from '@/utils/urlParams';
-import { formatUtc, parseUtcDate, DAY_MS } from '@/utils/dates';
+import {
+    formatUtc,
+    parseUtcDate,
+    DAY_MS,
+    EARLIEST_PRICE_DATE,
+    DEFAULT_YEARS_BACK,
+    utcIsoToday,
+    utcIsoYearsAgo,
+} from '@/utils/dates';
 import dynamic from 'next/dynamic';
 import { SkeletonCard, SkeletonChart } from './Skeleton';
 import { AdSlot } from './AdSlot';
@@ -16,7 +24,10 @@ import { Card } from './ui/Card';
 import { useCountUp } from '@/hooks/useCountUp';
 
 // Lazy-load result sub-components — none render until after a calculation
-const DcaChart = dynamic(() => import('./DcaChart').then(m => m.DcaChart));
+// ssr:false is load-bearing here. Now that the calculator itself server-renders,
+// without this Recharts (~370 KB) would be pulled into the homepage's server
+// render and its initial script set — trading the SSR win for a much worse LCP.
+const DcaChart = dynamic(() => import('./DcaChart').then(m => m.DcaChart), { ssr: false });
 const TransactionTable = dynamic(() => import('./TransactionTable').then(m => m.TransactionTable));
 const AssetComparison = dynamic(() => import('./AssetComparison').then(m => m.AssetComparison));
 const ExchangeFeeComparison = dynamic(() => import('./ExchangeFeeComparison').then(m => m.ExchangeFeeComparison));
@@ -50,6 +61,106 @@ const roundTo2Sig = (n: number): number => {
     return Math.round(n / mag) * mag;
 };
 
+/**
+ * Progressive disclosure for the secondary analysis panels.
+ *
+ * Fifteen panels stacked vertically was the single worst thing about this page:
+ * the chart sat ~4,000px down, and every lazily-imported panel mounted at once
+ * on first paint. Only the active tab renders, so the other chunks are never
+ * even requested until asked for.
+ *
+ * Deliberately NOT a URL-synced router tab — switching tabs should not push
+ * history entries that break the back button on a calculator.
+ */
+const RESULT_TABS = [
+    { id: 'compare' as const, label: 'Compare', hint: 'Against other assets and strategies' },
+    { id: 'project' as const, label: 'Project', hint: 'Forward-looking scenarios' },
+    { id: 'details' as const, label: 'Details', hint: 'Every purchase, and your own positions' },
+];
+
+type ResultTabId = (typeof RESULT_TABS)[number]['id'];
+
+function ResultTabs({
+    compare,
+    project,
+    details,
+}: {
+    compare: React.ReactNode;
+    project: React.ReactNode;
+    details: React.ReactNode;
+}) {
+    const [active, setActive] = useState<ResultTabId>('compare');
+    const baseId = useId();
+    const panels: Record<ResultTabId, React.ReactNode> = { compare, project, details };
+
+    // Roving arrow-key navigation is what the tablist pattern requires; without
+    // it a keyboard user has to Tab through every tab to reach the last one.
+    const onKeyDown = (e: React.KeyboardEvent) => {
+        const i = RESULT_TABS.findIndex((t) => t.id === active);
+        let next = i;
+        if (e.key === 'ArrowRight') next = (i + 1) % RESULT_TABS.length;
+        else if (e.key === 'ArrowLeft') next = (i - 1 + RESULT_TABS.length) % RESULT_TABS.length;
+        else if (e.key === 'Home') next = 0;
+        else if (e.key === 'End') next = RESULT_TABS.length - 1;
+        else return;
+        e.preventDefault();
+        setActive(RESULT_TABS[next].id);
+        document.getElementById(`${baseId}-tab-${RESULT_TABS[next].id}`)?.focus();
+    };
+
+    return (
+        <div className="space-y-4 sm:space-y-6">
+            <div
+                role="tablist"
+                aria-label="Further analysis"
+                onKeyDown={onKeyDown}
+                className="flex gap-1 rounded-xl bg-slate-100 p-1 dark:bg-slate-800/70"
+            >
+                {RESULT_TABS.map((t) => {
+                    const selected = t.id === active;
+                    return (
+                        <button
+                            key={t.id}
+                            id={`${baseId}-tab-${t.id}`}
+                            role="tab"
+                            type="button"
+                            aria-selected={selected}
+                            aria-controls={`${baseId}-panel-${t.id}`}
+                            tabIndex={selected ? 0 : -1}
+                            title={t.hint}
+                            onClick={() => setActive(t.id)}
+                            className={clsx(
+                                'flex-1 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+                                selected
+                                    ? 'bg-white text-slate-900 shadow-sm dark:bg-slate-700 dark:text-white'
+                                    : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100',
+                            )}
+                        >
+                            {t.label}
+                        </button>
+                    );
+                })}
+            </div>
+
+            {RESULT_TABS.map((t) => (
+                <div
+                    key={t.id}
+                    id={`${baseId}-panel-${t.id}`}
+                    role="tabpanel"
+                    aria-labelledby={`${baseId}-tab-${t.id}`}
+                    hidden={t.id !== active}
+                    tabIndex={0}
+                    className="space-y-6 sm:space-y-8 focus-visible:outline-none"
+                >
+                    {/* Mount only the active panel so the inactive tabs' lazy chunks
+                        are never fetched. */}
+                    {t.id === active && panels[t.id]}
+                </div>
+            ))}
+        </div>
+    );
+}
+
 /** Compact sats rendering for narrow columns. */
 const satsShort = (btc: number): string => {
     const sats = Math.floor(btc * 100_000_000);
@@ -58,7 +169,17 @@ const satsShort = (btc: number): string => {
     return `${sats.toLocaleString()} sats`;
 };
 
-export const DcaCalculator = () => {
+export interface DcaCalculatorProps {
+    /**
+     * Prices for the default window, fetched on the server so the first paint
+     * already shows a real result instead of a skeleton. Must cover exactly the
+     * default date range — both sides derive it from utils/dates.
+     */
+    initialPriceData?: [number, number][];
+    initialLivePrice?: number | null;
+}
+
+export const DcaCalculator = ({ initialPriceData, initialLivePrice }: DcaCalculatorProps = {}) => {
     const { currency, setCurrency, currencyConfig, currencies, formatCurrency, formatCompact, denomination, setDenomination, formatBtcAmount } = useCurrency();
     const isSats = denomination === 'SATS';
     const [today, setToday] = useState(() => startOfToday());
@@ -76,19 +197,27 @@ export const DcaCalculator = () => {
     const [amount, setAmount] = useState<number>(50);
     const deferredAmount = useDeferredValue(amount);
     const [frequency, setFrequency] = useState<Frequency>('weekly');
-    const [startDate, setStartDate] = useState<string>(format(subYears(today, 5), 'yyyy-MM-dd'));
-    const [endDate, setEndDate] = useState<string>(format(today, 'yyyy-MM-dd'));
+    // Seeded from UTC, not local time. This component now server-renders (it is no
+    // longer ssr:false), and a locally-derived default put a different date in the
+    // server HTML than the browser produced, tripping a hydration mismatch for
+    // every visitor outside UTC.
+    const [startDate, setStartDate] = useState<string>(() => utcIsoYearsAgo(DEFAULT_YEARS_BACK));
+    const [endDate, setEndDate] = useState<string>(() => utcIsoToday());
     const [feePercentage, setFeePercentage] = useState<number>(0.5);
     const deferredFee = useDeferredValue(feePercentage);
     const [priceMode, setPriceMode] = useState<PriceMode>('api');
     const [manualPrice, setManualPrice] = useState<number>(50000);
     const deferredManualPrice = useDeferredValue(manualPrice);
     const [provider, setProvider] = useState<'kraken' | 'coinbase'>('kraken');
-    const [priceData, setPriceData] = useState<[number, number][]>([]);
-    const [livePrice, setLivePrice] = useState<number | null>(null);
+    const [priceData, setPriceData] = useState<[number, number][]>(initialPriceData ?? []);
+    const [livePrice, setLivePrice] = useState<number | null>(initialLivePrice ?? null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [retryToken, setRetryToken] = useState(0);
+    const firstFetchRef = useRef(true);
+    // When the server already supplied prices for the default window, the mount
+    // fetch would re-request exactly that data and briefly blank the results.
+    const skipSeededFetchRef = useRef(Boolean(initialPriceData && initialPriceData.length > 0));
     const [shareMessage, setShareMessage] = useState<string | null>(null);
     const shareTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const [sp500Data, setSp500Data] = useState<[number, number][] | null>(null);
@@ -152,9 +281,37 @@ export const DcaCalculator = () => {
         }
     }, [setCurrency]);
 
+    /** Label of the preset the current inputs correspond to, if any. */
+    const activePresetLabel = useMemo(() => {
+        const todayIso = utcIsoToday();
+        if (endDate !== todayIso) return null;
+        for (const group of presetGroups) {
+            for (const preset of group.presets) {
+                if (preset.amount !== amount || preset.frequency !== frequency) continue;
+                const presetStart = preset.startDate
+                    ? preset.startDate
+                    : preset.yearsBack
+                        ? utcIsoYearsAgo(preset.yearsBack)
+                        : preset.monthsBack
+                            ? (() => {
+                                const n = new Date();
+                                return new Date(Date.UTC(n.getUTCFullYear(), n.getUTCMonth() - preset.monthsBack!, n.getUTCDate()))
+                                    .toISOString()
+                                    .slice(0, 10);
+                            })()
+                            : null;
+                if (presetStart === startDate) return preset.label;
+            }
+        }
+        return null;
+    }, [presetGroups, amount, frequency, startDate, endDate]);
+
     const dateError = useMemo(() => {
         if (!startDate || !endDate) return 'Please select both start and end dates';
         if (startDate > endDate) return 'Start date must be before end date';
+        // `min` on a date input is not enforced for typed values in every browser,
+        // so guard here too rather than let the engine price the gap.
+        if (startDate < EARLIEST_PRICE_DATE) return 'Bitcoin market price data starts 18 August 2010. Pick a later start date.';
         return null;
     }, [startDate, endDate]);
 
@@ -184,6 +341,24 @@ export const DcaCalculator = () => {
                 if (!cancelled) setLoading(false);
             }
         };
+        // Server-seeded prices already cover this exact window — nothing to fetch.
+        if (skipSeededFetchRef.current) {
+            skipSeededFetchRef.current = false;
+            firstFetchRef.current = false;
+            return () => {
+                cancelled = true;
+            };
+        }
+        // The debounce exists to absorb typing in the date/amount fields. On the
+        // very first run there is nothing to absorb, and paying it delayed the
+        // first result by 500ms for every visitor.
+        if (firstFetchRef.current) {
+            firstFetchRef.current = false;
+            fetchPrices();
+            return () => {
+                cancelled = true;
+            };
+        }
         const timer = setTimeout(fetchPrices, 500);
         return () => {
             cancelled = true;
@@ -205,7 +380,13 @@ export const DcaCalculator = () => {
                 const startTs = new Date(startDate).getTime();
                 const endTs = new Date(endDate).getTime() + 86400000;
                 const [sp500, gold, cpi] = await Promise.all([
-                    getAssetPriceHistory('^GSPC', startTs, endTs),
+                    // ^SP500TR is the TOTAL RETURN index — it reinvests dividends.
+                    // ^GSPC is price-only, which understated the S&P by roughly
+                    // 1.5-2%/yr compounded and quietly flattered Bitcoin in every
+                    // comparison. Falls back to ^GSPC if Yahoo has no TR data.
+                    getAssetPriceHistory('^SP500TR', startTs, endTs).then(
+                        (d) => (d && d.length > 0 ? d : getAssetPriceHistory('^GSPC', startTs, endTs)),
+                    ),
                     getAssetPriceHistory('GC=F', startTs, endTs),
                     getCpiData(startTs, endTs),
                 ]);
@@ -263,7 +444,7 @@ export const DcaCalculator = () => {
 
     const sp500Result: AssetDcaResult | null = useMemo(() => {
         if (!sp500Data) return null;
-        return calculateAssetDca(amountUsd, frequency, new Date(startDate), new Date(endDate), deferredFee, sp500Data, '^GSPC', 'S&P 500');
+        return calculateAssetDca(amountUsd, frequency, new Date(startDate), new Date(endDate), deferredFee, sp500Data, '^SP500TR', 'S&P 500 (total return)');
     }, [sp500Data, amountUsd, frequency, startDate, endDate, deferredFee]);
 
     const goldResult: AssetDcaResult | null = useMemo(() => {
@@ -336,6 +517,27 @@ export const DcaCalculator = () => {
         shareTimerRef.current = setTimeout(() => setShareMessage(null), 2000);
     }, [amount, frequency, startDate, endDate, feePercentage, priceMode, provider, manualPrice, currencyConfig.code]);
 
+    /**
+     * Mirror the current settings into the address bar.
+     *
+     * Copying the URL is how people actually share a result, and until now the
+     * bar always read "/" no matter what was on screen — the only way to get a
+     * shareable link was to find the share button. replaceState (not pushState)
+     * so configuring the calculator never fills up the back button.
+     */
+    useEffect(() => {
+        if (dateError) return;
+        const timer = setTimeout(() => {
+            const params = encodeParams({
+                amount, frequency, startDate, endDate,
+                feePercentage, priceMode, provider, manualPrice,
+                currency: currencyConfig.code,
+            });
+            window.history.replaceState(null, '', `${window.location.pathname}?${params}`);
+        }, 400);
+        return () => clearTimeout(timer);
+    }, [amount, frequency, startDate, endDate, feePercentage, priceMode, provider, manualPrice, currencyConfig.code, dateError]);
+
     const handleRetry = useCallback(() => setRetryToken(t => t + 1), []);
 
     const handleFeeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -353,6 +555,23 @@ export const DcaCalculator = () => {
 
     return (
         <div className="space-y-6 sm:space-y-8">
+            {/*
+              Results update silently for screen-reader users: changing an input
+              re-renders the cards with no announcement, so there is no way to
+              tell the calculation finished. This lives outside the results
+              subtree that gets swapped for the skeleton, so it survives loading
+              states and is not re-announced wholesale on every re-render.
+            */}
+            <div role="status" aria-live="polite" className="sr-only">
+                {showSkeleton
+                    ? 'Calculating…'
+                    : showEmptyError
+                        ? 'Price data unavailable.'
+                        : purchaseCount > 0
+                            ? `${purchaseCount} purchases. Invested ${formatCurrency(results.totalInvested)}, now worth ${formatCurrency(results.currentValue)}, a ${results.roi >= 0 ? 'gain' : 'loss'} of ${results.roi.toFixed(1)} percent.`
+                            : ''}
+            </div>
+
             {/* Input Section */}
             <div className="bg-white dark:bg-slate-900 p-4 sm:p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden">
                 <h2 className="text-lg sm:text-xl font-bold mb-4 text-slate-800 dark:text-white flex items-center gap-2">
@@ -368,22 +587,36 @@ export const DcaCalculator = () => {
                                 {group.title}
                             </div>
                             <div className="flex flex-wrap gap-1.5 sm:gap-2">
-                                {group.presets.map((preset) => (
-                                    <button
-                                        key={preset.label}
-                                        type="button"
-                                        onClick={() => applyPreset(preset)}
-                                        className="px-2.5 sm:px-3 py-1.5 text-xs font-medium rounded-full bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/40 border border-amber-200/60 dark:border-amber-800/40 transition-colors"
-                                    >
-                                        {preset.label}
-                                    </button>
-                                ))}
+                                {group.presets.map((preset) => {
+                                    // Reflect which preset the current inputs match, so
+                                    // clicking one gives visible feedback instead of the
+                                    // chips looking permanently inert.
+                                    const isActive = activePresetLabel === preset.label;
+                                    return (
+                                        <button
+                                            key={preset.label}
+                                            type="button"
+                                            onClick={() => applyPreset(preset)}
+                                            aria-pressed={isActive}
+                                            className={clsx(
+                                                'px-2.5 sm:px-3 py-1.5 min-h-[32px] text-xs font-medium rounded-full border transition-colors',
+                                                isActive
+                                                    ? 'bg-amber-500 text-slate-950 border-amber-500'
+                                                    : 'bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/40 border-amber-200/60 dark:border-amber-800/40',
+                                            )}
+                                        >
+                                            {preset.label}
+                                        </button>
+                                    );
+                                })}
                             </div>
                         </div>
                     ))}
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-5 overflow-hidden">
+                {/* 2-up on phones rather than 1-up: six full-width stacked fields
+                    pushed the actual result most of a screen further down. */}
+                <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-5 overflow-hidden">
                     {/* Amount */}
                     <div className="space-y-1.5">
                         <label htmlFor="dca-amount" className="text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300">Amount ({currencyConfig.code})</label>
@@ -432,26 +665,30 @@ export const DcaCalculator = () => {
                             onFocus={(e) => e.target.select()}
                             className="w-full px-3 py-2 text-base sm:text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500 outline-none transition-all"
                         />
-                        <div className="pt-0.5">
-                            <div className="text-[11px] font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">Exchange presets</div>
-                            <div className="flex flex-wrap gap-1.5" role="group" aria-label="Exchange fee presets">
-                                {FEE_PRESETS.map((p) => (
-                                    <button
-                                        key={p.name}
-                                        type="button"
-                                        onClick={() => setFeePercentage(p.fee)}
-                                        aria-pressed={feePercentage === p.fee}
-                                        className={clsx(
-                                            'px-2 py-1 min-h-[24px] text-[11px] font-medium rounded-full border transition-colors',
-                                            feePercentage === p.fee
-                                                ? 'bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 border-amber-200/60 dark:border-amber-800/40'
-                                                : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700'
-                                        )}
-                                    >
-                                        {p.name} {p.fee}%
-                                    </button>
-                                ))}
-                            </div>
+                    </div>
+
+                    {/* Exchange presets span the full row. Nested inside the Fee cell
+                        they were squeezed into a half-width column on phones and
+                        stacked five rows deep, adding ~120px before the date fields. */}
+                    <div className="col-span-2 lg:col-span-3">
+                        <div className="text-[11px] font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">Exchange presets</div>
+                        <div className="flex flex-wrap gap-1.5" role="group" aria-label="Exchange fee presets">
+                            {FEE_PRESETS.map((p) => (
+                                <button
+                                    key={p.name}
+                                    type="button"
+                                    onClick={() => setFeePercentage(p.fee)}
+                                    aria-pressed={feePercentage === p.fee}
+                                    className={clsx(
+                                        'px-2.5 py-1 min-h-[28px] text-[11px] font-medium rounded-full border transition-colors',
+                                        feePercentage === p.fee
+                                            ? 'bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 border-amber-200/60 dark:border-amber-800/40'
+                                            : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700'
+                                    )}
+                                >
+                                    {p.name} {p.fee}%
+                                </button>
+                            ))}
                         </div>
                     </div>
 
@@ -477,6 +714,8 @@ export const DcaCalculator = () => {
                             id="dca-start-date"
                             type="date"
                             value={startDate}
+                            min={EARLIEST_PRICE_DATE}
+                            max={endDate || undefined}
                             onChange={(e) => setStartDate(e.target.value)}
                             aria-invalid={!!dateError}
                             aria-describedby={dateError ? 'dca-date-error' : undefined}
@@ -517,7 +756,7 @@ export const DcaCalculator = () => {
                                     className={clsx(
                                         "flex-1 py-1.5 text-xs sm:text-sm font-medium rounded-md transition-all",
                                         priceMode === 'api'
-                                            ? "bg-white dark:bg-slate-700 shadow-sm text-amber-600 dark:text-amber-400"
+                                            ? "bg-white dark:bg-slate-700 shadow-sm text-amber-700 dark:text-amber-400"
                                             : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
                                     )}
                                 >
@@ -530,7 +769,7 @@ export const DcaCalculator = () => {
                                     className={clsx(
                                         "flex-1 py-1.5 text-xs sm:text-sm font-medium rounded-md transition-all",
                                         priceMode === 'manual'
-                                            ? "bg-white dark:bg-slate-700 shadow-sm text-amber-600 dark:text-amber-400"
+                                            ? "bg-white dark:bg-slate-700 shadow-sm text-amber-700 dark:text-amber-400"
                                             : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
                                     )}
                                 >
@@ -623,7 +862,7 @@ export const DcaCalculator = () => {
                         <button
                             type="button"
                             onClick={handleRetry}
-                            className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-lg bg-amber-500 hover:bg-amber-600 text-white transition-colors"
+                            className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 transition-colors"
                         >
                             <RefreshCw className="w-4 h-4" aria-hidden="true" />
                             Retry
@@ -659,7 +898,7 @@ export const DcaCalculator = () => {
                                     className={clsx(
                                         'min-h-[24px] rounded-md px-2.5 py-1 text-xs font-medium transition-colors',
                                         denomination === d
-                                            ? 'bg-white dark:bg-slate-700 shadow-sm text-amber-600 dark:text-amber-400'
+                                            ? 'bg-white dark:bg-slate-700 shadow-sm text-amber-700 dark:text-amber-400'
                                             : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
                                     )}
                                 >
@@ -668,6 +907,53 @@ export const DcaCalculator = () => {
                             ))}
                         </div>
                     </div>
+
+                    {/* Hero result.
+                        Four equal cards made the visitor hunt for the one number they
+                        came for. This states it once, large, with the supporting
+                        figures subordinate to it — and puts Share next to the result
+                        instead of a thousand pixels further down the page. */}
+                    {purchaseCount > 0 && (
+                        <Card celebrated className="p-5 sm:p-8 text-center fade-in">
+                            <p className="text-xs sm:text-sm font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                                {isFutureEndDate ? 'Projected value at today’s price' : 'Worth today'}
+                            </p>
+                            {/* The exact figure, never abbreviated — this is the whole
+                                point of the page, and "$19.9K" hides the number the
+                                visitor came for. clamp() scales it to fit instead of
+                                switching to a compact form on small screens. */}
+                            <p className="mt-1.5 text-[clamp(2rem,11vw,3.75rem)] leading-tight font-extrabold tracking-tight text-slate-900 dark:text-white tabular-nums">
+                                {formatCurrency(results.currentValue)}
+                            </p>
+                            <p className="mt-2 text-sm sm:text-base text-slate-600 dark:text-slate-300">
+                                from <span className="font-semibold text-slate-800 dark:text-slate-100 tabular-nums">{formatCurrency(results.totalInvested)}</span> invested
+                                {' · '}
+                                <span className={clsx('font-semibold tabular-nums', profitClass)}>
+                                    {results.profit >= 0 ? '+' : ''}{formatCurrency(results.profit)} ({results.roi >= 0 ? '+' : ''}{results.roi.toFixed(1)}%)
+                                </span>
+                            </p>
+                            <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
+                                <button
+                                    type="button"
+                                    onClick={handleShare}
+                                    className="inline-flex items-center gap-2 rounded-xl bg-amber-500 px-5 py-2.5 text-sm font-semibold text-slate-950 transition-colors hover:bg-amber-400"
+                                >
+                                    <Share2 className="h-4 w-4" aria-hidden="true" />
+                                    Share this result
+                                </button>
+                                {results.breakdown.length > 0 && (
+                                    <button
+                                        type="button"
+                                        onClick={handleExportCsv}
+                                        className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+                                    >
+                                        <Download className="h-4 w-4" aria-hidden="true" />
+                                        CSV
+                                    </button>
+                                )}
+                            </div>
+                        </Card>
+                    )}
 
                     {/* Result Cards */}
                     <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
@@ -691,7 +977,7 @@ export const DcaCalculator = () => {
                             format={formatCurrency}
                             formatShort={formatCompact}
                             subValue={priceMode === 'api' && livePrice ? `@ ${formatCurrency(livePrice)}` : undefined}
-                            subValueClassName="text-amber-600 dark:text-amber-400 font-medium"
+                            subValueClassName="text-amber-700 dark:text-amber-400 font-medium"
                             celebrated
                             icon={<Activity className="w-4 h-4 sm:w-5 sm:h-5 text-amber-500 shrink-0" />}
                         />
@@ -728,7 +1014,7 @@ export const DcaCalculator = () => {
                                     <>
                                         <span className="hidden sm:inline mx-1">|</span>
                                         <span>
-                                            <span className="font-medium text-amber-600 dark:text-amber-400 tabular-nums">
+                                            <span className="font-medium text-amber-700 dark:text-amber-400 tabular-nums">
                                                 {isSats
                                                     ? Math.floor(results.btcAccumulated * 100_000_000).toLocaleString('en-US')
                                                     : (results.btcAccumulated < 1 ? results.btcAccumulated.toFixed(4) : results.btcAccumulated.toFixed(2))}
@@ -765,20 +1051,20 @@ export const DcaCalculator = () => {
                         </p>
                     )}
 
-                    {/* Future Projection (when end date is in the future) */}
-                    {livePrice && (
-                        <FutureProjection
-                            amount={amountUsd}
-                            frequency={frequency}
-                            startDate={startDate}
-                            endDate={endDate}
-                            feePercentage={deferredFee}
-                            currentPrice={livePrice}
-                            currentBtc={pastResults.btcAccumulated}
-                            currentInvested={pastResults.totalInvested}
-                        />
-                    )}
+                    {/* Chart — moved up from below six analysis panels. It is the
+                        second thing a visitor wants after the headline number, and it
+                        was previously about 4,000px down the page. */}
+                    <DcaChart data={results.breakdown} unit={denomination} />
 
+                    {/* Ad Slot (after the chart — never between the form and its results) */}
+                    <AdSlot className="min-h-[100px] flex justify-center" />
+
+                    {/* Everything below is secondary analysis. Fifteen panels stacked
+                        vertically buried the useful parts and forced every lazy chunk
+                        to load at once; behind tabs, only the active panel mounts. */}
+                    <ResultTabs
+                        compare={
+                            <>
                     {/* Inflation-Adjusted Returns */}
                     {inflationStats && (
                         <div className="bg-white dark:bg-slate-900 px-4 sm:px-6 py-3 sm:py-4 rounded-xl border border-slate-200 dark:border-slate-800 fade-in">
@@ -864,15 +1150,6 @@ export const DcaCalculator = () => {
                         <OpportunityCostCalculator priceData={priceData} livePrice={livePrice} />
                     )}
 
-                    {/* Chart */}
-                    <DcaChart data={results.breakdown} unit={denomination} />
-
-                    {/* Ad Slot (after the chart — never between the form and its results) */}
-                    <AdSlot className="min-h-[100px] flex justify-center" />
-
-                    {/* Transaction Table */}
-                    <TransactionTable breakdown={results.breakdown} unit={denomination} />
-
                     {/* Plan-vs-plan comparison */}
                     {priceMode === 'api' && !dateError && (
                         <PlanComparison
@@ -883,7 +1160,25 @@ export const DcaCalculator = () => {
                                 endDate,
                                 feePercentage: deferredFee,
                                 provider,
+                                livePrice: priceMode === 'api' ? livePrice : null,
                             }}
+                        />
+                    )}
+                            </>
+                        }
+                        project={
+                            <>
+                    {/* Future Projection (when end date is in the future) */}
+                    {livePrice && (
+                        <FutureProjection
+                            amount={amountUsd}
+                            frequency={frequency}
+                            startDate={startDate}
+                            endDate={endDate}
+                            feePercentage={deferredFee}
+                            currentPrice={livePrice}
+                            currentBtc={pastResults.btcAccumulated}
+                            currentInvested={pastResults.totalInvested}
                         />
                     )}
 
@@ -900,23 +1195,9 @@ export const DcaCalculator = () => {
                         amount={amountUsd}
                         frequency={frequency}
                         unit={denomination}
-                    />
-
-                    {/* Unit Bias Calculator */}
-                    <UnitBiasCalculator btcAccumulated={results.btcAccumulated} />
-
-                    {/* Share My Stack */}
-                    <ShareMyStack
-                        totalInvested={results.totalInvested}
-                        currentValue={results.currentValue}
-                        roi={results.roi}
-                        btcAccumulated={results.btcAccumulated}
-                        unit={denomination}
-                        startDate={startDate}
-                        endDate={endDate}
-                        amount={amount}
-                        frequency={frequency}
-                        feePercentage={feePercentage}
+                        /* Project future sats at today's price, not at the average
+                           price of a window the price already rose through. */
+                        currentPrice={priceMode === 'api' ? livePrice ?? undefined : deferredManualPrice}
                     />
 
                     {/* FIRE Calculator */}
@@ -935,12 +1216,39 @@ export const DcaCalculator = () => {
                             livePrice={livePrice}
                         />
                     )}
+                            </>
+                        }
+                        details={
+                            <>
+                    {/* Transaction Table */}
+                    <TransactionTable breakdown={results.breakdown} unit={denomination} />
 
                     {/* Cost Basis Tracker */}
                     <CostBasisTracker
                         priceData={priceData}
                         livePrice={livePrice}
                         priceMode={priceMode}
+                        provider={provider}
+                    />
+
+                    {/* Unit Bias Calculator */}
+                    <UnitBiasCalculator btcAccumulated={results.btcAccumulated} />
+
+                    {/* Share My Stack */}
+                    <ShareMyStack
+                        totalInvested={results.totalInvested}
+                        currentValue={results.currentValue}
+                        roi={results.roi}
+                        btcAccumulated={results.btcAccumulated}
+                        unit={denomination}
+                        startDate={startDate}
+                        endDate={endDate}
+                        amount={amount}
+                        frequency={frequency}
+                        feePercentage={feePercentage}
+                    />
+                            </>
+                        }
                     />
                 </>
             )}

@@ -1,8 +1,42 @@
 import type { Metadata } from 'next';
+import type { ReactNode } from 'react';
 import Link from 'next/link';
-import { Pickaxe, Hash, Clock, BarChart3, Users, Cpu, TrendingUp, Coins, ShieldAlert, Leaf, HelpCircle, AlertTriangle, ArrowRight, CheckCircle2, ExternalLink } from 'lucide-react';
+import { Pickaxe, Hash, Clock, BarChart3, Users, Cpu, TrendingUp, Coins, ShieldAlert, Leaf, HelpCircle, AlertTriangle, ArrowRight, CheckCircle2, ExternalLink, BookOpen } from 'lucide-react';
 import { WalletImage } from '@/components/WalletImage';
 import { getBlockHeight } from '@/app/actions';
+
+/** Date the factual claims on this page were last checked against their sources. */
+const LAST_REVIEWED = '8 August 2026';
+
+/** A single external reference. `label` is what the reader sees inline. */
+type Source = { label: string; url: string };
+
+/**
+ * Every source cited on this page. Each URL was fetched and checked against the
+ * claim it supports on the date in LAST_REVIEWED.
+ */
+const SRC = {
+    whitepaper: { label: 'Bitcoin whitepaper (§6, §11)', url: 'https://nakamotoinstitute.org/library/bitcoin/' },
+    blockChainRef: { label: 'Bitcoin developer reference, block headers', url: 'https://developer.bitcoin.org/reference/block_chain.html' },
+    pow: { label: 'Bitcoin Core, pow.cpp', url: 'https://github.com/bitcoin/bitcoin/blob/master/src/pow.cpp' },
+    consensusH: { label: 'Bitcoin Core, consensus.h (COINBASE_MATURITY)', url: 'https://github.com/bitcoin/bitcoin/blob/master/src/consensus/consensus.h' },
+    amountH: { label: 'Bitcoin Core, amount.h (MAX_MONEY)', url: 'https://github.com/bitcoin/bitcoin/blob/master/src/consensus/amount.h' },
+    controlledSupply: { label: 'Bitcoin Wiki, controlled supply', url: 'https://en.bitcoin.it/wiki/Controlled_supply' },
+    genesis: { label: 'Bitcoin Wiki, genesis block', url: 'https://en.bitcoin.it/wiki/Genesis_block' },
+    block840k: { label: 'mempool.space, block 840,000', url: 'https://mempool.space/block/840000' },
+    hashrate: { label: 'mempool.space, hashrate and difficulty', url: 'https://mempool.space/graphs/mining/hashrate-difficulty' },
+    pools: { label: 'mempool.space, mining pool share', url: 'https://mempool.space/graphs/mining/pools' },
+    difficultyDrop: { label: 'CoinDesk, July 2021 difficulty adjustments', url: 'https://www.coindesk.com/markets/2021/07/19/bitcoin-network-sees-fourth-straight-downward-difficulty-adjustment' },
+    cambridge: { label: 'Cambridge Digital Mining Industry Report (April 2025)', url: 'https://www.jbs.cam.ac.uk/faculty-research/centres/alternative-finance/publications/cambridge-digital-mining-industry-report/' },
+    cambridgeNews: { label: 'Cambridge Judge Business School summary', url: 'https://www.jbs.cam.ac.uk/2025/cambridge-study-sustainable-energy-rising-in-bitcoin-mining/' },
+    cbeci: { label: 'Cambridge CBECI live index', url: 'https://ccaf.io/cbnsi/cbeci' },
+    miningMap: { label: 'Cambridge mining map', url: 'https://ccaf.io/cbnsi/cbeci/mining_map' },
+    eia: { label: 'EIA Electric Power Monthly, Table 5.6.A', url: 'https://www.eia.gov/electricity/monthly/epm_table_grapher.php?t=epmt_5_6_a' },
+    asicValue: { label: 'ASIC Miner Value, S9 vs S21 XP', url: 'https://www.asicminervalue.com/miners/compare/bitmain--antminer-s9-13-5th,bitmain--antmine-s21-xp-270th' },
+    sv2: { label: 'Stratum V2 specification', url: 'https://github.com/stratum-mining/sv2-spec' },
+    etcAttack: { label: 'CoinDesk, Ethereum Classic 51% attacks (2020)', url: 'https://www.coindesk.com/markets/2020/08/29/ethereum-classic-hit-by-third-51-attack-in-a-month' },
+    btgAttack: { label: 'Cointelegraph, Bitcoin Gold 51% attack (2020)', url: 'https://cointelegraph.com/news/bitcoin-gold-blockchain-hit-by-51-attack-leading-to-70k-double-spend' },
+} as const satisfies Record<string, Source>;
 
 export const metadata: Metadata = {
     title: 'How Bitcoin Mining Works',
@@ -68,45 +102,54 @@ const articleJsonLd = {
     },
     "datePublished": "2026-02-05",
     // Static date. Update when the content changes, and keep in sync with sitemap.ts.
-    "dateModified": "2026-07-25",
+    "dateModified": "2026-08-08",
 };
 
-const faqs = [
+const faqs: { q: string; a: string; sources?: readonly Source[] }[] = [
     {
         q: 'Is Bitcoin mining still profitable at home?',
-        a: 'Almost never, at residential electricity prices. A current-generation machine draws roughly 3.5 kW, or about 2,500 kWh a month. That runs around $430 at a typical US residential rate near $0.17/kWh. Industrial miners buy the same power for $0.03 to $0.05 per kWh, so their cost per bitcoin is three to four times lower, and network difficulty is set by their economics, not yours. Home mining can still make sense as a hobby, as a heat source, or where power is unusually cheap. Treated purely as an investment, it is normally beaten by buying bitcoin outright.',
+        a: 'Almost never, at residential electricity prices. A current-generation machine such as the Antminer S21 XP draws about 3.6 kW, or roughly 2,600 kWh a month. At the US residential average of 18.4 cents per kWh that is about $480 of electricity. Industrial miners buy the same power for $0.03 to $0.05 per kWh, so their cost per bitcoin is roughly four to six times lower, and network difficulty is set by their economics, not yours. Home mining can still make sense as a hobby, as a heat source, or where power is unusually cheap. Treated purely as an investment, it is normally beaten by buying bitcoin outright.',
+        sources: [SRC.asicValue, SRC.eia],
     },
     {
         q: 'What is hashprice?',
-        a: 'Hashprice is mining revenue per unit of hashrate per day, usually quoted in dollars per petahash per day. It compresses bitcoin\'s price, network difficulty and transaction fees into one number, and it is the figure miners underwrite hardware purchases and power contracts against. It falls whenever difficulty grows faster than price, and it spikes when fees surge. Each halving cuts it roughly in half overnight.',
+        a: 'Hashprice is mining revenue per unit of hashrate per day, usually quoted in dollars per petahash per day. It compresses bitcoin\'s price, network difficulty and transaction fees into one number, and it is the figure miners underwrite hardware purchases and power contracts against. It falls whenever difficulty grows faster than price, and it spikes when fees surge. Each halving cuts it roughly in half overnight, because it halves the subsidy component of that revenue.',
+        sources: [SRC.controlledSupply],
     },
     {
         q: 'Do mining costs put a floor under Bitcoin\'s price?',
-        a: 'No. The causation runs the other way. Difficulty re-targets about every two weeks, so when the price falls, unprofitable miners switch off, difficulty drops, and the cost of producing a bitcoin falls to meet the price. Mining cost tracks price rather than supporting it. What you can observe instead is miner capitulation: stressed miners sell production and reserves, which adds supply during weakness rather than removing it.',
+        a: 'No. The causation runs the other way. Difficulty re-targets every 2,016 blocks, about two weeks, so when the price falls, unprofitable miners switch off, difficulty drops, and the cost of producing a bitcoin falls to meet the price. Mining cost tracks price rather than supporting it. What you can observe instead is miner capitulation: stressed miners sell production and reserves, which adds supply during weakness rather than removing it.',
+        sources: [SRC.pow],
     },
     {
         q: 'What happens when all 21 million bitcoin are mined?',
-        a: 'The last fraction of a bitcoin is expected to be issued around 2140, after which miners earn only transaction fees. Whether fees alone can fund enough security is the most interesting open question in Bitcoin. It depends on how much demand there is for on-chain settlement decades from now. Anyone who tells you it is definitely fine, or definitely fatal, is claiming to know something nobody knows.',
+        a: 'After roughly 33 halvings the subsidy rounds to zero in integer satoshis, which lands around the year 2140, after which miners earn only transaction fees. Whether fees alone can fund enough security is the most interesting open question in Bitcoin. It depends on how much demand there is for on-chain settlement decades from now. Anyone who tells you it is definitely fine, or definitely fatal, is claiming to know something nobody knows.',
+        sources: [SRC.controlledSupply, SRC.amountH],
     },
     {
         q: 'Does Bitcoin mining waste energy?',
-        a: 'Mining uses real energy on purpose. That expenditure is what makes rewriting history expensive. Model-based estimates put annual consumption somewhere around 100 to 200 TWh, roughly 0.3% to 0.6% of global electricity, though nobody meters the network and the estimates disagree widely. Miners chase the cheapest power they can find, which pushes them toward stranded, curtailed, off-peak and flared energy; some are paid by grid operators to shut down during demand peaks. Whether that use is justified is a value judgment about what you think the network is for. The numbers do not settle it.',
+        a: 'Mining uses real energy on purpose. That expenditure is what makes rewriting history expensive. Cambridge\'s most recent full study put annual consumption at 138 TWh, about 0.54% of global electricity, using data through mid-2024; the live Cambridge index has run higher since. Nobody meters the network, so every figure is a model built from observed hashrate and an assumed hardware mix. The same study found 52.4% of the energy mix came from renewables and nuclear. Whether that use is justified is a value judgment about what you think the network is for. The numbers do not settle it.',
+        sources: [SRC.cambridge, SRC.cambridgeNews, SRC.cbeci],
     },
     {
         q: 'Can a government ban Bitcoin mining?',
-        a: 'Within its own borders, yes, and several have. China banned mining in mid-2021 and more than half the network\'s hashrate went offline within weeks. Difficulty adjusted downward by about 28%, the largest drop on record. Blocks kept being produced throughout, and the hashrate reappeared in the United States, Kazakhstan, Russia and elsewhere over the following year. A national ban relocates mining rather than stopping it, because mining needs only cheap power and an internet connection.',
+        a: 'Within its own borders, yes, and several have. China cracked down on mining in mid-2021 and a large share of the network\'s hashrate went offline within weeks. Difficulty adjusted downward by about 28% on 3 July 2021, the largest single drop on record, and it was one of four consecutive negative adjustments. Blocks kept being produced throughout, and the hashrate reappeared elsewhere over the following year. A national ban relocates mining rather than stopping it, because mining needs only cheap power and an internet connection.',
+        sources: [SRC.difficultyDrop, SRC.miningMap],
     },
     {
         q: 'Could someone with 51% of the hashrate steal my bitcoin?',
-        a: 'No. A majority attacker can reverse its own recent transactions, censor transactions and reorganize recent blocks. What it cannot do is spend coins whose private keys it does not hold, create coins outside the issuance schedule, or raise the 21 million cap. Every full node checks those rules independently and rejects invalid blocks no matter how much work sits behind them. Coins in a wallet you control are not at risk from hashrate.',
+        a: 'No. A majority attacker can reverse its own recent transactions, censor transactions and reorganize recent blocks. The whitepaper says so directly: an attacker cannot make "arbitrary changes, such as creating value out of thin air or taking money that never belonged to the attacker". Every full node checks those rules independently and rejects invalid blocks no matter how much work sits behind them. Coins in a wallet you control are not at risk from hashrate.',
+        sources: [SRC.whitepaper, SRC.amountH],
     },
     {
         q: 'Why can\'t newly mined bitcoin be spent right away?',
-        a: 'Newly issued coins are subject to a 100-block maturity rule, roughly 16 to 17 hours. If a competing chain later orphans that block, the reward disappears with it. The rule stops anyone from spending coins that a chain reorganization might erase.',
+        a: 'Newly issued coins are subject to a 100-block maturity rule, roughly 16 to 17 hours. It is a single constant in the reference implementation: COINBASE_MATURITY = 100. If a competing chain later orphans that block, the reward disappears with it. The rule stops anyone from spending coins that a chain reorganization might erase.',
+        sources: [SRC.consensusH],
     },
     {
         q: 'Can I mine bitcoin with a normal computer or a gaming GPU?',
-        a: 'Not usefully, and not for well over a decade. Mining is done by ASICs: chips that do nothing but SHA-256 hashing. They outperform general-purpose CPUs and GPUs by many orders of magnitude. Software offering to mine bitcoin on an ordinary computer is either mining a different coin or is malware.',
+        a: 'Not usefully, and not for well over a decade. Mining is done by ASICs: chips that do nothing but SHA-256 hashing. A 2024-era machine delivers 270 TH/s at 13.5 joules per terahash; general-purpose CPUs and GPUs are behind by many orders of magnitude. Software offering to mine bitcoin on an ordinary computer is either mining a different coin or is malware.',
+        sources: [SRC.asicValue],
     },
 ];
 
@@ -172,7 +215,7 @@ const affiliateClasses = {
     border: 'border-amber-200 dark:border-amber-800/50',
     badge: 'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400',
     button: 'bg-amber-500 hover:bg-amber-600',
-    accent: 'text-amber-600 dark:text-amber-400',
+    accent: 'text-amber-700 dark:text-amber-400',
     check: 'text-amber-500',
 };
 
@@ -182,7 +225,31 @@ const cardBody = 'text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-
 const sectionHead = 'text-xl sm:text-3xl font-bold text-slate-900 dark:text-white';
 const sectionIcon = 'w-6 h-6 sm:w-8 sm:h-8 text-amber-500 shrink-0';
 const prose = 'space-y-4 text-sm sm:text-base text-slate-600 dark:text-slate-400 leading-relaxed';
-const linkClass = 'text-amber-600 dark:text-amber-400 hover:underline';
+const linkClass = 'text-amber-700 dark:text-amber-400 hover:underline';
+
+/** Unobtrusive inline external link used for citations in prose. */
+function Src({ href, children }: { href: string; children: ReactNode }) {
+    return (
+        <a href={href} target="_blank" rel="noopener noreferrer" className={linkClass}>
+            {children}
+        </a>
+    );
+}
+
+/** Compact "Source: …" footer attached to a card or FAQ answer. */
+function Cite({ items }: { items: readonly Source[] }) {
+    return (
+        <p className="mt-2 text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+            <span className="font-semibold">{items.length > 1 ? 'Sources' : 'Source'}:</span>{' '}
+            {items.map((s, i) => (
+                <span key={s.url}>
+                    {i > 0 && ' · '}
+                    <Src href={s.url}>{s.label}</Src>
+                </span>
+            ))}
+        </p>
+    );
+}
 
 const HALVING_INTERVAL = 210_000;
 const INITIAL_SUBSIDY = 50;
@@ -298,8 +365,9 @@ export default async function MiningPage() {
                         <p>
                             Every candidate block starts with an 80-byte <strong className="text-slate-800 dark:text-slate-200">block
                             header</strong>: the previous block&apos;s hash, a Merkle root summarizing every transaction in the block,
-                            a timestamp, the current target, a version field, and a 32-bit nonce. The miner runs SHA-256 over that
-                            header twice, producing a 256-bit number, and checks one thing: is that number below the target?
+                            a timestamp, the current target, a version field, and a 32-bit nonce. Those six fields, and their
+                            sizes, are <Src href={SRC.blockChainRef.url}>specified exactly</Src>. The miner runs SHA-256 over
+                            that header twice, producing a 256-bit number, and checks one thing: is that number below the target?
                         </p>
                         <p>
                             Almost always it isn&apos;t. So the miner changes something and hashes again. The nonce gives about 4.3
@@ -317,6 +385,7 @@ export default async function MiningPage() {
                                     second, and it still takes about ten minutes for one of them to get lucky. Every failed guess burned
                                     real electricity that nobody gets back.
                                 </p>
+                                <Cite items={[SRC.hashrate]} />
                             </div>
                             <div className={cardClass}>
                                 <h3 className={cardTitle}>Nobody has to trust the result</h3>
@@ -349,7 +418,8 @@ export default async function MiningPage() {
                             One automatic rule does all the work:{' '}
                             <strong className="text-slate-800 dark:text-slate-200">every 2,016 blocks (about two weeks) every node
                             independently recalculates the target</strong> from how long those 2,016 blocks took. Faster than two
-                            weeks, and the target tightens. Slower, and it loosens.
+                            weeks, and the target tightens. Slower, and it loosens. It is about forty lines of code in{' '}
+                            <Src href={SRC.pow.url}>Bitcoin Core&apos;s pow.cpp</Src>, and every node runs its own copy.
                         </p>
                         <div className="grid sm:grid-cols-3 gap-3 sm:gap-4">
                             <div className="bg-emerald-50 dark:bg-emerald-950/20 p-4 sm:p-5 rounded-xl border border-emerald-200 dark:border-emerald-800/50">
@@ -369,9 +439,11 @@ export default async function MiningPage() {
                             <div className={cardClass}>
                                 <h3 className={cardTitle}>Clamped at 4x</h3>
                                 <p className={cardBody}>
-                                    A single adjustment can never move difficulty by more than a factor of four in either direction.
-                                    That caps the damage from timestamp manipulation and smooths out real shocks.
+                                    A single adjustment can never move difficulty by more than a factor of four in either direction:
+                                    the measured timespan is clamped to a quarter and four times the target before any
+                                    recalculation. That caps the damage from timestamp manipulation and smooths out real shocks.
                                 </p>
+                                <Cite items={[SRC.pow]} />
                             </div>
                         </div>
                         <p>
@@ -384,15 +456,20 @@ export default async function MiningPage() {
                         <div className="bg-slate-100 dark:bg-slate-900/50 p-5 sm:p-6 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-3">
                             <h3 className={cardTitle}>It has been stress-tested</h3>
                             <p className={cardBody}>
-                                In mid-2021 China banned mining outright and more than half the network&apos;s hashrate went dark within
-                                weeks. Blocks slowed noticeably, and the next re-target cut difficulty by roughly 28%, the largest single
-                                drop in Bitcoin&apos;s history. No committee met. No emergency patch shipped. The chain kept producing
-                                blocks the entire time, and the hashrate reappeared elsewhere over the following year.
+                                In mid-2021 China cracked down on mining and a large share of the network&apos;s hashrate went dark within
+                                weeks. Blocks slowed noticeably, and the 3 July re-target cut difficulty by about 28%, the largest single
+                                drop in Bitcoin&apos;s history &mdash; one of four consecutive downward adjustments. No committee met. No
+                                emergency patch shipped. The chain kept producing blocks the entire time, and the hashrate reappeared
+                                elsewhere over the following year. Cambridge notes that no country-level data has been available for China
+                                since that crackdown, so treat any precise &ldquo;share that left&rdquo; figure with caution.
                             </p>
+                            <Cite items={[SRC.difficultyDrop, SRC.miningMap]} />
                             <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-                                A detail for the pedants: the original code measures the elapsed time across 2,015 block intervals rather
-                                than 2,016, so the network runs a hair fast. It&apos;s one of the oldest known bugs in Bitcoin, left alone
-                                because fixing it would change consensus rules for no practical gain.
+                                A detail for the pedants: the retarget code walks back{' '}
+                                <Src href={SRC.pow.url}>DifficultyAdjustmentInterval() &minus; 1</Src> blocks, so it measures the elapsed
+                                time across 2,015 block intervals rather than 2,016 and the network runs a hair fast. It&apos;s one of the
+                                oldest known quirks in Bitcoin, left alone because fixing it would change consensus rules for no practical
+                                gain.
                             </p>
                         </div>
                     </div>
@@ -408,7 +485,8 @@ export default async function MiningPage() {
                         <p>
                             Every 210,000 blocks the block subsidy is cut in half. It started at 50 BTC in 2009, then 25 in 2012, 12.5
                             in 2016, 6.25 in 2020, and{' '}
-                            <strong className="text-slate-800 dark:text-slate-200">3.125 BTC since block 840,000 on 20 April 2024</strong>.
+                            <strong className="text-slate-800 dark:text-slate-200">3.125 BTC since{' '}
+                            <Src href={SRC.block840k.url}>block 840,000, mined on 20 April 2024</Src></strong>.
                             The next halving takes it to 1.5625 BTC at block 1,050,000, expected around April 2028. That date is an
                             estimate, because the schedule counts blocks, not days.
                         </p>
@@ -470,6 +548,7 @@ export default async function MiningPage() {
                                 be moved because of a quirk in the original code, a handful of miners have claimed less than the full
                                 subsidy they were owed, and an unknowable number of coins are permanently lost.
                             </p>
+                            <Cite items={[SRC.controlledSupply, SRC.genesis, SRC.amountH]} />
                         </div>
 
                         <div className="grid sm:grid-cols-2 gap-3 sm:gap-4">
@@ -478,18 +557,21 @@ export default async function MiningPage() {
                                 <p className={cardBody}>
                                     Every block&apos;s first transaction is the coinbase. It has no inputs: it creates the subsidy out of
                                     nothing and sweeps up the fees from every other transaction in the block. It also carries an arbitrary
-                                    data field, which is where Satoshi wrote the 3 January 2009 <em>Times</em> headline into the genesis
-                                    block. (The exchange named itself after the term, not the other way round.)
+                                    data field, which is where Satoshi wrote <em>&ldquo;The Times 03/Jan/2009 Chancellor on brink of
+                                    second bailout for banks&rdquo;</em> into the genesis block. (The exchange named itself after the
+                                    term, not the other way round.)
                                 </p>
+                                <Cite items={[SRC.genesis]} />
                             </div>
                             <div className={cardClass}>
                                 <h3 className={cardTitle}>100-block maturity</h3>
                                 <p className={cardBody}>
-                                    Newly mined coins cannot be spent for 100 blocks, about 16 to 17 hours. If a competing chain later
-                                    orphans that block, the reward vanishes with it, so the rule stops anyone from spending coins that a
-                                    reorganization might erase. A small detail, and a sign of how carefully the reorg case was thought
-                                    through.
+                                    Newly mined coins cannot be spent for 100 blocks, about 16 to 17 hours &mdash; a single constant,
+                                    COINBASE_MATURITY, in the reference implementation. If a competing chain later orphans that block,
+                                    the reward vanishes with it, so the rule stops anyone from spending coins that a reorganization might
+                                    erase. A small detail, and a sign of how carefully the reorg case was thought through.
                                 </p>
+                                <Cite items={[SRC.consensusH]} />
                             </div>
                         </div>
                     </div>
@@ -504,7 +586,8 @@ export default async function MiningPage() {
                     <div className={prose}>
                         <p>
                             Solo mining is a lottery with brutal odds. A single top-end machine at roughly 250 TH/s is about one part in
-                            four million of a network running near a zettahash per second. On average it finds a block once every seventy
+                            four million of a network running near a{' '}
+                            <Src href={SRC.hashrate.url}>zettahash per second</Src>. On average it finds a block once every seventy
                             years or so, and &ldquo;on average&rdquo; hides the real problem: the process is memoryless. Your block is
                             equally likely to arrive tomorrow or in year 200.
                         </p>
@@ -537,9 +620,10 @@ export default async function MiningPage() {
                         <div className="bg-slate-100 dark:bg-slate-900/50 p-5 sm:p-6 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-3">
                             <h3 className={cardTitle}>The centralization concern, stated fairly</h3>
                             <p className={cardBody}>
-                                A small number of pools have often directed a majority of the network&apos;s hashrate between them, and
-                                that is a real problem worth naming: pools build the block templates, so they decide which transactions get
-                                included. That makes them the most plausible censorship chokepoint in the system.
+                                A small number of pools have often directed a majority of the network&apos;s hashrate between them &mdash;{' '}
+                                <Src href={SRC.pools.url}>the current split is public</Src> &mdash; and that is a real problem worth
+                                naming: pools build the block templates, so they decide which transactions get included. That makes them
+                                the most plausible censorship chokepoint in the system.
                             </p>
                             <p className={cardBody}>
                                 Two things bound it. First, <strong className="text-slate-800 dark:text-slate-200">pools do not own the
@@ -554,8 +638,11 @@ export default async function MiningPage() {
                             </p>
                             <p className={cardBody}>
                                 Newer pooling protocols (Stratum V2) let individual miners construct their own block templates while still
-                                sharing payouts, moving transaction selection back to the machine owner. Adoption is partial and ongoing.
+                                sharing payouts, moving transaction selection back to the machine owner. Its Job Declaration Protocol is
+                                the part that does this, and it defines both a coinbase-only and a full-template mode. Adoption is partial
+                                and ongoing.
                             </p>
+                            <Cite items={[SRC.sv2]} />
                         </div>
                     </div>
                 </section>
@@ -579,11 +666,11 @@ export default async function MiningPage() {
                             <div className={cardClass}>
                                 <h3 className={cardTitle}>Joules per terahash is the whole game</h3>
                                 <p className={cardBody}>
-                                    Efficiency is measured in J/TH, energy burned per trillion hashes. The 2016-era S9 generation ran
-                                    near 100 J/TH. Current top-end machines sit in the low-to-mid teens, with sub-10 J/TH designs
-                                    emerging. Every generation lowers the electricity price at which the previous one breaks even, and
-                                    eventually strands it entirely.
+                                    Efficiency is measured in J/TH, energy burned per trillion hashes. The S9 generation ran at about
+                                    98 J/TH; the 2024 S21 XP does 13.5 J/TH, roughly seven times better. Every generation lowers the
+                                    electricity price at which the previous one breaks even, and eventually strands it entirely.
                                 </p>
+                                <Cite items={[SRC.asicValue]} />
                             </div>
                             <div className={cardClass}>
                                 <h3 className={cardTitle}>Hardware depreciates in two directions</h3>
@@ -606,12 +693,13 @@ export default async function MiningPage() {
                             <div className={cardClass}>
                                 <h3 className={cardTitle}>The honest home-mining math</h3>
                                 <p className={cardBody}>
-                                    A current machine draws about 3.5 kW. Run continuously that is roughly 2,500 kWh a month, near $430
-                                    at a US residential rate around $0.17/kWh. An industrial operator on a $0.04/kWh contract pays about
-                                    $100 for identical work. Same bitcoin out, three to four times the cost in, and difficulty is set by
-                                    their economics. Then add a few thousand dollars of hardware, roughly vacuum-cleaner-level noise, and
-                                    3.5 kW of heat you have to move somewhere.
+                                    An S21 XP draws 3,645 W. Run continuously that is roughly 2,600 kWh a month, about $480 at the US
+                                    residential average of 18.4 cents per kWh. An industrial operator on a $0.04/kWh contract pays around
+                                    $105 for identical work. Same bitcoin out, roughly four to five times the cost in, and difficulty is
+                                    set by their economics. Then add a few thousand dollars of hardware, serious fan noise, and 3.6 kW of
+                                    heat you have to move somewhere.
                                 </p>
+                                <Cite items={[SRC.asicValue, SRC.eia]} />
                             </div>
                         </div>
                         <div className="bg-amber-50/50 dark:bg-amber-950/20 border-l-4 border-amber-400 px-4 sm:px-6 py-3 sm:py-4 rounded-r-xl">
@@ -685,9 +773,10 @@ export default async function MiningPage() {
                                 <p className={cardBody}>
                                     Deep drawdowns do produce visible hashrate declines and negative difficulty adjustments, and analysts
                                     watch them closely. That is a real, observable market dynamic. But it marks miner{' '}
-                                    <em>stress</em>, not a price level anyone is defending. The largest drop on record, about 28%, followed
-                                    China&apos;s 2021 ban: a regulatory event, not a price floor.
+                                    <em>stress</em>, not a price level anyone is defending. The largest drop on record, about 28% on
+                                    3 July 2021, followed China&apos;s crackdown: a regulatory event, not a price floor.
                                 </p>
+                                <Cite items={[SRC.difficultyDrop, SRC.hashrate]} />
                             </div>
                             <div className={cardClass}>
                                 <h3 className={cardTitle}>Miners sell into weakness, not out of it</h3>
@@ -722,7 +811,8 @@ export default async function MiningPage() {
                             Miner revenue has two parts: the block subsidy and transaction fees. Blocks hold a limited amount of data by
                             design, so when more people want to transact than there is space, they bid against each other and the miner
                             takes the highest bidders. Fees are usually a small fraction of block revenue, often a few percent. During
-                            congestion episodes they have briefly exceeded the subsidy itself.
+                            congestion episodes they have briefly exceeded the subsidy itself: the halving block 840,000 collected{' '}
+                            <Src href={SRC.block840k.url}>37.6 BTC in fees against a 3.125 BTC subsidy</Src>.
                         </p>
                         <div className="grid sm:grid-cols-2 gap-3 sm:gap-4">
                             <div className={cardClass}>
@@ -745,9 +835,10 @@ export default async function MiningPage() {
                                 The security budget is Bitcoin&apos;s most interesting open question
                             </h3>
                             <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
-                                Today the subsidy pays for the overwhelming majority of mining. It halves every four years: under 1 BTC
-                                per block by the mid-2030s, and zero by around 2140. At some point, fees alone have to fund the entire
-                                cost of making the chain expensive to rewrite.
+                                Today the subsidy pays for the overwhelming majority of mining. It halves every 210,000 blocks: under
+                                1 BTC per block by the mid-2030s, and zero by around 2140. At some point, fees alone have to fund the
+                                entire cost of making the chain expensive to rewrite.{' '}
+                                <Src href={SRC.controlledSupply.url}>The full issuance schedule is public arithmetic</Src>.
                             </p>
                             <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
                                 Nobody knows whether that works. The optimistic case is that as more value settles on Bitcoin, fee revenue
@@ -771,7 +862,10 @@ export default async function MiningPage() {
                     <div className={prose}>
                         <p>
                             This is one of the most widely misunderstood topics in Bitcoin. A majority of hashrate is dangerous. Its
-                            powers are also much narrower than the headlines suggest.
+                            powers are also much narrower than the headlines suggest &mdash; the whitepaper drew the line itself, in
+                            section 11: an attacker cannot make{' '}
+                            <Src href={SRC.whitepaper.url}>&ldquo;arbitrary changes, such as creating value out of thin air or taking
+                            money that never belonged to the attacker&rdquo;</Src>.
                         </p>
                         <div className="grid sm:grid-cols-2 gap-3 sm:gap-4">
                             <div className="bg-rose-50 dark:bg-rose-950/20 p-4 sm:p-5 rounded-xl border border-rose-200 dark:border-rose-800/50 space-y-2">
@@ -804,11 +898,13 @@ export default async function MiningPage() {
                             <div className={cardClass}>
                                 <h3 className={cardTitle}>Not hypothetical for small chains</h3>
                                 <p className={cardBody}>
-                                    Smaller proof-of-work chains with thin hashrate have been 51%-attacked repeatedly, Ethereum Classic
-                                    and Bitcoin Gold among them. Bitcoin&apos;s defence is that it is by far the most expensive chain to
-                                    out-hash, and that anyone spending that much would be destroying the value of the asset they get paid
-                                    in while holding a warehouse of purpose-built hardware good for nothing else.
+                                    Smaller proof-of-work chains with thin hashrate have been 51%-attacked repeatedly. Ethereum Classic
+                                    was hit three times in August 2020 alone, one attack reorganising over 7,000 blocks; Bitcoin Gold was
+                                    attacked in 2018 and again in 2020. Bitcoin&apos;s defence is that it is by far the most expensive
+                                    chain to out-hash, and that anyone spending that much would be destroying the value of the asset they
+                                    get paid in while holding a warehouse of purpose-built hardware good for nothing else.
                                 </p>
+                                <Cite items={[SRC.etcAttack, SRC.btgAttack]} />
                             </div>
                         </div>
                     </div>
@@ -824,12 +920,14 @@ export default async function MiningPage() {
                         <p>
                             Start with the numbers, and with how weak they are. Nobody meters the Bitcoin network. Every published figure
                             is a model built from observed hashrate plus an assumed mix of hardware, and the leading estimates
-                            (Cambridge&apos;s CBECI is the most cited) disagree with each other by wide margins. The usual range is
-                            roughly{' '}
-                            <strong className="text-slate-800 dark:text-slate-200">100 to 200 TWh per year</strong>, which puts Bitcoin
-                            somewhere around <strong className="text-slate-800 dark:text-slate-200">0.3% to 0.6% of global electricity</strong>,
-                            comparable to a mid-sized country. Treat precise figures with suspicion, including the flattering ones.
+                            (Cambridge&apos;s CBECI is the most cited) disagree with each other by wide margins. Cambridge&apos;s most
+                            recent full study, published April 2025 on data through mid-2024, put consumption at{' '}
+                            <strong className="text-slate-800 dark:text-slate-200">138 TWh per year</strong>, or{' '}
+                            <strong className="text-slate-800 dark:text-slate-200">about 0.54% of global electricity</strong>, comparable
+                            to a mid-sized country. The <Src href={SRC.cbeci.url}>live index</Src> has run higher since. Treat precise
+                            figures with suspicion, including the flattering ones.
                         </p>
+                        <Cite items={[SRC.cambridge, SRC.cambridgeNews, SRC.cbeci]} />
                         <div className="grid sm:grid-cols-2 gap-3 sm:gap-4">
                             <div className={cardClass}>
                                 <h3 className={cardTitle}>The strongest case for</h3>
@@ -838,20 +936,24 @@ export default async function MiningPage() {
                                     customers, they run at any hour, and they can shut down within seconds. That pushes them toward power
                                     nobody else wants: stranded hydro, curtailed wind and solar, off-peak baseload, gas that would
                                     otherwise be flared at the wellhead. Grid operators in Texas and elsewhere pay miners to curtail during
-                                    demand peaks, which turns the load into a controllable, sheddable buyer. Estimates of the
-                                    sustainable-energy share range from roughly 40% to over 50%, and they disagree partly because of who
-                                    commissioned them.
+                                    demand peaks, which turns the load into a controllable, sheddable buyer. Cambridge&apos;s survey of
+                                    firms covering roughly 48% of global mining put the sustainable share at 52.4% &mdash; 42.6%
+                                    renewables plus 9.8% nuclear &mdash; up from 37.6% in 2022. It is self-reported survey data, so read
+                                    it as an estimate with an obvious incentive attached.
                                 </p>
+                                <Cite items={[SRC.cambridgeNews, SRC.cambridge]} />
                             </div>
                             <div className={cardClass}>
                                 <h3 className={cardTitle}>The strongest case against</h3>
                                 <p className={cardBody}>
                                     The best version of the criticism isn&apos;t about the number at all. It is that energy spent here is
                                     energy not spent elsewhere, and that &ldquo;it uses power others did not want&rdquo; does not establish
-                                    that the activity is worth doing. Documented local costs exist too. Mining load has been shown to raise
-                                    wholesale power prices in some markets, noise complaints near facilities are real and recurring, and
-                                    rapid hardware turnover produces electronic waste.
+                                    that the activity is worth doing. Local costs are real too: noise complaints near facilities recur, and
+                                    rapid hardware turnover produces electronic waste. Cambridge&apos;s own figures also put network
+                                    emissions at 39.8 million tonnes of CO<sub>2</sub> equivalent, which is not a small number however you
+                                    feel about the trade.
                                 </p>
+                                <Cite items={[SRC.cambridgeNews]} />
                             </div>
                         </div>
                         <div className="bg-slate-100 dark:bg-slate-900/50 p-5 sm:p-6 rounded-2xl border border-slate-200 dark:border-slate-800">
@@ -971,6 +1073,7 @@ export default async function MiningPage() {
                                 </summary>
                                 <div className="px-4 pb-4 -mt-1">
                                     <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">{item.a}</p>
+                                    {item.sources && <Cite items={item.sources} />}
                                 </div>
                             </details>
                         ))}
@@ -989,7 +1092,7 @@ export default async function MiningPage() {
                     <div className="flex flex-wrap justify-center gap-3">
                         <Link
                             href="/"
-                            className="inline-flex items-center gap-2 bg-amber-500 hover:bg-amber-600 text-white font-semibold px-6 py-3 rounded-xl transition-colors text-sm sm:text-base"
+                            className="inline-flex items-center gap-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-semibold px-6 py-3 rounded-xl transition-colors text-sm sm:text-base"
                         >
                             Open the Calculator
                             <ArrowRight className="w-4 h-4" />
@@ -1005,6 +1108,34 @@ export default async function MiningPage() {
                         Curious how we source and compute all of it?{' '}
                         <Link href="/methodology" className={linkClass}>Read the methodology</Link>.
                     </p>
+                </section>
+
+                {/* Sources */}
+                <section className="space-y-4">
+                    <div className="flex items-center gap-2 sm:gap-3">
+                        <BookOpen className={sectionIcon} />
+                        <h2 className={sectionHead}>Sources</h2>
+                    </div>
+                    <div className="bg-slate-100 dark:bg-slate-900/50 p-5 sm:p-6 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-3">
+                        <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+                            Protocol claims on this page are cited to the reference implementation or the specification, not to
+                            secondary explainers. Energy and hardware figures are cited to the body that produced them. Where a
+                            number could not be traced to a source, it was softened or dropped rather than repeated.
+                        </p>
+                        <ul className="space-y-1.5 text-xs sm:text-sm text-slate-600 dark:text-slate-400">
+                            {Object.values(SRC).map((s) => (
+                                <li key={s.url} className="flex items-start gap-2">
+                                    <span className="text-amber-500 mt-0.5 shrink-0">&bull;</span>
+                                    <Src href={s.url}>{s.label}</Src>
+                                </li>
+                            ))}
+                        </ul>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 pt-1 border-t border-slate-200 dark:border-slate-800">
+                            <strong className="text-slate-600 dark:text-slate-300">Last reviewed:</strong> {LAST_REVIEWED}. Network
+                            figures move constantly; the block height, subsidy and issued supply at the top of this page are fetched
+                            live, and the links above go to the trackers rather than to a snapshot of them.
+                        </p>
+                    </div>
                 </section>
 
                 {/* Disclaimer */}

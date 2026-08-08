@@ -12,6 +12,7 @@ import { calculateDca } from '@/utils/dca';
 import { DAY_MS, formatUtc, parseUtcDate } from '@/utils/dates';
 import type { UrlCurrency } from '@/utils/urlParams';
 import type { DcaResult, Frequency } from '@/types';
+import { resolveServerCurrency, type ServerCurrencyConfig } from '@/utils/serverCurrency';
 
 // Embeds are cheap, cacheable, identical for everyone with the same params.
 // Rendered per request: the whole widget is a function of its query string, so a
@@ -31,16 +32,9 @@ export const metadata: Metadata = {
 const SITE_URL = (process.env.NEXT_PUBLIC_BASE_URL || 'https://btcdollarcostaverage.com').replace(/\/+$/, '');
 const SITE_HOST = SITE_URL.replace(/^https?:\/\//, '');
 
-// Same fixed reference rates the share card uses — the live ECB rates live in the
-// client CurrencyContext, which cannot run in a server component.
-const CURRENCIES: Record<UrlCurrency, { symbol: string; rate: number }> = {
-    USD: { symbol: '$', rate: 1 },
-    EUR: { symbol: '€', rate: 0.92 },
-    GBP: { symbol: '£', rate: 0.79 },
-    CAD: { symbol: 'C$', rate: 1.36 },
-    AUD: { symbol: 'A$', rate: 1.53 },
-    JPY: { symbol: '¥', rate: 149.5 },
-};
+// Currency config comes from utils/serverCurrency (live ECB rates, constants only
+// as an outage fallback). The fixed table that used to live here had drifted ~18
+// months, so non-USD embeds understated BTC stacked by up to 7.2%.
 
 const FREQUENCY_LABEL: Record<Frequency, string> = {
     daily: '/day',
@@ -83,8 +77,7 @@ footer,[data-site-overlay],[role="dialog"],a[href="#main-content"]{display:none!
 // ── Formatting ─────────────────────────────────────────────────────────────────
 
 /** Format a USD figure in the requested display currency. */
-function fmtMoney(usd: number, currency: UrlCurrency): string {
-    const cfg = CURRENCIES[currency];
+function fmtMoney(usd: number, currency: UrlCurrency, cfg: ServerCurrencyConfig): string {
     const converted = usd * cfg.rate;
     const abs = Math.abs(converted);
     const digits = currency === 'JPY' || abs >= 1000 ? 0 : abs >= 1 ? 2 : 4;
@@ -92,8 +85,8 @@ function fmtMoney(usd: number, currency: UrlCurrency): string {
 }
 
 /** Format an amount that is already denominated in the display currency. */
-function fmtAmount(amount: number, currency: UrlCurrency): string {
-    return `${CURRENCIES[currency].symbol}${amount.toLocaleString('en-US', { maximumFractionDigits: 2 })}`;
+function fmtAmount(amount: number, cfg: ServerCurrencyConfig): string {
+    return `${cfg.symbol}${amount.toLocaleString('en-US', { maximumFractionDigits: 2 })}`;
 }
 
 function fmtPct(value: number): string {
@@ -111,8 +104,8 @@ function fmtBtc(btc: number): string {
 const fmtSats = (btc: number): string => `${Math.floor(btc * 1e8).toLocaleString('en-US')} sats`;
 
 /** "$50/week since Jul 2021" — or an explicit range when the end date isn't today. */
-function scenarioLine(p: ResolvedShareParams): string {
-    const amount = fmtAmount(p.amount, p.currency);
+function scenarioLine(p: ResolvedShareParams, cfg: ServerCurrencyConfig): string {
+    const amount = fmtAmount(p.amount, cfg);
     const cadence = `${amount}${FREQUENCY_LABEL[p.frequency]}`;
     const startTs = parseUtcDate(p.startDate);
     const endTs = parseUtcDate(p.endDate);
@@ -131,7 +124,7 @@ async function resolveRenderedAt(): Promise<number> {
     return Date.now();
 }
 
-async function computeEmbed(p: ResolvedShareParams): Promise<DcaResult | null> {
+async function computeEmbed(p: ResolvedShareParams, cfg: ServerCurrencyConfig): Promise<DcaResult | null> {
     try {
         const startTs = parseUtcDate(p.startDate);
         const endTs = parseUtcDate(p.endDate);
@@ -152,7 +145,7 @@ async function computeEmbed(p: ResolvedShareParams): Promise<DcaResult | null> {
 
         const result = calculateDca(
             {
-                amount: p.amount / CURRENCIES[p.currency].rate,
+                amount: p.amount / cfg.rate,
                 frequency: p.frequency,
                 startDate: new Date(startTs),
                 endDate: new Date(endTs),
@@ -194,7 +187,7 @@ function Brand({ href }: { href: string }) {
         >
             <span
                 aria-hidden="true"
-                className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-amber-500 text-[13px] font-bold text-white"
+                className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-amber-500 text-[13px] font-bold text-slate-950"
             >
                 &#8383;
             </span>
@@ -219,7 +212,7 @@ function Attribution({ href }: { href: string }) {
                 </span>
                 <span className="block truncate text-[11px] text-slate-500 dark:text-slate-400">{SITE_HOST}</span>
             </span>
-            <ArrowUpRight className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" aria-hidden="true" />
+            <ArrowUpRight className="h-4 w-4 shrink-0 text-amber-700 dark:text-amber-400" aria-hidden="true" />
         </a>
     );
 }
@@ -253,9 +246,13 @@ export default async function EmbedPage({ searchParams }: EmbedPageProps) {
 
     let params: ResolvedShareParams | null = null;
     let result: DcaResult | null = null;
+    // Resolved before the try so it is in scope for rendering too. Live ECB rate
+    // where available; the constants in utils/serverCurrency are the fallback.
+    let cfg: ServerCurrencyConfig = { symbol: '$', rate: 1, live: true };
     try {
         params = resolveShareParams(toCalculatorParams(raw));
-        result = await computeEmbed(params);
+        cfg = await resolveServerCurrency(params.currency);
+        result = await computeEmbed(params, cfg);
     } catch (error) {
         console.error('[embed] render failed:', error);
         params = null;
@@ -287,10 +284,10 @@ export default async function EmbedPage({ searchParams }: EmbedPageProps) {
                     {result && params ? (
                         <>
                             <div className="min-w-0">
-                                <p className={MICRO_LABEL}>{scenarioLine(params)}</p>
+                                <p className={MICRO_LABEL}>{scenarioLine(params, cfg)}</p>
                                 <div className="mt-0.5 flex flex-wrap items-baseline gap-x-2">
                                     <p className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">
-                                        {fmtMoney(result.currentValue, params.currency)}
+                                        {fmtMoney(result.currentValue, params.currency, cfg)}
                                     </p>
                                     <span
                                         className={clsx(
@@ -305,9 +302,9 @@ export default async function EmbedPage({ searchParams }: EmbedPageProps) {
                                 </div>
                                 <p className="mt-0.5 text-[13px] text-slate-600 dark:text-slate-300">
                                     <span className={clsx('font-semibold tabular-nums', toneClass)}>
-                                        {isProfit ? '+' : ''}{fmtMoney(result.profit, params.currency)}
+                                        {isProfit ? '+' : ''}{fmtMoney(result.profit, params.currency, cfg)}
                                     </span>
-                                    {' '}on {fmtMoney(result.totalInvested, params.currency)} invested
+                                    {' '}on {fmtMoney(result.totalInvested, params.currency, cfg)} invested
                                 </p>
                             </div>
 
@@ -319,7 +316,7 @@ export default async function EmbedPage({ searchParams }: EmbedPageProps) {
                                 />
                                 <Stat
                                     label="Average cost"
-                                    value={fmtMoney(result.averageCost, params.currency)}
+                                    value={fmtMoney(result.averageCost, params.currency, cfg)}
                                     sub={`${result.breakdown.length} buys`}
                                 />
                             </div>

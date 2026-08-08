@@ -53,6 +53,19 @@
   touch-action: pan-x pan-y !important;
 }
 
+/* The chart's zoom Brush is the one place a horizontal drag must NOT scroll the
+   page. The rules above hand every gesture inside .recharts-wrapper to the
+   browser, so dragging a traveller fired touchcancel partway through and the
+   zoom never took. Specificity 0,2,0 beats `.recharts-wrapper *`.
+
+   DcaChart also guards this in JS with a non-passive touchmove listener,
+   because touch-action on SVG children is honoured inconsistently across
+   engines — this rule is the declarative half of a belt-and-braces pair. */
+.recharts-brush .recharts-brush-traveller,
+.recharts-brush .recharts-brush-slide {
+  touch-action: none !important;
+}
+
 /* Fade-in animation used by conditional sections */
 .fade-in {
   animation: fadeIn 0.2s ease-out;
@@ -83,6 +96,18 @@
 @media (prefers-reduced-motion: no-preference) and (min-width: 640px) {
   html {
     scroll-behavior: smooth;
+  }
+}
+
+/* Anchor targets must clear the sticky header, and on mobile the fixed bottom
+   nav as well. Without this, jumping to #main-content or any in-page heading
+   parks it underneath the header where it looks like nothing happened. */
+html {
+  scroll-padding-top: 5rem;
+}
+@media (max-width: 767px) {
+  html {
+    scroll-padding-bottom: calc(var(--bottom-nav-h) + 1rem);
   }
 }
 
@@ -147,17 +172,19 @@ input[type="number"]::-webkit-outer-spin-button {
 }
 
 /* Better touch targets for small buttons on mobile.
-   CAUTION: these rules are unlayered, and unlayered author styles outrank
-   everything in @layer utilities — so `min-h-[44px]` on a <button> loses to
-   the 36px below. Size touch targets that must exceed 36px with `h-11`/`w-11`
-   (height/width are different properties, so they are not overridden) rather
-   than with a `min-h-*` utility. */
-@media (max-width: 640px) {
-  button {
-    min-height: 36px;
-  }
-  details > summary {
-    min-height: 48px;
+   These live in @layer base so a Tailwind `min-h-*` utility can override them.
+   Previously they were unlayered, which made them outrank every utility in
+   @layer utilities: `min-h-[44px]` on a <button> silently lost to the 36px
+   floor, and the workaround was to reach for `h-11`/`w-11` instead. Now the
+   utility wins, so the floor is a default rather than a trap. */
+@layer base {
+  @media (max-width: 640px) {
+    button {
+      min-height: 44px;
+    }
+    details > summary {
+      min-height: 48px;
+    }
   }
 }
 
@@ -166,15 +193,48 @@ input[type="number"]::-webkit-outer-spin-button {
     @apply bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-50;
   }
 
-  /* Hard guard against sideways panning on mobile: any stray element wider
-     than the viewport gets clipped instead of widening the page.
-     `clip` (unlike `hidden`) creates no scroll container, so position:sticky
-     keeps working; the `hidden` line is the fallback for older browsers. */
-  html,
-  body {
-    overflow-x: hidden;
-    overflow-x: clip;
+  /* NOTE: the horizontal-overflow guard deliberately does NOT live on html/body
+     any more — see .app-shell below. Putting it on the root element broke
+     scroll-to-top on every client-side navigation. */
+}
+
+/* Hard guard against sideways panning on mobile: any stray element wider than
+   the viewport gets clipped instead of widening the page.
+
+   This MUST stay off the root element. With `overflow-x: clip` on html/body the
+   root stops behaving as the normal viewport scrollport, and Next's App Router
+   scroll handler — which measures the incoming segment against the document
+   element to decide whether it is already in view — concluded it had nothing to
+   do. Every client-side navigation then kept the previous page's scroll offset:
+   click a nav link three screens down and you landed three screens down the new
+   page. Verified by forcing overflow-x:visible at runtime, after which scroll
+   reset correctly.
+
+   `clip` (unlike `hidden`) creates no scroll container, so the sticky header and
+   sticky sidebar inside still resolve against the viewport, and `position:fixed`
+   descendants (the mobile tab bar) are unaffected because overflow clipping does
+   not apply to elements whose containing block is the viewport.
+   The `hidden` line is the fallback for browsers without `clip`. */
+.app-shell {
+  overflow-x: hidden;
+  overflow-x: clip;
+}
+
+/* iOS Safari counts the collapsing address bar in 100vh, so a 100vh shell jumps
+   by ~60px as the toolbar hides on scroll. dvh tracks the *actual* visible
+   viewport. Applied via @supports rather than a second utility class because
+   both resolve to min-height and Tailwind's output order, not the class order,
+   would decide the winner. */
+@supports (height: 100dvh) {
+  .min-h-screen {
+    min-height: 100dvh;
   }
+}
+
+/* Horizontal rubber-banding inside scrollable tables must not chain up to the
+   page and let the whole document slide sideways on iOS. */
+.overflow-x-auto {
+  overscroll-behavior-x: contain;
 }
 
 /* ── Mobile bottom nav safe-area ── */
@@ -189,6 +249,27 @@ input[type="number"]::-webkit-outer-spin-button {
   padding-bottom: max(env(safe-area-inset-bottom), 12px);
 }
 
+/* Cover the transient gap under the fixed bar.
+
+   A `position: fixed; bottom: 0` element is placed against the LAYOUT viewport.
+   While iOS Safari animates its toolbar away (and during rubber-band overscroll)
+   the visual viewport briefly extends past that, so page background flashes
+   through underneath and the bar looks like it is floating with a hole beneath
+   it. This paints the bar's own surface 120px further down, off-screen in the
+   normal case, so anything revealed is the same colour as the bar.
+
+   It must sit BEHIND the bar's content and must not intercept touches. */
+.bottom-nav-fill::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  height: 120px;
+  pointer-events: none;
+  background: inherit;
+}
+
 /* Clearance for the fixed bottom nav. It belongs on the LAST element in the page
    flow, which is the footer, not #main-content: padding under <main> only pushes
    the footer down, leaving dead space while the footer itself still runs under
@@ -197,5 +278,21 @@ input[type="number"]::-webkit-outer-spin-button {
   #site-footer {
     padding-bottom: 76px;
     padding-bottom: calc(var(--bottom-nav-h) + max(env(safe-area-inset-bottom), 12px));
+  }
+}
+
+/* Landscape on a phone leaves ~350px of height. A 56px sticky header plus a
+   64px fixed tab bar would eat a third of it, so the tab bar steps aside and
+   the header stops sticking — the "More" menu is still reachable from the
+   footer links, and rotating back restores both. */
+@media (max-width: 926px) and (max-height: 450px) and (orientation: landscape) {
+  nav[aria-label='Main navigation'].fixed {
+    display: none;
+  }
+  #site-footer {
+    padding-bottom: 1.5rem;
+  }
+  header.sticky {
+    position: static;
   }
 }

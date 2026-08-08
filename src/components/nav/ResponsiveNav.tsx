@@ -3,8 +3,8 @@
 import { useState, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Menu } from 'lucide-react';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import { LogoLockup } from '@/components/brand/Logo';
 import { TopNav } from './TopNav';
 import { MobileBottomNav } from './MobileBottomNav';
 import { MobileMenuDrawer } from './MobileMenuDrawer';
@@ -12,6 +12,7 @@ import { MobileMenuDrawer } from './MobileMenuDrawer';
 export function ResponsiveNav() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const closeDrawer = useCallback(() => setDrawerOpen(false), []);
+  const openDrawer = useCallback(() => setDrawerOpen(true), []);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const pathname = usePathname();
 
@@ -24,37 +25,17 @@ export function ResponsiveNav() {
       {/* Desktop top nav */}
       <TopNav />
 
-      {/* Mobile top bar */}
+      {/* Mobile top bar — logo and theme only. The hamburger moved into the
+          bottom bar's "More" tab so there is one menu instead of two competing
+          ones, and so the primary controls sit in the thumb zone. */}
       <header className="md:hidden border-b border-slate-200 dark:border-slate-800 bg-white/85 dark:bg-slate-950/85 backdrop-blur-md sticky top-0 z-50">
-        {/* Horizontal insets keep the logo and menu button clear of the notch
-            and rounded corners when a notched phone is held in landscape. */}
+        {/* Horizontal insets keep the logo clear of the notch and rounded
+            corners when a notched phone is held in landscape. */}
         <div className="flex items-center justify-between h-14 pl-[max(env(safe-area-inset-left),1rem)] pr-[max(env(safe-area-inset-right),1rem)]">
-          <Link href="/" className="flex items-center gap-2 group">
-            <div
-              className="w-8 h-8 bg-gradient-to-br from-amber-400 to-orange-500 rounded-full flex items-center justify-center text-white font-bold text-sm shrink-0 group-hover:scale-105 transition-transform"
-              aria-hidden="true"
-            >
-              ₿
-            </div>
-            <span className="text-lg font-bold bg-gradient-to-r from-amber-600 to-orange-700 dark:from-amber-500 dark:to-orange-600 bg-clip-text text-transparent">
-              Bitcoin DCA
-            </span>
+          <Link href="/" className="group" aria-label="Bitcoin DCA Calculator — home">
+            <LogoLockup markClassName="w-6 h-6" textClassName="text-lg" />
           </Link>
-
-          <div className="flex items-center gap-2">
-            <ThemeToggle />
-            <button
-              ref={menuButtonRef}
-              onClick={() => setDrawerOpen(true)}
-              className="-mr-1 h-11 w-11 flex items-center justify-center rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white transition-colors"
-              aria-label="Open menu"
-              aria-haspopup="dialog"
-              aria-expanded={drawerOpen}
-              aria-controls="mobile-menu-drawer"
-            >
-              <Menu size={22} />
-            </button>
-          </div>
+          <ThemeToggle />
         </div>
       </header>
 
@@ -62,7 +43,7 @@ export function ResponsiveNav() {
       <MobileMenuDrawer open={drawerOpen} onClose={closeDrawer} triggerRef={menuButtonRef} />
 
       {/* Mobile bottom tab bar */}
-      <MobileBottomNav />
+      <MobileBottomNav onOpenMenu={openDrawer} menuOpen={drawerOpen} triggerRef={menuButtonRef} />
     </>
   );
 }

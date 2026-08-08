@@ -82,7 +82,7 @@ export const CookieConsent = () => {
                         </button>
                         <button
                             onClick={handleAcceptAll}
-                            className="h-11 px-4 py-2 text-xs sm:text-sm font-medium rounded-lg bg-amber-500 hover:bg-amber-600 text-white transition-colors"
+                            className="h-11 px-4 py-2 text-xs sm:text-sm font-medium rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 transition-colors"
                         >
                             Accept All
                         </button>

@@ -25,10 +25,19 @@ const createPriceLookup = (priceData: [number, number][]) => {
     return (purchaseDay: number): number | undefined => {
         while (pointer + 1 < days.length && days[pointer + 1][0] <= purchaseDay) pointer++;
         if (pointer >= 0) return days[pointer][1];
-        // Purchase predates all data: fall back to the earliest known price
-        return days.length > 0 ? days[0][1] : undefined;
+        // Purchase predates every bar we have. Returning the earliest known price
+        // here would fabricate history: a 2009 start date would buy 18 months of
+        // BTC at the 2010-08-18 price of ~$0.07 and conjure billions out of $4k.
+        // No price means no purchase — the caller skips this date.
+        return undefined;
     };
 };
+
+/**
+ * Prices carried forward past the last bar are intentional (a future end date
+ * projects at the last known price), so this lookup deliberately has no upper
+ * guard — only the lower one above.
+ */
 
 const nextPurchaseTs = (startTs: number, purchaseIndex: number, frequency: Frequency, anchorDay: number): number => {
     switch (frequency) {
@@ -83,6 +92,47 @@ export function calculateXirr(purchases: { ts: number; amount: number }[], final
     return (lo + hi) / 2;
 }
 
+/**
+ * Largest peak-to-trough fall in portfolio value, walked one UTC day at a time.
+ *
+ * Sampling only on purchase days gave a monthly schedule 12 observations a year,
+ * which missed every crash that began and ended between two buys — the March 2020
+ * -50% collapse was almost invisible. Understating risk is the worst direction for
+ * a backtest to be wrong in, so this walks every day the portfolio existed.
+ *
+ * Stops at the last real price bar: past it the price is carried forward flat
+ * while holdings only grow, so value only rises and no new drawdown can form.
+ */
+function computeMaxDrawdown(
+    holdings: { day: number; totalBtc: number }[],
+    priceData: [number, number][] | undefined,
+    endTs: number,
+): number {
+    if (holdings.length === 0 || !priceData || priceData.length === 0) return 0;
+
+    const priceAt = createPriceLookup(priceData);
+    const lastDataDay = utcDayIndex(priceData[priceData.length - 1][0]);
+    const lastDay = Math.min(utcDayIndex(endTs), lastDataDay);
+
+    let peak = 0;
+    let maxDrawdown = 0;
+    let held = 0;
+    let next = 0;
+
+    for (let day = holdings[0].day; day <= lastDay; day++) {
+        while (next < holdings.length && holdings[next].day <= day) held = holdings[next++].totalBtc;
+        const price = priceAt(day);
+        if (price === undefined || price <= 0) continue;
+        const value = held * price;
+        if (value > peak) peak = value;
+        else if (peak > 0) {
+            const drawdown = (peak - value) / peak;
+            if (drawdown > maxDrawdown) maxDrawdown = drawdown;
+        }
+    }
+    return maxDrawdown;
+}
+
 export function calculateDca(params: DcaParams, priceData?: [number, number][], currentPrice?: number | null): DcaResult {
     const { amount, frequency, startDate, endDate, feePercentage, priceMode, manualPrice } = params;
 
@@ -99,9 +149,8 @@ export function calculateDca(params: DcaParams, priceData?: [number, number][], 
     const clampedFee = Math.min(100, Math.max(0, feePercentage));
     const purchases: { ts: number; amount: number }[] = [];
 
-    // Drawdown tracking over the purchase-day portfolio series
-    let peakValue = 0;
-    let maxDrawdown = 0;
+    // Holdings timeline for the drawdown walk below: one entry per purchase day.
+    const holdings: { day: number; totalBtc: number }[] = [];
     let bestBuy: { date: string; price: number } | null = null;
     let worstBuy: { date: string; price: number } | null = null;
 
@@ -129,11 +178,7 @@ export function calculateDca(params: DcaParams, priceData?: [number, number][], 
             if (!worstBuy || purchasePrice > worstBuy.price) worstBuy = { date: dateIso, price: purchasePrice };
 
             const portfolioValue = totalBtc * purchasePrice;
-            if (portfolioValue > peakValue) peakValue = portfolioValue;
-            else if (peakValue > 0) {
-                const dd = (peakValue - portfolioValue) / peakValue;
-                if (dd > maxDrawdown) maxDrawdown = dd;
-            }
+            holdings.push({ day: utcDayIndex(ts), totalBtc });
 
             breakdown.push({
                 date: dateIso,
@@ -157,8 +202,17 @@ export function calculateDca(params: DcaParams, priceData?: [number, number][], 
     const profit = currentValue - totalInvested;
     const roi = totalInvested > 0 ? (profit / totalInvested) * 100 : 0;
 
-    const lastTs = purchases.length > 0 ? Math.min(Date.now(), Math.max(purchases[purchases.length - 1].ts, endTs)) : endTs;
-    const xirr = calculateXirr(purchases, currentValue, lastTs);
+    // `currentValue` is measured at TODAY's price, so the terminal cash flow must
+    // be dated today too. Dating it at `endTs` while valuing it at today's price
+    // compressed years of growth into the backtest window and inflated XIRR by an
+    // order of magnitude ($50/wk 2016-2018 reported +574%/yr instead of +54%).
+    // Never earlier than the last purchase, so a future-dated schedule stays sane.
+    const valuationTs = purchases.length > 0
+        ? Math.max(Date.now(), purchases[purchases.length - 1].ts)
+        : endTs;
+    const xirr = calculateXirr(purchases, currentValue, valuationTs);
+
+    const maxDrawdown = computeMaxDrawdown(holdings, priceData, endTs);
 
     const stats: DcaStats = {
         xirrPercent: xirr !== null ? xirr * 100 : null,

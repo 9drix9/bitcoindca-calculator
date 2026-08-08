@@ -15,7 +15,8 @@ import { LiveBlocksWidget } from '@/components/LiveBlocksWidget';
 import { LivePriceTicker } from '@/components/LivePriceTicker';
 import { AdSlot } from '@/components/AdSlot';
 import { SkeletonCard } from '@/components/Skeleton';
-import { LazyDcaCalculator } from '@/components/LazyDcaCalculator';
+import { MobileCollapse } from '@/components/MobileCollapse';
+import { LazyDcaCalculator, DcaCalculatorSkeleton } from '@/components/LazyDcaCalculator';
 import dynamic from 'next/dynamic';
 import {
   getMempoolFees,
@@ -29,12 +30,23 @@ import {
   getRecentBlocks,
   getHeroStat,
   getCurrentBitcoinPriceWithChange,
+  getBitcoinPriceHistory,
+  getCurrentBitcoinPrice,
 } from '@/app/actions';
+import {
+  DAY_MS,
+  DEFAULT_YEARS_BACK,
+  parseUtcDate,
+  utcIsoToday,
+  utcIsoYearsAgo,
+} from '@/utils/dates';
 
 const usd = (n: number) =>
   `$${n.toLocaleString('en-US', { maximumFractionDigits: 0 })}`;
 
-const BitcoinAdoption = dynamic(() => import('@/components/BitcoinAdoption').then(m => m.BitcoinAdoption), {
+// Recharts-backed. `ssr: false` cannot be set from a Server Component, so the
+// opt-out lives in the client wrapper — see LazyBitcoinAdoption.
+const BitcoinAdoption = dynamic(() => import('@/components/LazyBitcoinAdoption').then(m => m.LazyBitcoinAdoption), {
   loading: () => <div className="h-[400px] bg-slate-100 dark:bg-slate-800/50 rounded-xl animate-pulse" />,
 });
 
@@ -133,6 +145,39 @@ function HeroLiveSkeleton() {
   );
 }
 
+/**
+ * Fetches the default window's prices on the server and hands them to the
+ * calculator, so a first-time visitor (and Googlebot) sees a completed backtest
+ * in the initial HTML rather than a loading state that resolves a second later.
+ *
+ * The date range MUST be derived the same way the client derives it — both call
+ * the UTC helpers in utils/dates — or the seed covers the wrong window and the
+ * client refetches anyway.
+ */
+async function SeededCalculator() {
+  const startDate = utcIsoYearsAgo(DEFAULT_YEARS_BACK);
+  const endDate = utcIsoToday();
+
+  // Providers down: seed nothing and let the client-fetching calculator use its
+  // own retry and manual-price escape hatch.
+  const seed = await Promise.all([
+    getBitcoinPriceHistory(parseUtcDate(startDate), parseUtcDate(endDate) + DAY_MS, 'kraken'),
+    getCurrentBitcoinPrice('kraken').catch(() => null),
+  ]).catch(() => null);
+
+  // The series ships inside the RSC payload, so trim it to cents. Full float
+  // precision cost ~8 KB gzipped per page load to express sub-cent resolution on
+  // a five-figure asset.
+  const trimmed = seed?.[0]?.map(([ts, price]): [number, number] => [ts, Math.round(price * 100) / 100]);
+
+  return (
+    <LazyDcaCalculator
+      initialPriceData={trimmed}
+      initialLivePrice={seed?.[1] ?? null}
+    />
+  );
+}
+
 function SidebarSkeleton() {
   return (
     <div className="space-y-4 lg:sticky lg:top-20">
@@ -157,19 +202,24 @@ async function Sidebar() {
   ]);
 
   return (
-    <div className="space-y-4 lg:sticky lg:top-20">
-      <HalvingCountdownWidget initialHeight={blockHeight} />
-      <LiveBlocksWidget initialData={recentBlocks} />
-      <FearGreedWidget initialData={fearGreed} />
-      <MempoolFeeWidget initialData={mempoolFees} />
-      <HashRateWidget initialData={hashRateData} />
-      <SupplyScarcityWidget initialSupply={circulatingSupply} blockHeight={blockHeight} />
-      <PurchasingPowerWidget initialData={purchasingPowerData} />
-      <LightningWidget initialData={lightningData} />
-      <DominanceWidget initialData={dominanceData} />
-      <SatConverterWidget />
+    // A labelled landmark: ten stat cards with no grouping made this an
+    // unnavigable wall for screen-reader users, who had no way to skip past it.
+    <aside aria-label="Live Bitcoin network stats" className="space-y-4 lg:sticky lg:top-20">
+      {/* Collapsed to three cards on phones — see MobileCollapse. */}
+      <MobileCollapse previewCount={3} label="network stats">
+        <HalvingCountdownWidget initialHeight={blockHeight} />
+        <LiveBlocksWidget initialData={recentBlocks} />
+        <FearGreedWidget initialData={fearGreed} />
+        <MempoolFeeWidget initialData={mempoolFees} />
+        <HashRateWidget initialData={hashRateData} />
+        <SupplyScarcityWidget initialSupply={circulatingSupply} blockHeight={blockHeight} />
+        <PurchasingPowerWidget initialData={purchasingPowerData} />
+        <LightningWidget initialData={lightningData} />
+        <DominanceWidget initialData={dominanceData} />
+        <SatConverterWidget />
+      </MobileCollapse>
       <AdSlot />
-    </div>
+    </aside>
   );
 }
 
@@ -205,11 +255,19 @@ export default function Home() {
         {/* Mission */}
         <p className="text-center text-xs sm:text-sm text-slate-500 dark:text-slate-400">
           A free, open-source calculator for long-term Bitcoin thinkers. No accounts, no email capture, no shitcoins.{' '}
-          <Link href="/about" className="text-amber-600 dark:text-amber-400 hover:underline">Learn more &rarr;</Link>
+          <Link href="/about" className="text-amber-700 dark:text-amber-400 hover:underline">Learn more &rarr;</Link>
         </p>
 
-        {/* Main Calculator */}
-        <LazyDcaCalculator />
+        {/* Main Calculator — streams in seeded with server-fetched prices, so the
+            first paint shows a real backtest instead of a skeleton. */}
+        {/* The fallback must be a PLAIN component. It was <LazyDcaCalculator />,
+            which lazy-loads and therefore suspends — and a Suspense fallback that
+            itself suspends leaves the boundary stuck: the calculator rendered as a
+            permanent skeleton on the client even though the server had already
+            streamed the real markup into the page. */}
+        <Suspense fallback={<DcaCalculatorSkeleton />}>
+          <SeededCalculator />
+        </Suspense>
 
         {/* Content + Sidebar */}
         <div className="grid lg:grid-cols-3 gap-8 items-start">
