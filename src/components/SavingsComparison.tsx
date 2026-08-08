@@ -133,7 +133,7 @@ export const SavingsComparison = ({
                         : "bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700"
                 )}>
                     <div className="text-xs sm:text-sm font-medium text-amber-700 dark:text-amber-400 mb-1">Bitcoin DCA</div>
-                    <div className="text-lg sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-white truncate">
+                    <div className="text-lg sm:text-2xl font-bold text-slate-900 dark:text-white truncate">
                         <span className="sm:hidden">{formatCompact(btcCurrentValue)}</span>
                         <span className="hidden sm:inline">{formatCurrency(btcCurrentValue)}</span>
                     </div>
@@ -149,7 +149,7 @@ export const SavingsComparison = ({
                         : "bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700"
                 )}>
                     <div className="text-xs sm:text-sm font-medium text-blue-700 dark:text-blue-400 mb-1">Savings ({apy}% APY)</div>
-                    <div className="text-lg sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-white truncate">
+                    <div className="text-lg sm:text-2xl font-bold text-slate-900 dark:text-white truncate">
                         <span className="sm:hidden">{formatCompact(savingsResult.balance)}</span>
                         <span className="hidden sm:inline">{formatCurrency(savingsResult.balance)}</span>
                     </div>

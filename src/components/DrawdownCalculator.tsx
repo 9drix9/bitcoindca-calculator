@@ -208,7 +208,7 @@ function DrawdownTooltip({ active, payload }: { active?: boolean; payload?: Tool
     if (!point) return null;
 
     return (
-        <div className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs shadow-lg dark:border-slate-700 dark:bg-slate-900">
+        <div className="rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-xs shadow-lg dark:border-slate-700 dark:bg-slate-900">
             <p className="mb-1.5 font-semibold tabular-nums text-slate-800 dark:text-slate-100">
                 {point.year < 1 ? `Month ${Math.round(point.year * 12)}` : `Year ${point.year.toFixed(1)}`}
             </p>
@@ -266,7 +266,7 @@ function ScenarioCard({
             </div>
             <div
                 className={clsx(
-                    'mt-1.5 text-xl font-bold tracking-tight sm:text-2xl',
+                    'mt-1.5 text-xl font-bold sm:text-2xl',
                     good
                         ? 'text-gain'
                         : bad
@@ -513,7 +513,7 @@ export const DrawdownCalculator: React.FC<DrawdownCalculatorProps> = ({ btcAccum
                         </div>
                         <div
                             className={clsx(
-                                'mt-1 text-2xl font-bold tracking-tight sm:text-3xl',
+                                'mt-1 text-2xl font-bold sm:text-3xl',
                                 model.base.neverExhausted
                                     ? 'text-gain'
                                     : 'text-slate-900 dark:text-white',

@@ -13,6 +13,7 @@ import { DAY_MS, formatUtc, parseUtcDate } from '@/utils/dates';
 import type { UrlCurrency } from '@/utils/urlParams';
 import type { DcaResult, Frequency } from '@/types';
 import { resolveServerCurrency, type ServerCurrencyConfig } from '@/utils/serverCurrency';
+import { Logo } from '@/components/brand/Logo';
 
 // Embeds are cheap, cacheable, identical for everyone with the same params.
 // Rendered per request: the whole widget is a function of its query string, so a
@@ -185,13 +186,12 @@ function Brand({ href }: { href: string }) {
             rel="noopener"
             className="group flex min-w-0 items-center gap-2"
         >
-            <span
-                aria-hidden="true"
-                className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-amber-500 text-[13px] font-bold text-slate-950"
-            >
-                &#8383;
-            </span>
-            <span className="truncate text-sm font-semibold text-slate-800 transition-colors group-hover:text-amber-600 dark:text-slate-100 dark:group-hover:text-amber-400">
+            {/* The Sat Ladder, same as every other surface. This was the last
+                ₿-in-a-disc left in the codebase, and it was on the one component
+                that renders on OTHER people's sites — so the most brand-visible
+                surface was the only one still showing the retired mark. */}
+            <Logo className="h-5 w-5 shrink-0 text-amber-600 dark:text-amber-400" />
+            <span className="truncate text-sm font-semibold text-slate-800 transition-colors group-hover:text-amber-700 dark:text-slate-100 dark:group-hover:text-amber-400">
                 Bitcoin DCA Calculator
             </span>
         </a>
@@ -286,7 +286,7 @@ export default async function EmbedPage({ searchParams }: EmbedPageProps) {
                             <div className="min-w-0">
                                 <p className={MICRO_LABEL}>{scenarioLine(params, cfg)}</p>
                                 <div className="mt-0.5 flex flex-wrap items-baseline gap-x-2">
-                                    <p className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">
+                                    <p className="text-3xl font-bold text-slate-900 dark:text-white">
                                         {fmtMoney(result.currentValue, params.currency, cfg)}
                                     </p>
                                     <span

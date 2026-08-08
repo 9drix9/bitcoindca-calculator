@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Banknote } from 'lucide-react';
 import { getPurchasingPowerData } from '@/app/actions';
 import { useCurrency } from '@/context/CurrencyContext';
-import { Card, CardHeader } from '@/components/ui/Card';
+import { Card, CardHeader, EmptyState } from '@/components/ui/Card';
 
 interface PurchasingPowerData {
     cpiStart: number;
@@ -111,7 +111,7 @@ export const PurchasingPowerWidget = ({ initialData }: PurchasingPowerWidgetProp
                     </p>
                 </>
             ) : (
-                <p className="text-xs text-slate-500 dark:text-slate-400">Data unavailable</p>
+                <EmptyState />
             )}
 
             <div className="mt-2 pt-2 border-t border-slate-100 dark:border-slate-800">

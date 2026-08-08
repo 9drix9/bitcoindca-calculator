@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { Scale } from 'lucide-react';
 import { getCirculatingSupply } from '@/app/actions';
-import { Card, CardHeader, StatRow } from '@/components/ui/Card';
+import { Card, CardHeader, StatRow, EmptyState } from '@/components/ui/Card';
 
 const MAX_SUPPLY = 21_000_000;
 const ESTIMATED_LOST = 3_700_000;
@@ -79,7 +79,7 @@ export const SupplyScarcityWidget = ({ initialSupply, blockHeight }: SupplyScarc
                             aria-valuenow={Math.round(stats.percentMined * 100) / 100}
                         >
                             <div
-                                className="h-full bg-gradient-to-r from-amber-400 to-orange-500 rounded-full transition-all duration-500"
+                                className="h-full bg-gradient-to-r from-amber-400 to-orange-500 rounded-full transition-colors duration-500"
                                 style={{ width: `${Math.min(100, stats.percentMined)}%` }}
                             />
                         </div>
@@ -99,7 +99,7 @@ export const SupplyScarcityWidget = ({ initialSupply, blockHeight }: SupplyScarc
                     />
                 </div>
             ) : (
-                <p className="text-xs text-slate-500 dark:text-slate-400">Data unavailable</p>
+                <EmptyState />
             )}
         </Card>
     );

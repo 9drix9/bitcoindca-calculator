@@ -205,7 +205,7 @@ function StatCard({
     return (
         <Card celebrated={celebrated} className="p-4 sm:p-5">
             <p className="text-xs font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">{label}</p>
-            <p className={clsx('mt-1 text-2xl sm:text-3xl font-bold tracking-tight', valueClassName ?? 'text-slate-900 dark:text-white')}>
+            <p className={clsx('mt-1 text-2xl sm:text-3xl font-bold', valueClassName ?? 'text-slate-900 dark:text-white')}>
                 {value}
             </p>
             {sub && <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{sub}</p>}
@@ -304,7 +304,7 @@ export default async function DcaScenarioPage({ params }: PageProps) {
 
                 {/* Heading + lead */}
                 <header className="space-y-3">
-                    <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-slate-900 dark:text-white text-balance">
+                    <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-900 dark:text-white text-balance">
                         {heading}
                     </h1>
                     {result && (
@@ -381,7 +381,7 @@ export default async function DcaScenarioPage({ params }: PageProps) {
 
                         {/* Year-by-year table */}
                         <Card className="p-4 sm:p-6">
-                            <h2 className="text-lg sm:text-xl font-bold tracking-tight text-slate-900 dark:text-white mb-4">
+                            <h2 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white mb-4">
                                 Year-by-year breakdown
                             </h2>
                             <div className="overflow-x-auto">
@@ -435,7 +435,7 @@ export default async function DcaScenarioPage({ params }: PageProps) {
                         <div className="flex items-start gap-3">
                             <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
                             <div className="space-y-2">
-                                <h2 className="text-lg font-bold tracking-tight text-slate-900 dark:text-white">
+                                <h2 className="text-lg font-bold text-slate-900 dark:text-white">
                                     Price data is temporarily unavailable
                                 </h2>
                                 <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
@@ -449,7 +449,7 @@ export default async function DcaScenarioPage({ params }: PageProps) {
 
                 {/* CTA */}
                 <Card celebrated className="p-6 sm:p-10 text-center">
-                    <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-white mb-3">
+                    <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white mb-3">
                         Run your own numbers
                     </h2>
                     <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300 mb-5 max-w-xl mx-auto">
@@ -467,7 +467,7 @@ export default async function DcaScenarioPage({ params }: PageProps) {
 
                 {/* Related scenarios */}
                 <section className="space-y-3">
-                    <h2 className="text-lg sm:text-xl font-bold tracking-tight text-slate-900 dark:text-white">
+                    <h2 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white">
                         Related scenarios
                     </h2>
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">
@@ -475,7 +475,7 @@ export default async function DcaScenarioPage({ params }: PageProps) {
                             <Link
                                 key={s.slug}
                                 href={`/dca/${s.slug}`}
-                                className="rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-2.5 text-sm font-medium text-slate-700 dark:text-slate-300 hover:border-amber-500/50 hover:text-amber-700 dark:hover:text-amber-400 transition-colors tabular-nums"
+                                className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-2.5 text-sm font-medium text-slate-700 dark:text-slate-300 hover:border-amber-500/50 hover:text-amber-700 dark:hover:text-amber-400 transition-colors tabular-nums"
                             >
                                 {s.shortLabel}
                             </Link>

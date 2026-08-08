@@ -400,7 +400,7 @@ export default async function StartDateHeatmapPage() {
 
                 {/* Heading + lead */}
                 <header className="space-y-3">
-                    <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-slate-900 dark:text-white text-balance">
+                    <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-900 dark:text-white text-balance">
                         Bitcoin DCA start date heatmap
                     </h1>
                     <p className="text-base sm:text-lg text-slate-600 dark:text-slate-300 leading-relaxed">
@@ -425,7 +425,7 @@ export default async function StartDateHeatmapPage() {
                     <>
                         {/* The grid */}
                         <Card className="p-4 sm:p-6 space-y-4">
-                            <h2 className="text-lg sm:text-xl font-bold tracking-tight text-slate-900 dark:text-white">
+                            <h2 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white">
                                 Annualized return by start year and holding period
                             </h2>
 
@@ -540,7 +540,7 @@ export default async function StartDateHeatmapPage() {
                         {/* Column summary */}
                         {columns.length > 0 && (
                             <Card className="p-4 sm:p-6 space-y-4">
-                                <h2 className="text-lg sm:text-xl font-bold tracking-tight text-slate-900 dark:text-white">
+                                <h2 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white">
                                     How much did the start date matter?
                                 </h2>
                                 <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300 leading-relaxed">
@@ -598,7 +598,7 @@ export default async function StartDateHeatmapPage() {
                         <div className="flex items-start gap-3">
                             <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
                             <div className="space-y-2">
-                                <h2 className="text-lg font-bold tracking-tight text-slate-900 dark:text-white">
+                                <h2 className="text-lg font-bold text-slate-900 dark:text-white">
                                     Price data is temporarily unavailable
                                 </h2>
                                 <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
@@ -613,7 +613,7 @@ export default async function StartDateHeatmapPage() {
 
                 {/* What this shows */}
                 <section className="space-y-4">
-                    <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
+                    <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">
                         What the grid actually shows
                     </h2>
                     <div className="space-y-4 text-sm sm:text-base text-slate-600 dark:text-slate-300 leading-relaxed">
@@ -659,7 +659,7 @@ export default async function StartDateHeatmapPage() {
 
                 {/* Methodology */}
                 <section className="space-y-3">
-                    <h2 className="text-lg sm:text-xl font-bold tracking-tight text-slate-900 dark:text-white">
+                    <h2 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white">
                         How each cell is calculated
                     </h2>
                     <ul className="space-y-2 text-sm sm:text-base text-slate-600 dark:text-slate-300 leading-relaxed">
@@ -688,7 +688,7 @@ export default async function StartDateHeatmapPage() {
 
                 {/* CTA */}
                 <Card celebrated className="p-6 sm:p-10 text-center">
-                    <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-white mb-3">
+                    <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white mb-3">
                         Run your own numbers
                     </h2>
                     <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300 mb-5 max-w-xl mx-auto">
@@ -707,14 +707,14 @@ export default async function StartDateHeatmapPage() {
 
                 {/* Related */}
                 <section className="space-y-3">
-                    <h2 className="text-lg sm:text-xl font-bold tracking-tight text-slate-900 dark:text-white">
+                    <h2 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white">
                         Keep reading
                     </h2>
                     <ul className="grid sm:grid-cols-2 gap-2 sm:gap-3">
                         <li>
                             <Link
                                 href="/dca"
-                                className="block rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 px-4 py-3 text-sm text-slate-700 dark:text-slate-300 hover:border-amber-500/50 hover:text-amber-700 dark:hover:text-amber-400 transition-colors"
+                                className="block rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 px-4 py-3 text-sm text-slate-700 dark:text-slate-300 hover:border-amber-500/50 hover:text-amber-700 dark:hover:text-amber-400 transition-colors"
                             >
                                 <span className="font-medium">All DCA scenarios</span>
                                 <span className="block text-xs text-slate-500 dark:text-slate-400 mt-0.5">Fixed amounts and cadences, worked out year by year.</span>
@@ -723,7 +723,7 @@ export default async function StartDateHeatmapPage() {
                         <li>
                             <Link
                                 href="/methodology"
-                                className="block rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 px-4 py-3 text-sm text-slate-700 dark:text-slate-300 hover:border-amber-500/50 hover:text-amber-700 dark:hover:text-amber-400 transition-colors"
+                                className="block rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 px-4 py-3 text-sm text-slate-700 dark:text-slate-300 hover:border-amber-500/50 hover:text-amber-700 dark:hover:text-amber-400 transition-colors"
                             >
                                 <span className="font-medium">Methodology &amp; data sources</span>
                                 <span className="block text-xs text-slate-500 dark:text-slate-400 mt-0.5">Where the prices come from and where the model falls short.</span>
@@ -732,7 +732,7 @@ export default async function StartDateHeatmapPage() {
                         <li>
                             <Link
                                 href="/bitcoin-dca-tax"
-                                className="block rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 px-4 py-3 text-sm text-slate-700 dark:text-slate-300 hover:border-amber-500/50 hover:text-amber-700 dark:hover:text-amber-400 transition-colors"
+                                className="block rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 px-4 py-3 text-sm text-slate-700 dark:text-slate-300 hover:border-amber-500/50 hover:text-amber-700 dark:hover:text-amber-400 transition-colors"
                             >
                                 <span className="font-medium">DCA and tax lots</span>
                                 <span className="block text-xs text-slate-500 dark:text-slate-400 mt-0.5">Why buying regularly creates hundreds of separate cost bases.</span>
@@ -741,7 +741,7 @@ export default async function StartDateHeatmapPage() {
                         <li>
                             <Link
                                 href="/why-bitcoin"
-                                className="block rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 px-4 py-3 text-sm text-slate-700 dark:text-slate-300 hover:border-amber-500/50 hover:text-amber-700 dark:hover:text-amber-400 transition-colors"
+                                className="block rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 px-4 py-3 text-sm text-slate-700 dark:text-slate-300 hover:border-amber-500/50 hover:text-amber-700 dark:hover:text-amber-400 transition-colors"
                             >
                                 <span className="font-medium">Why Bitcoin</span>
                                 <span className="block text-xs text-slate-500 dark:text-slate-400 mt-0.5">The case, the counter-case, and the risks.</span>

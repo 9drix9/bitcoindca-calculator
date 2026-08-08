@@ -203,7 +203,7 @@ export default async function CalculatorsHubPage() {
 
                 {/* Hero */}
                 <header className="space-y-3 sm:space-y-4 max-w-3xl">
-                    <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight text-slate-900 dark:text-white text-balance">
+                    <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-slate-900 dark:text-white text-balance">
                         Bitcoin <span className="text-amber-700 dark:text-amber-400">Calculators</span>
                     </h1>
                     <p className="text-base sm:text-lg text-slate-600 dark:text-slate-300 leading-relaxed">
@@ -259,7 +259,7 @@ export default async function CalculatorsHubPage() {
 
                 {/* The grid */}
                 <section className="space-y-4">
-                    <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
+                    <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">
                         Pick the question you came with
                     </h2>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
@@ -273,7 +273,7 @@ export default async function CalculatorsHubPage() {
                                         <Icon className="w-5 h-5" />
                                     </span>
                                     <div className="min-w-0">
-                                        <h3 className="text-base sm:text-lg font-bold tracking-tight text-slate-900 dark:text-white">
+                                        <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white">
                                             <Link href={`/calculators/${slug}`} className="hover:text-amber-700 dark:hover:text-amber-400 transition-colors">
                                                 {name}
                                             </Link>
@@ -306,7 +306,7 @@ export default async function CalculatorsHubPage() {
 
                 {/* Back to the main calculator */}
                 <Card celebrated className="p-6 sm:p-10 text-center">
-                    <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-white mb-3">
+                    <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white mb-3">
                         Start with the DCA calculator
                     </h2>
                     <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300 mb-5 max-w-xl mx-auto leading-relaxed">
@@ -325,7 +325,7 @@ export default async function CalculatorsHubPage() {
 
                 {/* How to read any of these */}
                 <section className="space-y-3">
-                    <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
+                    <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">
                         How to read the output
                     </h2>
                     <div className="space-y-3 text-sm sm:text-base text-slate-600 dark:text-slate-300 leading-relaxed">
@@ -353,7 +353,7 @@ export default async function CalculatorsHubPage() {
 
                 {/* Related */}
                 <section className="space-y-3">
-                    <h2 className="text-lg sm:text-xl font-bold tracking-tight text-slate-900 dark:text-white">
+                    <h2 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white">
                         Elsewhere on the site
                     </h2>
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
@@ -365,7 +365,7 @@ export default async function CalculatorsHubPage() {
                             <Link
                                 key={link.href}
                                 href={link.href}
-                                className="rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-2.5 hover:border-amber-500/50 transition-colors"
+                                className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-2.5 hover:border-amber-500/50 transition-colors"
                             >
                                 <span className="block text-sm font-medium text-slate-700 dark:text-slate-300">{link.label}</span>
                                 <span className="block mt-0.5 text-xs text-slate-500 dark:text-slate-400">{link.sub}</span>

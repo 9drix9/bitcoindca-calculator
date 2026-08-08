@@ -57,7 +57,7 @@ export const UnitBiasCalculator = ({ btcAccumulated }: UnitBiasCalculatorProps) 
 
             <div className="text-center space-y-3">
                 <div>
-                    <div className="text-2xl sm:text-4xl font-bold tracking-tight text-amber-700 dark:text-amber-400">
+                    <div className="text-2xl sm:text-4xl font-bold text-amber-700 dark:text-amber-400">
                         {stats.totalSats.toLocaleString()}
                     </div>
                     <div className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">sats accumulated</div>

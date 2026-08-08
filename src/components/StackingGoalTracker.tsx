@@ -136,7 +136,7 @@ export const StackingGoalTracker = ({
                             <div className="h-1.5 sm:h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
                                 <div
                                     className={clsx(
-                                        "h-full rounded-full transition-all duration-500",
+                                        "h-full rounded-full transition-colors duration-500",
                                         completed ? "bg-emerald-500" : "bg-amber-500"
                                     )}
                                     style={{ width: `${progress}%` }}

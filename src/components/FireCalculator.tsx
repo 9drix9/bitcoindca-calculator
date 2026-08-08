@@ -141,7 +141,7 @@ export const FireCalculator = ({
                 </div>
                 <div className="h-3 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
                     <div
-                        className="h-full bg-emerald-500 rounded-full transition-all duration-500"
+                        className="h-full bg-emerald-500 rounded-full transition-colors duration-500"
                         style={{ width: `${progressPercent}%` }}
                     />
                 </div>
@@ -175,7 +175,7 @@ export const FireCalculator = ({
                             )}>
                                 {(result.rate * 100).toFixed(0)}% per year
                             </div>
-                            <div className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-800 dark:text-white">
+                            <div className="text-2xl sm:text-3xl font-bold text-slate-800 dark:text-white">
                                 {result.reached ? (
                                     result.years === 0 ? (
                                         <span className="text-gain">Now</span>

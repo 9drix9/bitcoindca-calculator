@@ -54,11 +54,16 @@
   }
 
   /* Caps the MEASURE of running text without narrowing the container, so the
-     same section can still hold a full-width table or chart. Long-form pages
-     were running ~100 characters per line against a comfortable 45-75.
-     Deliberately targets only text children — direct descendants that are
-     layout (grids, tables, figures) keep the container's full width. */
-  .measure > :where(p, ul, ol, blockquote, h2, h3, h4) {
+     same section can still hold a full-width table, chart or card grid.
+     Long-form pages were running ~104 characters per line against a comfortable
+     45-75.
+
+     DESCENDANT, not direct-child: the prose on these pages is nested inside
+     section and spacing wrappers, so a `>` combinator matched nothing at all and
+     the utility silently did nothing. Targeting only text elements is what keeps
+     it safe — this can only ever REDUCE a text block's width, and anything
+     already narrower than 68ch (a table cell, a card in a grid) is untouched. */
+  .measure :where(p, li, blockquote) {
     max-width: 68ch;
   }
 

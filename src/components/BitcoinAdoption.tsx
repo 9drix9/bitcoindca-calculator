@@ -50,7 +50,7 @@ export const BitcoinAdoption = () => {
 
     return (
         <section className="space-y-6">
-            <h3 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
+            <h3 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">
                 Bitcoin Adoption
             </h3>
 
@@ -58,7 +58,7 @@ export const BitcoinAdoption = () => {
             <Card className="p-4 sm:p-6 space-y-4">
                 <div className="flex items-baseline justify-between">
                     <div>
-                        <div className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-white">
+                        <div className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white">
                             ~{GLOBAL_OWNERS_M}M
                         </div>
                         <div className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
@@ -86,7 +86,7 @@ export const BitcoinAdoption = () => {
                         aria-valuenow={ADOPTION_PERCENT}
                     >
                         <div
-                            className="h-full rounded-full bg-gradient-to-r from-amber-400 to-orange-500 transition-all"
+                            className="h-full rounded-full bg-gradient-to-r from-amber-400 to-orange-500 transition-colors"
                             style={{ width: `${ADOPTION_PERCENT}%` }}
                         />
                     </div>

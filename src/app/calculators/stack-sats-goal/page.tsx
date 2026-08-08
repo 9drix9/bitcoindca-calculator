@@ -245,7 +245,7 @@ export default async function StackSatsGoalPage() {
 
                 {/* Header */}
                 <header className="space-y-4">
-                    <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-slate-900 dark:text-white text-balance">
+                    <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-900 dark:text-white text-balance">
                         How long does it take to stack 1 bitcoin?
                     </h1>
                     <p className="text-base sm:text-lg text-slate-600 dark:text-slate-300 leading-relaxed">
@@ -269,7 +269,7 @@ export default async function StackSatsGoalPage() {
 
                 {/* Milestone table */}
                 <section className="space-y-4">
-                    <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
+                    <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">
                         Time to each milestone at today&apos;s price
                     </h2>
                     {price ? (
@@ -317,7 +317,7 @@ export default async function StackSatsGoalPage() {
                             <div className="flex items-start gap-3">
                                 <AlertTriangle className="w-5 h-5 text-amber-700 dark:text-amber-400 shrink-0 mt-0.5" />
                                 <div className="space-y-2">
-                                    <h3 className="text-base font-bold tracking-tight text-slate-900 dark:text-white">
+                                    <h3 className="text-base font-bold text-slate-900 dark:text-white">
                                         Price data is temporarily unavailable
                                     </h3>
                                     <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
@@ -333,7 +333,7 @@ export default async function StackSatsGoalPage() {
 
                 {/* Why no growth assumption */}
                 <section className="space-y-4">
-                    <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
+                    <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">
                         Why this does not project the price forward
                     </h2>
                     <div className="space-y-4 text-sm sm:text-base text-slate-600 dark:text-slate-400 leading-relaxed">
@@ -366,7 +366,7 @@ export default async function StackSatsGoalPage() {
 
                 {/* Sats and unit bias */}
                 <section className="space-y-4">
-                    <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
+                    <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">
                         Sats, and why the sticker price misleads people
                     </h2>
                     <div className="space-y-4 text-sm sm:text-base text-slate-600 dark:text-slate-400 leading-relaxed">
@@ -397,7 +397,7 @@ export default async function StackSatsGoalPage() {
                 <section className="space-y-4">
                     <div className="flex items-center gap-2 sm:gap-3">
                         <Target className="w-6 h-6 sm:w-7 sm:h-7 text-amber-700 dark:text-amber-400 shrink-0" />
-                        <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
+                        <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">
                             Milestone progress on a real schedule
                         </h2>
                     </div>
@@ -441,7 +441,7 @@ export default async function StackSatsGoalPage() {
 
                 {/* What actually changes the timeline */}
                 <section className="space-y-4">
-                    <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
+                    <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">
                         What actually moves the date
                     </h2>
                     <div className="space-y-3 text-sm sm:text-base text-slate-600 dark:text-slate-400 leading-relaxed">
@@ -480,7 +480,7 @@ export default async function StackSatsGoalPage() {
 
                 {/* FAQ */}
                 <section className="space-y-4">
-                    <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
+                    <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">
                         Frequently asked questions
                     </h2>
                     <div className="space-y-3">
@@ -497,7 +497,7 @@ export default async function StackSatsGoalPage() {
 
                 {/* CTA */}
                 <Card celebrated className="p-6 sm:p-10 text-center">
-                    <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-white mb-3">
+                    <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white mb-3">
                         Run your own numbers
                     </h2>
                     <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300 mb-5 max-w-xl mx-auto">
@@ -515,27 +515,27 @@ export default async function StackSatsGoalPage() {
 
                 {/* Related */}
                 <section className="space-y-3">
-                    <h2 className="text-lg sm:text-xl font-bold tracking-tight text-slate-900 dark:text-white">
+                    <h2 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white">
                         Related
                     </h2>
                     <ul className="grid sm:grid-cols-2 gap-2 text-sm">
                         <li>
-                            <Link href="/calculators" className="block rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-2.5 font-medium text-slate-700 dark:text-slate-300 hover:border-amber-500/50 hover:text-amber-700 dark:hover:text-amber-400 transition-colors">
+                            <Link href="/calculators" className="block rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-2.5 font-medium text-slate-700 dark:text-slate-300 hover:border-amber-500/50 hover:text-amber-700 dark:hover:text-amber-400 transition-colors">
                                 All calculators
                             </Link>
                         </li>
                         <li>
-                            <Link href="/calculators/exchange-fees" className="block rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-2.5 font-medium text-slate-700 dark:text-slate-300 hover:border-amber-500/50 hover:text-amber-700 dark:hover:text-amber-400 transition-colors">
+                            <Link href="/calculators/exchange-fees" className="block rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-2.5 font-medium text-slate-700 dark:text-slate-300 hover:border-amber-500/50 hover:text-amber-700 dark:hover:text-amber-400 transition-colors">
                                 What exchange fees really cost
                             </Link>
                         </li>
                         <li>
-                            <Link href="/calculators/bitcoin-cost-basis" className="block rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-2.5 font-medium text-slate-700 dark:text-slate-300 hover:border-amber-500/50 hover:text-amber-700 dark:hover:text-amber-400 transition-colors">
+                            <Link href="/calculators/bitcoin-cost-basis" className="block rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-2.5 font-medium text-slate-700 dark:text-slate-300 hover:border-amber-500/50 hover:text-amber-700 dark:hover:text-amber-400 transition-colors">
                                 Bitcoin cost basis calculator
                             </Link>
                         </li>
                         <li>
-                            <Link href="/methodology" className="block rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-2.5 font-medium text-slate-700 dark:text-slate-300 hover:border-amber-500/50 hover:text-amber-700 dark:hover:text-amber-400 transition-colors">
+                            <Link href="/methodology" className="block rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-2.5 font-medium text-slate-700 dark:text-slate-300 hover:border-amber-500/50 hover:text-amber-700 dark:hover:text-amber-400 transition-colors">
                                 Methodology &amp; data sources
                             </Link>
                         </li>

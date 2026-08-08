@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Cpu } from 'lucide-react';
 import { getHashRateDifficulty } from '@/app/actions';
-import { Card, CardHeader, StatRow } from '@/components/ui/Card';
+import { Card, CardHeader, StatRow, EmptyState } from '@/components/ui/Card';
 
 interface HashRateData {
     hashrate: number;
@@ -86,7 +86,7 @@ export const HashRateWidget = ({ initialData }: HashRateWidgetProps) => {
                     <StatRow label="Blocks Until Retarget" value={data.blocksUntilAdjustment.toLocaleString()} />
                 </div>
             ) : (
-                <p className="text-xs text-slate-500 dark:text-slate-400">Data unavailable</p>
+                <EmptyState />
             )}
         </Card>
     );

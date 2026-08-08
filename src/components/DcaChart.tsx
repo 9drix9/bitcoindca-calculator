@@ -244,7 +244,7 @@ function ChartTooltip({
     const plPct = pl !== null && typeof ti === 'number' && ti > 0 ? (pl / ti) * 100 : null;
 
     return (
-        <div className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs shadow-lg dark:border-slate-700 dark:bg-slate-900">
+        <div className="rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-xs shadow-lg dark:border-slate-700 dark:bg-slate-900">
             <p className="mb-1.5 font-semibold text-slate-800 dark:text-slate-100">
                 {formatUtc(String(label ?? point.date), 'full')}
             </p>

@@ -89,6 +89,42 @@ export const chipSelected = 'bg-amber-500 text-slate-950 border-amber-500 hover:
 export const chip = (selected: boolean): string =>
     `${chipBase} ${selected ? chipSelected : chipRest}`;
 
+/**
+ * The absence of a value, rendered as such.
+ *
+ * Thirteen widgets each rendered a bare `<p>Data unavailable</p>` inside a card
+ * otherwise full of figures, with no boundary — so it read as a value rather
+ * than as the lack of one. A dashed rule and a muted, centred block says "there
+ * is nothing here" at a glance, which is what the calculator's own failure state
+ * already did well.
+ */
+export function EmptyState({
+    children = 'Data unavailable',
+    hint,
+    className,
+}: {
+    children?: ReactNode;
+    /** Optional second line: why, or what to try. */
+    hint?: ReactNode;
+    className?: string;
+}) {
+    return (
+        <div
+            role="status"
+            className={clsx(
+                'flex flex-col items-center justify-center gap-0.5 rounded-[var(--r-nested,0.75rem)]',
+                'border border-dashed border-[var(--hairline-strong)] px-3 py-4 text-center',
+                className,
+            )}
+        >
+            <span className="text-2xs font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                {children}
+            </span>
+            {hint && <span className="text-2xs text-slate-400 dark:text-slate-500">{hint}</span>}
+        </div>
+    );
+}
+
 /** Muted label / tabular value row used inside widget cards. */
 export function StatRow({ label, value, valueClassName }: { label: ReactNode; value: ReactNode; valueClassName?: string }) {
     return (

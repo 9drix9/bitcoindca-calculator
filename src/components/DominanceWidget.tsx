@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { PieChart } from 'lucide-react';
 import { getBitcoinDominance } from '@/app/actions';
 import { useCurrency } from '@/context/CurrencyContext';
-import { Card, CardHeader, StatRow } from '@/components/ui/Card';
+import { Card, CardHeader, StatRow, EmptyState } from '@/components/ui/Card';
 
 interface DominanceData {
     dominancePercent: number;
@@ -86,7 +86,7 @@ export const DominanceWidget = ({ initialData }: DominanceWidgetProps) => {
                             aria-valuenow={Math.round(data.dominancePercent * 10) / 10}
                         >
                             <div
-                                className="h-full bg-gradient-to-r from-amber-400 to-amber-600 rounded-full transition-all duration-500"
+                                className="h-full bg-gradient-to-r from-amber-400 to-amber-600 rounded-full transition-colors duration-500"
                                 style={{ width: `${Math.min(100, data.dominancePercent)}%` }}
                             />
                         </div>
@@ -102,7 +102,7 @@ export const DominanceWidget = ({ initialData }: DominanceWidgetProps) => {
                     </div>
                 </>
             ) : (
-                <p className="text-xs text-slate-500 dark:text-slate-400">Data unavailable</p>
+                <EmptyState />
             )}
         </Card>
     );

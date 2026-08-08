@@ -217,7 +217,7 @@ export const FutureProjection = ({
                     onClick={() => setMode('growth')}
                     aria-pressed={mode === 'growth'}
                     className={clsx(
-                        "flex-1 py-1.5 text-xs sm:text-sm font-medium rounded-md transition-all",
+                        "flex-1 py-1.5 text-xs sm:text-sm font-medium rounded-md transition-colors",
                         mode === 'growth'
                             ? "bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300"
                             : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
@@ -230,7 +230,7 @@ export const FutureProjection = ({
                     onClick={() => setMode('price')}
                     aria-pressed={mode === 'price'}
                     className={clsx(
-                        "flex-1 py-1.5 text-xs sm:text-sm font-medium rounded-md transition-all",
+                        "flex-1 py-1.5 text-xs sm:text-sm font-medium rounded-md transition-colors",
                         mode === 'price'
                             ? "bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300"
                             : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"

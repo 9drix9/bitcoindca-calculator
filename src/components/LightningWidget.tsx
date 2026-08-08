@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Zap } from 'lucide-react';
 import { getLightningStats } from '@/app/actions';
-import { Card, CardHeader, StatRow } from '@/components/ui/Card';
+import { Card, CardHeader, StatRow, EmptyState } from '@/components/ui/Card';
 
 interface LightningData {
     nodeCount: number;
@@ -66,7 +66,7 @@ export const LightningWidget = ({ initialData }: LightningWidgetProps) => {
                     />
                 </div>
             ) : (
-                <p className="text-xs text-slate-500 dark:text-slate-400">Data unavailable</p>
+                <EmptyState />
             )}
 
             <div className="mt-2 pt-2 border-t border-slate-100 dark:border-slate-800">

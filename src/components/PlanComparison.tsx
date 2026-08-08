@@ -14,7 +14,7 @@ import {
 import { GitCompare, Plus, X } from 'lucide-react';
 import clsx from 'clsx';
 import { getBitcoinPriceHistory } from '@/app/actions';
-import { Card, CardHeader } from '@/components/ui/Card';
+import { Card, CardHeader, EmptyState } from '@/components/ui/Card';
 import { useCurrency } from '@/context/CurrencyContext';
 import { useIsDark } from '@/hooks/useIsDark';
 import { DcaResult, Frequency } from '@/types';
@@ -148,7 +148,7 @@ function ComparisonTooltip({
     if (entries.length === 0) return null;
 
     return (
-        <div className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs shadow-lg dark:border-slate-700 dark:bg-slate-900">
+        <div className="rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-xs shadow-lg dark:border-slate-700 dark:bg-slate-900">
             <p className="mb-1.5 font-semibold text-slate-800 dark:text-slate-100">
                 {formatUtc(Number(label), 'full')}
             </p>
@@ -324,7 +324,7 @@ function SummaryCard({
                     <SummaryStat label="BTC" value={formatBtc(result.btcAccumulated)} />
                 </dl>
             ) : (
-                <p className="mt-2 text-xs text-slate-400 dark:text-slate-500">Data unavailable</p>
+                <EmptyState />
             )}
         </div>
     );

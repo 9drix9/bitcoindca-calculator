@@ -286,7 +286,7 @@ function StatCard({ label, value, sub, celebrated = false }: { label: string; va
     return (
         <Card celebrated={celebrated} className="p-4 sm:p-5">
             <p className="text-xs font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">{label}</p>
-            <p className="mt-1 text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-white tabular-nums">{value}</p>
+            <p className="mt-1 text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white tabular-nums">{value}</p>
             {sub && <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{sub}</p>}
         </Card>
     );
@@ -404,7 +404,7 @@ export default async function BestDayToBuyBitcoinPage() {
 
                 {/* Heading + lead */}
                 <header className="space-y-3">
-                    <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-slate-900 dark:text-white text-balance">
+                    <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-900 dark:text-white text-balance">
                         Is there a best day of the week to buy Bitcoin?
                     </h1>
                     {analysis ? (
@@ -433,7 +433,7 @@ export default async function BestDayToBuyBitcoinPage() {
                             <div className="flex items-start gap-3">
                                 <Info className="w-5 h-5 text-amber-700 dark:text-amber-400 shrink-0 mt-0.5" aria-hidden="true" />
                                 <div className="space-y-2">
-                                    <h2 className="text-base sm:text-lg font-bold tracking-tight text-slate-900 dark:text-white">
+                                    <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white">
                                         The short answer: no, and the data below is why
                                     </h2>
                                     <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300 leading-relaxed">
@@ -500,7 +500,7 @@ export default async function BestDayToBuyBitcoinPage() {
 
                         {/* Main table */}
                         <Card className="p-4 sm:p-6">
-                            <h2 className="text-lg sm:text-xl font-bold tracking-tight text-slate-900 dark:text-white">
+                            <h2 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white">
                                 All seven weekdays, full price history
                             </h2>
                             <p className="mt-1 mb-4 text-sm text-slate-500 dark:text-slate-400">
@@ -573,7 +573,7 @@ export default async function BestDayToBuyBitcoinPage() {
                         {/* Rank stability */}
                         {analysis.others.length > 0 && (
                             <Card className="p-4 sm:p-6">
-                                <h2 className="text-lg sm:text-xl font-bold tracking-tight text-slate-900 dark:text-white">
+                                <h2 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white">
                                     The winner changes with the window
                                 </h2>
                                 <p className="mt-1 mb-4 text-sm text-slate-500 dark:text-slate-400">
@@ -662,7 +662,7 @@ export default async function BestDayToBuyBitcoinPage() {
 
                         {/* Why this is noise */}
                         <section className="space-y-4">
-                            <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
+                            <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">
                                 Why there is no best day, and why the question keeps getting asked
                             </h2>
                             <div className="space-y-4 text-sm sm:text-base text-slate-600 dark:text-slate-400 leading-relaxed">
@@ -700,7 +700,7 @@ export default async function BestDayToBuyBitcoinPage() {
 
                         {/* Methodology */}
                         <Card className="p-4 sm:p-6">
-                            <h2 className="text-base sm:text-lg font-bold tracking-tight text-slate-900 dark:text-white mb-2">
+                            <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white mb-2">
                                 How these numbers were computed
                             </h2>
                             <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
@@ -727,7 +727,7 @@ export default async function BestDayToBuyBitcoinPage() {
 
                         {/* FAQ */}
                         <section className="space-y-4">
-                            <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
+                            <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">
                                 Common questions
                             </h2>
                             <div className="space-y-3">
@@ -745,7 +745,7 @@ export default async function BestDayToBuyBitcoinPage() {
                         <div className="flex items-start gap-3">
                             <AlertTriangle className="w-5 h-5 text-amber-700 dark:text-amber-400 shrink-0 mt-0.5" aria-hidden="true" />
                             <div className="space-y-2">
-                                <h2 className="text-lg font-bold tracking-tight text-slate-900 dark:text-white">
+                                <h2 className="text-lg font-bold text-slate-900 dark:text-white">
                                     Price data is temporarily unavailable
                                 </h2>
                                 <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
@@ -761,7 +761,7 @@ export default async function BestDayToBuyBitcoinPage() {
 
                 {/* CTA */}
                 <Card celebrated className="p-6 sm:p-10 text-center">
-                    <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-white mb-3">
+                    <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white mb-3">
                         Run your own numbers
                     </h2>
                     <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300 mb-5 max-w-xl mx-auto">
@@ -780,7 +780,7 @@ export default async function BestDayToBuyBitcoinPage() {
 
                 {/* Related */}
                 <section className="space-y-3">
-                    <h2 className="text-lg sm:text-xl font-bold tracking-tight text-slate-900 dark:text-white">
+                    <h2 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white">
                         Keep reading
                     </h2>
                     <div className="grid sm:grid-cols-2 gap-2 sm:gap-3">
@@ -793,7 +793,7 @@ export default async function BestDayToBuyBitcoinPage() {
                             <Link
                                 key={link.href}
                                 href={link.href}
-                                className="rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 px-4 py-3 hover:border-amber-500/50 transition-colors"
+                                className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 px-4 py-3 hover:border-amber-500/50 transition-colors"
                             >
                                 <span className="block text-sm font-semibold text-slate-800 dark:text-slate-100">{link.label}</span>
                                 <span className="block mt-0.5 text-xs text-slate-500 dark:text-slate-400">{link.sub}</span>

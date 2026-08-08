@@ -312,7 +312,7 @@ export default async function BitcoinCostBasisPage() {
 
                 {/* Header */}
                 <header className="space-y-4">
-                    <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-slate-900 dark:text-white text-balance">
+                    <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-900 dark:text-white text-balance">
                         Bitcoin cost basis calculator
                     </h1>
                     <p className="text-base sm:text-lg text-slate-600 dark:text-slate-300 leading-relaxed">
@@ -321,7 +321,7 @@ export default async function BitcoinCostBasisPage() {
                         the thing every tax authority actually cares about. This page does both: a worked example on real
                         prices, then a tracker you can put your own positions into.
                     </p>
-                    <p className="inline-flex items-start gap-2 text-sm text-slate-600 dark:text-slate-300 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-2.5">
+                    <p className="inline-flex items-start gap-2 text-sm text-slate-600 dark:text-slate-300 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-2.5">
                         <Lock className="w-4 h-4 mt-0.5 shrink-0 text-amber-700 dark:text-amber-400" aria-hidden="true" />
                         <span>
                             Anything you type into the tracker stays in your browser&apos;s local storage and is calculated
@@ -332,7 +332,7 @@ export default async function BitcoinCostBasisPage() {
 
                 {/* What cost basis is */}
                 <section className="space-y-4">
-                    <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
+                    <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">
                         Average cost basis, precisely
                     </h2>
                     <div className="space-y-4 text-sm sm:text-base text-slate-600 dark:text-slate-400 leading-relaxed">
@@ -354,7 +354,7 @@ export default async function BitcoinCostBasisPage() {
 
                 {/* Worked example */}
                 <section className="space-y-4">
-                    <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
+                    <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">
                         A worked example on real prices
                     </h2>
                     {sample && data ? (
@@ -409,7 +409,7 @@ export default async function BitcoinCostBasisPage() {
                             <div className="flex items-start gap-3">
                                 <AlertTriangle className="w-5 h-5 text-amber-700 dark:text-amber-400 shrink-0 mt-0.5" />
                                 <div className="space-y-2">
-                                    <h3 className="text-base font-bold tracking-tight text-slate-900 dark:text-white">
+                                    <h3 className="text-base font-bold text-slate-900 dark:text-white">
                                         Price data is temporarily unavailable
                                     </h3>
                                     <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
@@ -427,7 +427,7 @@ export default async function BitcoinCostBasisPage() {
                 <section className="space-y-4">
                     <div className="flex items-center gap-2 sm:gap-3">
                         <Layers className="w-6 h-6 sm:w-7 sm:h-7 text-amber-700 dark:text-amber-400 shrink-0" />
-                        <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
+                        <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">
                             Why DCA creates hundreds of tax lots
                         </h2>
                     </div>
@@ -495,7 +495,7 @@ export default async function BitcoinCostBasisPage() {
 
                 {/* Methods */}
                 <section className="space-y-4">
-                    <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
+                    <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">
                         FIFO, HIFO and specific identification, as concepts
                     </h2>
                     <p className="text-sm sm:text-base text-slate-600 dark:text-slate-400 leading-relaxed">
@@ -516,7 +516,7 @@ export default async function BitcoinCostBasisPage() {
 
                 {/* Records */}
                 <section className="space-y-4">
-                    <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
+                    <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">
                         What to record for every purchase
                     </h2>
                     <p className="text-sm sm:text-base text-slate-600 dark:text-slate-400 leading-relaxed">
@@ -542,7 +542,7 @@ export default async function BitcoinCostBasisPage() {
 
                 {/* Tracker */}
                 <section className="space-y-4">
-                    <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
+                    <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">
                         Track your own positions
                     </h2>
                     <p className="text-sm sm:text-base text-slate-600 dark:text-slate-400 leading-relaxed">
@@ -578,7 +578,7 @@ export default async function BitcoinCostBasisPage() {
 
                 {/* Not tax advice */}
                 <Card className="p-5 sm:p-6 border-amber-500/30 dark:border-amber-500/25">
-                    <h2 className="text-base sm:text-lg font-bold tracking-tight text-slate-900 dark:text-white mb-2">
+                    <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white mb-2">
                         This is not tax advice
                     </h2>
                     <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
@@ -592,7 +592,7 @@ export default async function BitcoinCostBasisPage() {
 
                 {/* FAQ */}
                 <section className="space-y-4">
-                    <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
+                    <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">
                         Frequently asked questions
                     </h2>
                     <div className="space-y-3">
@@ -609,7 +609,7 @@ export default async function BitcoinCostBasisPage() {
 
                 {/* CTA */}
                 <Card celebrated className="p-6 sm:p-10 text-center">
-                    <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-white mb-3">
+                    <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white mb-3">
                         Run your own numbers
                     </h2>
                     <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300 mb-5 max-w-xl mx-auto">
@@ -627,27 +627,27 @@ export default async function BitcoinCostBasisPage() {
 
                 {/* Related */}
                 <section className="space-y-3">
-                    <h2 className="text-lg sm:text-xl font-bold tracking-tight text-slate-900 dark:text-white">
+                    <h2 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white">
                         Related
                     </h2>
                     <ul className="grid sm:grid-cols-2 gap-2 text-sm">
                         <li>
-                            <Link href="/calculators" className="block rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-2.5 font-medium text-slate-700 dark:text-slate-300 hover:border-amber-500/50 hover:text-amber-700 dark:hover:text-amber-400 transition-colors">
+                            <Link href="/calculators" className="block rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-2.5 font-medium text-slate-700 dark:text-slate-300 hover:border-amber-500/50 hover:text-amber-700 dark:hover:text-amber-400 transition-colors">
                                 All calculators
                             </Link>
                         </li>
                         <li>
-                            <Link href="/calculators/exchange-fees" className="block rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-2.5 font-medium text-slate-700 dark:text-slate-300 hover:border-amber-500/50 hover:text-amber-700 dark:hover:text-amber-400 transition-colors">
+                            <Link href="/calculators/exchange-fees" className="block rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-2.5 font-medium text-slate-700 dark:text-slate-300 hover:border-amber-500/50 hover:text-amber-700 dark:hover:text-amber-400 transition-colors">
                                 What exchange fees really cost
                             </Link>
                         </li>
                         <li>
-                            <Link href="/calculators/stack-sats-goal" className="block rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-2.5 font-medium text-slate-700 dark:text-slate-300 hover:border-amber-500/50 hover:text-amber-700 dark:hover:text-amber-400 transition-colors">
+                            <Link href="/calculators/stack-sats-goal" className="block rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-2.5 font-medium text-slate-700 dark:text-slate-300 hover:border-amber-500/50 hover:text-amber-700 dark:hover:text-amber-400 transition-colors">
                                 How long to stack 1 bitcoin
                             </Link>
                         </li>
                         <li>
-                            <Link href="/methodology" className="block rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-2.5 font-medium text-slate-700 dark:text-slate-300 hover:border-amber-500/50 hover:text-amber-700 dark:hover:text-amber-400 transition-colors">
+                            <Link href="/methodology" className="block rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-2.5 font-medium text-slate-700 dark:text-slate-300 hover:border-amber-500/50 hover:text-amber-700 dark:hover:text-amber-400 transition-colors">
                                 Methodology &amp; data sources
                             </Link>
                         </li>

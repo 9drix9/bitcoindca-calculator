@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { Timer } from 'lucide-react';
 import { getBlockHeight } from '@/app/actions';
-import { Card, CardHeader, StatRow } from '@/components/ui/Card';
+import { Card, CardHeader, StatRow, EmptyState } from '@/components/ui/Card';
 
 const BLOCKS_PER_EPOCH = 210_000;
 const AVG_BLOCK_TIME_MINUTES = 10;
@@ -107,14 +107,14 @@ export const HalvingCountdownWidget = ({ initialHeight }: HalvingCountdownWidget
                             aria-valuenow={Math.round(stats.epochProgress * 10) / 10}
                         >
                             <div
-                                className="h-full bg-gradient-to-r from-amber-400 to-amber-600 rounded-full transition-all duration-500"
+                                className="h-full bg-gradient-to-r from-amber-400 to-amber-600 rounded-full transition-colors duration-500"
                                 style={{ width: `${Math.min(100, stats.epochProgress)}%` }}
                             />
                         </div>
                     </div>
                 </div>
             ) : (
-                <p className="text-xs text-slate-500 dark:text-slate-400">Data unavailable</p>
+                <EmptyState />
             )}
         </Card>
     );

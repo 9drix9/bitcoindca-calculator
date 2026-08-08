@@ -14,7 +14,7 @@ import {
 import { AssetDcaResult } from '@/types';
 import { useCurrency } from '@/context/CurrencyContext';
 import { formatUtc } from '@/utils/dates';
-import { Card } from '@/components/ui/Card';
+import { Card, EmptyState } from '@/components/ui/Card';
 import { useIsDark } from '@/hooks/useIsDark';
 import clsx from 'clsx';
 
@@ -81,7 +81,7 @@ const AssetCard = ({
                 <div className={clsx('text-xs sm:text-sm font-medium mb-1', style.label)}>
                     {result?.label ?? 'Asset'}
                 </div>
-                <div className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">Data unavailable</div>
+                <EmptyState />
             </div>
         );
     }
@@ -92,7 +92,7 @@ const AssetCard = ({
         <div className={clsx('p-3 sm:p-4 rounded-xl border', style.bg, style.border)}>
             <div className={clsx('text-xs sm:text-sm font-medium mb-1', style.label)}>{result.label}</div>
             {/* Mobile: compact format, Desktop: full format */}
-            <div className="text-lg sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-white truncate">
+            <div className="text-lg sm:text-2xl font-bold text-slate-900 dark:text-white truncate">
                 <span className="sm:hidden">{formatCompact(result.currentValue)}</span>
                 <span className="hidden sm:inline">{formatCurrency(result.currentValue)}</span>
             </div>
@@ -125,7 +125,7 @@ function GrowthTooltip({
     if (!active || !payload || payload.length === 0) return null;
 
     return (
-        <div className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs shadow-lg dark:border-slate-700 dark:bg-slate-900">
+        <div className="rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-xs shadow-lg dark:border-slate-700 dark:bg-slate-900">
             <p className="mb-1.5 font-semibold text-slate-800 dark:text-slate-100">
                 {typeof label === 'number' ? formatUtc(label, 'full') : label}
             </p>

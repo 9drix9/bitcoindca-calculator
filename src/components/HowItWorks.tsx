@@ -30,7 +30,7 @@ const STEPS = [
 export const HowItWorks = () => (
     <section aria-label="How it works">
         {/* Mobile: one card, three tight rows */}
-        <div className="sm:hidden rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-900">
+        <div className="sm:hidden rounded-2xl border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-900">
             <ol className="space-y-2.5">
                 {STEPS.map((step, i) => (
                     <li key={step.title} className="flex items-start gap-3">
@@ -56,7 +56,7 @@ export const HowItWorks = () => (
             {STEPS.map((step, i) => (
                 <div
                     key={step.title}
-                    className="bg-white dark:bg-slate-900 p-4 sm:p-6 rounded-xl border border-slate-200 dark:border-slate-800 text-center space-y-3"
+                    className="bg-white dark:bg-slate-900 p-4 sm:p-6 rounded-2xl border border-slate-200 dark:border-slate-800 text-center space-y-3"
                 >
                     <div className="mx-auto w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center text-sm font-bold text-amber-700 dark:text-amber-400 relative">
                         <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-amber-500 text-slate-950 text-[11px] font-bold flex items-center justify-center">

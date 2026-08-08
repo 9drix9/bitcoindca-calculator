@@ -20,7 +20,7 @@ export default function OfflinePage() {
         </div>
 
         <div className="space-y-2">
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
             You&apos;re Offline
           </h1>
           <p className="text-slate-600 dark:text-slate-300 text-sm leading-relaxed">

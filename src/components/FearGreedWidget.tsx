@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Gauge } from 'lucide-react';
 import { getFearGreedIndex } from '@/app/actions';
-import { Card, CardHeader } from '@/components/ui/Card';
+import { Card, CardHeader, EmptyState } from '@/components/ui/Card';
 
 interface FearGreedData {
     value: number;
@@ -102,7 +102,7 @@ export const FearGreedWidget = ({ initialData }: FearGreedWidgetProps) => {
                     </div>
                 </>
             ) : (
-                <p className="text-xs text-slate-500 dark:text-slate-400">Data unavailable</p>
+                <EmptyState />
             )}
 
             <div className="mt-2 pt-2 border-t border-slate-100 dark:border-slate-800">

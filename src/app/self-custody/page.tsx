@@ -545,7 +545,7 @@ const faqJsonLd = {
 
 export default function SelfCustodyPage() {
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 space-y-10 sm:space-y-16">
+    <div className="measure max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 space-y-10 sm:space-y-16">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
@@ -569,7 +569,7 @@ export default function SelfCustodyPage() {
           <Shield className="w-4 h-4" />
           The part of Bitcoin that goes wrong
         </div>
-        <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-slate-900 dark:text-white tracking-tight text-balance">
+        <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-slate-900 dark:text-white text-balance">
           How to Hold Bitcoin <span className="text-amber-500">Without Losing It</span>
         </h1>
         <p className="text-base sm:text-lg text-slate-600 dark:text-slate-300 max-w-2xl mx-auto leading-relaxed">
@@ -856,7 +856,7 @@ export default function SelfCustodyPage() {
           </p>
 
           <div className="space-y-3">
-            <div className="bg-white dark:bg-slate-800 p-4 sm:p-5 rounded-xl border-l-4 border-amber-400 border-y border-r border-slate-200 dark:border-slate-700">
+            <div className="bg-white dark:bg-slate-800 p-4 sm:p-5 rounded-2xl border-l-4 border-amber-400 border-y border-r border-slate-200 dark:border-slate-700">
               <h3 className={cardTitle}>1. Verify on the device screen, every time</h3>
               <p className={cardBody}>
                 This is the highest-value habit in self-custody. Malware and malicious browser extensions swap Bitcoin
@@ -872,7 +872,7 @@ export default function SelfCustodyPage() {
               </p>
             </div>
 
-            <div className="bg-white dark:bg-slate-800 p-4 sm:p-5 rounded-xl border-l-4 border-amber-400 border-y border-r border-slate-200 dark:border-slate-700">
+            <div className="bg-white dark:bg-slate-800 p-4 sm:p-5 rounded-2xl border-l-4 border-amber-400 border-y border-r border-slate-200 dark:border-slate-700">
               <h3 className={cardTitle}>2. Test your recovery before you fund the wallet</h3>
               <p className={cardBody}>
                 Set the device up. Write the words down. Then factory-reset the device, restore it from the words you
@@ -886,7 +886,7 @@ export default function SelfCustodyPage() {
               </p>
             </div>
 
-            <div className="bg-white dark:bg-slate-800 p-4 sm:p-5 rounded-xl border-l-4 border-amber-400 border-y border-r border-slate-200 dark:border-slate-700">
+            <div className="bg-white dark:bg-slate-800 p-4 sm:p-5 rounded-2xl border-l-4 border-amber-400 border-y border-r border-slate-200 dark:border-slate-700">
               <h3 className={cardTitle}>3. Back it up on something that survives your house</h3>
               <p className={cardBody}>
                 Paper is fine against forgetting. It is useless against fire, flood, and time. Stamped or engraved metal
@@ -1021,7 +1021,7 @@ export default function SelfCustodyPage() {
 
         <div className="grid sm:grid-cols-2 gap-4">
           {STEPS.map((s) => (
-            <div key={s.step} className="bg-white dark:bg-slate-800 p-5 sm:p-6 rounded-xl border border-slate-200 dark:border-slate-700 relative">
+            <div key={s.step} className="bg-white dark:bg-slate-800 p-5 sm:p-6 rounded-2xl border border-slate-200 dark:border-slate-700 relative">
               <div className="absolute -top-3 -left-2 w-8 h-8 rounded-full bg-amber-500 text-slate-950 text-sm font-bold flex items-center justify-center shadow-sm tabular-nums">
                 {s.step}
               </div>
@@ -1198,7 +1198,7 @@ export default function SelfCustodyPage() {
                   <div className="flex flex-col sm:flex-row gap-5 sm:gap-8">
                     {/* Product image */}
                     <div className="shrink-0 flex justify-center sm:justify-start">
-                      <div className="w-[200px] h-[200px] sm:w-[220px] sm:h-[220px] rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center overflow-hidden">
+                      <div className="w-[200px] h-[200px] sm:w-[220px] sm:h-[220px] rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center overflow-hidden">
                         <WalletImage
                           src={wallet.image}
                           alt={wallet.name}
@@ -1275,7 +1275,7 @@ export default function SelfCustodyPage() {
         <h2 className={`${sectionHeading} text-center`}>Common Questions</h2>
         <div className="space-y-2.5">
           {FAQ.map((item) => (
-            <details key={item.q} className="group bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 transition-shadow hover:shadow-sm">
+            <details key={item.q} className="group bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 transition-shadow hover:shadow-sm">
               <summary className="flex items-center justify-between cursor-pointer p-4 list-none [&::-webkit-details-marker]:hidden">
                 <h3 className="font-semibold text-sm sm:text-base text-slate-800 dark:text-slate-200 pr-4">{item.q}</h3>
                 <ArrowRight className="w-4 h-4 text-slate-500 dark:text-slate-400 transition-transform duration-200 group-open:rotate-90 shrink-0" />
@@ -1302,7 +1302,7 @@ export default function SelfCustodyPage() {
           <a href="#wallets" className="inline-flex items-center gap-2 px-5 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-semibold rounded-xl text-sm sm:text-base transition-colors">
             Compare Hardware Wallets
           </a>
-          <Link href="/" className="inline-flex items-center gap-2 px-5 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 font-semibold rounded-xl text-sm sm:text-base transition-colors hover:bg-slate-50 dark:hover:bg-slate-700">
+          <Link href="/" className="inline-flex items-center gap-2 px-5 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 font-semibold rounded-2xl text-sm sm:text-base transition-colors hover:bg-slate-50 dark:hover:bg-slate-700">
             Open the Calculator
             <ArrowRight className="w-4 h-4" />
           </Link>

@@ -50,7 +50,7 @@ export default function DcaScenariosIndexPage() {
 
                 {/* Hero */}
                 <section className="text-center max-w-3xl mx-auto space-y-3 sm:space-y-4">
-                    <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight text-slate-900 dark:text-white text-balance">
+                    <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-slate-900 dark:text-white text-balance">
                         Bitcoin <span className="text-amber-500">DCA</span> Scenarios
                     </h1>
                     <p className="text-base sm:text-lg text-slate-600 dark:text-slate-300 leading-relaxed">
@@ -64,7 +64,7 @@ export default function DcaScenariosIndexPage() {
                 {/* Scenario grid, grouped by amount */}
                 {SCENARIO_AMOUNTS.map((amount) => (
                     <section key={amount} className="space-y-4">
-                        <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
+                        <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">
                             ${amount} per purchase
                         </h2>
                         {SCENARIO_FREQ_SLUGS.map((freqSlug) => (
@@ -79,7 +79,7 @@ export default function DcaScenariosIndexPage() {
                                             <Link
                                                 key={s.slug}
                                                 href={`/dca/${s.slug}`}
-                                                className="rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-2.5 text-sm font-medium text-slate-700 dark:text-slate-300 hover:border-amber-500/50 hover:text-amber-700 dark:hover:text-amber-400 transition-colors tabular-nums"
+                                                className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-2.5 text-sm font-medium text-slate-700 dark:text-slate-300 hover:border-amber-500/50 hover:text-amber-700 dark:hover:text-amber-400 transition-colors tabular-nums"
                                             >
                                                 {s.shortLabel}
                                             </Link>
@@ -92,7 +92,7 @@ export default function DcaScenariosIndexPage() {
 
                 {/* CTA */}
                 <section className="text-center bg-slate-100 dark:bg-slate-900/50 p-6 sm:p-10 rounded-2xl border border-slate-200 dark:border-slate-800">
-                    <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-white mb-3">
+                    <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white mb-3">
                         Backtest your own plan
                     </h2>
                     <p className="text-sm sm:text-base text-slate-600 dark:text-slate-400 mb-5 max-w-xl mx-auto">

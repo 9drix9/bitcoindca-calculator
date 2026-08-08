@@ -629,7 +629,7 @@ export const DcaCalculator = ({ initialPriceData, initialLivePrice }: DcaCalcula
                                 value={amount}
                                 onChange={(e) => setAmount(Math.max(0, Number(e.target.value)))}
                                 onFocus={(e) => e.target.select()}
-                                className="w-full pl-7 pr-3 py-2 text-base sm:text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500 outline-none transition-all"
+                                className="w-full pl-7 pr-3 py-2 text-base sm:text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500 outline-none transition-colors"
                             />
                         </div>
                     </div>
@@ -641,7 +641,7 @@ export const DcaCalculator = ({ initialPriceData, initialLivePrice }: DcaCalcula
                             id="dca-frequency"
                             value={frequency}
                             onChange={(e) => setFrequency(e.target.value as Frequency)}
-                            className="w-full px-3 py-2 text-base sm:text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500 outline-none transition-all"
+                            className="w-full px-3 py-2 text-base sm:text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500 outline-none transition-colors"
                         >
                             <option value="daily">Daily</option>
                             <option value="weekly">Weekly</option>
@@ -663,7 +663,7 @@ export const DcaCalculator = ({ initialPriceData, initialLivePrice }: DcaCalcula
                             value={feePercentage}
                             onChange={handleFeeChange}
                             onFocus={(e) => e.target.select()}
-                            className="w-full px-3 py-2 text-base sm:text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500 outline-none transition-all"
+                            className="w-full px-3 py-2 text-base sm:text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500 outline-none transition-colors"
                         />
                     </div>
 
@@ -694,7 +694,7 @@ export const DcaCalculator = ({ initialPriceData, initialLivePrice }: DcaCalcula
                             id="dca-currency"
                             value={currency}
                             onChange={(e) => setCurrency(e.target.value as CurrencyCode)}
-                            className="w-full px-3 py-2 text-base sm:text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500 outline-none transition-all"
+                            className="w-full px-3 py-2 text-base sm:text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500 outline-none transition-colors"
                         >
                             {currencies.map(c => (
                                 <option key={c.code} value={c.code}>{c.label}</option>
@@ -715,7 +715,7 @@ export const DcaCalculator = ({ initialPriceData, initialLivePrice }: DcaCalcula
                             aria-invalid={!!dateError}
                             aria-describedby={dateError ? 'dca-date-error' : undefined}
                             className={clsx(
-                                "w-full min-w-0 max-w-full appearance-none box-border px-2 sm:px-3 py-2 text-base sm:text-sm rounded-lg border bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500 outline-none transition-all min-h-[38px]",
+                                "w-full min-w-0 max-w-full appearance-none box-border px-2 sm:px-3 py-2 text-base sm:text-sm rounded-lg border bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500 outline-none transition-colors min-h-[38px]",
                                 dateError ? "border-rose-400 dark:border-rose-600" : "border-slate-200 dark:border-slate-700"
                             )}
                         />
@@ -732,7 +732,7 @@ export const DcaCalculator = ({ initialPriceData, initialLivePrice }: DcaCalcula
                             aria-invalid={!!dateError}
                             aria-describedby={dateError ? 'dca-date-error' : undefined}
                             className={clsx(
-                                "w-full min-w-0 max-w-full appearance-none box-border px-2 sm:px-3 py-2 text-base sm:text-sm rounded-lg border bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500 outline-none transition-all min-h-[38px]",
+                                "w-full min-w-0 max-w-full appearance-none box-border px-2 sm:px-3 py-2 text-base sm:text-sm rounded-lg border bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500 outline-none transition-colors min-h-[38px]",
                                 dateError ? "border-rose-400 dark:border-rose-600" : "border-slate-200 dark:border-slate-700"
                             )}
                         />
@@ -749,7 +749,7 @@ export const DcaCalculator = ({ initialPriceData, initialLivePrice }: DcaCalcula
                                     onClick={() => setPriceMode('api')}
                                     aria-pressed={priceMode === 'api'}
                                     className={clsx(
-                                        "flex-1 py-1.5 text-xs sm:text-sm font-medium rounded-md transition-all",
+                                        "flex-1 py-1.5 text-xs sm:text-sm font-medium rounded-md transition-colors",
                                         priceMode === 'api'
                                             ? "bg-white dark:bg-slate-700 shadow-sm text-amber-700 dark:text-amber-400"
                                             : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
@@ -762,7 +762,7 @@ export const DcaCalculator = ({ initialPriceData, initialLivePrice }: DcaCalcula
                                     onClick={() => setPriceMode('manual')}
                                     aria-pressed={priceMode === 'manual'}
                                     className={clsx(
-                                        "flex-1 py-1.5 text-xs sm:text-sm font-medium rounded-md transition-all",
+                                        "flex-1 py-1.5 text-xs sm:text-sm font-medium rounded-md transition-colors",
                                         priceMode === 'manual'
                                             ? "bg-white dark:bg-slate-700 shadow-sm text-amber-700 dark:text-amber-400"
                                             : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
@@ -780,7 +780,7 @@ export const DcaCalculator = ({ initialPriceData, initialLivePrice }: DcaCalcula
                                     id="dca-provider"
                                     value={provider}
                                     onChange={(e) => setProvider(e.target.value as 'kraken' | 'coinbase')}
-                                    className="w-full text-base sm:text-sm px-3 py-1.5 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 outline-none focus:border-amber-500 transition-all"
+                                    className="w-full text-base sm:text-sm px-3 py-1.5 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 outline-none focus:border-amber-500 transition-colors"
                                 >
                                     <option value="kraken">Kraken</option>
                                     <option value="coinbase">Coinbase</option>
@@ -799,7 +799,7 @@ export const DcaCalculator = ({ initialPriceData, initialLivePrice }: DcaCalcula
                                 value={manualPrice}
                                 onChange={(e) => setManualPrice(Math.max(1, Number(e.target.value)))}
                                 onFocus={(e) => e.target.select()}
-                                className="w-full px-3 py-2 text-base sm:text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500 outline-none transition-all"
+                                className="w-full px-3 py-2 text-base sm:text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500 outline-none transition-colors"
                             />
                         </div>
                     )}
@@ -1077,7 +1077,7 @@ export const DcaCalculator = ({ initialPriceData, initialLivePrice }: DcaCalcula
                             <>
                     {/* Inflation-Adjusted Returns */}
                     {inflationStats && (
-                        <div className="bg-white dark:bg-slate-900 px-4 sm:px-6 py-3 sm:py-4 rounded-xl border border-slate-200 dark:border-slate-800 fade-in">
+                        <div className="bg-white dark:bg-slate-900 px-4 sm:px-6 py-3 sm:py-4 rounded-2xl border border-slate-200 dark:border-slate-800 fade-in">
                             <div className="text-[11px] sm:text-xs font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400 text-center mb-2">
                                 Real (inflation-adjusted) value, using full-period CPI
                             </div>
@@ -1107,7 +1107,7 @@ export const DcaCalculator = ({ initialPriceData, initialLivePrice }: DcaCalcula
 
                     {/* Lump Sum Comparison */}
                     {lumpSumResult && (
-                        <div className="bg-white dark:bg-slate-900 p-4 sm:p-6 rounded-xl border border-slate-200 dark:border-slate-800 fade-in">
+                        <div className="bg-white dark:bg-slate-900 p-4 sm:p-6 rounded-2xl border border-slate-200 dark:border-slate-800 fade-in">
                             <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 text-slate-800 dark:text-slate-100">DCA vs Lump Sum</h3>
                             <div className="grid grid-cols-2 gap-3 sm:gap-6">
                                 <div className="p-3 sm:p-4 rounded-lg bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/50">
@@ -1457,7 +1457,7 @@ const PricePredictionScenario = memo(function PricePredictionScenario({ btcAmoun
                             value={targetPrice}
                             onChange={(e) => setTargetPrice(Math.max(0, Number(e.target.value)))}
                             onFocus={(e) => e.target.select()}
-                            className="w-full pl-7 pr-3 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900/50 text-lg font-bold focus:ring-2 focus:ring-emerald-500 outline-none transition-all"
+                            className="w-full pl-7 pr-3 py-2.5 rounded-2xl border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900/50 text-lg font-bold focus:ring-2 focus:ring-emerald-500 outline-none transition-colors"
                         />
                     </div>
                     <div className="flex gap-1.5 flex-wrap" role="group" aria-label="Quick target prices">

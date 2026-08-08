@@ -37,13 +37,13 @@ export const EducationalContent = () => {
                     <Link href="/why-bitcoin" className="text-amber-700 dark:text-amber-400 hover:underline font-medium">where Bitcoin&apos;s value comes from</Link>.
                 </p>
                 <div className="grid sm:grid-cols-2 gap-3 sm:gap-6 mt-4 sm:mt-8">
-                    <div className="bg-white dark:bg-slate-800 p-4 sm:p-6 rounded-xl border border-slate-200 dark:border-slate-700">
+                    <div className="bg-white dark:bg-slate-800 p-4 sm:p-6 rounded-2xl border border-slate-200 dark:border-slate-700">
                         <h3 className="text-sm sm:text-xl font-bold text-slate-800 dark:text-white mb-2 sm:mb-3">Time in the Market {'>'} Timing the Market</h3>
                         <p className="text-xs sm:text-base text-slate-600 dark:text-slate-400 leading-relaxed">
                             Almost nobody buys the exact bottom, and the people who did it once rarely do it twice. Buying on a schedule catches the lows along with the highs, and the average entry price usually ends up lower than guessing would have.
                         </p>
                     </div>
-                    <div className="bg-white dark:bg-slate-800 p-4 sm:p-6 rounded-xl border border-slate-200 dark:border-slate-700">
+                    <div className="bg-white dark:bg-slate-800 p-4 sm:p-6 rounded-2xl border border-slate-200 dark:border-slate-700">
                         <h3 className="text-sm sm:text-xl font-bold text-slate-800 dark:text-white mb-2 sm:mb-3">The Psychology</h3>
                         <p className="text-xs sm:text-base text-slate-600 dark:text-slate-400 leading-relaxed">
                             A falling price is exactly when most people sell. If your buy is already scheduled, the same drop just hands you more sats for the same money.

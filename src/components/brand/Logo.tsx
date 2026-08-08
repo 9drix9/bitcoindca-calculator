@@ -136,7 +136,7 @@ export function LogoLockup({
             />
             <span
                 className={clsx(
-                    'font-bold tracking-tight text-slate-900 dark:text-white',
+                    'font-bold text-slate-900 dark:text-white',
                     textClassName ?? 'text-xl',
                 )}
             >

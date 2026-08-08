@@ -277,7 +277,7 @@ function StatCard({
     return (
         <Card celebrated={celebrated} className="p-4 sm:p-5">
             <p className="text-xs font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">{label}</p>
-            <p className={clsx('mt-1 text-2xl sm:text-3xl font-bold tracking-tight', valueClassName ?? 'text-slate-900 dark:text-white')}>
+            <p className={clsx('mt-1 text-2xl sm:text-3xl font-bold', valueClassName ?? 'text-slate-900 dark:text-white')}>
                 {value}
             </p>
             {sub && <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{sub}</p>}
@@ -408,7 +408,7 @@ export default async function BitcoinFirePage({ searchParams }: PageProps) {
 
                 {/* Heading + lead */}
                 <header className="space-y-3">
-                    <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-slate-900 dark:text-white text-balance">
+                    <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-900 dark:text-white text-balance">
                         Bitcoin FIRE calculator
                     </h1>
                     <p className="text-base sm:text-lg text-slate-600 dark:text-slate-300 leading-relaxed">
@@ -477,7 +477,7 @@ export default async function BitcoinFirePage({ searchParams }: PageProps) {
                     <>
                         {/* Where the plan stands */}
                         <section className="space-y-4">
-                            <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
+                            <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">
                                 What {planLabel} built
                             </h2>
                             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
@@ -520,7 +520,7 @@ export default async function BitcoinFirePage({ searchParams }: PageProps) {
 
                         {/* Safe withdrawal rate explainer */}
                         <section className="space-y-3">
-                            <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
+                            <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">
                                 What a safe withdrawal rate is, and where 4% came from
                             </h2>
                             <div className="space-y-3 text-sm sm:text-base text-slate-600 dark:text-slate-300 leading-relaxed">
@@ -550,7 +550,7 @@ export default async function BitcoinFirePage({ searchParams }: PageProps) {
 
                         {/* Why Bitcoin breaks it */}
                         <section className="space-y-3">
-                            <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
+                            <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">
                                 Why applying it to Bitcoin is contested
                             </h2>
                             <div className="space-y-3 text-sm sm:text-base text-slate-600 dark:text-slate-300 leading-relaxed">
@@ -585,7 +585,7 @@ export default async function BitcoinFirePage({ searchParams }: PageProps) {
 
                         {/* Sequence risk */}
                         <section className="space-y-3">
-                            <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
+                            <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">
                                 Sequence-of-returns risk, in plain terms
                             </h2>
                             <div className="space-y-3 text-sm sm:text-base text-slate-600 dark:text-slate-300 leading-relaxed">
@@ -614,7 +614,7 @@ export default async function BitcoinFirePage({ searchParams }: PageProps) {
 
                         {/* The tool */}
                         <section className="space-y-4">
-                            <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
+                            <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">
                                 Project the years to financial independence
                             </h2>
                             <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300 leading-relaxed">
@@ -634,7 +634,7 @@ export default async function BitcoinFirePage({ searchParams }: PageProps) {
                         {/* Trailing CAGR */}
                         {data.cagrs.length > 0 && (
                             <section className="space-y-3">
-                                <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
+                                <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">
                                     What growth rate is even plausible?
                                 </h2>
                                 <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300 leading-relaxed">
@@ -696,7 +696,7 @@ export default async function BitcoinFirePage({ searchParams }: PageProps) {
 
                         {/* What it leaves out */}
                         <section className="space-y-3">
-                            <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
+                            <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">
                                 What this projection is not
                             </h2>
                             <ul className="space-y-2 ml-1 text-sm sm:text-base text-slate-600 dark:text-slate-300 leading-relaxed">
@@ -732,7 +732,7 @@ export default async function BitcoinFirePage({ searchParams }: PageProps) {
                         <div className="flex items-start gap-3">
                             <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
                             <div className="space-y-2">
-                                <h2 className="text-lg font-bold tracking-tight text-slate-900 dark:text-white">
+                                <h2 className="text-lg font-bold text-slate-900 dark:text-white">
                                     Price data is temporarily unavailable
                                 </h2>
                                 <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
@@ -748,7 +748,7 @@ export default async function BitcoinFirePage({ searchParams }: PageProps) {
 
                 {/* FAQ */}
                 <section className="space-y-4">
-                    <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
+                    <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">
                         Common questions about Bitcoin and FIRE
                     </h2>
                     <div className="space-y-3">
@@ -763,7 +763,7 @@ export default async function BitcoinFirePage({ searchParams }: PageProps) {
 
                 {/* CTA */}
                 <Card celebrated className="p-6 sm:p-10 text-center">
-                    <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-white mb-3">
+                    <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white mb-3">
                         Run your own numbers
                     </h2>
                     <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300 mb-5 max-w-xl mx-auto">
@@ -781,27 +781,27 @@ export default async function BitcoinFirePage({ searchParams }: PageProps) {
 
                 {/* Related */}
                 <section className="space-y-3">
-                    <h2 className="text-lg sm:text-xl font-bold tracking-tight text-slate-900 dark:text-white">
+                    <h2 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white">
                         Keep going
                     </h2>
                     <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 text-sm">
                         <li>
-                            <Link href="/calculators" className="block rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-2.5 font-medium text-slate-700 dark:text-slate-300 hover:border-amber-500/50 hover:text-amber-700 dark:hover:text-amber-400 transition-colors">
+                            <Link href="/calculators" className="block rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-2.5 font-medium text-slate-700 dark:text-slate-300 hover:border-amber-500/50 hover:text-amber-700 dark:hover:text-amber-400 transition-colors">
                                 All Bitcoin calculators
                             </Link>
                         </li>
                         <li>
-                            <Link href="/calculators/bitcoin-drawdown" className="block rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-2.5 font-medium text-slate-700 dark:text-slate-300 hover:border-amber-500/50 hover:text-amber-700 dark:hover:text-amber-400 transition-colors">
+                            <Link href="/calculators/bitcoin-drawdown" className="block rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-2.5 font-medium text-slate-700 dark:text-slate-300 hover:border-amber-500/50 hover:text-amber-700 dark:hover:text-amber-400 transition-colors">
                                 Bitcoin drawdown calculator
                             </Link>
                         </li>
                         <li>
-                            <Link href="/dca" className="block rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-2.5 font-medium text-slate-700 dark:text-slate-300 hover:border-amber-500/50 hover:text-amber-700 dark:hover:text-amber-400 transition-colors">
+                            <Link href="/dca" className="block rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-2.5 font-medium text-slate-700 dark:text-slate-300 hover:border-amber-500/50 hover:text-amber-700 dark:hover:text-amber-400 transition-colors">
                                 Historical DCA scenarios
                             </Link>
                         </li>
                         <li>
-                            <Link href="/methodology" className="block rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-2.5 font-medium text-slate-700 dark:text-slate-300 hover:border-amber-500/50 hover:text-amber-700 dark:hover:text-amber-400 transition-colors">
+                            <Link href="/methodology" className="block rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-2.5 font-medium text-slate-700 dark:text-slate-300 hover:border-amber-500/50 hover:text-amber-700 dark:hover:text-amber-400 transition-colors">
                                 Methodology &amp; data sources
                             </Link>
                         </li>

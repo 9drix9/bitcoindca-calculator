@@ -6,6 +6,7 @@ import { useCurrency } from '@/context/CurrencyContext';
 import { parseUtcDate, formatUtc } from '@/utils/dates';
 import { encodeParams } from '@/utils/urlParams';
 import type { Frequency } from '@/types';
+import { Logo } from '@/components/brand/Logo';
 
 interface ShareMyStackProps {
     totalInvested: number;
@@ -239,10 +240,8 @@ export const ShareMyStack = ({
                 >
                     {/* Header */}
                     <div className="flex items-center gap-2.5 mb-6">
-                        <div className="w-8 h-8 rounded-full bg-amber-500 flex items-center justify-center text-lg font-bold text-slate-950" aria-hidden="true">
-                            &#8383;
-                        </div>
-                        <span className="text-base font-bold tracking-tight text-slate-900 dark:text-white">
+                        <Logo className="w-8 h-8 shrink-0 text-amber-600 dark:text-amber-400" />
+                        <span className="text-base font-bold text-slate-900 dark:text-white">
                             My Bitcoin Stack
                         </span>
                     </div>
@@ -251,7 +250,7 @@ export const ShareMyStack = ({
                     <div className="mb-5">
                         <div className="text-[11px] font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">Current Value</div>
                         <div className="flex items-baseline gap-2.5">
-                            <span className="text-3xl font-bold tracking-tight text-amber-700 dark:text-amber-400">
+                            <span className="text-3xl font-bold text-amber-700 dark:text-amber-400">
                                 {formatCurrency(currentValue)}
                             </span>
                             <span className={`text-sm font-semibold px-2 py-0.5 rounded-full tabular-nums ${

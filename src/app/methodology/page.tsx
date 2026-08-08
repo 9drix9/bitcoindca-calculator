@@ -53,11 +53,11 @@ export default function MethodologyPage() {
                 type="application/ld+json"
                 dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
             />
-            <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 space-y-10 sm:space-y-16">
+            <div className="measure max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 space-y-10 sm:space-y-16">
 
                 {/* Hero */}
                 <section className="text-center max-w-3xl mx-auto space-y-3 sm:space-y-4">
-                    <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-slate-900 dark:text-white tracking-tight text-balance">
+                    <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-slate-900 dark:text-white text-balance">
                         Methodology &amp; <span className="text-amber-500">Data Sources</span>
                     </h1>
                     <p className="text-base sm:text-lg text-slate-600 dark:text-slate-300 max-w-2xl mx-auto leading-relaxed">
@@ -122,7 +122,7 @@ export default function MethodologyPage() {
                             they do on a real exchange.
                         </p>
                         <div className="grid sm:grid-cols-2 gap-3 sm:gap-4">
-                            <div className="bg-white dark:bg-slate-800 p-4 sm:p-5 rounded-xl border border-slate-200 dark:border-slate-700">
+                            <div className="bg-white dark:bg-slate-800 p-4 sm:p-5 rounded-2xl border border-slate-200 dark:border-slate-700">
                                 <h3 className="text-sm sm:text-base font-bold text-slate-800 dark:text-white mb-2">Average Cost &amp; ROI</h3>
                                 <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
                                     Average cost = total invested &divide; total BTC accumulated.
@@ -130,7 +130,7 @@ export default function MethodologyPage() {
                                     total BTC &times; the latest price.
                                 </p>
                             </div>
-                            <div className="bg-white dark:bg-slate-800 p-4 sm:p-5 rounded-xl border border-slate-200 dark:border-slate-700">
+                            <div className="bg-white dark:bg-slate-800 p-4 sm:p-5 rounded-2xl border border-slate-200 dark:border-slate-700">
                                 <h3 className="text-sm sm:text-base font-bold text-slate-800 dark:text-white mb-2">XIRR (Annualized Return)</h3>
                                 <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
                                     The money-weighted annualized return: the discount rate at which the net present value of all
@@ -139,7 +139,7 @@ export default function MethodologyPage() {
                                     all, because annualizing a window that short is meaningless.
                                 </p>
                             </div>
-                            <div className="bg-white dark:bg-slate-800 p-4 sm:p-5 rounded-xl border border-slate-200 dark:border-slate-700">
+                            <div className="bg-white dark:bg-slate-800 p-4 sm:p-5 rounded-2xl border border-slate-200 dark:border-slate-700">
                                 <h3 className="text-sm sm:text-base font-bold text-slate-800 dark:text-white mb-2">Max Drawdown</h3>
                                 <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
                                     The largest peak-to-trough decline in your portfolio&apos;s value across the purchase-day
@@ -147,7 +147,7 @@ export default function MethodologyPage() {
                                     underwater did the strategy go at its worst point?
                                 </p>
                             </div>
-                            <div className="bg-white dark:bg-slate-800 p-4 sm:p-5 rounded-xl border border-slate-200 dark:border-slate-700">
+                            <div className="bg-white dark:bg-slate-800 p-4 sm:p-5 rounded-2xl border border-slate-200 dark:border-slate-700">
                                 <h3 className="text-sm sm:text-base font-bold text-slate-800 dark:text-white mb-2">Currency Display</h3>
                                 <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
                                     All math runs in USD. The other display currencies (EUR, GBP, CAD, AUD, JPY) convert at

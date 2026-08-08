@@ -318,7 +318,7 @@ export default async function MiningPage() {
                 type="application/ld+json"
                 dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
             />
-            <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 space-y-10 sm:space-y-16">
+            <div className="measure max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 space-y-10 sm:space-y-16">
 
                 {/* Hero */}
                 <section className="text-center max-w-3xl mx-auto space-y-4 sm:space-y-5">
@@ -326,7 +326,7 @@ export default async function MiningPage() {
                         <Pickaxe className="w-4 h-4" />
                         Plain English, no hand-waving
                     </div>
-                    <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-slate-900 dark:text-white tracking-tight text-balance">
+                    <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-slate-900 dark:text-white text-balance">
                         How Bitcoin <span className="text-amber-500">Mining</span> Works
                     </h1>
                     <p className="text-base sm:text-lg text-slate-600 dark:text-slate-300 max-w-2xl mx-auto leading-relaxed">
@@ -343,9 +343,9 @@ export default async function MiningPage() {
                 {/* Live stats strip */}
                 <section aria-label="Current network figures" className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
                     {stats.map((stat) => (
-                        <div key={stat.label} className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800">
+                        <div key={stat.label} className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800">
                             <div className="text-xs font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">{stat.label}</div>
-                            <div className="mt-1 text-xl sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-white tabular-nums">{stat.value}</div>
+                            <div className="mt-1 text-xl sm:text-2xl font-bold text-slate-900 dark:text-white tabular-nums">{stat.value}</div>
                             <div className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">{stat.sub}</div>
                         </div>
                     ))}
@@ -998,7 +998,7 @@ export default async function MiningPage() {
                             <div className="flex flex-col sm:flex-row gap-5 sm:gap-8">
                                 {/* Product image */}
                                 <div className="shrink-0 flex justify-center sm:justify-start">
-                                    <div className="w-[200px] h-[200px] sm:w-[220px] sm:h-[220px] rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center overflow-hidden">
+                                    <div className="w-[200px] h-[200px] sm:w-[220px] sm:h-[220px] rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center overflow-hidden">
                                         <WalletImage
                                             src={GOMINING_DATA.image}
                                             alt={GOMINING_DATA.name}
@@ -1066,7 +1066,7 @@ export default async function MiningPage() {
                     </div>
                     <div className="space-y-2.5">
                         {faqs.map((item) => (
-                            <details key={item.q} className="group bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 transition-shadow hover:shadow-sm">
+                            <details key={item.q} className="group bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 transition-shadow hover:shadow-sm">
                                 <summary className="flex items-center justify-between cursor-pointer p-4 list-none [&::-webkit-details-marker]:hidden">
                                     <h3 className="font-semibold text-sm sm:text-base text-slate-800 dark:text-slate-200 pr-4">{item.q}</h3>
                                     <ArrowRight className="w-4 h-4 text-slate-500 dark:text-slate-400 transition-transform duration-200 group-open:rotate-90 shrink-0" />
@@ -1099,7 +1099,7 @@ export default async function MiningPage() {
                         </Link>
                         <Link
                             href="/why-bitcoin"
-                            className="inline-flex items-center gap-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 font-semibold px-6 py-3 rounded-xl transition-colors text-sm sm:text-base hover:bg-slate-50 dark:hover:bg-slate-700"
+                            className="inline-flex items-center gap-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 font-semibold px-6 py-3 rounded-2xl transition-colors text-sm sm:text-base hover:bg-slate-50 dark:hover:bg-slate-700"
                         >
                             Why Bitcoin Has Value
                         </Link>
