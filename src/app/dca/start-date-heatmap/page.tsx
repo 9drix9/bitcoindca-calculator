@@ -5,7 +5,8 @@ import clsx from 'clsx';
 import { Card } from '@/components/ui/Card';
 import { getBitcoinPriceHistory } from '@/app/actions';
 import { calculateDca, calculateXirr } from '@/utils/dca';
-import { DAY_MS, EARLIEST_PRICE_TS, utcDayIndex } from '@/utils/dates';
+import { DAY_MS, EARLIEST_PRICE_TS } from '@/utils/dates';
+import { makeDayPriceLookup } from '@/utils/datasets';
 
 // Recompute against fresh prices once a day. Only the newest windows can change,
 // but the whole grid is cheap once the price history is warm in the server cache.
@@ -51,35 +52,6 @@ function fmtPct(value: number, signed = false): string {
  * so the pointer-walk lookup inside dca.ts — which assumes ascending queries —
  * is not reusable here.
  */
-function makeDayPriceLookup(priceData: [number, number][]): (ts: number) => number | null {
-    const days: number[] = [];
-    const prices: number[] = [];
-    for (const [ts, price] of priceData) {
-        const day = utcDayIndex(ts);
-        const lastIndex = days.length - 1;
-        if (lastIndex >= 0 && days[lastIndex] === day) continue; // first bar of the day wins
-        if (lastIndex >= 0 && day < days[lastIndex]) continue;   // guard: input expected sorted
-        days.push(day);
-        prices.push(price);
-    }
-    return (ts: number): number | null => {
-        const target = utcDayIndex(ts);
-        let lo = 0;
-        let hi = days.length - 1;
-        let found = -1;
-        while (lo <= hi) {
-            const mid = (lo + hi) >> 1;
-            if (days[mid] <= target) {
-                found = mid;
-                lo = mid + 1;
-            } else {
-                hi = mid - 1;
-            }
-        }
-        // No bar at or before the target day means we cannot price it honestly.
-        return found >= 0 ? prices[found] : null;
-    };
-}
 
 // ── Cell computation ───────────────────────────────────────────────────────────
 

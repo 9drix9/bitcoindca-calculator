@@ -6,6 +6,7 @@ import { Card } from '@/components/ui/Card';
 import { getBitcoinPriceHistory, getCurrentBitcoinPrice } from '@/app/actions';
 import { calculateDca } from '@/utils/dca';
 import { DAY_MS, EARLIEST_PRICE_TS, formatUtc, utcDayStart } from '@/utils/dates';
+import { looksInterpolated, firstWeekdayOnOrAfter } from '@/utils/datasets';
 
 // Recomputed once a day against fresh prices, like the scenario pages.
 export const revalidate = 86400;
@@ -61,21 +62,6 @@ function fmtBtc(value: number): string {
  * which series we actually received and say so on the page instead of quietly
  * publishing an artefact.
  */
-function looksInterpolated(data: [number, number][]): boolean {
-    const tail = data.slice(-420);
-    let checked = 0;
-    let collinear = 0;
-    for (let i = 1; i < tail.length - 1; i++) {
-        const [t0, p0] = tail[i - 1];
-        const [t1, p1] = tail[i];
-        const [t2, p2] = tail[i + 1];
-        if (t1 - t0 !== DAY_MS || t2 - t1 !== DAY_MS) continue;
-        checked++;
-        const mid = (p0 + p2) / 2;
-        if (Math.abs(p1 - mid) <= Math.abs(mid) * 1e-9) collinear++;
-    }
-    return checked > 100 && collinear / checked > 0.5;
-}
 
 // ── Computation ────────────────────────────────────────────────────────────────
 
@@ -126,9 +112,7 @@ function analyseWindow(
 
     const starts: number[] = [];
     for (let weekday = 0; weekday < 7; weekday++) {
-        let ts = floorDay;
-        while (new Date(ts).getUTCDay() !== weekday) ts += DAY_MS;
-        starts.push(ts);
+        starts.push(firstWeekdayOnOrAfter(floorDay, weekday));
     }
 
     const purchases = Math.min(...starts.map((s) => Math.floor((endTs - s) / WEEK_MS) + 1));

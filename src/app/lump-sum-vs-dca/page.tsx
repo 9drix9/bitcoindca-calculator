@@ -6,6 +6,7 @@ import { Card } from '@/components/ui/Card';
 import { getBitcoinPriceHistory, getCurrentBitcoinPrice } from '@/app/actions';
 import { calculateDca, calculateLumpSum } from '@/utils/dca';
 import { DAY_MS, EARLIEST_PRICE_TS, addUtcMonths, formatUtc, utcDayIndex } from '@/utils/dates';
+import { percentile, median } from '@/utils/datasets';
 
 // Recomputed once a day against fresh prices, like the scenario pages.
 export const revalidate = 86400;
@@ -80,18 +81,6 @@ const REGIMES = [
     { key: 'deep', label: '50% or more below the high', test: (dd: number) => dd >= 0.5 },
 ] as const;
 
-function percentile(sorted: number[], p: number): number {
-    if (sorted.length === 0) return 0;
-    const idx = Math.min(sorted.length - 1, Math.max(0, Math.round((sorted.length - 1) * p)));
-    return sorted[idx];
-}
-
-function median(values: number[]): number {
-    if (values.length === 0) return 0;
-    const s = [...values].sort((a, b) => a - b);
-    const n = s.length;
-    return n % 2 === 1 ? s[(n - 1) / 2] : (s[n / 2 - 1] + s[n / 2]) / 2;
-}
 
 function summarise(months: number, rows: WindowRow[]): PeriodSummary | null {
     if (rows.length < 12) return null;
