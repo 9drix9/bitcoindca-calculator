@@ -3,7 +3,9 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { Copy, Check, Zap } from 'lucide-react';
 
-const BTC_ADDRESS = 'bc1qg9vdwfcn2c4wv6dtfvhjd4j3fmq2kzhrt6cq6k';
+// Mainnet P2WPKH (native SegWit, witness v0, 20-byte program). Bech32 checksum
+// verified before committing — a typo here silently sends donations nowhere.
+const BTC_ADDRESS = 'bc1q3zjketym2hv7093agmfdh6e6aa0yxhj5a53a2k';
 
 // Lightning address, verified against its LNURL-pay endpoint
 // (https://strike.me/.well-known/lnurlp/9drix9). Override per-deployment with

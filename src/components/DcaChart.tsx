@@ -817,8 +817,19 @@ export const DcaChart = memo(function DcaChart({ data, unit }: DcaChartProps) {
 
                     {/* Text alternative for the series. Downsampled to TEXT_TABLE_ROWS
                         evenly spaced points (first and last always included) so it can
-                        actually be walked through row by row. */}
-                    <table className="sr-only">
+                        actually be walked through row by row.
+
+                        The `sr-only` class MUST sit on a wrapping <div>, never on the
+                        <table> itself. A table sizes to its content and ignores the
+                        class's `width:1px; height:1px` — measured on production, the
+                        table stayed 434x480 — and `overflow:hidden` does not reliably
+                        apply to a table wrapper box either. That left `clip-path` as
+                        the single property hiding it, and clip-path on `display:table`
+                        is unreliable in WebKit, so the caption and all 18 rows painted
+                        over the chart as near-white text in dark mode. A <div> honours
+                        width/height/overflow, so the table is clipped by a real box. */}
+                    <div className="sr-only">
+                    <table>
                         <caption>
                             {tab === 'portfolio'
                                 ? `Portfolio value and total invested at ${textRows.length} sample dates`
@@ -870,6 +881,7 @@ export const DcaChart = memo(function DcaChart({ data, unit }: DcaChartProps) {
                             ))}
                         </tbody>
                     </table>
+                    </div>
                 </div>
                 <div className="pointer-events-none absolute bottom-0.5 right-2 select-none text-[9px] text-slate-400/40 dark:text-slate-600/40">
                     btcdollarcostaverage.com
