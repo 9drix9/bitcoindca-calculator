@@ -5,6 +5,7 @@ import clsx from 'clsx';
 import { Card } from '@/components/ui/Card';
 import { ExchangeFeeComparison } from '@/components/ExchangeFeeComparison';
 import { getBitcoinPriceHistory, getCurrentBitcoinPrice } from '@/app/actions';
+import { DAILY_PRICE_REVALIDATE } from '@/utils/revalidate';
 import { calculateDca } from '@/utils/dca';
 import { DAY_MS, EARLIEST_PRICE_TS, formatUtc, utcDayStart } from '@/utils/dates';
 
@@ -104,8 +105,8 @@ async function loadData(): Promise<PageData | null> {
         );
 
         const [history, livePrice] = await Promise.all([
-            getBitcoinPriceHistory(startTs, nowTs + DAY_MS, 'kraken'),
-            getCurrentBitcoinPrice('kraken').catch(() => null),
+            getBitcoinPriceHistory(startTs, nowTs + DAY_MS, 'kraken', DAILY_PRICE_REVALIDATE),
+            getCurrentBitcoinPrice('kraken', DAILY_PRICE_REVALIDATE).catch(() => null),
         ]);
         if (!history || history.length === 0) return null;
 

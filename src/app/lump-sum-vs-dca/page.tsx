@@ -4,6 +4,7 @@ import { AlertTriangle, ArrowRight, Info } from 'lucide-react';
 import clsx from 'clsx';
 import { Card } from '@/components/ui/Card';
 import { getBitcoinPriceHistory, getCurrentBitcoinPrice } from '@/app/actions';
+import { DAILY_PRICE_REVALIDATE } from '@/utils/revalidate';
 import { calculateDca, calculateLumpSum } from '@/utils/dca';
 import { DAY_MS, EARLIEST_PRICE_TS, addUtcMonths, formatUtc, utcDayIndex } from '@/utils/dates';
 import { percentile, median } from '@/utils/datasets';
@@ -119,9 +120,9 @@ async function computeAnalysis(): Promise<Analysis | null> {
         const [history, currentPrice] = await Promise.all([
             // Coinbase gives real daily candles from 2015 on, with real daily
             // blockchain.info prices behind it for 2010–2015.
-            getBitcoinPriceHistory(EARLIEST_PRICE_TS, Date.now() + DAY_MS, 'coinbase'),
-            getCurrentBitcoinPrice('coinbase')
-                .catch(() => getCurrentBitcoinPrice('kraken'))
+            getBitcoinPriceHistory(EARLIEST_PRICE_TS, Date.now() + DAY_MS, 'coinbase', DAILY_PRICE_REVALIDATE),
+            getCurrentBitcoinPrice('coinbase', DAILY_PRICE_REVALIDATE)
+                .catch(() => getCurrentBitcoinPrice('kraken', DAILY_PRICE_REVALIDATE))
                 .catch(() => null),
         ]);
         if (!history || history.length < 400) return null;

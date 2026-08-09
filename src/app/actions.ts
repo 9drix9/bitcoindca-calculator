@@ -1,6 +1,7 @@
 'use server';
 
 import { differenceInMinutes } from 'date-fns';
+import { DEFAULT_PRICE_REVALIDATE, HISTORY_REVALIDATE, normalizeRevalidate } from '@/utils/revalidate';
 
 const DAY_MS = 86_400_000;
 const CACHE_DURATION_MINUTES = 60;
@@ -63,8 +64,6 @@ function coalesced(key: string, run: () => Promise<[number, number][]>): Promise
     return promise;
 }
 
-const COINBASE_CACHE_DURATION = 3600; // 1 hour
-
 export type Provider = 'kraken' | 'coinbase';
 
 /**
@@ -119,7 +118,12 @@ async function prependHistorical(points: [number, number][]): Promise<[number, n
 }
 
 // Both providers fetch their full available history; callers slice per request.
-async function fetchProviderHistory(provider: 'kraken' | 'coinbase'): Promise<[number, number][]> {
+// `revalidate` is the fetch cache lifetime; it also sets the floor on the effective
+// `revalidate` of any route that calls this. See DAILY_PRICE_REVALIDATE.
+async function fetchProviderHistory(
+    provider: 'kraken' | 'coinbase',
+    revalidate: number = HISTORY_REVALIDATE,
+): Promise<[number, number][]> {
     const dailyPrices: [number, number][] = [];
 
     {
@@ -176,7 +180,7 @@ async function fetchProviderHistory(provider: 'kraken' | 'coinbase'): Promise<[n
                     if (attempt > 0) {
                         await new Promise((r) => setTimeout(r, 400 * 2 ** (attempt - 1)));
                     }
-                    const res = await fetchWithTimeout(url, { headers: { 'User-Agent': 'BitcoinDcaBot/1.0' }, next: { revalidate: COINBASE_CACHE_DURATION } }, 15_000);
+                    const res = await fetchWithTimeout(url, { headers: { 'User-Agent': 'BitcoinDcaBot/1.0' }, next: { revalidate } }, 15_000);
                     if (res.ok) {
                         const json = await res.json();
                         if (!Array.isArray(json)) throw new Error('Coinbase returned unexpected candle payload');
@@ -233,7 +237,7 @@ async function fetchProviderHistory(provider: 'kraken' | 'coinbase'): Promise<[n
 
             const response = await fetchWithTimeout(url, {
                 headers: { 'User-Agent': 'Mozilla/5.0 (compatible; BitcoinDcaBot/1.0)' },
-                next: { revalidate: 3600 }
+                next: { revalidate }
             }, 15_000);
 
             if (!response.ok) throw new Error(`API Error: ${response.status}`);
@@ -278,9 +282,15 @@ async function fetchProviderHistory(provider: 'kraken' | 'coinbase'): Promise<[n
     return dailyPrices;
 }
 
-export async function getBitcoinPriceHistory(from: number, to: number, providerArg: Provider = 'kraken'): Promise<[number, number][]> {
+export async function getBitcoinPriceHistory(
+    from: number,
+    to: number,
+    providerArg: Provider = 'kraken',
+    revalidateArg: number = HISTORY_REVALIDATE,
+): Promise<[number, number][]> {
     // Untrusted input — see normalizeProvider. Everything below uses `provider`.
     const provider = normalizeProvider(providerArg);
+    const revalidate = normalizeRevalidate(revalidateArg, HISTORY_REVALIDATE);
     // Both providers now return their full history, so cache provider-wide and slice per request.
     const keyFor = (p: Provider) => p === 'kraken' ? 'kraken_full_v2' : 'coinbase_full_v2';
     const cacheKey = keyFor(provider);
@@ -305,7 +315,7 @@ export async function getBitcoinPriceHistory(from: number, to: number, providerA
 
     const fallback: 'kraken' | 'coinbase' = provider === 'kraken' ? 'coinbase' : 'kraken';
     try {
-        const data = await coalesced(cacheKey, () => fetchProviderHistory(provider));
+        const data = await coalesced(cacheKey, () => fetchProviderHistory(provider, revalidate));
         memoryCache.set(cacheKey, { timestamp: Date.now(), data });
         return slice(data);
     } catch (error) {
@@ -316,7 +326,7 @@ export async function getBitcoinPriceHistory(from: number, to: number, providerA
             if (cachedFallback && differenceInMinutes(Date.now(), cachedFallback.timestamp) < CACHE_DURATION_MINUTES) {
                 return slice(cachedFallback.data);
             }
-            const data = await coalesced(fallbackKey, () => fetchProviderHistory(fallback));
+            const data = await coalesced(fallbackKey, () => fetchProviderHistory(fallback, revalidate));
             memoryCache.set(fallbackKey, { timestamp: Date.now(), data });
             return slice(data);
         } catch (fallbackError) {
@@ -774,8 +784,12 @@ export async function getCurrentBitcoinPriceWithChange(providerArg: Provider = '
     }
 }
 
-export async function getCurrentBitcoinPrice(providerArg: Provider = 'kraken'): Promise<number> {
+export async function getCurrentBitcoinPrice(
+    providerArg: Provider = 'kraken',
+    revalidateArg: number = DEFAULT_PRICE_REVALIDATE,
+): Promise<number> {
     const provider = normalizeProvider(providerArg);
+    const revalidate = normalizeRevalidate(revalidateArg, DEFAULT_PRICE_REVALIDATE);
     try {
         let url = '';
         if (provider === 'coinbase') {
@@ -784,7 +798,7 @@ export async function getCurrentBitcoinPrice(providerArg: Provider = 'kraken'): 
             url = 'https://api.kraken.com/0/public/Ticker?pair=XBTUSD';
         }
 
-        const response = await fetchWithTimeout(url, { headers: { 'User-Agent': 'BitcoinDcaBot/1.0' }, next: { revalidate: 60 } });
+        const response = await fetchWithTimeout(url, { headers: { 'User-Agent': 'BitcoinDcaBot/1.0' }, next: { revalidate } });
 
         if (!response.ok) throw new Error(`API Error: ${response.status}`);
         const json = await response.json();

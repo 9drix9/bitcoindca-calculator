@@ -1,9 +1,10 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { AlertTriangle, ArrowRight } from 'lucide-react';
+import { AlertTriangle, ArrowRight, ChevronDown } from 'lucide-react';
 import clsx from 'clsx';
 import { Card } from '@/components/ui/Card';
 import { getBitcoinPriceHistory } from '@/app/actions';
+import { DAILY_PRICE_REVALIDATE } from '@/utils/revalidate';
 import { calculateDca, calculateXirr } from '@/utils/dca';
 import { DAY_MS, EARLIEST_PRICE_TS } from '@/utils/dates';
 import { makeDayPriceLookup } from '@/utils/datasets';
@@ -157,7 +158,7 @@ async function buildGrid(): Promise<Grid | null> {
         // real market prices in schema.org Dataset markup — on the interpolated
         // series the 2017/1yr cell read +2,235% against +1,857% on real daily
         // candles, a 378pp error asserted as machine-readable fact.
-        const history = await getBitcoinPriceHistory(EARLIEST_PRICE_TS, nowTs + DAY_MS, 'coinbase');
+        const history = await getBitcoinPriceHistory(EARLIEST_PRICE_TS, nowTs + DAY_MS, 'coinbase', DAILY_PRICE_REVALIDATE);
         if (!history || history.length === 0) return null;
 
         const priceAt = makeDayPriceLookup(history);
@@ -340,51 +341,50 @@ export default async function StartDateHeatmapPage() {
         keywords: ['bitcoin', 'dollar cost averaging', 'annualized return', 'XIRR', 'holding period'],
     };
 
+    // ONE source for both the visible FAQ and the FAQPage markup. Google requires
+    // FAQ rich-result content to be visible on the page; emitting questions that
+    // exist only in JSON-LD risks a structured-data manual action. Rendering both
+    // from this array is what keeps them from drifting apart.
+    const faqs: { q: string; a: string }[] = [
+        {
+            q: 'Does the start date matter for Bitcoin DCA?',
+            a: shortest && longest && shortest.holdYears !== longest.holdYears
+                ? `Enormously over short windows, much less over long ones. Across the completed ${shortest.holdYears}-year windows in this grid, annualized returns ranged from ${fmtPct(shortest.worst, true)} to ${fmtPct(shortest.best, true)} per year, a spread of about ${fmtPct(shortest.spread)}. Across the completed ${longest.holdYears}-year windows the range narrows to ${fmtPct(longest.worst, true)} to ${fmtPct(longest.best, true)}, a spread of about ${fmtPct(longest.spread)}. This is a description of what happened, not a forecast.`
+                : 'Historically the start date dominated short holding windows and mattered progressively less as the holding period lengthened. The grid on this page shows the full range of outcomes measured from real prices.',
+        },
+        {
+            q: 'How is the annualized return in each cell calculated?',
+            a: 'Each cell simulates $100 bought on the first of every month for the whole window, then values the resulting Bitcoin at the market price on the window\'s end date. The annualized figure is XIRR: the money-weighted rate that discounts every dated purchase plus the closing value back to zero. Historical windows are never marked to today\'s price.',
+        },
+        {
+            q: 'Why do some cells say "in progress"?',
+            a: 'A cell is only filled in once its full holding period has elapsed. A 10-year window that started in 2020 has not finished, so showing a partial figure next to completed 10-year windows would be misleading. Those cells are marked in progress instead.',
+        },
+        {
+            q: 'Do these historical returns predict future Bitcoin returns?',
+            a: 'No. This grid is a record of what a specific mechanical schedule produced over a specific past period, during which Bitcoin went from a hobbyist experiment to a widely traded asset. Nothing here should be extrapolated forward. Past performance does not guarantee future results, and you can lose money.',
+        },
+    ];
+
     const faqJsonLd = {
         '@context': 'https://schema.org',
         '@type': 'FAQPage',
-        mainEntity: [
-            {
-                '@type': 'Question',
-                name: 'Does the start date matter for Bitcoin DCA?',
-                acceptedAnswer: {
-                    '@type': 'Answer',
-                    text: shortest && longest && shortest.holdYears !== longest.holdYears
-                        ? `Enormously over short windows, much less over long ones. Across the completed ${shortest.holdYears}-year windows in this grid, annualized returns ranged from ${fmtPct(shortest.worst, true)} to ${fmtPct(shortest.best, true)} per year, a spread of about ${fmtPct(shortest.spread)}. Across the completed ${longest.holdYears}-year windows the range narrows to ${fmtPct(longest.worst, true)} to ${fmtPct(longest.best, true)}, a spread of about ${fmtPct(longest.spread)}. This is a description of what happened, not a forecast.`
-                        : 'Historically the start date dominated short holding windows and mattered progressively less as the holding period lengthened. The grid on this page shows the full range of outcomes measured from real prices.',
-                },
-            },
-            {
-                '@type': 'Question',
-                name: 'How is the annualized return in each cell calculated?',
-                acceptedAnswer: {
-                    '@type': 'Answer',
-                    text: 'Each cell simulates $100 bought on the first of every month for the whole window, then values the resulting Bitcoin at the market price on the window\'s end date. The annualized figure is XIRR: the money-weighted rate that discounts every dated purchase plus the closing value back to zero. Historical windows are never marked to today\'s price.',
-                },
-            },
-            {
-                '@type': 'Question',
-                name: 'Why do some cells say "in progress"?',
-                acceptedAnswer: {
-                    '@type': 'Answer',
-                    text: 'A cell is only filled in once its full holding period has elapsed. A 10-year window that started in 2020 has not finished, so showing a partial figure next to completed 10-year windows would be misleading. Those cells are marked in progress instead.',
-                },
-            },
-            {
-                '@type': 'Question',
-                name: 'Do these historical returns predict future Bitcoin returns?',
-                acceptedAnswer: {
-                    '@type': 'Answer',
-                    text: 'No. This grid is a record of what a specific mechanical schedule produced over a specific past period, during which Bitcoin went from a hobbyist experiment to a widely traded asset. Nothing here should be extrapolated forward. Past performance does not guarantee future results, and you can lose money.',
-                },
-            },
-        ],
+        mainEntity: faqs.map(({ q, a }) => ({
+            '@type': 'Question',
+            name: q,
+            acceptedAnswer: { '@type': 'Answer', text: a },
+        })),
     };
 
     return (
         <>
             <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }} />
-            <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(datasetJsonLd) }} />
+            {/* Only claim a Dataset when one actually rendered. On a provider outage the
+                page shows an unavailable state, and describing a dataset that is not on
+                the page would be markup for content that does not exist. */}
+            {grid && (
+                <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(datasetJsonLd) }} />
+            )}
             <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }} />
 
             <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 space-y-8 sm:space-y-10">
@@ -706,6 +706,32 @@ export default async function StartDateHeatmapPage() {
                         <ArrowRight className="w-4 h-4" />
                     </Link>
                 </Card>
+
+                {/* FAQ — rendered from the same `faqs` array as the FAQPage markup above */}
+                <section className="space-y-4">
+                    <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">
+                        Common questions
+                    </h2>
+                    <div className="space-y-3">
+                        {faqs.map(({ q, a }) => (
+                            <details
+                                key={q}
+                                className="group rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 px-4 py-3 sm:px-5 sm:py-4"
+                            >
+                                <summary className="cursor-pointer list-none font-semibold text-sm sm:text-base text-slate-900 dark:text-white marker:hidden flex items-center justify-between gap-3">
+                                    {q}
+                                    <ChevronDown
+                                        className="w-4 h-4 shrink-0 text-slate-400 transition-transform group-open:rotate-180"
+                                        aria-hidden="true"
+                                    />
+                                </summary>
+                                <p className="mt-2.5 text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+                                    {a}
+                                </p>
+                            </details>
+                        ))}
+                    </div>
+                </section>
 
                 {/* Related */}
                 <section className="space-y-3">

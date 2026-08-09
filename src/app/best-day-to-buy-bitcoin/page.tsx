@@ -4,6 +4,7 @@ import { AlertTriangle, ArrowRight, Info } from 'lucide-react';
 import clsx from 'clsx';
 import { Card } from '@/components/ui/Card';
 import { getBitcoinPriceHistory, getCurrentBitcoinPrice } from '@/app/actions';
+import { DAILY_PRICE_REVALIDATE } from '@/utils/revalidate';
 import { calculateDca } from '@/utils/dca';
 import { DAY_MS, EARLIEST_PRICE_TS, formatUtc, utcDayStart } from '@/utils/dates';
 import { looksInterpolated, firstWeekdayOnOrAfter } from '@/utils/datasets';
@@ -90,6 +91,21 @@ interface WindowResult {
     spreadPercent: number;
     bestName: string;
     worstName: string;
+    /**
+     * Days between the earliest and latest anchor. Seven weekdays cannot share a
+     * start date, so this is 6 for any window long enough to contain a full week —
+     * the schedules differ by start date as well as by weekday, and over the full
+     * history those six days land in August 2010.
+     */
+    startSpanDays: number;
+    /** How many opening purchases {@link concentrationPercent} covers. */
+    concentrationBuys: number;
+    /**
+     * Mean share of each schedule's final BTC that came from its first
+     * {@link concentrationBuys} purchases. Over the full history this is ~64%: the
+     * ranking is decided by a handful of sub-dollar buys, not by the weekday.
+     */
+    concentrationPercent: number;
 }
 
 /**
@@ -97,7 +113,15 @@ interface WindowResult {
  *
  * Every schedule buys the same amount the same number of times — the purchase
  * count is clamped to the minimum across the seven anchors, so total invested is
- * identical and the only difference between them is which weekday the buys land on.
+ * identical.
+ *
+ * The weekday is NOT the only thing that differs, and the page must not claim it is.
+ * Seven weekdays cannot share a start date, so the anchors are spread across six
+ * days. That is immaterial in a recent window and decisive over the full history,
+ * where those six days fall in August 2010 at two-decimal penny prices and the first
+ * ten buys account for roughly two thirds of every schedule's final BTC. Over that
+ * window the ranking is a ranking of start dates wearing a weekday costume, which is
+ * why `concentrationPercent` is computed and published next to the table.
  */
 function analyseWindow(
     key: string,
@@ -155,6 +179,17 @@ function analyseWindow(
         rank: byBtcDesc.findIndex((r) => r.weekday === weekday) + 1,
     }));
 
+    // How front-loaded is each schedule? If the opening handful of buys accounts for
+    // most of the BTC, then the table ranks start dates, not weekdays.
+    const CONCENTRATION_BUYS = Math.min(10, purchases);
+    const concentrationPercent =
+        (raw.reduce((sum, r) => {
+            const head = r.result.breakdown[CONCENTRATION_BUYS - 1]?.totalAccumulated ?? 0;
+            return sum + head / r.result.btcAccumulated;
+        }, 0) /
+            raw.length) *
+        100;
+
     const bestBtc = byBtcDesc[0].result.btcAccumulated;
     const worstBtc = byBtcDesc[byBtcDesc.length - 1].result.btcAccumulated;
 
@@ -169,6 +204,9 @@ function analyseWindow(
         spreadPercent: ((bestBtc - worstBtc) / worstBtc) * 100,
         bestName: WEEKDAY_NAMES[byBtcDesc[0].weekday],
         worstName: WEEKDAY_NAMES[byBtcDesc[byBtcDesc.length - 1].weekday],
+        startSpanDays: Math.round((Math.max(...starts) - Math.min(...starts)) / DAY_MS),
+        concentrationBuys: CONCENTRATION_BUYS,
+        concentrationPercent,
     };
 }
 
@@ -186,9 +224,9 @@ async function computeAnalysis(): Promise<Analysis | null> {
         const [history, currentPrice] = await Promise.all([
             // Coinbase gives real daily candles. The Kraken series is interpolated from
             // weekly closes, which would flatten all seven weekdays by construction.
-            getBitcoinPriceHistory(EARLIEST_PRICE_TS, Date.now() + DAY_MS, 'coinbase'),
-            getCurrentBitcoinPrice('coinbase')
-                .catch(() => getCurrentBitcoinPrice('kraken'))
+            getBitcoinPriceHistory(EARLIEST_PRICE_TS, Date.now() + DAY_MS, 'coinbase', DAILY_PRICE_REVALIDATE),
+            getCurrentBitcoinPrice('coinbase', DAILY_PRICE_REVALIDATE)
+                .catch(() => getCurrentBitcoinPrice('kraken', DAILY_PRICE_REVALIDATE))
                 .catch(() => null),
         ]);
         if (!history || history.length < 400) return null;
@@ -284,9 +322,11 @@ export async function generateMetadata(): Promise<Metadata> {
 
 // ── Page ───────────────────────────────────────────────────────────────────────
 
-function StatCard({ label, value, sub, celebrated = false }: { label: string; value: string; sub?: string; celebrated?: boolean }) {
+// No `celebrated` variant on purpose: the full-history "winner" is a measurement
+// artefact, and styling it as a result is how a reader ends up quoting it.
+function StatCard({ label, value, sub }: { label: string; value: string; sub?: string }) {
     return (
-        <Card celebrated={celebrated} className="p-4 sm:p-5">
+        <Card className="p-4 sm:p-5">
             <p className="text-xs font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">{label}</p>
             <p className="mt-1 text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white tabular-nums">{value}</p>
             {sub && <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{sub}</p>}
@@ -345,7 +385,7 @@ export default async function BestDayToBuyBitcoinPage() {
             },
             {
                 q: 'Which weekday came out ahead over the full history?',
-                a: `${analysis.full.bestName}, by ${fmtPct(analysis.full.spreadPercent)} over the worst weekday (${analysis.full.worstName}). That result is a description of what already happened, not a prediction, and it is heavily weighted by a handful of purchases made in 2010 and 2011 when Bitcoin traded for cents.`,
+                a: `${analysis.full.bestName}, by ${fmtPct(analysis.full.spreadPercent)} over the worst weekday (${analysis.full.worstName}) — but that number does not mean what it looks like it means. Roughly ${Math.round(analysis.full.concentrationPercent)}% of every schedule's final BTC comes from its first ${analysis.full.concentrationBuys} purchases, made in August 2010 when Bitcoin was quoted to the whole cent. At those prices one cent of rounding is a double-digit percentage swing, which is larger than the ${fmtPct(analysis.full.spreadPercent)} spread being reported. The seven schedules also start on ${analysis.full.startSpanDays + 1} different days, so what the full-history table actually ranks is which start date caught the cheapest penny prints. It is a description of one week in 2010, not a prediction about weekdays.`,
             },
             {
                 q: 'Why do people say weekends are cheaper for Bitcoin?',
@@ -363,7 +403,7 @@ export default async function BestDayToBuyBitcoinPage() {
             },
             {
                 q: 'How are these numbers calculated?',
-                a: `Each schedule buys $${WEEKLY_AMOUNT} at the daily close on its anchor weekday, in UTC, with no fees. Every schedule makes exactly the same number of purchases (${analysis.full.purchases} over the full window), so total invested is identical and the only difference is the weekday. The figures are recomputed once a day against fresh prices.`,
+                a: `Each schedule buys $${WEEKLY_AMOUNT} at the daily close on its anchor weekday, in UTC, with no fees. Every schedule makes exactly the same number of purchases (${analysis.full.purchases} over the full window), so total invested is identical. The weekday is not the only thing that differs, though: seven weekdays cannot share a start date, so the seven schedules begin on ${analysis.full.startSpanDays + 1} consecutive days. In a recent window that is irrelevant. Over the full history those days fall in August 2010, and about ${Math.round(analysis.full.concentrationPercent)}% of every schedule's final BTC comes from its first ${analysis.full.concentrationBuys} purchases — so the full-history ranking mostly reflects which start date caught the cheapest days, not which weekday is better. The figures are recomputed once a day against fresh prices.`,
             },
         ]
         : [];
@@ -415,10 +455,10 @@ export default async function BestDayToBuyBitcoinPage() {
                             and so on &mdash; over the full Bitcoin price history, from{' '}
                             <strong className="font-semibold text-slate-900 dark:text-white">{formatUtc(analysis.full.firstBuyTs, 'full')}</strong>{' '}
                             to <strong className="font-semibold text-slate-900 dark:text-white">{formatUtc(analysis.lastDataTs, 'full')}</strong>.
-                            Same amount, same number of purchases, same fees. The only difference is the weekday.
-                            The gap between the best and worst day is{' '}
+                            Same amount, same number of purchases, same fees. The gap between the best and worst day is{' '}
                             <strong className="font-semibold text-slate-900 dark:text-white">{fmtPct(analysis.full.spreadPercent)}</strong>,
-                            and the day that &ldquo;wins&rdquo; changes every time you change the window. It is noise.
+                            and the day that &ldquo;wins&rdquo; changes every time you change the window. It is noise &mdash;
+                            and below we show you exactly where that noise comes from.
                         </p>
                     ) : (
                         <p className="text-base sm:text-lg text-slate-600 dark:text-slate-300 leading-relaxed">
@@ -449,6 +489,10 @@ export default async function BestDayToBuyBitcoinPage() {
                                         )}{' '}
                                         Nothing about Bitcoin&apos;s market changed to cause that. A genuine day-of-week effect
                                         would persist across windows; a coin flip would not. This behaves like a coin flip.
+                                        The full-history figure is worse than merely noisy: roughly{' '}
+                                        {Math.round(analysis.full.concentrationPercent)}% of every schedule&apos;s BTC comes from
+                                        its first {analysis.full.concentrationBuys} buys in August 2010, and since seven
+                                        weekdays cannot share a start date, that column ranks start dates more than weekdays.
                                         Publish the number, then ignore it.
                                     </p>
                                 </div>
@@ -460,8 +504,7 @@ export default async function BestDayToBuyBitcoinPage() {
                             <StatCard
                                 label="Best day, full history"
                                 value={analysis.full.bestName}
-                                sub={`${fmtPct(analysis.full.spreadPercent)} ahead of ${analysis.full.worstName}`}
-                                celebrated
+                                sub={`${fmtPct(analysis.full.spreadPercent)} ahead of ${analysis.full.worstName} — an artefact, see below`}
                             />
                             {recent && (
                                 <StatCard
@@ -564,11 +607,19 @@ export default async function BestDayToBuyBitcoinPage() {
                             </div>
                             <p className="mt-4 text-xs sm:text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
                                 <strong className="font-semibold text-slate-600 dark:text-slate-300">Read this table carefully.</strong>{' '}
-                                Almost all of the BTC in every row was bought before 2013, when Bitcoin traded in cents and
-                                dollars, so the full-history spread of {fmtPct(analysis.full.spreadPercent)} is mostly a
-                                verdict on what happened during a handful of weeks in 2010 and 2011 &mdash; not evidence of a
-                                weekday effect. The value column is the arithmetic of a fifteen-year schedule nobody actually
-                                ran; it is here for completeness, not as a target. The window table below is the honest test.
+                                About{' '}
+                                <strong className="font-semibold text-slate-600 dark:text-slate-300">
+                                    {Math.round(analysis.full.concentrationPercent)}%
+                                </strong>{' '}
+                                of the BTC in every row was bought in that row&apos;s first {analysis.full.concentrationBuys}{' '}
+                                purchases &mdash; {fmtUsd(analysis.full.concentrationBuys * WEEKLY_AMOUNT)} of the{' '}
+                                {fmtUsd(analysis.full.invested)} invested. Those buys landed in August 2010, when Bitcoin was
+                                quoted to the whole cent, so a one-cent difference in the print is a double-digit swing in BTC
+                                &mdash; bigger than the {fmtPct(analysis.full.spreadPercent)} spread this table reports. Since
+                                the seven schedules must start on seven consecutive days, the full-history ordering is
+                                substantially a ranking of <em>start dates</em> in one week of 2010, not of weekdays. The value
+                                column is the arithmetic of a fifteen-year schedule nobody actually ran; it is here for
+                                completeness, not as a target. The window table below is the honest test.
                             </p>
                         </Card>
 
@@ -653,8 +704,10 @@ export default async function BestDayToBuyBitcoinPage() {
                                     </table>
                                 </div>
                                 <p className="mt-4 text-xs sm:text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
-                                    Each column is an independent run: seven schedules anchored to the seven weekdays,
-                                    identical purchase counts within the column, ending on the same day. Windows overlap, so
+                                    Each column is an independent run: seven schedules anchored to the seven weekdays, with
+                                    identical purchase counts and identical total invested within the column. The seven
+                                    necessarily begin (and therefore end) on seven consecutive days, since no two weekdays
+                                    share a date. Windows overlap, so
                                     the columns are not independent samples in a statistical sense &mdash; which makes the rank
                                     reshuffling even more telling, since heavily overlapping data should produce similar
                                     rankings if the effect were real.

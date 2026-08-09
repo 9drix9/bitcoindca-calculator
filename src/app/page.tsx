@@ -53,7 +53,7 @@ const BitcoinAdoption = dynamic(() => import('@/components/LazyBitcoinAdoption')
 const faqItems = [
   {
     question: "Is this calculator accurate?",
-    answer: "We use historical price data from Kraken and Coinbase. Coinbase mode uses real daily candles back to 2015; Kraken mode uses weekly closes interpolated to daily. Prices before 2015 are estimates, and missing dates fall back to the last known price. The Methodology page documents exactly how every number is computed. Intended for estimation and education."
+    answer: "We use historical price data from Kraken and Coinbase. Coinbase mode uses real daily candles back to 2015; Kraken mode uses weekly closes interpolated to daily. For August 2010 through mid-2015 we use a static snapshot of real daily market prices from blockchain.info — no prices are fabricated, though the very early years are quoted in whole cents, so figures from that era are coarse. Missing dates fall back to the last known price. The Methodology page documents exactly how every number is computed. Intended for estimation and education."
   },
   {
     question: "What do annualized return (XIRR) and max drawdown mean?",

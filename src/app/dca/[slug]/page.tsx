@@ -5,6 +5,7 @@ import { AlertTriangle, ArrowRight } from 'lucide-react';
 import clsx from 'clsx';
 import { Card } from '@/components/ui/Card';
 import { getBitcoinPriceHistory, getCurrentBitcoinPrice } from '@/app/actions';
+import { DAILY_PRICE_REVALIDATE } from '@/utils/revalidate';
 import { calculateDca } from '@/utils/dca';
 import { DAY_MS, formatUtc } from '@/utils/dates';
 import type { DcaBreakdownItem, DcaResult } from '@/types';
@@ -68,8 +69,8 @@ async function computeScenario(scenario: Scenario): Promise<DcaResult | null> {
     try {
         const now = Date.now();
         const [history, currentPrice] = await Promise.all([
-            getBitcoinPriceHistory(scenario.startTs, now + DAY_MS, 'kraken'),
-            getCurrentBitcoinPrice('kraken').catch(() => null),
+            getBitcoinPriceHistory(scenario.startTs, now + DAY_MS, 'kraken', DAILY_PRICE_REVALIDATE),
+            getCurrentBitcoinPrice('kraken', DAILY_PRICE_REVALIDATE).catch(() => null),
         ]);
         if (!history || history.length === 0) return null;
         const result = calculateDca(

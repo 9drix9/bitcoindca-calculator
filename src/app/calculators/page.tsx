@@ -4,6 +4,7 @@ import { ArrowRight, Coins, Flame, Receipt, Scale, TrendingDown } from 'lucide-r
 import type { LucideIcon } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { getBitcoinPriceHistory, getCurrentBitcoinPrice } from '@/app/actions';
+import { DAILY_PRICE_REVALIDATE } from '@/utils/revalidate';
 import { DAY_MS, EARLIEST_PRICE_TS, formatUtc } from '@/utils/dates';
 
 // The coverage strip recomputes against fresh prices once a day.
@@ -86,8 +87,8 @@ async function loadCoverage(): Promise<Coverage | null> {
     try {
         const now = Date.now();
         const [history, price] = await Promise.all([
-            getBitcoinPriceHistory(EARLIEST_PRICE_TS, now + DAY_MS, 'kraken'),
-            getCurrentBitcoinPrice('kraken').catch(() => null),
+            getBitcoinPriceHistory(EARLIEST_PRICE_TS, now + DAY_MS, 'kraken', DAILY_PRICE_REVALIDATE),
+            getCurrentBitcoinPrice('kraken', DAILY_PRICE_REVALIDATE).catch(() => null),
         ]);
         if (!history || history.length === 0) return null;
         const firstTs = history[0][0];

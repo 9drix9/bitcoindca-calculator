@@ -4,6 +4,7 @@ import { AlertTriangle, ArrowRight, Lock, Layers } from 'lucide-react';
 import { Card, StatRow } from '@/components/ui/Card';
 import { CostBasisTracker } from '@/components/CostBasisTracker';
 import { getBitcoinPriceHistory, getCurrentBitcoinPrice } from '@/app/actions';
+import { DAILY_PRICE_REVALIDATE } from '@/utils/revalidate';
 import { calculateDca } from '@/utils/dca';
 import { DAY_MS, EARLIEST_PRICE_DATE, EARLIEST_PRICE_TS, formatUtc, utcDayStart } from '@/utils/dates';
 
@@ -135,8 +136,8 @@ async function loadData(): Promise<PageData | null> {
         );
 
         const [history, livePrice] = await Promise.all([
-            getBitcoinPriceHistory(trackerFromTs, nowTs + DAY_MS, 'kraken'),
-            getCurrentBitcoinPrice('kraken').catch(() => null),
+            getBitcoinPriceHistory(trackerFromTs, nowTs + DAY_MS, 'kraken', DAILY_PRICE_REVALIDATE),
+            getCurrentBitcoinPrice('kraken', DAILY_PRICE_REVALIDATE).catch(() => null),
         ]);
         if (!history || history.length === 0) return null;
 
