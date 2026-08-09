@@ -34,6 +34,27 @@ function getSnapshot(): boolean {
     return consent === null || needsReconsent(consent);
 }
 
+/**
+ * Withdraw consent and bring the banner back.
+ *
+ * GDPR Art. 7(3) requires withdrawing consent to be as easy as giving it. The
+ * banner only rendered when consent was absent or stale, and nothing anywhere
+ * cleared the key — so once a visitor chose, the choice was permanent and the
+ * "manage your preferences at any time" line on /privacy was not true.
+ *
+ * Clearing the key makes getSnapshot() report "no consent on file", and the
+ * dispatched event is what tells both this banner and ConsentGatedScripts to
+ * re-read it in the same tick.
+ */
+export function reopenCookiePreferences() {
+    try {
+        localStorage.removeItem('cookie-consent');
+    } catch {
+        // Private mode / storage disabled: nothing was stored, nothing to clear.
+    }
+    window.dispatchEvent(new StorageEvent('storage', { key: 'cookie-consent' }));
+}
+
 export const CookieConsent = () => {
     // Server snapshot is false so SSR/hydration render nothing; the banner
     // appears right after hydration when consent is missing or stale.

@@ -18,7 +18,7 @@ interface SharePageProps {
 
 const GENERIC_TITLE = 'Bitcoin DCA Calculator — Backtest Dollar-Cost Averaging BTC';
 const GENERIC_DESCRIPTION =
-    'Backtest a Bitcoin dollar-cost averaging strategy with real market data — invested total, current value, ROI, and BTC stacked.';
+    'Backtest a Bitcoin dollar-cost averaging strategy with real market data: invested total, current value, ROI, and BTC stacked.';
 
 function buildMetadata(title: string, description: string, query: string): Metadata {
     const shareUrl = query ? `/share?${query}` : '/share';
@@ -76,7 +76,7 @@ export default async function SharePage({ searchParams }: SharePageProps) {
                     Opening the calculator&hellip;
                 </h1>
                 <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
-                    You are being forwarded to this shared DCA backtest.
+                    Taking you to this shared DCA backtest now.
                 </p>
                 <Link
                     href={target}

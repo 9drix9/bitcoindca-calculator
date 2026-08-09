@@ -160,7 +160,7 @@ async function loadData(): Promise<PageData | null> {
 const CHECKLIST: { title: string; body: string }[] = [
     {
         title: 'Trading fee vs. instant-buy fee',
-        body: 'Many exchanges run two products on one platform: a spot order book with maker/taker fees measured in basis points, and a one-click "buy" or "convert" button that charges several times more. The cheap number on the fee page is usually the order book. Placing a limit order on the order book is often the single biggest saving available to a retail buyer.',
+        body: 'Many exchanges run two products on one platform. One is a spot order book, where you trade against other users. It charges a maker fee if your order sits on the book and a taker fee if it fills straight away, both quoted in basis points. A basis point is one hundredth of a percent. The other product is a one-click "buy" or "convert" button that charges several times more. The cheap number on the fee page is usually the order book. Placing a limit order there is often the single biggest saving available to a retail buyer.',
     },
     {
         title: 'The spread on the quoted price',
@@ -168,15 +168,15 @@ const CHECKLIST: { title: string; body: string }[] = [
     },
     {
         title: 'Deposit and funding costs',
-        body: 'Bank transfers (ACH, SEPA, Faster Payments) are commonly free or close to it. Debit and credit card funding is frequently 3-4% and is charged before the trading fee. If your fiat rail costs more than your trade, optimising the trade is beside the point.',
+        body: 'Bank transfers (ACH, SEPA, Faster Payments) are commonly free or close to it. Debit and credit card funding is frequently 3-4% and is charged before the trading fee. If the way you move money in costs more than the trade itself, optimizing the trade is beside the point.',
     },
     {
         title: 'Withdrawal fee for moving to self-custody',
-        body: 'On-chain withdrawal is normally a flat fee in bitcoin, not a percentage, so it punishes small frequent withdrawals and is nearly irrelevant on large ones. Some platforms pass through the network fee at cost; others charge a fixed amount well above it. Check whether the platform lets you withdraw to your own address at all.',
+        body: 'On-chain withdrawal is normally a flat fee in bitcoin rather than a percentage. That punishes small frequent withdrawals and is nearly irrelevant on large ones. Some platforms pass through the network fee at cost; others charge a fixed amount well above it. Check whether the platform lets you withdraw to your own address at all.',
     },
     {
         title: 'Recurring-buy terms specifically',
-        body: 'Recurring buys sometimes get a different fee schedule than manual ones, in either direction. Since the whole point of DCA is that the recurring buy is the only order you ever place, that is the number that matters to you.',
+        body: 'Recurring buys sometimes get a different fee schedule than manual ones, in either direction. With DCA the recurring buy is the only order you ever place. So that is the number that matters to you.',
     },
     {
         title: 'Currency conversion',
@@ -196,33 +196,33 @@ export default async function ExchangeFeesPage() {
             question: 'How much do Bitcoin exchange fees actually cost over a DCA plan?',
             answer:
                 data && highRow
-                    ? `On a real schedule of $${SAMPLE_AMOUNT} a week for ${SAMPLE_YEARS} years — ${data.purchaseCount} purchases and ${fmtUsd(data.totalInvested)} invested — a 1.49% fee costs ${fmtUsd(highRow.feesPaid)} in fees and leaves you ${fmtInt(highRow.satsVsZero)} sats short of the same schedule with no fee, worth ${fmtUsd(highRow.valueVsZero)} at today's price. A 0.26% fee costs ${lowRow ? fmtUsd(lowRow.feesPaid) : 'roughly a sixth of that'}.`
-                    : `A percentage fee removes that percentage of bitcoin from every single purchase, so after hundreds of buys you own that same percentage less bitcoin than you otherwise would. On a five-year weekly schedule the difference between a 0.26% fee and a 1.49% fee is normally a few hundred dollars of missing bitcoin.`,
+                    ? `Take a real schedule of $${SAMPLE_AMOUNT} a week for ${SAMPLE_YEARS} years: ${data.purchaseCount} purchases and ${fmtUsd(data.totalInvested)} invested. A 1.49% fee takes ${fmtUsd(highRow.feesPaid)} out in fees and leaves you ${fmtInt(highRow.satsVsZero)} sats short of the same schedule with no fee. A sat is one hundred-millionth of a bitcoin, and that shortfall is worth ${fmtUsd(highRow.valueVsZero)} at today's price. A 0.26% fee costs ${lowRow ? fmtUsd(lowRow.feesPaid) : 'roughly a sixth of that'}.`
+                    : `A percentage fee removes that percentage of bitcoin from every single purchase. After hundreds of buys you own that same percentage less bitcoin than you otherwise would. On a five-year weekly schedule the difference between a 0.26% fee and a 1.49% fee is normally a few hundred dollars of missing bitcoin.`,
         },
         {
             question: 'What is the difference between a fee and a spread?',
             answer:
-                'A fee is an explicit charge that appears on your receipt: 1.49% of the order, itemised. A spread is the gap between the price the exchange quotes you and the real mid-market price at that moment. It is never itemised, it is not reported as a fee, and it can easily exceed the fee it replaces. "Zero fee" almost always means "the cost has been moved into the spread", because a business that quotes a price and takes the other side has to make money somewhere. The only way to measure it is to compare the quote you were given against a large spot market at the same second.',
+                'A fee is an explicit charge that appears on your receipt: 1.49% of the order, itemized. A spread is the gap between the price the exchange quotes you and the real mid-market price at that moment. It is never itemized, it is not reported as a fee, and it can easily exceed the fee it replaces. "Zero fee" almost always means "the cost has been moved into the spread". A business that quotes a price and takes the other side of your trade has to make money somewhere. The only way to measure it is to compare the quote you were given against a large spot market at the same second.',
         },
         {
             question: 'Does a 1.49% fee compound?',
             answer:
-                'Not against itself — the fee is a flat percentage of each buy, so after 260 buys you still hold about 1.49% less bitcoin, not 1.49% compounded 260 times. What compounds is the value of the bitcoin you did not get. That missing bitcoin rides the same price as the rest of your stack, so the shortfall grows in fiat terms exactly as fast as your portfolio does. A fee is best understood as permanently owning a slightly smaller slice, not as a one-off cost.',
+                'Not against itself. The fee is a flat percentage of each buy, so after 260 buys you still hold about 1.49% less bitcoin. It is not 1.49% compounded 260 times. What compounds is the value of the bitcoin you did not get. That missing bitcoin rides the same price as the rest of your stack. So the shortfall grows in fiat terms exactly as fast as your portfolio does. A fee is best understood as permanently owning a slightly smaller slice, not as a one-off cost.',
         },
         {
             question: 'Is the cheapest exchange always the right choice?',
             answer:
-                'No, and this page does not recommend one. Fees are one input among several: whether you can withdraw to your own wallet, how the platform is regulated in your jurisdiction, its custody and security record, whether it publishes reserve attestations, its history of outages during volatile periods, and whether it supports your bank. A platform charging 0.1% that you cannot withdraw from is more expensive than one charging 1% that you can.',
+                'No, and this page does not recommend one. Fees are one input among several. Can you withdraw to your own wallet? How is the platform regulated in your jurisdiction? What is its custody and security record, and does it publish reserve attestations? How often did it go down during volatile periods, and does it support your bank? A platform charging 0.1% that you cannot withdraw from is more expensive than one charging 1% that you can.',
         },
         {
             question: 'Should I buy less often to save on fees?',
             answer:
-                'Only if your exchange charges a flat fee per order rather than a percentage. Percentage fees are scale-invariant: twelve monthly buys of $200 and fifty-two weekly buys of about $46 pay the same total. Where flat minimums apply, batching into larger, less frequent purchases genuinely helps. Historically the return difference between daily, weekly and monthly cadences over multi-year periods is very small, so fee structure is a more sensible reason to pick a cadence than market timing.',
+                'Only if your exchange charges a flat fee per order rather than a percentage. A percentage fee costs the same in total no matter how you split it up. Twelve monthly buys of $200 and fifty-two weekly buys of about $46 pay the same. Where flat minimums apply, batching into larger, less frequent purchases genuinely helps. Historically the return difference between daily, weekly and monthly cadences over multi-year periods is very small. So fee structure is a more sensible reason to pick a cadence than market timing.',
         },
         {
             question: 'Are the rates on this page current?',
             answer:
-                'The comparison table quotes published rates last verified in July 2026, and exchanges change them without much notice. Treat them as a starting point and check the exchange\'s own fee page before committing. Tiered maker/taker schedules also mean your actual rate depends on your 30-day volume, so a headline rate may not be the one you pay.',
+                'The comparison table quotes published rates last verified in July 2026, and exchanges change them without much notice. Treat them as a starting point and check the exchange\'s own fee page before committing. Tiered maker/taker schedules also mean your actual rate depends on your 30-day trading volume. A headline rate may not be the one you pay.',
         },
     ];
 
@@ -273,16 +273,17 @@ export default async function ExchangeFeesPage() {
                         {data && highRow ? (
                             <>
                                 A single 1.49% fee is easy to ignore. Paid {data.purchaseCount} times it is not. The table
-                                below runs the same schedule &mdash; ${SAMPLE_AMOUNT} a week since {formatUtc(data.startDateIso, 'full')},{' '}
-                                {fmtUsd(data.totalInvested)} invested &mdash; against real Kraken prices at six different fee
-                                rates. At 1.49% you end up {fmtInt(highRow.satsVsZero)} sats short of the zero-fee version,
-                                worth <strong className="font-semibold text-slate-900 dark:text-white">{fmtUsd(highRow.valueVsZero)}</strong> today.
+                                below runs one schedule at six different fee rates: ${SAMPLE_AMOUNT} a week since{' '}
+                                {formatUtc(data.startDateIso, 'full')}, {fmtUsd(data.totalInvested)} invested, priced
+                                against real Kraken history. At 1.49% you end up {fmtInt(highRow.satsVsZero)} sats short
+                                of the zero-fee version, worth <strong className="font-semibold text-slate-900 dark:text-white">{fmtUsd(highRow.valueVsZero)}</strong> today.
+                                A sat is one hundred-millionth of a bitcoin.
                             </>
                         ) : (
                             <>
                                 A single 1.49% fee is easy to ignore. Paid a few hundred times it is not. This page compares
-                                fee rates across a real five-year DCA schedule, explains the difference between an explicit
-                                fee and a spread, and lists what to check before committing to an exchange.
+                                fee rates across a real five-year DCA schedule. It also explains the difference between an
+                                explicit fee and a spread, and lists what to check before committing to an exchange.
                             </>
                         )}
                     </p>
@@ -323,7 +324,7 @@ export default async function ExchangeFeesPage() {
                                                     <td className="px-3 sm:px-4 py-2 text-right whitespace-nowrap">{fmtUsd(row.currentValue)}</td>
                                                     <td className={clsx(
                                                         'px-3 sm:px-4 py-2 text-right whitespace-nowrap',
-                                                        row.rate === 0 ? 'text-slate-400 dark:text-slate-500' : 'text-loss',
+                                                        row.rate === 0 ? 'text-slate-500 dark:text-slate-400' : 'text-loss',
                                                     )}>
                                                         {row.rate === 0 ? '—' : `${fmtInt(row.satsVsZero)} (${fmtUsd(row.valueVsZero)})`}
                                                     </td>
@@ -336,7 +337,7 @@ export default async function ExchangeFeesPage() {
                                     ${SAMPLE_AMOUNT} bought every week from {formatUtc(data.startDateIso, 'full')} to today,
                                     priced against Kraken history and valued at the live price of {fmtUsd(data.price)}. The
                                     fee is taken off each purchase before conversion, which is how exchanges charge it. Every
-                                    row invests the identical {fmtUsd(data.totalInvested)}; only the bitcoin that reaches your
+                                    row invests the identical {fmtUsd(data.totalInvested)}. Only the bitcoin that reaches your
                                     account differs.
                                 </p>
                             </Card>
@@ -348,8 +349,8 @@ export default async function ExchangeFeesPage() {
                                     <strong className="font-semibold text-slate-900 dark:text-white">
                                         {fmtUsd(highRow.valueVsZero - lowRow.valueVsZero)}
                                     </strong>{' '}
-                                    of bitcoin &mdash; on a plan where you never had to time anything or take on extra risk to
-                                    save it.{worstRow && worstRow.rate > 1.49 ? ` At the top rate modelled here, ${worstRow.rate}%, the gap against zero widens to ${fmtUsd(worstRow.valueVsZero)}.` : ''}
+                                    of bitcoin. You never had to time anything or take on extra risk to save
+                                    it.{worstRow && worstRow.rate > 1.49 ? ` At the top rate modeled here, ${worstRow.rate}%, the gap against zero widens to ${fmtUsd(worstRow.valueVsZero)}.` : ''}
                                 </p>
                             )}
                         </>
@@ -386,23 +387,23 @@ export default async function ExchangeFeesPage() {
                         <p>
                             <strong className="text-slate-800 dark:text-slate-200">A spread</strong> is the difference between
                             the price the platform quotes you and the price the market is actually trading at. If the mid
-                            price is $100,000 and the app offers to sell you bitcoin at $100,900, you paid 0.9% &mdash; and
-                            nothing anywhere will call it a fee. Your receipt will say $50 in, $50 of bitcoin out, zero fees,
+                            price is $100,000 and the app offers to sell you bitcoin at $100,900, you paid 0.9%. Nothing
+                            anywhere will call it a fee. Your receipt will say $50 in, $50 of bitcoin out, zero fees,
                             and it will be technically accurate.
                         </p>
                         <p>
                             This is why &ldquo;0% fees&rdquo; deserves a follow-up question rather than applause. A platform
-                            that quotes you a price and takes the other side of your trade needs revenue; if it is not in the
+                            that quotes you a price and takes the other side of your trade needs revenue. If it is not in the
                             fee, it is in the spread. Some genuinely low-spread services do exist, and some zero-fee
-                            offerings are real promotions with a stated end date. The point is not that zero-fee is a lie, it
-                            is that the fee number alone cannot tell you which situation you are in.
+                            offerings are real promotions with a stated end date. Zero-fee is not automatically a lie. The
+                            fee number alone just cannot tell you which situation you are in.
                         </p>
                         <p>
                             <strong className="text-slate-800 dark:text-slate-200">How to measure it yourself:</strong> at the
                             moment you buy, note the price you were quoted, then check the BTC/USD price on a large spot
-                            exchange. The percentage gap is your spread. Do it two or three times, at different times of day,
-                            and you will have a better estimate of your true all-in cost than any comparison table can give
-                            you &mdash; including this one.
+                            exchange. The percentage gap is your spread. Do it two or three times, at different times of day.
+                            That gives you a better estimate of your true all-in cost than any comparison table can, including
+                            this one.
                         </p>
                     </div>
                 </section>
@@ -415,15 +416,15 @@ export default async function ExchangeFeesPage() {
                     <div className="space-y-4 text-sm sm:text-base text-slate-600 dark:text-slate-400 leading-relaxed">
                         <p>
                             Be precise about the mechanism, because the loose version of this claim is wrong. A percentage
-                            fee does <em>not</em> compound against itself: paying 1.49% on 260 separate purchases leaves you
+                            fee does <em>not</em> compound against itself. Paying 1.49% on 260 separate purchases leaves you
                             with about 1.49% less bitcoin, not 1.49% raised to the 260th power. Anyone telling you the fee
                             eats a third of your stack is selling something.
                         </p>
                         <p>
                             What compounds is the <em>value</em> of the bitcoin you never received. That missing slice tracks
-                            the same price as everything else you own, so if your stack goes up tenfold, so does the shortfall.
-                            A fee is not a one-time cost you absorb and move past; it is a permanent reduction in the fraction
-                            of the supply you hold, and it is priced by the market forever after.
+                            the same price as everything else you own. If your stack goes up tenfold, so does the shortfall.
+                            Do not think of a fee as a one-time cost you absorb and move past. It permanently reduces the
+                            fraction of the supply you hold, and the market prices that reduction forever after.
                         </p>
                         <p>
                             There is a second, blunter way to frame it. A 1.49% fee is roughly one and a half months of
@@ -432,7 +433,8 @@ export default async function ExchangeFeesPage() {
                         </p>
                         <p>
                             The reason this is worth a page of your attention is that fees are one of the very few inputs to a
-                            DCA plan you fully control. You cannot control the price, the drawdowns, or the timing. You can
+                            DCA plan you fully control. You cannot control the price, the falls along the way, or the
+                            timing. You can
                             control the rate you pay to convert, and it costs you nothing but an afternoon of reading fee
                             schedules.
                         </p>
@@ -450,8 +452,8 @@ export default async function ExchangeFeesPage() {
                     <p className="text-sm sm:text-base text-slate-600 dark:text-slate-400 leading-relaxed">
                         Applied to the same {data ? fmtUsd(data.totalInvested) : 'total'} across{' '}
                         {data ? data.purchaseCount : 'several hundred'} purchases. This is a factual list of published
-                        rates, not a ranking or a recommendation, and it deliberately excludes spread &mdash; which, per the
-                        section above, is where the 0% rows earn their money.
+                        rates, not a ranking or a recommendation. It deliberately excludes spread, which, as the section
+                        above explains, is where the 0% rows earn their money.
                     </p>
                     {data ? (
                         <ExchangeFeeComparison totalInvested={data.totalInvested} purchaseCount={data.purchaseCount} />
@@ -516,7 +518,7 @@ export default async function ExchangeFeesPage() {
                     </h2>
                     <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300 mb-5 max-w-xl mx-auto">
                         Put your own amount, cadence, dates and fee percentage into the calculator. It backtests the whole
-                        schedule against real historical prices and itemises exactly what the fee cost you.
+                        schedule against real historical prices and itemizes exactly what the fee cost you.
                     </p>
                     <Link
                         href={`/?amount=${SAMPLE_AMOUNT}&frequency=weekly&fee=1.49`}
@@ -558,9 +560,9 @@ export default async function ExchangeFeesPage() {
 
                 {/* Disclaimer */}
                 <p className="border-t border-slate-200 dark:border-slate-800 pt-6 text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-                    Not financial advice, and not a recommendation of any exchange. Fee rates change; verify them on the
-                    provider&apos;s own fee page before you act. The figures above are a historical simulation for education
-                    &mdash; past performance does not guarantee future results, bitcoin is volatile, and you can lose money.
+                    Not financial advice, and not a recommendation of any exchange. Fee rates change, so verify them on the
+                    provider&apos;s own fee page before you act. The figures above are a historical simulation for
+                    education. Past performance does not guarantee future results, bitcoin is volatile, and you can lose money.
                 </p>
             </div>
         </>

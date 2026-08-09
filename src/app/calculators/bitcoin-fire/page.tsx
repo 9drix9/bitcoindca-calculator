@@ -319,20 +319,21 @@ export default async function BitcoinFirePage({ searchParams }: PageProps) {
             q: 'What is a safe withdrawal rate, and where does the 4% rule come from?',
             a:
                 'A safe withdrawal rate is the share of a portfolio you can take in the first year of retirement, then adjust for inflation each year after, ' +
-                'without running out over some planning horizon. The 4% figure comes from William Bengen\'s 1994 study and the 1998 Trinity Study, both of which ' +
-                'tested rolling 30-year retirements against US stock and bond returns from 1926 onward. A portfolio holding roughly half to three quarters equities ' +
-                'survived every historical 30-year window at a 4% initial withdrawal. That is the entire basis of the number: one country, one century, a diversified ' +
-                'portfolio, a 30-year horizon, and no taxes or fees in the model.',
+                'without running out over some planning horizon. The 4% figure comes from William Bengen\'s 1994 study and the 1998 Trinity Study. Both tested ' +
+                'rolling 30-year retirements against US stock and bond returns from 1926 onward. Bengen found no 30-year failure at a 4% initial withdrawal for a ' +
+                'portfolio holding roughly half to three quarters equities. The Trinity authors, running their own data, reported success rates of about 95% to 98% ' +
+                'for those mixes rather than a clean 100%. That is the entire basis of the number: one country, one century, a diversified portfolio, a 30-year ' +
+                'horizon, and no taxes or fees in the model.',
         },
         {
             q: 'Does the 4% rule work for Bitcoin?',
             a:
                 'There is no evidence that it does, and good reason to think it does not transfer. The rule was calibrated on a diversified portfolio whose worst ' +
-                'historical drawdown was roughly half, and it still failed in stress tests outside the US. Bitcoin is a single asset with no cash flows, roughly fifteen ' +
-                'years of price history, and repeated declines of 70% or more. Withdrawal-rate research depends on having enough independent historical windows to say ' +
-                'anything about failure probability, and Bitcoin does not have them. This calculator uses 4% because it is the yardstick everyone recognises, not because ' +
-                'it has been validated for a volatile single asset. Many people planning around Bitcoin use a materially lower rate, or hold several years of spending ' +
-                'in something that is not Bitcoin.',
+                'drawdown, meaning its worst fall from a previous high, was roughly half. It still failed in stress tests outside the US. Bitcoin is a single asset ' +
+                'with no cash flows, roughly fifteen years of price history, and repeated declines of 70% or more. Withdrawal-rate research depends on having enough ' +
+                'independent historical windows to say anything about failure probability, and Bitcoin does not have them. This calculator uses 4% because it is the ' +
+                'yardstick everyone recognizes, not because it has been validated for a volatile single asset. Many people planning around Bitcoin use a materially ' +
+                'lower rate, or hold several years of spending in something that is not Bitcoin.',
         },
         {
             q: 'How much Bitcoin do I need to retire?',
@@ -347,29 +348,30 @@ export default async function BitcoinFirePage({ searchParams }: PageProps) {
         {
             q: 'What is sequence-of-returns risk?',
             a:
-                'It is the risk that the order of returns ruins you even when the average is fine. Two retirees can experience identical average annual returns over ' +
-                'thirty years and end up in completely different places: the one who meets a deep decline in the first few years is forced to sell far more units to ' +
-                'fund the same spending, and those units are gone before any recovery. Accumulating investors get the mirror image, where an early decline is a gift. ' +
-                'This is the single largest reason a smooth constant-growth projection like the one on this page is optimistic, because a constant growth rate has no ' +
+                'It is the risk that the order of returns ruins you even when the average is fine. Two retirees can see identical average annual returns over thirty ' +
+                'years and still end up in completely different places. The one who meets a deep decline in the first few years has to sell far more units to fund ' +
+                'the same spending, and those units are gone before any recovery. Accumulating investors get the mirror image, where an early decline is a gift. ' +
+                'This is the single largest reason a smooth constant-growth projection like the one on this page is optimistic. A constant growth rate has no ' +
                 'sequence at all.',
         },
         {
             q: 'What growth rate should I assume for Bitcoin?',
             a: data && data.cagrs.length > 0
-                ? 'Nobody knows, and any single number you pick will dominate the result. For reference, the trailing compound annual growth rate of the Bitcoin price ' +
-                  `on this page's data is ${data.cagrs.map((c) => `${fmtPct(c.percent, true)} over ${c.years} years`).join(', ')}. Trailing CAGR is extremely sensitive ` +
-                  'to the start date and is a description of the past, not a forecast. Growth rates for an asset this young also have no reason to stay stable: a return ' +
-                  'that compounds at a high rate indefinitely implies a market capitalisation that eventually exceeds everything else in existence, which is why the ' +
-                  'sensible use of this tool is to compare scenarios rather than to trust one.'
+                ? 'Nobody knows, and any single number you pick will dominate the result. For reference, the trailing compound annual growth rate (CAGR) of the ' +
+                  `Bitcoin price on this page's data is ${data.cagrs.map((c) => `${fmtPct(c.percent, true)} over ${c.years} years`).join(', ')}. That is the steady ` +
+                  'yearly rate that would have taken the price from one end of the window to the other. Trailing CAGR is extremely sensitive to the start date, and ' +
+                  'it describes the past rather than forecasting anything. Growth rates for an asset this young also have no reason to stay stable. A return that ' +
+                  'compounds at a high rate indefinitely implies a total market value that eventually exceeds everything else in existence. So the sensible use of ' +
+                  'this tool is to compare scenarios rather than to trust one.'
                 : 'Nobody knows, and the assumption dominates the result. Trailing growth rates describe the past and are extremely sensitive to the start date. ' +
                   'Use the tool to compare scenarios rather than to trust any single one.',
         },
         {
             q: 'Is this projection a prediction of when I will retire?',
             a:
-                'No. It is arithmetic on assumptions you supply. It compounds a constant growth rate, assumes you keep contributing at the same rate without ' +
-                'interruption, ignores taxes, exchange fees and spreads, ignores the possibility of a permanent loss, and reports a single path rather than a ' +
-                'probability. Read the gap between the conservative and aggressive columns as the honest message: the answer is not a date, it is a very wide range ' +
+                'No. It is arithmetic on assumptions you supply. It compounds a constant growth rate and assumes you keep contributing at the same rate without ' +
+                'interruption. It ignores taxes, exchange fees and spreads, ignores the possibility of a permanent loss, and reports a single path rather than a ' +
+                'probability. Read the gap between the conservative and aggressive columns as the honest message. The answer is not a date. It is a very wide range ' +
                 'that depends on something unknowable.',
         },
     ];
@@ -415,10 +417,10 @@ export default async function BitcoinFirePage({ searchParams }: PageProps) {
                     </h1>
                     <p className="text-base sm:text-lg text-slate-600 dark:text-slate-300 leading-relaxed">
                         FIRE stands for financial independence, retire early: the point where a portfolio can fund your
-                        living costs without a salary. This page starts from a real Bitcoin DCA plan, computes what it
-                        would have accumulated at historical prices, and projects how far it is from covering your
-                        spending. It also explains, at length, why that projection deserves more scepticism than most
-                        retirement maths.
+                        living costs without a salary. This page starts from a real dollar-cost averaging plan, meaning
+                        a fixed amount of Bitcoin bought on a fixed schedule. It computes what that plan would have
+                        accumulated at historical prices, then projects how far it is from covering your spending. It
+                        also explains why that projection deserves more skepticism than most retirement math.
                     </p>
                 </header>
 
@@ -507,13 +509,13 @@ export default async function BitcoinFirePage({ searchParams }: PageProps) {
                                 <StatCard
                                     label="Worst drawdown"
                                     value={`−${fmtPct(data.maxDrawdownPercent)}`}
-                                    sub="Peak-to-trough, portfolio value"
+                                    sub="Deepest fall from a previous high"
                                 />
                             </div>
                             <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300 leading-relaxed">
                                 At a spending baseline of {fmtUsd(BASELINE_MONTHLY_SPEND)} a month, the 4% rule puts the
-                                target at <strong className="font-semibold text-slate-900 dark:text-white">{fmtUsd(data.fireNumber)}</strong>{' '}
-                                &mdash; about {fmtBtc(data.btcNeeded)} at today&apos;s price of {fmtUsd(data.currentPrice)}. This plan is{' '}
+                                target at <strong className="font-semibold text-slate-900 dark:text-white">{fmtUsd(data.fireNumber)}</strong>,
+                                or about {fmtBtc(data.btcNeeded)} at today&apos;s price of {fmtUsd(data.currentPrice)}. This plan is{' '}
                                 <strong className="font-semibold text-slate-900 dark:text-white">{fmtPct(Math.min(data.progressPercent, 100))}</strong>{' '}
                                 of the way there, while contributing {fmtUsd(data.annualContribution)} a year. Change the
                                 spending figure in the tool below and every number moves with it.
@@ -527,19 +529,28 @@ export default async function BitcoinFirePage({ searchParams }: PageProps) {
                             </h2>
                             <div className="space-y-3 text-sm sm:text-base text-slate-600 dark:text-slate-300 leading-relaxed">
                                 <p>
-                                    A safe withdrawal rate answers one question: what percentage of a portfolio can you spend
-                                    in year one, raising it with inflation every year after, without the portfolio running dry
-                                    before you do? Multiply the reciprocal by your annual spending and you get a FIRE number.
-                                    At 4%, that reciprocal is 25, which is why the shorthand is &ldquo;25 times your annual
-                                    expenses&rdquo;.
+                                    A safe withdrawal rate answers one question. What percentage of a portfolio can you
+                                    spend in year one, raising it with inflation every year after, without the portfolio
+                                    running dry before you do? Multiply the reciprocal by your annual spending and you get a
+                                    FIRE number. At 4%, that reciprocal is 25, which is why the shorthand is &ldquo;25 times
+                                    your annual expenses&rdquo;.
                                 </p>
                                 <p>
-                                    The 4% figure is not a law of finance. It is an empirical result from William
-                                    Bengen&apos;s 1994 paper and the 1998 Trinity Study, both of which ran rolling 30-year
-                                    retirements over US stock and bond returns going back to 1926. A portfolio holding
-                                    roughly 50&ndash;75% equities survived every one of those historical windows at a 4%
-                                    initial withdrawal. Everything about that sentence is a constraint: one country, one
-                                    century, a diversified portfolio, a 30-year horizon, no taxes, and no fees.
+                                    The 4% figure is not a law of finance. It came out of{' '}
+                                    <a
+                                        href="https://www.financialplanningassociation.org/sites/default/files/2021-04/MAR04%20Determining%20Withdrawal%20Rates%20Using%20Historical%20Data.pdf"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className={proseLink}
+                                    >
+                                        William Bengen&apos;s 1994 paper
+                                    </a>{' '}
+                                    and the 1998 Trinity Study. Both ran rolling 30-year retirements over US stock and bond
+                                    returns going back to 1926. Bengen found that a portfolio holding roughly
+                                    50&ndash;75% equities never ran dry inside 30 years at a 4% initial withdrawal. The
+                                    Trinity authors, running their own data, reported success rates of about 95% to 98% for
+                                    those mixes rather than a clean 100%. Every part of that is a constraint: one country,
+                                    one century, a diversified portfolio, a 30-year horizon, no taxes, and no fees.
                                 </p>
                                 <p>
                                     Those constraints matter even for the asset class it was derived from. Apply the same
@@ -565,11 +576,11 @@ export default async function BitcoinFirePage({ searchParams }: PageProps) {
                                 </p>
                                 <p>
                                     The asset also behaves nothing like the portfolio the rule was fitted to. A 50/75 equity
-                                    portfolio&apos;s worst historical drawdown was roughly half. Bitcoin has fallen more than
-                                    70% from a high several times, and those declines are the ordinary behaviour of the asset
-                                    rather than a crisis exception. Bitcoin produces no earnings, dividends or coupons, so
-                                    there is no cash flow to fund withdrawals: every withdrawal is a sale of principal.
-                                    See the{' '}
+                                    portfolio&apos;s worst historical drawdown, its deepest fall from a previous high, was
+                                    roughly half. Bitcoin has fallen more than 70% from a high several times. Those declines
+                                    are the ordinary behavior of the asset rather than a crisis exception. Bitcoin also
+                                    produces no earnings, dividends or coupons, so there is no cash flow to fund
+                                    withdrawals. Every withdrawal is a sale of principal. See the{' '}
                                     <Link href="/calculators/bitcoin-drawdown" className={proseLink}>drawdown history</Link>{' '}
                                     for the full record.
                                 </p>
@@ -577,10 +588,10 @@ export default async function BitcoinFirePage({ searchParams }: PageProps) {
                                     Concentration compounds the problem. The 4% rule assumes diversification is doing work in
                                     the background: when equities fall, bonds and rebalancing cushion the withdrawals. A
                                     single-asset portfolio has no cushion, so a withdrawal during a decline sells the only
-                                    thing you own at the worst possible price. This is why people planning around Bitcoin
-                                    commonly use a lower rate than 4%, hold several years of spending outside Bitcoin, or
-                                    stay flexible about how much they withdraw in bad years. None of those is advice; they
-                                    are simply the adjustments the underlying maths points at.
+                                    thing you own at the worst possible price. That is why people planning around Bitcoin
+                                    commonly use a lower rate than 4%. Others hold several years of spending outside
+                                    Bitcoin, or stay flexible about how much they withdraw in bad years. None of that is
+                                    advice. They are simply the adjustments the underlying math points at.
                                 </p>
                             </div>
                         </section>
@@ -594,7 +605,7 @@ export default async function BitcoinFirePage({ searchParams }: PageProps) {
                                 <p>
                                     While you are accumulating, the order of returns barely matters and a crash is arguably
                                     good news: your contributions buy more. The moment you start withdrawing, order becomes
-                                    the dominant variable. Two people can retire with the same amount and experience the same
+                                    the dominant variable. Two people can retire with the same amount and see the same
                                     average annual return over thirty years, and one runs out while the other dies rich. The
                                     only difference is when the bad years arrived.
                                 </p>
@@ -620,9 +631,9 @@ export default async function BitcoinFirePage({ searchParams }: PageProps) {
                                 Project the years to financial independence
                             </h2>
                             <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300 leading-relaxed">
-                                Enter what you actually spend in a month. The tool converts that to a FIRE number at 4%, shows
-                                how much of it the stack above already covers, and projects how many years of continued
-                                contributions it takes to close the gap under three growth assumptions.
+                                Enter what you actually spend in a month. The tool converts that to a FIRE number at 4% and
+                                shows how much of it the stack above already covers. It then projects how many years of
+                                continued contributions it takes to close the gap, under three growth assumptions.
                             </p>
                             <FireCalculator
                                 btcAccumulated={data.btcAccumulated}
@@ -641,8 +652,9 @@ export default async function BitcoinFirePage({ searchParams }: PageProps) {
                                 </h2>
                                 <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300 leading-relaxed">
                                     The growth assumption dominates the answer, so it is worth seeing what the price has
-                                    actually done. These are trailing compound annual growth rates computed from the same
-                                    price series the calculator uses.
+                                    actually done. These are trailing compound annual growth rates, or CAGRs: the steady
+                                    yearly rate that would have carried the price from one end of the window to the other.
+                                    They come from the same price series the calculator uses.
                                 </p>
                                 <Card className="p-4 sm:p-6">
                                     <div className="overflow-x-auto">
@@ -680,16 +692,16 @@ export default async function BitcoinFirePage({ searchParams }: PageProps) {
                                         </table>
                                     </div>
                                     <p className="mt-3 text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-                                        Trailing CAGR is a description of the past and swings wildly with the start date: a
-                                        window that begins near a cycle bottom looks spectacular and one that begins near a
-                                        top looks dismal, for the same asset. It is not a forecast, and it is not what the
-                                        next decade will do.
+                                        Trailing CAGR describes the past and swings wildly with the start date. For the same
+                                        asset, a window that begins near a cycle bottom looks spectacular, and one that
+                                        begins near a top looks dismal. It is not a forecast, and it is not what the next
+                                        decade will do.
                                     </p>
                                 </Card>
                                 <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300 leading-relaxed">
                                     There is also an arithmetic ceiling worth keeping in mind. A rate that compounds at 50% a
-                                    year for long enough implies a market value larger than every asset on earth combined, so
-                                    the aggressive scenario cannot persist indefinitely no matter what you believe about
+                                    year for long enough implies a market value larger than every asset on earth combined.
+                                    So the aggressive scenario cannot persist indefinitely, whatever you believe about
                                     Bitcoin. The realistic use of this tool is comparison: see how many years separate the
                                     conservative and aggressive answers, and treat that spread as the real output.
                                 </p>
@@ -725,14 +737,14 @@ export default async function BitcoinFirePage({ searchParams }: PageProps) {
                             </ul>
                             <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300 leading-relaxed">
                                 The <Link href="/methodology" className={proseLink}>methodology page</Link> documents the data
-                                sources, the exact DCA maths behind the backtested stack, and every limitation we know about.
+                                sources, the exact DCA math behind the backtested stack, and every limitation we know about.
                             </p>
                         </section>
                     </>
                 ) : (
                     <Card className="p-6 sm:p-8">
                         <div className="flex items-start gap-3">
-                            <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
+                            <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-500 shrink-0 mt-0.5" />
                             <div className="space-y-2">
                                 <h2 className="text-lg font-bold text-slate-900 dark:text-white">
                                     Price data is temporarily unavailable

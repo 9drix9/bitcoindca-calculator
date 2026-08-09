@@ -397,7 +397,7 @@ export default async function BitcoinDrawdownPage({ searchParams }: PageProps) {
             a:
                 'A drawdown is the decline from a previous high to the lowest point before that high is reclaimed, stated as a percentage of the peak. ' +
                 'If Bitcoin peaks at $100,000 and later trades at $40,000 without ever having recovered in between, that is a 60% drawdown. ' +
-                'The drawdown only ends when the old peak is taken out again, so a drawdown can last for years even while the price is rising.',
+                'The drawdown only ends when the old peak is taken out again. So a drawdown can last for years, even while the price is rising.',
         },
         {
             q: 'What is the biggest Bitcoin drawdown ever recorded?',
@@ -413,13 +413,13 @@ export default async function BitcoinDrawdownPage({ searchParams }: PageProps) {
             a:
                 'Volatility measures how much prices scatter around their average, in both directions. Drawdown only measures downside, and only the path-dependent kind: ' +
                 'how far you were underwater versus your best previous moment. Two assets can share the same volatility while one grinds sideways and the other cuts 80% ' +
-                'and takes three years to recover. Drawdown is usually the number that decides whether someone actually holds a position.',
+                'and takes three years to recover. Drawdown is usually the number that decides whether someone actually holds on.',
         },
         {
             q: 'Does dollar-cost averaging reduce drawdown?',
             a: data?.reference
                 ? `It changes the shape of it rather than removing it. Over the last ${REFERENCE_YEARS} years the Bitcoin price fell ${fmtPct(data.reference.priceDrawdownPercent)} ` +
-                  `peak-to-trough, while a $${REFERENCE_AMOUNT}-a-week schedule started at the same time saw its portfolio value fall ${fmtPct(data.reference.portfolioDrawdownPercent)} at worst. ` +
+                  `peak-to-trough. A $${REFERENCE_AMOUNT}-a-week schedule started at the same time saw its portfolio value fall ${fmtPct(data.reference.portfolioDrawdownPercent)} at worst. ` +
                   'The difference is that new contributions keep arriving during the fall, adding value that a lump sum does not get. What DCA does not do is protect the coins ' +
                   'you already own: those still lose the full percentage the price loses.'
                 : 'It changes the shape of it rather than removing it. Contributions keep arriving during a decline, which adds value a lump sum never gets and lowers the ' +
@@ -484,9 +484,9 @@ export default async function BitcoinDrawdownPage({ searchParams }: PageProps) {
                     </h1>
                     <p className="text-base sm:text-lg text-slate-600 dark:text-slate-300 leading-relaxed">
                         &ldquo;Drawdown&rdquo; means two different things to Bitcoin holders, and both matter. It is the
-                        peak-to-trough fall that measures how far underwater you went, and it is the act of selling a
-                        stack down to live on. This page covers the first with real historical prices, then hands you a
-                        planner for the second.
+                        peak-to-trough fall that measures how far underwater you went, from a previous high down to the
+                        low that followed. It is also the act of selling a stack down to live on. This page covers the
+                        first with real historical prices, then hands you a planner for the second.
                     </p>
                 </header>
 
@@ -551,16 +551,17 @@ export default async function BitcoinDrawdownPage({ searchParams }: PageProps) {
                                     Two details are easy to miss. First, the peak is a <em>running</em> peak: once a price
                                     is printed it becomes the reference for everything after it, so you are always measured
                                     against your best moment, not your entry. Second, the clock does not stop at the bottom.
-                                    A 75% fall that takes eight months to bottom and another two and a half years to recover
-                                    is three years of being worse off than you once were, and that duration is usually what
-                                    breaks people&apos;s conviction rather than the percentage itself.
+                                    Picture a 75% fall that takes eight months to bottom and another two and a half years to
+                                    recover. That is three years of being worse off than you once were. The duration is
+                                    usually what breaks people&apos;s conviction, not the percentage itself.
                                 </p>
                                 <p>
                                     Drawdown is the honest counterpart to a headline return. A backtest that shows a large
                                     gain while quietly passing through an 80% decline is describing a strategy most people
                                     would have abandoned somewhere in the middle. That is why the main{' '}
-                                    <Link href="/" className={proseLink}>DCA calculator</Link> reports max drawdown next to
-                                    ROI and XIRR rather than tucking it away.
+                                    <Link href="/" className={proseLink}>DCA calculator</Link> puts max drawdown next to its
+                                    return figures rather than tucking it away. DCA is dollar-cost averaging: buying a fixed
+                                    amount on a fixed schedule instead of all at once.
                                 </p>
                             </div>
                         </section>
@@ -640,11 +641,11 @@ export default async function BitcoinDrawdownPage({ searchParams }: PageProps) {
                             </h2>
                             <div className="space-y-3 text-sm sm:text-base text-slate-600 dark:text-slate-300 leading-relaxed">
                                 <p>
-                                    The numbers above are <em>price</em> drawdowns. A portfolio drawdown is not the same
-                                    thing, because a portfolio that is still receiving contributions gains value from new
+                                    The numbers above are <em>price</em> drawdowns, and a portfolio drawdown is not
+                                    the same thing. A portfolio that is still receiving contributions gains value from new
                                     money at the same time it loses value to the price. Somebody who bought once at the top
-                                    experiences the price drawdown exactly. Somebody buying every week experiences something
-                                    shallower, and buys the whole way down.
+                                    lives the price drawdown exactly. Somebody buying every week lives something shallower,
+                                    and buys the whole way down.
                                 </p>
                                 {data.reference && (
                                     <Card className="p-4 sm:p-5">
@@ -687,15 +688,15 @@ export default async function BitcoinDrawdownPage({ searchParams }: PageProps) {
                                 <p>
                                     There is a second, less comfortable implication. The reason a DCA drawdown looks mild early
                                     on is that there is not much money in it yet. As the stack grows, each future contribution
-                                    is a smaller fraction of the total, so a DCA portfolio&apos;s drawdown behaviour drifts
-                                    toward the price&apos;s own drawdown behaviour over time. The longer you have been stacking,
+                                    is a smaller fraction of the total, so a DCA portfolio&apos;s drawdown behavior drifts
+                                    toward the price&apos;s own behavior over time. The longer you have been stacking,
                                     the more the history above describes your experience rather than the softened version.
                                 </p>
                                 <p>
-                                    Finally: none of these figures bound the future. The deepest fall in the table is the worst
-                                    thing that has happened to an asset that is roughly fifteen years old and has never been
-                                    tested through a full global credit cycle as an institutional holding. A sample maximum is
-                                    not a limit. Plan for worse than the worst row.
+                                    Finally: none of these figures bound the future. Bitcoin is roughly fifteen years old and
+                                    has never been tested through a full global credit cycle as an institutional holding. The
+                                    deepest fall in the table is just the worst thing that has happened to it so far. A sample
+                                    maximum is not a limit. Plan for worse than the worst row.
                                 </p>
                             </div>
                         </section>
@@ -703,7 +704,7 @@ export default async function BitcoinDrawdownPage({ searchParams }: PageProps) {
                 ) : (
                     <Card className="p-6 sm:p-8">
                         <div className="flex items-start gap-3">
-                            <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
+                            <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-500 shrink-0 mt-0.5" />
                             <div className="space-y-2">
                                 <h2 className="text-lg font-bold text-slate-900 dark:text-white">
                                     Price data is temporarily unavailable
@@ -833,8 +834,10 @@ export default async function BitcoinDrawdownPage({ searchParams }: PageProps) {
                         Run your own numbers
                     </h2>
                     <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300 mb-5 max-w-xl mx-auto">
-                        The full calculator backtests any DCA schedule you like and reports its max drawdown alongside ROI,
-                        XIRR, and a year-by-year breakdown, all from the same historical data used on this page.
+                        The full calculator backtests any DCA schedule you like. It reports max drawdown alongside ROI,
+                        XIRR, and a year-by-year breakdown, all from the same historical data used here. ROI is your
+                        total gain or loss. XIRR is the annual return rate, adjusted for money going in at different
+                        times.
                     </p>
                     <Link
                         href="/"

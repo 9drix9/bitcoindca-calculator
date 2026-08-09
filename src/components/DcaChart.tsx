@@ -318,7 +318,9 @@ export const DcaChart = memo(function DcaChart({ data, unit }: DcaChartProps) {
         powerLaw: isDark ? '#8b5cf6' : '#7c3aed',
         neutral: isDark ? '#64748b' : '#94a3b8',
         grid: isDark ? '#1e293b' : '#f1f5f9',
-        axis: '#64748b',
+        // Theme-flipped: #64748b is 4.76:1 on the light card but only 3.75:1 on
+        // the dark one, so a single fixed value cannot clear AA in both.
+        axis: isDark ? '#94a3b8' : '#64748b',
         halving: '#a855f7',
         cursor: isDark ? '#334155' : '#cbd5e1',
     };
@@ -587,7 +589,7 @@ export const DcaChart = memo(function DcaChart({ data, unit }: DcaChartProps) {
 
                 {/* Toggles + export */}
                 <div className="mb-1 flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1 sm:mb-2">
-                    <label className={toggleLabelClass}>
+                    <label className={toggleLabelClass} title="Log scale: the same percentage move takes up the same space, whatever the price.">
                         <input
                             type="checkbox"
                             checked={isLog}
@@ -597,7 +599,7 @@ export const DcaChart = memo(function DcaChart({ data, unit }: DcaChartProps) {
                         Log
                     </label>
                     {tab === 'price' && (
-                        <label className={toggleLabelClass}>
+                        <label className={toggleLabelClass} title="A trend line fitted to Bitcoin’s whole price history. It is a curve fit, not a forecast.">
                             <input
                                 type="checkbox"
                                 checked={showPowerLaw}
@@ -621,8 +623,8 @@ export const DcaChart = memo(function DcaChart({ data, unit }: DcaChartProps) {
                         type="button"
                         onClick={handleExport}
                         className="rounded-lg p-1.5 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-600 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-300 sm:p-2"
-                        aria-label="Export chart as image"
-                        title="Export chart as PNG"
+                        aria-label="Save the chart as a PNG image"
+                        title="Save the chart as a PNG image"
                     >
                         <Camera className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                     </button>

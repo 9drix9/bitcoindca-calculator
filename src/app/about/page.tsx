@@ -4,7 +4,7 @@ import { Target, Eye, Link as LinkIcon, BarChart3, ShieldX, Code, User } from 'l
 
 export const metadata: Metadata = {
     title: 'About',
-    description: 'Who built this Bitcoin DCA calculator, why it exists, and what it stands for. Free, open-source, Bitcoin-only education with full transparency on affiliate links and ads.',
+    description: 'Who built this Bitcoin DCA calculator and why. Free, open-source, Bitcoin-only education, with full transparency on affiliate links and cookieless ads.',
     keywords: ['bitcoin dca calculator about', 'bitcoin education', 'open source bitcoin', 'bitcoin dca tool'],
     alternates: {
         canonical: '/about',
@@ -76,7 +76,7 @@ export default function AboutPage() {
                 {/* Hero */}
                 <section className="text-center max-w-3xl mx-auto space-y-3 sm:space-y-4">
                     <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-slate-900 dark:text-white text-balance">
-                        About This <span className="text-amber-500">Project</span>
+                        About This <span className="text-amber-700 dark:text-amber-400">Project</span>
                     </h1>
                     <p className="text-base sm:text-lg text-slate-600 dark:text-slate-300 max-w-2xl mx-auto leading-relaxed">
                         A free, open-source Bitcoin DCA calculator built for long-term thinkers.
@@ -97,15 +97,15 @@ export default function AboutPage() {
                         </p>
                         <ul className="space-y-2 ml-1">
                             <li className="flex items-start gap-2">
-                                <span className="text-amber-500 font-bold mt-0.5 shrink-0">&bull;</span>
+                                <span className="text-amber-700 dark:text-amber-400 font-bold mt-0.5 shrink-0">&bull;</span>
                                 <span><strong className="text-slate-800 dark:text-slate-200">Reduce fragmented education.</strong> One place for DCA simulation, self-custody guides, mining info, and real-time Bitcoin data.</span>
                             </li>
                             <li className="flex items-start gap-2">
-                                <span className="text-amber-500 font-bold mt-0.5 shrink-0">&bull;</span>
-                                <span><strong className="text-slate-800 dark:text-slate-200">Make long-term thinking easier.</strong> Self-custody, dollar-cost averaging, and the halving cycle, explained to beginners without the jargon.</span>
+                                <span className="text-amber-700 dark:text-amber-400 font-bold mt-0.5 shrink-0">&bull;</span>
+                                <span><strong className="text-slate-800 dark:text-slate-200">Make long-term thinking easier.</strong> Self-custody, dollar-cost averaging (buying a fixed amount on a fixed schedule), and the halving cycle, explained for beginners without the jargon.</span>
                             </li>
                             <li className="flex items-start gap-2">
-                                <span className="text-amber-500 font-bold mt-0.5 shrink-0">&bull;</span>
+                                <span className="text-amber-700 dark:text-amber-400 font-bold mt-0.5 shrink-0">&bull;</span>
                                 <span><strong className="text-slate-800 dark:text-slate-200">Stay neutral and non-custodial.</strong> This site never holds your keys, never asks for personal info, and never pushes a specific exchange or product.</span>
                             </li>
                         </ul>
@@ -122,23 +122,23 @@ export default function AboutPage() {
                         <p>This site exists to provide free, Bitcoin-only education. The arrangement, in full:</p>
                         <ul className="space-y-2 ml-1">
                             <li className="flex items-start gap-2">
-                                <span className="text-amber-500 font-bold mt-0.5 shrink-0">&bull;</span>
+                                <span className="text-amber-700 dark:text-amber-400 font-bold mt-0.5 shrink-0">&bull;</span>
                                 <span>No user accounts. No email collection. No data harvesting.</span>
                             </li>
                             <li className="flex items-start gap-2">
-                                <span className="text-amber-500 font-bold mt-0.5 shrink-0">&bull;</span>
+                                <span className="text-amber-700 dark:text-amber-400 font-bold mt-0.5 shrink-0">&bull;</span>
                                 <span>No paid products, no token, no newsletter upsell.</span>
                             </li>
                             <li className="flex items-start gap-2">
-                                <span className="text-amber-500 font-bold mt-0.5 shrink-0">&bull;</span>
+                                <span className="text-amber-700 dark:text-amber-400 font-bold mt-0.5 shrink-0">&bull;</span>
                                 <span>Some links are affiliate links (clearly labeled). They help cover hosting and development so the education can stay free.</span>
                             </li>
                             <li className="flex items-start gap-2">
-                                <span className="text-amber-500 font-bold mt-0.5 shrink-0">&bull;</span>
-                                <span>The site also runs ads to support ongoing costs. We keep them minimal and avoid misleading or low-quality placements.</span>
+                                <span className="text-amber-700 dark:text-amber-400 font-bold mt-0.5 shrink-0">&bull;</span>
+                                <span>The site runs cookieless display ads to cover ongoing costs. We keep them minimal and avoid misleading or low-quality placements.</span>
                             </li>
                             <li className="flex items-start gap-2">
-                                <span className="text-amber-500 font-bold mt-0.5 shrink-0">&bull;</span>
+                                <span className="text-amber-700 dark:text-amber-400 font-bold mt-0.5 shrink-0">&bull;</span>
                                 <span>If monetization ever changes, it will be optional, transparent, and aligned with Bitcoin values.</span>
                             </li>
                         </ul>
@@ -154,19 +154,19 @@ export default function AboutPage() {
                     <div className="space-y-3 text-sm sm:text-base text-slate-600 dark:text-slate-400 leading-relaxed">
                         <ul className="space-y-2 ml-1">
                             <li className="flex items-start gap-2">
-                                <span className="text-amber-500 font-bold mt-0.5 shrink-0">&bull;</span>
+                                <span className="text-amber-700 dark:text-amber-400 font-bold mt-0.5 shrink-0">&bull;</span>
                                 <span>Some outbound links on this site are affiliate links. They are labeled <strong className="text-slate-800 dark:text-slate-200">&quot;(affiliate)&quot;</strong> wherever they appear.</span>
                             </li>
                             <li className="flex items-start gap-2">
-                                <span className="text-amber-500 font-bold mt-0.5 shrink-0">&bull;</span>
+                                <span className="text-amber-700 dark:text-amber-400 font-bold mt-0.5 shrink-0">&bull;</span>
                                 <span>Clicking is optional. The site works the same either way.</span>
                             </li>
                             <li className="flex items-start gap-2">
-                                <span className="text-amber-500 font-bold mt-0.5 shrink-0">&bull;</span>
+                                <span className="text-amber-700 dark:text-amber-400 font-bold mt-0.5 shrink-0">&bull;</span>
                                 <span>No paywalls. No accounts. No email capture.</span>
                             </li>
                             <li className="flex items-start gap-2">
-                                <span className="text-amber-500 font-bold mt-0.5 shrink-0">&bull;</span>
+                                <span className="text-amber-700 dark:text-amber-400 font-bold mt-0.5 shrink-0">&bull;</span>
                                 <span>We never recommend custodial or shitcoin products. Only Bitcoin-aligned tools and resources.</span>
                             </li>
                         </ul>
@@ -180,26 +180,35 @@ export default function AboutPage() {
                         <h2 className="text-xl sm:text-3xl font-bold text-slate-900 dark:text-white">Ads &amp; Analytics</h2>
                     </div>
                     <div className="space-y-3 text-sm sm:text-base text-slate-600 dark:text-slate-400 leading-relaxed">
+                        <p>Ads help cover hosting and development costs. Here is everything that runs:</p>
                         <ul className="space-y-2 ml-1">
                             <li className="flex items-start gap-2">
-                                <span className="text-amber-500 font-bold mt-0.5 shrink-0">&bull;</span>
-                                <span>The site displays ads to help cover hosting and development costs.</span>
+                                <span className="text-amber-700 dark:text-amber-400 font-bold mt-0.5 shrink-0">&bull;</span>
+                                <span><strong className="text-slate-800 dark:text-slate-200">Display ads come from A-ADS,</strong> a Bitcoin-native network. They set no cookies, build no profile of you, and do not follow you to other sites. Each ad is picked by the page it sits on, not by your browsing history.</span>
                             </li>
                             <li className="flex items-start gap-2">
-                                <span className="text-amber-500 font-bold mt-0.5 shrink-0">&bull;</span>
-                                <span>Ads may set cookies or use standard ad measurement, depending on your browser settings.</span>
+                                <span className="text-amber-700 dark:text-amber-400 font-bold mt-0.5 shrink-0">&bull;</span>
+                                <span>Google AdSense was removed in July 2026. Surveillance advertising contradicts what this site says about privacy, and the lower revenue was worth it.</span>
                             </li>
                             <li className="flex items-start gap-2">
-                                <span className="text-amber-500 font-bold mt-0.5 shrink-0">&bull;</span>
+                                <span className="text-amber-700 dark:text-amber-400 font-bold mt-0.5 shrink-0">&bull;</span>
+                                <span>Traffic stats come from Vercel Web Analytics and Speed Insights. Both are cookieless and aggregate, so they cannot identify you.</span>
+                            </li>
+                            <li className="flex items-start gap-2">
+                                <span className="text-amber-700 dark:text-amber-400 font-bold mt-0.5 shrink-0">&bull;</span>
+                                <span>Accept analytics in the cookie banner and Google Ads conversion tracking loads. It tells us whether our own advertising reaches anyone. Decline and it never loads.</span>
+                            </li>
+                            <li className="flex items-start gap-2">
+                                <span className="text-amber-700 dark:text-amber-400 font-bold mt-0.5 shrink-0">&bull;</span>
                                 <span>We do not sell personal data ourselves.</span>
                             </li>
                             <li className="flex items-start gap-2">
-                                <span className="text-amber-500 font-bold mt-0.5 shrink-0">&bull;</span>
+                                <span className="text-amber-700 dark:text-amber-400 font-bold mt-0.5 shrink-0">&bull;</span>
                                 <span>You can use an ad blocker. The site still works.</span>
                             </li>
                             <li className="flex items-start gap-2">
-                                <span className="text-amber-500 font-bold mt-0.5 shrink-0">&bull;</span>
-                                <span>We keep ads minimal and avoid misleading or low-quality placements.</span>
+                                <span className="text-amber-700 dark:text-amber-400 font-bold mt-0.5 shrink-0">&bull;</span>
+                                <span>We keep ads minimal and avoid misleading or low-quality placements. Full detail is in the <Link href="/privacy" className="text-amber-700 dark:text-amber-400 hover:underline font-medium">privacy policy</Link>.</span>
                             </li>
                         </ul>
                     </div>
@@ -222,7 +231,7 @@ export default function AboutPage() {
                             'Make misleading claims about future performance',
                         ].map((item) => (
                             <div key={item} className="flex items-start gap-2 text-sm sm:text-base text-slate-600 dark:text-slate-400">
-                                <span className="text-red-400 dark:text-red-500 font-bold mt-0.5 shrink-0">&times;</span>
+                                <span className="text-red-700 dark:text-red-400 font-bold mt-0.5 shrink-0">&times;</span>
                                 <span>{item}</span>
                             </div>
                         ))}
@@ -282,14 +291,14 @@ export default function AboutPage() {
 
                 {/* CTA */}
                 <section className="text-center space-y-4 pt-4">
-                    <div className="bg-gradient-to-br from-amber-500 to-orange-600 rounded-2xl p-6 sm:p-10 text-white">
+                    <div className="bg-gradient-to-br from-amber-500 to-orange-600 rounded-2xl p-6 sm:p-10 text-slate-950">
                         <h2 className="text-xl sm:text-2xl font-bold mb-2">Ready to run the numbers?</h2>
-                        <p className="text-sm sm:text-base text-white/80 mb-4">
+                        <p className="text-sm sm:text-base text-slate-900 mb-4">
                             See what consistent Bitcoin accumulation would look like for you.
                         </p>
                         <Link
                             href="/"
-                            className="inline-block px-6 py-3 bg-white text-amber-700 dark:text-amber-400 font-semibold rounded-xl text-sm sm:text-base hover:bg-amber-50 transition-colors"
+                            className="inline-block px-6 py-3 bg-white text-amber-700 font-semibold rounded-xl text-sm sm:text-base hover:bg-amber-50 transition-colors"
                         >
                             Open the Calculator
                         </Link>
@@ -297,7 +306,7 @@ export default function AboutPage() {
                 </section>
 
                 {/* Disclaimer */}
-                <p className="text-[10px] sm:text-xs text-slate-400 dark:text-slate-500 text-center leading-relaxed max-w-2xl mx-auto">
+                <p className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 text-center leading-relaxed max-w-2xl mx-auto">
                     <strong>Disclaimer:</strong> This site is for educational purposes only and does not constitute financial advice.
                     Bitcoin is volatile and carries risk. Always do your own research before making any decisions.
                     Some links on this site are affiliate links. The site also displays ads. See the sections above for full details.

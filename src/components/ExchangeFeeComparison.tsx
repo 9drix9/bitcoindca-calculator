@@ -64,7 +64,7 @@ export const ExchangeFeeComparison = ({ totalInvested, purchaseCount }: Exchange
                                                 </span>
                                             )}
                                             {exchange.note && (
-                                                <span className="text-[11px] text-slate-400 dark:text-slate-500">{exchange.note}</span>
+                                                <span className="text-[11px] text-slate-500 dark:text-slate-400">{exchange.note}</span>
                                             )}
                                         </span>
                                     </td>
@@ -94,9 +94,10 @@ export const ExchangeFeeComparison = ({ totalInvested, purchaseCount }: Exchange
             </div>
 
             <p className="mt-3 text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-                Rates last verified July 2026. Maker/taker tiers and price spread vary by exchange and order size, so
-                these percentages cover per-purchase trading fees only. Strike and River&apos;s 0% excludes their price
-                spread, and Cash App&apos;s ~2.2% is an approximation that varies by purchase amount.
+                Rates last verified July 2026. These percentages cover the trading fee on each purchase and nothing
+                else. Your own rate can move with your order size and how much you trade. Exchanges also earn a
+                spread, the gap between the price they buy at and the price they sell at. Strike and River&apos;s 0%
+                leaves their spread out, and Cash App&apos;s ~2.2% is an approximation that varies by purchase amount.
             </p>
         </Card>
     );

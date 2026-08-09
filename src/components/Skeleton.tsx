@@ -16,6 +16,23 @@ export const SkeletonCard = () => (
     </div>
 );
 
+/**
+ * Placeholder for a lazily-loaded panel inside the results tabs.
+ *
+ * Without this, switching tabs rendered `null` until the panel's chunk arrived.
+ * The tabs sit well down a long page, so the document collapsed by the full
+ * height of the outgoing panel, the browser clamped scrollTop to the new
+ * scrollHeight, and the reader was dumped at the bottom of the page. Reserving
+ * height keeps the document tall enough that there is nothing to clamp to.
+ */
+export const SkeletonPanel = () => (
+    <div className="space-y-4 animate-pulse" aria-hidden="true">
+        <div className="h-5 w-44 bg-slate-200 dark:bg-slate-700 rounded" />
+        <div className="h-40 sm:h-56 w-full bg-slate-100 dark:bg-slate-800 rounded-2xl" />
+        <div className="h-40 sm:h-56 w-full bg-slate-100 dark:bg-slate-800 rounded-2xl" />
+    </div>
+);
+
 export const SkeletonChart = () => (
     // h-[340px] sm:h-[460px] mirrors DcaChart's Card exactly.
     <div className="w-full h-[340px] sm:h-[460px] bg-white dark:bg-slate-900 rounded-2xl p-3 sm:p-4 shadow-[var(--elev-1)] border border-[var(--hairline)] animate-pulse">

@@ -31,7 +31,7 @@ const CALCULATORS: CalculatorEntry[] = [
         name: 'Bitcoin Drawdown Calculator',
         question: 'How far did it fall from the top, and how long did getting back take?',
         body:
-            'Every Bitcoin holder eventually watches their position drop. This measures the real ones: how deep each fall from a previous high went, how long the position stayed underwater, and what the worst stretch in your date range looked like.',
+            'Every Bitcoin holder eventually watches their position drop. This measures the real ones: how deep each fall from a previous high went, and how long the position stayed underwater. It also flags the worst stretch in your date range.',
         caveat: 'Measured on one price per UTC day, so intraday spikes and wicks are not counted.',
         icon: TrendingDown,
     },
@@ -40,7 +40,7 @@ const CALCULATORS: CalculatorEntry[] = [
         name: 'Bitcoin FIRE Calculator',
         question: 'How much Bitcoin would it take to cover what I spend?',
         body:
-            'Pick your annual spending and the withdrawal rate you would trust, and this works backwards to the stack that supports it — plus how far the BTC you already hold gets you toward that number.',
+            'Pick your annual spending and the withdrawal rate you would trust. This works backwards to the stack that supports it. It also shows how far the BTC you already hold gets you toward that number.',
         caveat: 'A withdrawal rate is an assumption, not a law. Bitcoin has never had a smooth return path.',
         icon: Flame,
     },
@@ -49,7 +49,7 @@ const CALCULATORS: CalculatorEntry[] = [
         name: 'Stack Sats Goal Tracker',
         question: 'At my buy rate, when do I actually hit 0.1 BTC?',
         body:
-            'Set a target in BTC or sats and how much you buy each week or month. You get a date, the total it costs to get there, and how the answer moves if the price runs or stalls along the way.',
+            'Set a target in BTC or sats (a sat is one hundred-millionth of a bitcoin) and how much you buy each week or month. You get a date and the total it costs to get there. You also see how the answer moves if the price runs or stalls.',
         caveat: 'Future dates assume a price path. Nobody has one, so treat the date as a range.',
         icon: Coins,
     },
@@ -58,8 +58,8 @@ const CALCULATORS: CalculatorEntry[] = [
         name: 'Exchange Fee Comparison',
         question: 'What is my exchange quietly costing me over years of buying?',
         body:
-            'A 1.5% fee sounds small on a single $50 buy. Run it across a full DCA schedule and it becomes a specific number of dollars, and a specific amount of Bitcoin you never bought. This puts each major exchange side by side on the same schedule.',
-        caveat: 'Trading fees only. Price spread, which is where several "zero fee" services earn, is not included.',
+            'A 1.5% fee sounds small on a single $50 buy. Run it across a full DCA schedule and it becomes a specific number of dollars. It also becomes a specific amount of Bitcoin you never bought. This puts each major exchange side by side on the same schedule.',
+        caveat: 'Trading fees only. The spread is the gap between the price you are quoted and the real market price. It is where several "zero fee" services earn, and it is not counted here.',
         icon: Receipt,
     },
     {
@@ -67,8 +67,8 @@ const CALCULATORS: CalculatorEntry[] = [
         name: 'Bitcoin Cost Basis Calculator',
         question: 'What did I actually pay per coin across all my buying?',
         body:
-            'Add each period you bought in — a 2021 run, a 2023 restart, a lump sum — and get one blended average cost, the BTC each lot holds, and where the whole position stands today.',
-        caveat: 'A cost basis estimate, not tax reporting. Jurisdictions differ on lot accounting.',
+            'Add each period you bought in: a 2021 run, a 2023 restart, a lump sum. You get one blended average cost, the BTC held in each batch, and where the whole position stands today.',
+        caveat: 'A cost basis estimate, meaning what you paid per coin. This is not tax reporting, and jurisdictions differ on how purchases get matched to sales.',
         icon: Scale,
     },
 ];
@@ -210,9 +210,10 @@ export default async function CalculatorsHubPage() {
                         Bitcoin <span className="text-amber-700 dark:text-amber-400">Calculators</span>
                     </h1>
                     <p className="text-base sm:text-lg text-slate-600 dark:text-slate-300 leading-relaxed">
-                        Five tools, each built around a single question people actually ask. They all run on the same
-                        engine as the main DCA calculator and the same historical price data, so a number you see here
-                        lines up with a number you see there. No account, no email, nothing saved on a server.
+                        Five tools, each built around a single question people actually ask. Dollar-cost averaging, or
+                        DCA, means buying a fixed amount on a fixed schedule. All five run on the same engine and the
+                        same historical price data as the main DCA calculator. A number you see here lines up with the
+                        same number there. No account, no email, nothing saved on a server.
                     </p>
                 </header>
 
@@ -250,9 +251,10 @@ export default async function CalculatorsHubPage() {
                             </div>
                         </div>
                         <p className="mt-3 text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-                            Prices come from Kraken with Coinbase as a fallback, bucketed by UTC calendar day. These
-                            figures refresh once a day; the live calculator uses the current price at the moment you
-                            load it. Pre-2015 history and the rest of the assumptions are written out on the{' '}
+                            Prices come from Kraken, with Coinbase as a fallback. Each day gets one price, bucketed by
+                            the UTC calendar day. These figures refresh once a day. The live calculator uses the
+                            current price at the moment you load it. Pre-2015 history and the rest of the assumptions
+                            are written out on the{' '}
                             <Link href="/methodology" className="text-amber-700 dark:text-amber-400 hover:underline font-medium">
                                 methodology page
                             </Link>.
@@ -313,9 +315,10 @@ export default async function CalculatorsHubPage() {
                         Start with the DCA calculator
                     </h2>
                     <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300 mb-5 max-w-xl mx-auto leading-relaxed">
-                        Most of the tools above are more useful once you have a schedule in mind. The main calculator
-                        takes any amount, cadence, date range, and fee, backtests it against the same historical prices,
-                        and gives you the BTC accumulated, average cost, and annualized return to carry into the rest.
+                        Most of the tools above are more useful once you have a schedule in mind. Give the main
+                        calculator an amount, a cadence, a date range, and a fee. It runs that schedule against the
+                        same historical prices and reports the BTC accumulated, your average cost, and the annualized
+                        return. Carry those into the rest.
                     </p>
                     <Link
                         href="/"
@@ -333,19 +336,20 @@ export default async function CalculatorsHubPage() {
                     </h2>
                     <div className="space-y-3 text-sm sm:text-base text-slate-600 dark:text-slate-300 leading-relaxed">
                         <p>
-                            Anything backward-looking here is a measurement. Buys are simulated on UTC calendar days
-                            against real market prices, so &ldquo;what a schedule would have done&rdquo; is arithmetic
-                            on history, not a forecast, and it is reproducible from the same inputs.
+                            Anything backward-looking here is a measurement. The tools simulate your buys on UTC
+                            calendar days against real market prices. So &ldquo;what a schedule would have done&rdquo;
+                            is arithmetic on history, not a forecast. Run it again with the same inputs and you get the
+                            same answer.
                         </p>
                         <p>
                             Anything forward-looking is arithmetic on an assumption you supplied. A growth rate or a
                             withdrawal rate produces a smooth path Bitcoin has never had. Real sequences arrive in the
-                            wrong order: an 80% drawdown early does far more damage than the same drawdown late, and
-                            no single number captures that. Change the assumption, watch the answer move, and take the
-                            spread more seriously than any one result.
+                            wrong order. A drawdown is a fall from a previous high, and an 80% one early does far more
+                            damage than the same fall late. No single number captures that. Change the assumption,
+                            watch the answer move, and take the range of answers more seriously than any one result.
                         </p>
                         <p>
-                            Fees and spread are modelled only where a tool says so, and taxes are not modelled anywhere.
+                            Fees and spread are modeled only where a tool says so. Taxes are not modeled anywhere.
                             The full list of what is and is not included lives on the{' '}
                             <Link href="/methodology" className="text-amber-700 dark:text-amber-400 hover:underline font-medium">
                                 methodology page

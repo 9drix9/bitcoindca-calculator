@@ -53,11 +53,11 @@ const BitcoinAdoption = dynamic(() => import('@/components/LazyBitcoinAdoption')
 const faqItems = [
   {
     question: "Is this calculator accurate?",
-    answer: "We use historical price data from Kraken and Coinbase. Coinbase mode uses real daily candles back to 2015; Kraken mode uses weekly closes interpolated to daily. For August 2010 through mid-2015 we use a static snapshot of real daily market prices from blockchain.info — no prices are fabricated, though the very early years are quoted in whole cents, so figures from that era are coarse. Missing dates fall back to the last known price. The Methodology page documents exactly how every number is computed. Intended for estimation and education."
+    answer: "Prices come from Kraken and Coinbase. In Coinbase mode you get real daily candles (one recorded price per day) going back to 2015. In Kraken mode you get weekly closing prices, interpolated to daily: the days in between are filled in along a straight line between two real weekly prices. For August 2010 through mid-2015 we use a static snapshot of real daily market prices from blockchain.info. No prices are fabricated. Those earliest years were quoted in whole cents, so figures from that era are coarse. If a date has no price at all, the last known price carries forward. The Methodology page documents exactly how every number is computed. Intended for estimation and education."
   },
   {
     question: "What do annualized return (XIRR) and max drawdown mean?",
-    answer: "XIRR is your money-weighted annualized return. It's the yearly growth rate that accounts for the timing and size of every purchase, which makes it the honest way to annualize a DCA strategy. Max drawdown is the largest peak-to-trough fall your portfolio value took along the way."
+    answer: "XIRR is your yearly return rate, adjusted for the fact that your money went in at different times. Its formal name is money-weighted annualized return. Because it accounts for the size and date of every buy, it's the honest way to put a yearly figure on a DCA plan. Max drawdown is the largest fall your portfolio value took from a high point to the low that came after it."
   },
   {
     question: "Does this include transaction fees?",
@@ -65,11 +65,11 @@ const faqItems = [
   },
   {
     question: "What is the best frequency for DCA?",
-    answer: "Historically, the difference between Daily and Weekly DCA is negligible over multi-year periods. Weekly is often preferred by manual investors to minimize transaction fees and record-keeping effort, while Daily is great for automated setups."
+    answer: "Historically, the difference between Daily and Weekly DCA is negligible over multi-year periods. People who buy by hand tend to pick Weekly, because it means fewer fees and less record-keeping. Daily is great for automated setups."
   },
   {
     question: "Can I export my data?",
-    answer: "Yes. Click the download icon next to the projected investment total to export the full transaction history as a CSV. It includes every purchase date, BTC price, amount invested, BTC bought, and portfolio value, converted to your selected currency."
+    answer: "Yes. Once you have results, use the CSV button below them, or the download icon next to the total invested. Either one exports your full transaction history. It includes every purchase date, BTC price, amount invested, BTC bought, and portfolio value, converted to your selected currency."
   }
 ];
 
@@ -249,7 +249,9 @@ export default function Home() {
             Bitcoin DCA Calculator
           </h1>
           <p className="text-sm sm:text-base text-slate-500 dark:text-slate-400 max-w-2xl mx-auto">
-            Backtest a dollar-cost-averaging strategy against real market history.
+            Dollar-cost averaging means buying a fixed amount on a set schedule, whatever the
+            price is that day. This tool runs that plan against real Bitcoin market history and
+            shows you what it would be worth.
           </p>
           <Suspense fallback={<HeroLiveSkeleton />}>
             <HeroLive />

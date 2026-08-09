@@ -125,7 +125,7 @@ function SectionHeading({ icon, children }: { icon: React.ReactNode; children: R
 function Bullet({ children }: { children: React.ReactNode }) {
     return (
         <li className="flex items-start gap-2">
-            <span className="text-amber-500 font-bold mt-0.5 shrink-0" aria-hidden="true">&bull;</span>
+            <span className="text-amber-700 dark:text-amber-400 font-bold mt-0.5 shrink-0" aria-hidden="true">&bull;</span>
             <span>{children}</span>
         </li>
     );
@@ -214,12 +214,13 @@ export default function AuthorPage() {
                             paying for the output, so when something here is wrong, it&apos;s mine to fix.
                         </p>
                         <p>
-                            I started this because the honest answer to &quot;what would consistent Bitcoin buying
-                            have done for me?&quot; was buried under sites that wanted an email address first,
-                            invented their own price history, or quietly showed a number that flattered the
-                            strategy. I wanted a calculator where every input, every formula, and every data
-                            source was visible, and where the uncomfortable numbers &mdash; maximum drawdown,
-                            the worst buy, the fee drag &mdash; were shown next to the flattering ones.
+                            I started this because one plain question had no honest answer online: what would
+                            consistent Bitcoin buying have done for me? The sites that answered it wanted an email
+                            address first, invented their own price history, or quietly showed a number that
+                            flattered the strategy. I wanted a calculator where every input, every formula, and
+                            every data source was visible. One where the uncomfortable figures sit next to the
+                            flattering ones: maximum drawdown, the worst buy, the fee drag. (Maximum drawdown is
+                            the worst fall from a high point to the low that followed.)
                         </p>
                         <p>
                             The project is MIT licensed and the repository is public. If you want to check my
@@ -237,9 +238,10 @@ export default function AuthorPage() {
                         <ul className="space-y-2 ml-1">
                             <Bullet>
                                 <strong className="text-slate-800 dark:text-slate-200">The DCA engine.</strong>{' '}
-                                Purchase scheduling on UTC calendar days, average cost, ROI, money-weighted
-                                annualized return (XIRR, solved numerically), maximum drawdown, best and worst
-                                buy, and fee drag. The formulas are written out on the{' '}
+                                Purchase scheduling on UTC calendar days, average cost, and ROI (your gain or loss
+                                as a percentage of what you put in). Then money-weighted annualized return
+                                (XIRR, solved numerically), maximum drawdown, best and worst buy, and fee drag.
+                                The formulas are written out on the{' '}
                                 <Link href="/methodology" className="text-amber-700 dark:text-amber-400 hover:underline font-medium">
                                     methodology page
                                 </Link>.
@@ -252,7 +254,7 @@ export default function AuthorPage() {
                             </Bullet>
                             <Bullet>
                                 <strong className="text-slate-800 dark:text-slate-200">The education pages.</strong>{' '}
-                                Self-custody, mining, and &quot;why Bitcoin&quot; &mdash; including an evidence
+                                Self-custody, mining, and &quot;why Bitcoin&quot;. That includes an evidence
                                 scorecard that grades common Bitcoin claims, some of which this project itself
                                 used to repeat uncritically.
                             </Bullet>
@@ -280,19 +282,19 @@ export default function AuthorPage() {
                             <ul className="space-y-2 ml-1">
                                 <Bullet>
                                     I am <strong className="text-slate-800 dark:text-slate-200">not a financial adviser</strong>,
-                                    broker, accountant, or tax professional, and I hold no licence or certification
-                                    in any of those fields. Nothing on this site is personalised advice.
+                                    broker, accountant, or tax professional, and I hold no license or certification
+                                    in any of those fields. Nothing on this site is personalized advice.
                                 </Bullet>
                                 <Bullet>
-                                    I have <strong className="text-slate-800 dark:text-slate-200">no way of knowing your situation</strong>{' '}
-                                    &mdash; your income, debts, tax residency, or risk tolerance &mdash; and the
-                                    calculator doesn&apos;t ask. It backtests a schedule; it does not evaluate whether
+                                    I have <strong className="text-slate-800 dark:text-slate-200">no way of knowing your situation</strong>:{' '}
+                                    your income, debts, tax residency, or risk tolerance. The calculator
+                                    doesn&apos;t ask. It backtests a schedule; it does not judge whether
                                     that schedule is sensible for you.
                                 </Bullet>
                                 <Bullet>
                                     I <strong className="text-slate-800 dark:text-slate-200">don&apos;t predict prices</strong>.
-                                    Where the site projects forward, it does so from explicit assumptions you choose,
-                                    labelled as scenarios, not forecasts.
+                                    Where the site projects forward, it does so from assumptions you choose yourself.
+                                    Those are labeled as scenarios, not forecasts.
                                 </Bullet>
                                 <Bullet>
                                     I hold Bitcoin. That&apos;s a real bias, and you should read everything here with
@@ -330,7 +332,8 @@ export default function AuthorPage() {
                                         methodology page
                                     </Link>{' '}
                                     with what it provides and how long it is cached. Where a series is interpolated
-                                    rather than measured, the page says so.
+                                    rather than measured, meaning the gaps between real data points are filled in,
+                                    the page says so.
                                 </p>
                             </div>
 
@@ -350,12 +353,11 @@ export default function AuthorPage() {
                                     3. Corrections are made openly, not quietly
                                 </h3>
                                 <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-                                    When a calculation error is found, the fix goes into the public commit history
-                                    and, if it changed any displayed result, into the{' '}
+                                    When a calculation error turns up, the fix goes into the public commit history.
+                                    If it changed any displayed result, it also goes into the{' '}
                                     <Link href="/methodology" className="text-amber-700 dark:text-amber-400 hover:underline font-medium">
                                         methodology changelog
-                                    </Link>{' '}
-                                    describing what was wrong and what changed. Past entries include double-counted
+                                    </Link>, with what was wrong and what changed. Past entries include double-counted
                                     future contributions, currency conversion inconsistencies, and timezone-dependent
                                     purchase schedules. I&apos;d rather list those than pretend they never happened.
                                 </p>
@@ -366,9 +368,9 @@ export default function AuthorPage() {
                                     4. Methodology changes are documented
                                 </h3>
                                 <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-                                    If the way a number is calculated changes &mdash; a different data source, a
-                                    different formula, a different default &mdash; that change is written into the
-                                    changelog rather than silently shipped. Results that move should be explainable.
+                                    If the way a number is calculated changes, that goes into the changelog rather
+                                    than shipping silently. A different data source, a different formula, a
+                                    different default: all of it counts. Results that move should be explainable.
                                 </p>
                             </div>
 
@@ -382,7 +384,7 @@ export default function AuthorPage() {
                                         Why Bitcoin
                                     </Link>{' '}
                                     page grades common claims by how well they survive scrutiny, including ones this
-                                    project previously stated too confidently, and it names open risks such as the
+                                    project previously stated too confidently. It also names open risks, such as the
                                     long-run mining security budget. Nothing on this site promises a return.
                                 </p>
                             </div>
@@ -456,13 +458,13 @@ export default function AuthorPage() {
                             </Bullet>
                             <Bullet>
                                 <strong className="text-slate-800 dark:text-slate-200">Cookieless ads.</strong>{' '}
-                                Two small A-ADS slots. Google AdSense was deliberately removed in July 2026 because
-                                surveillance advertising contradicts what this site says about privacy, and I
-                                accepted the lower revenue for it.
+                                Two small A-ADS slots. I deliberately removed Google AdSense in July 2026, because
+                                surveillance advertising contradicts what this site says about privacy. I accepted
+                                the lower revenue for it.
                             </Bullet>
                             <Bullet>
                                 <strong className="text-slate-800 dark:text-slate-200">Affiliate links,</strong>{' '}
-                                labelled &quot;(affiliate)&quot; wherever they appear. Clicking one is optional and
+                                labeled &quot;(affiliate)&quot; wherever they appear. Clicking one is optional and
                                 changes nothing about how the site behaves.
                             </Bullet>
                             <Bullet>
@@ -509,8 +511,8 @@ export default function AuthorPage() {
                         Run your own numbers
                     </h2>
                     <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300 mb-5 max-w-xl mx-auto">
-                        Don&apos;t take my word for any of it. Put in your own amount, cadence, and dates,
-                        then check the maths against the methodology page.
+                        Don&apos;t take my word for any of it. Put in your own amount, schedule, and dates,
+                        then check the math against the methodology page.
                     </p>
                     <Link
                         href="/"

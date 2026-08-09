@@ -276,7 +276,7 @@ export default async function EmbedPage({ searchParams }: EmbedPageProps) {
 
                     <div className="flex items-center justify-between gap-2">
                         <Brand href={ctaHref} />
-                        <span className="shrink-0 text-[10px] tabular-nums text-slate-400 dark:text-slate-500">
+                        <span className="shrink-0 text-[10px] tabular-nums text-slate-500 dark:text-slate-400">
                             {formatUtc(renderedAt, 'full')}
                         </span>
                     </div>
@@ -327,7 +327,7 @@ export default async function EmbedPage({ searchParams }: EmbedPageProps) {
                                 Price data is temporarily unavailable
                             </p>
                             <p className="mt-1 text-[13px] leading-relaxed text-slate-500 dark:text-slate-400">
-                                This result could not be computed right now. The live calculator can run the same
+                                We couldn&apos;t compute this result right now. The live calculator can run the same
                                 schedule against multiple price sources.
                             </p>
                         </div>

@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { AlertTriangle, ArrowRight } from 'lucide-react';
+import { AlertTriangle, ArrowRight, ChevronDown } from 'lucide-react';
 import clsx from 'clsx';
 import { Card } from '@/components/ui/Card';
 import { getBitcoinPriceHistory, getCurrentBitcoinPrice } from '@/app/actions';
@@ -245,38 +245,38 @@ export default async function DcaScenarioPage({ params }: PageProps) {
         ],
     };
 
-    const faqJsonLd = result
+    // ONE source for the visible FAQ and the FAQPage markup. These three answers
+    // previously existed only as JSON-LD, on all 104 generated scenario pages —
+    // structured data describing content no reader could see, which is what earns a
+    // manual action. Rendering both from this array is what keeps them honest.
+    const faqs: { q: string; a: string }[] = result
+        ? [
+            {
+                q: `How much would $${amount} per ${freqSlug} in Bitcoin since ${year} be worth today?`,
+                a: `Investing $${amount} every ${freqSlug} from January 1, ${year} totals ${fmtUsd(result.totalInvested)} across ${result.breakdown.length} purchases. At today's price that stack would be worth ${fmtUsd(result.currentValue)}, a return of ${fmtPct(result.roi, true)}.`,
+            },
+            {
+                q: `How much BTC would $${amount} per ${freqSlug} since ${year} accumulate?`,
+                a: `About ${fmtBtc(result.btcAccumulated)} (${fmtSats(result.btcAccumulated)}), at an average cost of ${fmtUsd(result.averageCost)} per BTC.`,
+            },
+            {
+                q: 'What is the annualized return of this DCA schedule?',
+                a: stats?.xirrPercent != null
+                    ? `The money-weighted annualized return (XIRR) is ${fmtPct(stats.xirrPercent, true)} per year, with a maximum portfolio drawdown of ${fmtPct(stats.maxDrawdownPercent)} along the way.`
+                    : `The total return since ${year} is ${fmtPct(result.roi, true)}. The period is too short for a meaningful annualized figure.`,
+            },
+        ]
+        : [];
+
+    const faqJsonLd = faqs.length > 0
         ? {
             '@context': 'https://schema.org',
             '@type': 'FAQPage',
-            mainEntity: [
-                {
-                    '@type': 'Question',
-                    name: `How much would $${amount} per ${freqSlug} in Bitcoin since ${year} be worth today?`,
-                    acceptedAnswer: {
-                        '@type': 'Answer',
-                        text: `Investing $${amount} every ${freqSlug} from January 1, ${year} totals ${fmtUsd(result.totalInvested)} across ${result.breakdown.length} purchases. At today's price that stack would be worth ${fmtUsd(result.currentValue)}, a return of ${fmtPct(result.roi, true)}.`,
-                    },
-                },
-                {
-                    '@type': 'Question',
-                    name: `How much BTC would $${amount} per ${freqSlug} since ${year} accumulate?`,
-                    acceptedAnswer: {
-                        '@type': 'Answer',
-                        text: `About ${fmtBtc(result.btcAccumulated)} (${fmtSats(result.btcAccumulated)}), at an average cost of ${fmtUsd(result.averageCost)} per BTC.`,
-                    },
-                },
-                {
-                    '@type': 'Question',
-                    name: 'What is the annualized return of this DCA schedule?',
-                    acceptedAnswer: {
-                        '@type': 'Answer',
-                        text: stats?.xirrPercent != null
-                            ? `The money-weighted annualized return (XIRR) is ${fmtPct(stats.xirrPercent, true)} per year, with a maximum portfolio drawdown of ${fmtPct(stats.maxDrawdownPercent)} along the way.`
-                            : `The total return since ${year} is ${fmtPct(result.roi, true)}. The period is too short for a meaningful annualized figure.`,
-                    },
-                },
-            ],
+            mainEntity: faqs.map(({ q, a }) => ({
+                '@type': 'Question',
+                name: q,
+                acceptedAnswer: { '@type': 'Answer', text: a },
+            })),
         }
         : null;
 
@@ -426,9 +426,11 @@ export default async function DcaScenarioPage({ params }: PageProps) {
                         {/* Methodology note */}
                         <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
                             <strong className="font-semibold text-slate-600 dark:text-slate-300">How this is calculated:</strong>{' '}
-                            purchases are simulated on UTC calendar days against Kraken weekly candles interpolated to daily
-                            prices, with real daily market data covering 2010&ndash;2015. Amounts are in USD. No exchange fees
-                            are applied. The full{' '}
+                            purchases are simulated on UTC calendar days. Prices come from Kraken weekly candles filled in to
+                            daily values, with real daily market data covering 2010&ndash;2015. Amounts are in USD, and no
+                            exchange fees are applied. ROI is the gain as a percentage of what you put in. XIRR is the
+                            annualized return, meaning the yearly rate of growth, adjusted for money going in a bit at a time.
+                            Max drawdown is the deepest fall the stack ever took from its own peak. The full{' '}
                             <Link href="/methodology" className="text-amber-700 dark:text-amber-400 hover:underline">methodology</Link>{' '}
                             covers the rest.
                         </p>
@@ -467,6 +469,34 @@ export default async function DcaScenarioPage({ params }: PageProps) {
                         <ArrowRight className="w-4 h-4" />
                     </Link>
                 </Card>
+
+                {/* FAQ — same `faqs` array the FAQPage markup above is built from */}
+                {faqs.length > 0 && (
+                    <section className="space-y-4">
+                        <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">
+                            Common questions
+                        </h2>
+                        <div className="space-y-3">
+                            {faqs.map(({ q, a }) => (
+                                <details
+                                    key={q}
+                                    className="group rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 px-4 py-3 sm:px-5 sm:py-4"
+                                >
+                                    <summary className="cursor-pointer list-none font-semibold text-sm sm:text-base text-slate-900 dark:text-white marker:hidden flex items-center justify-between gap-3">
+                                        {q}
+                                        <ChevronDown
+                                            className="w-4 h-4 shrink-0 text-slate-500 dark:text-slate-400 transition-transform group-open:rotate-180"
+                                            aria-hidden="true"
+                                        />
+                                    </summary>
+                                    <p className="mt-2.5 text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+                                        {a}
+                                    </p>
+                                </details>
+                            ))}
+                        </div>
+                    </section>
+                )}
 
                 {/* Related scenarios */}
                 <section className="space-y-3">

@@ -9,7 +9,7 @@ export const revalidate = 86400;
 export const metadata: Metadata = {
     title: 'Bitcoin DCA Scenarios: What Steady Buying Would Be Worth',
     description:
-        'Browse 104 precomputed Bitcoin dollar-cost averaging scenarios: $10 to $250 every week or month, starting any year from 2013 to 2025. Each one is refreshed daily with total invested, value today, ROI, and BTC accumulated.',
+        '104 Bitcoin dollar-cost averaging scenarios: $10 to $250 weekly or monthly, from 2013 to 2025. Total invested, value today, ROI and BTC, refreshed daily.',
     alternates: {
         canonical: '/dca',
     },
@@ -53,13 +53,14 @@ export default function DcaScenariosIndexPage() {
                 {/* Hero */}
                 <section className="text-center max-w-3xl mx-auto space-y-3 sm:space-y-4">
                     <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-slate-900 dark:text-white text-balance">
-                        Bitcoin <span className="text-amber-500">DCA</span> Scenarios
+                        Bitcoin <span className="text-amber-700 dark:text-amber-400">DCA</span> Scenarios
                     </h1>
                     <p className="text-base sm:text-lg text-slate-600 dark:text-slate-300 leading-relaxed">
-                        What would steady buying have done? Each page below takes one fixed schedule (a set amount of
-                        Bitcoin bought every week or month since January 1 of the chosen year) and runs it against real
-                        historical prices. Results refresh daily. Pick a plan to see the total invested, what it&apos;s
-                        worth today, and the year-by-year breakdown.
+                        What would steady buying have done? DCA, or dollar-cost averaging, means buying the same amount
+                        on a fixed schedule whatever the price is doing. Each page below takes one such plan: a set
+                        amount of Bitcoin bought every week or month since January 1 of the year you pick. We run it
+                        against real historical prices and refresh the results daily. Pick a plan to see the total
+                        invested, what it&apos;s worth today, and the year-by-year breakdown.
                     </p>
                 </section>
 
@@ -98,9 +99,9 @@ export default function DcaScenariosIndexPage() {
                         Backtest your own plan
                     </h2>
                     <p className="text-sm sm:text-base text-slate-600 dark:text-slate-400 mb-5 max-w-xl mx-auto">
-                        These pages cover the common schedules. For anything else, the live calculator takes any
-                        amount, cadence, date range, and fee, running on the same historical data from Kraken
-                        and Coinbase.
+                        These pages cover the common schedules. For anything else, use the live calculator. It takes any
+                        amount, cadence, date range and fee, and runs on the same historical data from Kraken and
+                        Coinbase.
                     </p>
                     <Link
                         href="/"

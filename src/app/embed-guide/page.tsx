@@ -113,12 +113,13 @@ export default function EmbedGuidePage() {
                 {/* Hero */}
                 <section className="text-center max-w-3xl mx-auto space-y-3 sm:space-y-4">
                     <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-slate-900 dark:text-white text-balance">
-                        Embed the <span className="text-amber-500">Bitcoin DCA Calculator</span>
+                        Embed the <span className="text-amber-700 dark:text-amber-400">Bitcoin DCA Calculator</span>
                     </h1>
                     <p className="text-base sm:text-lg text-slate-600 dark:text-slate-300 max-w-2xl mx-auto leading-relaxed">
                         One iframe drops a live Bitcoin dollar-cost-averaging result card into an article, a newsletter
-                        archive, or a docs page. It recomputes against real market prices every hour.
-                        Free, no API key, no accounts, no tracking scripts.
+                        archive, or a docs page. It shows what buying a fixed amount on a regular schedule would have
+                        come to, recomputed against real market prices every hour. Free, no API key, no accounts,
+                        no tracking scripts.
                     </p>
                 </section>
 
@@ -245,19 +246,19 @@ export default function EmbedGuidePage() {
                     </div>
                     <ul className="space-y-2 ml-1 text-sm sm:text-base text-slate-600 dark:text-slate-400 leading-relaxed">
                         <li className="flex items-start gap-2">
-                            <span className="text-amber-500 font-bold mt-0.5 shrink-0">&bull;</span>
+                            <span className="text-amber-700 dark:text-amber-400 font-bold mt-0.5 shrink-0">&bull;</span>
                             <span>Free to embed on any site, personal or commercial. No permission needed, no attribution beyond the widget itself.</span>
                         </li>
                         <li className="flex items-start gap-2">
-                            <span className="text-amber-500 font-bold mt-0.5 shrink-0">&bull;</span>
+                            <span className="text-amber-700 dark:text-amber-400 font-bold mt-0.5 shrink-0">&bull;</span>
                             <span>Please leave the attribution link inside the card intact. That link is what pays for the data and the hosting.</span>
                         </li>
                         <li className="flex items-start gap-2">
-                            <span className="text-amber-500 font-bold mt-0.5 shrink-0">&bull;</span>
+                            <span className="text-amber-700 dark:text-amber-400 font-bold mt-0.5 shrink-0">&bull;</span>
                             <span>The widget loads no third-party scripts, sets no cookies, and collects nothing from your readers.</span>
                         </li>
                         <li className="flex items-start gap-2">
-                            <span className="text-amber-500 font-bold mt-0.5 shrink-0">&bull;</span>
+                            <span className="text-amber-700 dark:text-amber-400 font-bold mt-0.5 shrink-0">&bull;</span>
                             <span>Results are a historical simulation for education, not financial advice. Past performance does not guarantee future results.</span>
                         </li>
                     </ul>
@@ -269,7 +270,7 @@ export default function EmbedGuidePage() {
                         Build the scenario first
                     </h2>
                     <p className="text-sm sm:text-base text-slate-600 dark:text-slate-400 mb-5 max-w-xl mx-auto">
-                        Dial in the amount, cadence, dates, and fees in the full calculator, then copy those same
+                        Set the amount, schedule, dates, and fees in the full calculator, then copy those same
                         values into your embed URL.
                     </p>
                     <Link

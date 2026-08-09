@@ -181,30 +181,30 @@ export default async function StackSatsGoalPage() {
         {
             question: 'How long does it take to stack 1 bitcoin?',
             answer: price
-                ? `At today's price of ${fmtUsd(price)}, $500 a month buys roughly ${fmtInt((500 / price) * 1e8)} sats a month, so a whole bitcoin takes about ${fmtDuration(monthsTo1BtcAt500)} if the price never moves. Double the contribution and you roughly halve the time. This is a straight-line estimate at a constant price, not a forecast — the real answer depends entirely on what the price does while you are buying.`
+                ? `At today's price of ${fmtUsd(price)}, $500 a month buys roughly ${fmtInt((500 / price) * 1e8)} sats a month. A whole bitcoin then takes about ${fmtDuration(monthsTo1BtcAt500)}, if the price never moves. Double the contribution and you roughly halve the time. This is a straight-line estimate at a constant price, not a forecast. The real answer depends entirely on what the price does while you are buying.`
                 : 'It depends on how much you contribute and what the price does. At a constant price, the estimate is simply 1 BTC divided by the bitcoin your monthly contribution buys at that price. This page shows the calculation once live price data is available.',
         },
         {
             question: 'What is a sat?',
             answer: price
-                ? `A satoshi, or sat, is one hundred-millionth of a bitcoin — 1 BTC = 100,000,000 sats. It is the smallest unit the Bitcoin protocol can record, and it is why you never need to buy a whole coin. At ${fmtUsd(price)}, $100 buys about ${fmtInt(satsPer100)} sats.`
+                ? `A satoshi, or sat, is one hundred-millionth of a bitcoin: 1 BTC = 100,000,000 sats. It is the smallest unit the Bitcoin protocol can record, which is why you never need to buy a whole coin. At ${fmtUsd(price)}, $100 buys about ${fmtInt(satsPer100)} sats.`
                 : 'A satoshi, or sat, is one hundred-millionth of a bitcoin: 1 BTC = 100,000,000 sats. It is the smallest unit the Bitcoin protocol can record, which is why you never need to buy a whole coin.',
         },
         {
             question: 'Do I need to buy a whole bitcoin?',
-            answer: 'No. Bitcoin is divisible to eight decimal places, and every major exchange sells fractions. The instinct that you must own a whole unit is called unit bias: it makes a $3 token feel cheaper than a $100,000 one even though what you own is a percentage of a supply, not a number of units. What matters is the fraction of total supply you hold, not whether it rounds to a whole coin.',
+            answer: 'No. Bitcoin is divisible to eight decimal places, and every major exchange sells fractions. The instinct that you must own a whole unit is called unit bias. It makes a $3 token feel cheaper than a $100,000 one, even though what you own is a percentage of a supply rather than a number of units. What matters is the fraction of total supply you hold, not whether it rounds to a whole coin.',
         },
         {
             question: 'Why does this page project at today’s price instead of assuming growth?',
-            answer: 'Because a projection that assumes appreciation mostly tells you what you assumed. If you take bitcoin\'s past annualised return, apply it forward, and then use the result to argue that stacking is worthwhile, the conclusion was baked into the input. Holding the price constant is the one assumption that adds no opinion: it isolates the part you actually control, which is how much you contribute and how often.',
+            answer: 'Because a projection that assumes appreciation mostly tells you what you assumed. Take bitcoin\'s past annualized return, apply it forward, then use the result to argue that stacking is worthwhile. The conclusion was baked into the input. Holding the price constant is the one assumption that adds no opinion. It isolates the part you actually control: how much you contribute and how often.',
         },
         {
             question: 'What happens to my timeline if the price doubles?',
-            answer: 'The sats each dollar buys are halved, so every sat you have not bought yet takes about twice as long to accumulate. At the same time the sats you already own double in fiat value. Goals measured in bitcoin get further away when the price rises; goals measured in dollars get closer. A falling price does the reverse — faster accumulation, lower value on what you already hold.',
+            answer: 'The sats each dollar buys are halved, so every sat you have not bought yet takes about twice as long to accumulate. At the same time the sats you already own double in fiat value. Goals measured in bitcoin get further away when the price rises. Goals measured in dollars get closer. A falling price does the reverse: faster accumulation, lower value on what you already hold.',
         },
         {
             question: 'Is stacking to a round number like 1 BTC a sensible goal?',
-            answer: 'Round numbers are motivational, not financial. Nothing changes at 1.0 BTC that does not change at 0.9. The variables that actually matter are whether the contribution fits your budget without forcing you to sell at a bad time, whether you are paying reasonable fees, and whether you can hold through a drawdown of 70% or more, which has happened repeatedly. Treat a milestone as a progress marker, not a target that justifies stretching your finances.',
+            answer: 'Round numbers are motivational, not financial. Nothing changes at 1.0 BTC that does not change at 0.9. Three things actually matter. Whether the contribution fits your budget without forcing you to sell at a bad time. Whether you are paying reasonable fees. And whether you can hold through a drawdown of 70% or more, meaning a fall of that size from a previous high, which has happened repeatedly. Treat a milestone as a progress marker, not a target that justifies stretching your finances.',
         },
     ];
 
@@ -256,15 +256,16 @@ export default async function StackSatsGoalPage() {
                             <>
                                 Bitcoin is trading at <strong className="font-semibold text-slate-900 dark:text-white">{fmtUsd(price)}</strong>,
                                 so $100 buys about <strong className="font-semibold text-slate-900 dark:text-white">{fmtInt(satsPer100)} sats</strong>.
-                                The table below turns that into a timeline: how long 0.01, 0.1 and a full bitcoin take at
-                                seven common contribution rates, held at today&apos;s price. No assumed growth rate, because
-                                assuming one would answer the question before you asked it.
+                                A sat is one hundred-millionth of a bitcoin, which is why you never need to buy a whole
+                                coin. The table below turns that into a timeline. It shows how long 0.01, 0.1 and a full
+                                bitcoin take at seven common contribution rates, held at today&apos;s price. No assumed
+                                growth rate, because assuming one would answer the question before you asked it.
                             </>
                         ) : (
                             <>
-                                This page turns a contribution rate into a timeline: how long 0.01, 0.1 and a full bitcoin
-                                take at today&apos;s price, with no assumed growth rate. Live price data is temporarily
-                                unavailable, so the figures below are not showing right now.
+                                This page turns a contribution rate into a timeline. It shows how long 0.01, 0.1 and a
+                                full bitcoin take at today&apos;s price, with no assumed growth rate. Live price data is
+                                temporarily unavailable, so the figures below are not showing right now.
                             </>
                         )}
                     </p>
@@ -304,7 +305,7 @@ export default async function StackSatsGoalPage() {
                                 </div>
                                 <p className="mt-3 text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
                                     Calculated at the live price of {fmtUsd(price)} and held constant. Weekly rates are
-                                    converted at 52 weeks per year. Exchange fees are excluded — at a 1% fee every row gets
+                                    converted at 52 weeks per year. Exchange fees are excluded. At a 1% fee every row gets
                                     about 1% longer.
                                 </p>
                             </Card>
@@ -341,27 +342,28 @@ export default async function StackSatsGoalPage() {
                     </h2>
                     <div className="space-y-4 text-sm sm:text-base text-slate-600 dark:text-slate-400 leading-relaxed">
                         <p>
-                            Most &ldquo;time to 1 BTC&rdquo; tools quietly do one of two things. Either they extrapolate the
-                            rate at which you accumulated bitcoin in the past, or they apply bitcoin&apos;s historical
-                            annualised return to the future. Both look like analysis and neither is.
+                            Most &ldquo;time to 1 BTC&rdquo; tools quietly do one of two things. Either they project forward
+                            the rate at which you accumulated bitcoin in the past, or they apply bitcoin&apos;s historical
+                            annualized return to the future. Both look like analysis. Neither is.
                         </p>
                         <p>
-                            <strong className="text-slate-800 dark:text-slate-200">Extrapolating a past accumulation rate</strong>{' '}
+                            <strong className="text-slate-800 dark:text-slate-200">Projecting a past accumulation rate</strong>{' '}
                             says: you bought X sats per day over the last five years, so you will keep buying X sats per day.
-                            But sats per dollar is just the inverse of the price. A schedule that ran through 2019 accumulated
-                            sats at prices near $8,000; projecting that rate forward silently assumes bitcoin returns to
-                            $8,000 and stays there. It is a price forecast wearing a costume.
+                            But sats per dollar is just the price in reverse. When the price doubles, your sats per dollar
+                            halve. A schedule that ran through 2019 accumulated sats at prices near $8,000. Projecting that
+                            rate forward silently assumes bitcoin returns to $8,000 and stays there. It is a price forecast
+                            wearing a costume.
                         </p>
                         <p>
                             <strong className="text-slate-800 dark:text-slate-200">Applying a historical growth rate</strong> is
                             worse, because it is circular. You take the fact that bitcoin went up, feed it in as an
-                            assumption, and get out the conclusion that stacking will make you money. The output contains no
-                            information the input did not. Bitcoin&apos;s early returns came off a base of a few cents, from a
-                            market with almost no liquidity; nothing entitles the next decade to repeat it.
+                            assumption, and get back the conclusion that stacking will make you money. The output contains no
+                            information the input did not. Bitcoin&apos;s early returns came off a base of a few cents, in a
+                            market with almost no liquidity. Nothing entitles the next decade to repeat it.
                         </p>
                         <p>
-                            Holding the price flat is not a prediction that the price will stay flat. It is the only
-                            assumption that adds nothing of its own, which makes the result a clean statement about the
+                            Holding the price flat is not a prediction that the price will stay flat. It is simply the one
+                            assumption that adds nothing of its own. That makes the result a clean statement about the
                             variables you actually control: how much you put in and how often.
                         </p>
                     </div>
@@ -374,24 +376,24 @@ export default async function StackSatsGoalPage() {
                     </h2>
                     <div className="space-y-4 text-sm sm:text-base text-slate-600 dark:text-slate-400 leading-relaxed">
                         <p>
-                            One bitcoin is 100,000,000 satoshis. The satoshi, named after the pseudonymous author of the
-                            Bitcoin white paper, is the smallest amount the protocol records: every balance and every
-                            transaction on the network is denominated in whole sats internally. &ldquo;BTC&rdquo; is a display
+                            One bitcoin is 100,000,000 satoshis. The satoshi is named after the pseudonymous author of the
+                            Bitcoin white paper. It is the smallest amount the protocol records: internally, every balance
+                            and every transaction on the network is counted in whole sats. &ldquo;BTC&rdquo; is a display
                             convention layered on top.
                         </p>
                         <p>
                             That matters because of <strong className="text-slate-800 dark:text-slate-200">unit bias</strong>:
                             the tendency to judge an asset by its price per unit rather than by what a unit represents. A
-                            token priced at $0.02 feels cheap and a bitcoin priced in six figures feels expensive, even though
-                            price per unit says nothing at all without the supply attached to it. What you own is a share of a
+                            token priced at $0.02 feels cheap, and a bitcoin priced in six figures feels expensive. But price
+                            per unit says nothing at all without the supply attached to it. What you own is a share of a
                             fixed 21 million supply. Buying $50 of bitcoin gets you the same fraction of that supply whether
                             the interface shows it as 0.00045 BTC or 45,000 sats.
                         </p>
                         <p>
                             Counting in sats mostly removes the illusion. It replaces a number with six leading zeros with an
-                            ordinary five- or six-digit one, and it reframes the goal from &ldquo;buy a coin&rdquo; to
+                            ordinary five- or six-digit one. It also reframes the goal from &ldquo;buy a coin&rdquo; to
                             &ldquo;accumulate units,&rdquo; which is what a DCA schedule actually does. The calculator can
-                            display either — the BTC/sats toggle sits next to the currency selector.
+                            display either. The BTC/sats toggle sits next to the currency selector.
                         </p>
                     </div>
                 </section>
@@ -407,9 +409,9 @@ export default async function StackSatsGoalPage() {
                     {data?.sample ? (
                         <>
                             <p className="text-sm sm:text-base text-slate-600 dark:text-slate-400 leading-relaxed">
-                                This is not a mock-up. It is $50 a week bought every week for the last twelve months against
-                                real Kraken prices: {data.sample.purchaseCount} purchases,{' '}
-                                {fmtUsd(data.sample.totalInvested)} invested,{' '}
+                                These are real numbers, not a mock-up: $50 a week bought every week for the last twelve
+                                months against real Kraken prices. That is {data.sample.purchaseCount} purchases,{' '}
+                                {fmtUsd(data.sample.totalInvested)} invested, and{' '}
                                 {fmtBtc(data.sample.btcAccumulated)} accumulated
                                 ({fmtInt(data.sample.btcAccumulated * 1e8)} sats).
                             </p>
@@ -429,10 +431,10 @@ export default async function StackSatsGoalPage() {
                                 currentPrice={data.price}
                             />
                             <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
-                                One caveat worth stating plainly: the estimate at the bottom of that card extrapolates the
-                                sats-per-day this schedule actually achieved over the last twelve months, so it reflects the
-                                average price across that window rather than today&apos;s price. If bitcoin is more expensive
-                                now than it averaged over the year, that estimate is optimistic — the table at the top of this
+                                One caveat worth stating plainly. The estimate at the bottom of that card projects forward
+                                the sats-per-day this schedule actually achieved over the last twelve months. So it reflects
+                                the average price across that window, not today&apos;s price. If bitcoin is more expensive
+                                now than it averaged over the year, that estimate is optimistic. The table at the top of this
                                 page is the version priced at today&apos;s market.
                             </p>
                         </>
@@ -461,7 +463,7 @@ export default async function StackSatsGoalPage() {
                         <p>
                             <strong className="text-slate-800 dark:text-slate-200">Frequency barely matters.</strong> Over
                             multi-year periods, daily and weekly buying land within a rounding error of each other. Pick the
-                            cadence that minimises fees and admin for you.
+                            cadence that minimizes fees and admin for you.
                         </p>
                         <p>
                             <strong className="text-slate-800 dark:text-slate-200">Fees push the date out proportionally.</strong>{' '}

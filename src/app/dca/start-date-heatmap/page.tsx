@@ -269,7 +269,7 @@ const bucketFor = (annualized: number): Bucket =>
 
 const TITLE = 'Bitcoin DCA Start Date Heatmap: Annualized Returns by Start Year and Holding Period';
 const DESCRIPTION =
-    'A grid of real annualized (XIRR) returns for a $100/month Bitcoin DCA, by the year you started and how long you held. Each window is valued at its own end date, not today. See how much the start date mattered.';
+    'Annualized (XIRR) returns for a $100/month Bitcoin DCA, by the year you started and how long you held. Each window is valued at its own end date, not today.';
 
 export const metadata: Metadata = {
     title: 'Bitcoin DCA Start Date Heatmap',
@@ -354,7 +354,7 @@ export default async function StartDateHeatmapPage() {
         },
         {
             q: 'How is the annualized return in each cell calculated?',
-            a: 'Each cell simulates $100 bought on the first of every month for the whole window, then values the resulting Bitcoin at the market price on the window\'s end date. The annualized figure is XIRR: the money-weighted rate that discounts every dated purchase plus the closing value back to zero. Historical windows are never marked to today\'s price.',
+            a: 'Each cell simulates $100 bought on the first of every month for the whole window. The resulting Bitcoin is then valued at the market price on the window\'s end date. The annualized figure is XIRR: the yearly rate at which every dated purchase, plus the closing value, nets out to zero. It exists because the money went in gradually rather than all on day one, which a plain "total return divided by years" would get wrong. Historical windows are never valued at today\'s price.',
         },
         {
             q: 'Why do some cells say "in progress"?',
@@ -362,7 +362,7 @@ export default async function StartDateHeatmapPage() {
         },
         {
             q: 'Do these historical returns predict future Bitcoin returns?',
-            a: 'No. This grid is a record of what a specific mechanical schedule produced over a specific past period, during which Bitcoin went from a hobbyist experiment to a widely traded asset. Nothing here should be extrapolated forward. Past performance does not guarantee future results, and you can lose money.',
+            a: 'No. This grid records what one mechanical schedule produced over one stretch of the past. Across that stretch Bitcoin went from a hobbyist experiment to a widely traded asset. Nothing here should be projected forward. Past performance does not guarantee future results, and you can lose money.',
         },
     ];
 
@@ -406,10 +406,12 @@ export default async function StartDateHeatmapPage() {
                         Bitcoin DCA start date heatmap
                     </h1>
                     <p className="text-base sm:text-lg text-slate-600 dark:text-slate-300 leading-relaxed">
-                        Every cell below is the same schedule: <strong className="font-semibold text-slate-900 dark:text-white">$100 on the first of every month</strong>,
+                        Every cell below is the same plan: <strong className="font-semibold text-slate-900 dark:text-white">$100 on the first of every month</strong>,
                         no fees, starting in January of the row&apos;s year and running for the column&apos;s number of
-                        years. The number is the annualized (XIRR) return over that window, measured at the Bitcoin
-                        price on the day the window ended.
+                        years. The number is the annualized return over that window, meaning the yearly rate of growth
+                        that gets you from what went in to what came out. It is measured at the Bitcoin price on the day
+                        the window ended, not today&apos;s price. The exact method is XIRR, which accounts for the money
+                        going in a bit at a time instead of all on day one.
                     </p>
                     {shortest && longest && shortest.holdYears !== longest.holdYears && (
                         <p className="text-base sm:text-lg text-slate-600 dark:text-slate-300 leading-relaxed">
@@ -418,7 +420,7 @@ export default async function StartDateHeatmapPage() {
                             <strong className="font-semibold text-slate-900 dark:text-white">{fmtPct(shortest.best, true)}</strong> a year.
                             Completed {longest.holdYears}-year windows sat between <strong className="font-semibold text-slate-900 dark:text-white">{fmtPct(longest.worst, true)}</strong> and{' '}
                             <strong className="font-semibold text-slate-900 dark:text-white">{fmtPct(longest.best, true)}</strong>.
-                            The longer the hold, the less the entry point decided the outcome.
+                            The longer you held, the less your starting point decided the outcome.
                         </p>
                     )}
                 </header>
@@ -494,7 +496,7 @@ export default async function StartDateHeatmapPage() {
                                                     return (
                                                         <td
                                                             key={hold}
-                                                            className="text-center px-1.5 py-2 rounded-md whitespace-nowrap bg-slate-50 dark:bg-slate-800/40 text-slate-400 dark:text-slate-500"
+                                                            className="text-center px-1.5 py-2 rounded-md whitespace-nowrap bg-slate-50 dark:bg-slate-800/40 text-slate-500 dark:text-slate-400"
                                                         >
                                                             No data
                                                         </td>
@@ -509,7 +511,7 @@ export default async function StartDateHeatmapPage() {
                             {/* Legend */}
                             <div className="space-y-2 border-t border-slate-200 dark:border-slate-800 pt-4">
                                 <h3 className="text-xs font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                                    Legend &mdash; annualized return
+                                    Legend: annualized return
                                 </h3>
                                 <ul className="flex flex-wrap gap-x-4 gap-y-2">
                                     {BUCKETS.map((bucket) => (
@@ -533,8 +535,8 @@ export default async function StartDateHeatmapPage() {
                                     </li>
                                 </ul>
                                 <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-                                    Colour is only a shortcut. Every completed cell prints its own number, so the grid
-                                    reads the same with the colours ignored.
+                                    Color is only a shortcut. Every completed cell prints its own number, so the grid
+                                    reads the same with the colors ignored.
                                 </p>
                             </div>
                         </Card>
@@ -547,8 +549,8 @@ export default async function StartDateHeatmapPage() {
                                 </h2>
                                 <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300 leading-relaxed">
                                     This is the same data read column by column. &quot;Spread&quot; is the gap between the
-                                    best and worst completed window of that length: it is a direct measure of how much
-                                    of the outcome was decided by when you happened to start.
+                                    best and worst completed window of that length. It measures directly how much of the
+                                    outcome was decided by when you happened to start.
                                 </p>
                                 <div className="overflow-x-auto">
                                     <table className="w-full min-w-[460px] text-xs sm:text-sm tabular-nums">
@@ -621,38 +623,38 @@ export default async function StartDateHeatmapPage() {
                     <div className="space-y-4 text-sm sm:text-base text-slate-600 dark:text-slate-300 leading-relaxed">
                         <p>
                             <strong className="font-semibold text-slate-800 dark:text-slate-100">Short windows were a coin toss on timing.</strong>{' '}
-                            One-year windows contain the widest range of outcomes in the whole grid, and they are the
-                            only column with a meaningful count of negative results. A year is short enough that a
-                            single leg of the cycle dominates it: start into a run-up and the number is spectacular,
-                            start into a drawdown and it is deeply red. Nothing about the schedule changed between
-                            those two cases. Only the calendar did.
+                            One-year windows hold the widest range of outcomes in the whole grid, and they are the only
+                            column with a meaningful count of negative results. A year is short enough that one leg of
+                            the cycle decides it. Start into a run-up and the number is spectacular. Start into a
+                            drawdown, meaning a long slide down from the last peak, and it is deeply red. Nothing about
+                            the plan changed between those two cases. Only the calendar did.
                         </p>
                         <p>
-                            <strong className="font-semibold text-slate-800 dark:text-slate-100">The range narrows as the hold lengthens.</strong>{' '}
-                            Move right across any row and the numbers converge. Each extra year adds purchases made at
-                            prices the earlier buys never saw, so no single entry point keeps its grip on the average
-                            cost. That convergence &mdash; not the size of any individual number &mdash; is the real
-                            content of this page, and it is the strongest available argument for choosing a long
-                            horizon before you start rather than trying to pick a moment.
+                            <strong className="font-semibold text-slate-800 dark:text-slate-100">The range narrows the longer you hold.</strong>{' '}
+                            Move right across any row and the numbers converge. Each extra year adds purchases at prices
+                            the earlier buys never saw, so no single entry point keeps its grip on your average cost.
+                            That convergence is the real content of this page, not the size of any one number. It is
+                            also the strongest available argument for settling on a long horizon before you start,
+                            instead of trying to pick a moment.
                         </p>
                         <p>
                             <strong className="font-semibold text-slate-800 dark:text-slate-100">Annualized returns fall as you go down the grid.</strong>{' '}
-                            The earliest rows cover a period when Bitcoin was a tiny, illiquid, largely unknown asset.
+                            The earliest rows cover a period when Bitcoin was tiny, hard to trade, and largely unknown.
                             Those percentages describe a starting point that no longer exists. Reading the top-left of
-                            the grid as a baseline expectation would be a mistake; the later rows are the more relevant
+                            the grid as a baseline expectation would be a mistake. The later rows are the more relevant
                             comparison, and even they are history, not a forecast.
                         </p>
                         <p>
                             <strong className="font-semibold text-slate-800 dark:text-slate-100">Every window here ended in the past.</strong>{' '}
-                            A cell is filled in only once its full holding period has elapsed, and it is valued at the
-                            price on that end date. That matters more than it sounds: valuing a completed 2013&ndash;2016
-                            window at today&apos;s price would silently credit a three-year hold with everything that
-                            happened in the decade afterwards, and would make every historical window look like a
-                            success. Cells whose window is still running say &quot;in progress&quot; instead.
+                            A cell fills in only once its full holding period has run out, and it is valued at the price
+                            on that end date. That matters more than it sounds. Valuing a completed 2013&ndash;2016
+                            window at today&apos;s price would quietly credit a three-year hold with everything that
+                            happened in the decade afterwards. Every historical window would look like a success. Cells
+                            whose window is still running say &quot;in progress&quot; instead.
                         </p>
                         <p>
-                            One thing this grid cannot tell you: what any future window will do. The sample is a single
-                            asset over a single fifteen-year stretch, the long windows overlap each other heavily, and
+                            One thing this grid cannot tell you is what any future window will do. It covers a single
+                            asset over a single fifteen-year stretch. The long windows overlap each other heavily, and
                             the conditions that produced these numbers were unusual by construction. It describes what
                             happened. It does not predict.
                         </p>
@@ -671,15 +673,15 @@ export default async function StartDateHeatmapPage() {
                         </li>
                         <li className="flex items-start gap-2">
                             <span className="text-amber-700 dark:text-amber-400 font-bold mt-0.5 shrink-0">&bull;</span>
-                            <span>The stack is valued at the Bitcoin price on the window&apos;s end date &mdash; never at today&apos;s price.</span>
+                            <span>The stack is valued at the Bitcoin price on the window&apos;s end date, never at today&apos;s price.</span>
                         </li>
                         <li className="flex items-start gap-2">
                             <span className="text-amber-700 dark:text-amber-400 font-bold mt-0.5 shrink-0">&bull;</span>
-                            <span>The percentage is XIRR, the money-weighted annualized return: the rate at which every dated purchase plus the closing value nets to zero. It is not a simple total return divided by years, because the money went in gradually.</span>
+                            <span>The percentage is XIRR: the yearly rate at which every dated purchase plus the closing value nets to zero. It is not the total return divided by the number of years, because the money went in gradually.</span>
                         </li>
                         <li className="flex items-start gap-2">
                             <span className="text-amber-700 dark:text-amber-400 font-bold mt-0.5 shrink-0">&bull;</span>
-                            <span>No fees, no spreads, no taxes are modelled. Real returns would be lower. This grid is computed from real daily closes (Coinbase from 2015, blockchain.info before that), not from the interpolated weekly series the calculator uses by default. The <Link href="/methodology" className="text-amber-700 dark:text-amber-400 hover:underline">methodology page</Link> covers the price sources and their limits.</span>
+                            <span>No fees, no taxes, and no spread (the gap between what an exchange sells at and what it buys at) are modeled. Real returns would be lower. This grid uses real daily closing prices: Coinbase from 2015, blockchain.info before that. It does not use the weekly series the calculator fills in by default. The <Link href="/methodology" className="text-amber-700 dark:text-amber-400 hover:underline">methodology page</Link> covers the price sources and their limits.</span>
                         </li>
                         <li className="flex items-start gap-2">
                             <span className="text-amber-700 dark:text-amber-400 font-bold mt-0.5 shrink-0">&bull;</span>
@@ -721,7 +723,7 @@ export default async function StartDateHeatmapPage() {
                                 <summary className="cursor-pointer list-none font-semibold text-sm sm:text-base text-slate-900 dark:text-white marker:hidden flex items-center justify-between gap-3">
                                     {q}
                                     <ChevronDown
-                                        className="w-4 h-4 shrink-0 text-slate-400 transition-transform group-open:rotate-180"
+                                        className="w-4 h-4 shrink-0 text-slate-500 dark:text-slate-400 transition-transform group-open:rotate-180"
                                         aria-hidden="true"
                                     />
                                 </summary>

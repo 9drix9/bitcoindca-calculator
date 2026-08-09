@@ -14,7 +14,7 @@ export const AdSlot = ({ unitId = '2426249', className = '' }: AdSlotProps) => {
         // wrapper — otherwise they become flex siblings and render side by side.
         <div className={`w-full ${className}`}>
             <div className="block w-full">
-                <span className="block text-center text-[10px] font-medium uppercase tracking-wider text-slate-400 dark:text-slate-600 mb-1" aria-hidden="true">
+                <span className="block text-center text-[10px] font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1" aria-hidden="true">
                     Sponsored
                 </span>
                 <iframe

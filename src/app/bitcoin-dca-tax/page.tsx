@@ -94,7 +94,7 @@ const METHODS = [
         name: 'HIFO',
         expand: 'Highest in, first out',
         lot: EXAMPLE_LOTS[1],
-        note: 'The most expensive lot goes first, which minimises the gain on this disposal. It is normally a specific-identification strategy rather than a method in its own right.',
+        note: 'The most expensive lot goes first, which minimizes the gain on this disposal. It is normally a specific-identification strategy rather than a method in its own right.',
     },
 ] as const;
 
@@ -118,7 +118,7 @@ const faqJsonLd = {
             name: 'What is a tax lot in Bitcoin?',
             acceptedAnswer: {
                 '@type': 'Answer',
-                text: 'A tax lot is one acquisition of Bitcoin, recorded with the amount acquired, what you paid for it including fees, and the date you acquired it. Bitcoin itself is fungible, but for accounting purposes each purchase stays a distinct parcel with its own cost basis and its own acquisition date until you dispose of it. This is general educational information and not tax advice; rules differ by country.',
+                text: 'A tax lot is one purchase of Bitcoin, recorded three ways: how much you got, what you paid for it including fees, and the date. Bitcoin itself is fungible, so every satoshi looks like every other one. Accounting does not work that way. For accounting purposes each purchase stays a distinct parcel, with its own cost basis and its own acquisition date, until you dispose of it. This is general educational information and not tax advice; rules differ by country.',
             },
         },
         {
@@ -126,7 +126,7 @@ const faqJsonLd = {
             name: 'How many tax lots does dollar-cost averaging create?',
             acceptedAnswer: {
                 '@type': 'Answer',
-                text: 'One per purchase. Buying weekly for three years creates 52 x 3 = 156 lots. Buying daily for three years creates roughly 1,095. Every one of those lots carries its own cost basis and its own holding-period clock, which is why DCA generates far more record-keeping than a single lump-sum purchase.',
+                text: 'One per purchase. Buying weekly for three years creates 52 x 3 = 156 lots. Buying daily for three years creates roughly 1,095. Each lot carries its own cost basis and its own holding-period clock. That is why DCA generates far more record-keeping than a single lump-sum purchase.',
             },
         },
         {
@@ -134,7 +134,7 @@ const faqJsonLd = {
             name: 'What is the difference between FIFO, LIFO and HIFO?',
             acceptedAnswer: {
                 '@type': 'Answer',
-                text: 'They are ordering rules that decide which lots a disposal is matched against. FIFO uses the oldest lots first, LIFO the newest first, and HIFO the highest-cost lots first. Because each lot has a different cost basis, the choice changes the realised gain or loss on the same sale, and it also changes which acquisition dates are used, which can change whether the gain counts as short-term or long-term. Which methods are permitted, and what documentation they require, varies by jurisdiction. Consult a qualified tax professional where you live.',
+                text: 'They are ordering rules that decide which lots a disposal is matched against. FIFO uses the oldest lots first, LIFO the newest first, and HIFO the highest-cost lots first. Each lot has a different cost basis, so the choice changes the realized gain or loss on the same sale. It also changes which acquisition dates are used, and that can change whether the gain counts as short-term or long-term. Which methods are permitted, and what documentation they require, varies by jurisdiction. Consult a qualified tax professional where you live.',
             },
         },
         {
@@ -142,7 +142,7 @@ const faqJsonLd = {
             name: 'Is moving Bitcoin to my own wallet a taxable disposal?',
             acceptedAnswer: {
                 '@type': 'Answer',
-                text: 'Transferring coins between wallets you control is generally treated as a movement rather than a disposal in most frameworks, because you have not parted with the asset. But it is exactly the kind of question where local rules and your own circumstances matter, and it is also the moment where lot records most often get lost, because exchanges cannot see the cost basis of coins that arrive from outside. Keep the records and ask a professional in your jurisdiction.',
+                text: 'Moving coins between wallets you control is generally treated as a movement rather than a disposal in most frameworks, because you have not parted with the asset. But it is exactly the kind of question where local rules and your own circumstances matter. It is also the moment where lot records most often get lost: an exchange cannot see what coins cost you if they arrived from outside. Keep the records and ask a professional in your jurisdiction.',
             },
         },
         {
@@ -150,7 +150,7 @@ const faqJsonLd = {
             name: 'Does the Bitcoin DCA Calculator produce a tax report?',
             acceptedAnswer: {
                 '@type': 'Answer',
-                text: 'No. The calculator simulates a hypothetical purchase schedule and can export that simulation as CSV, with one row per simulated buy: date, price, amount invested, BTC bought, and running totals. That is a useful shape for understanding how lots accumulate, but it is not a record of your actual trades, it does not track disposals, and it is not a tax report. Use your exchange records and, where appropriate, dedicated tax software or a professional.',
+                text: 'No. The calculator simulates a hypothetical purchase schedule and can export that simulation as CSV, one row per simulated buy: date, price, amount invested, BTC bought, and running totals. That shape is useful for seeing how lots accumulate. It is not a record of your actual trades, it does not track disposals, and it is not a tax report. Use your exchange records and, where appropriate, dedicated tax software or a professional.',
             },
         },
     ],
@@ -190,11 +190,11 @@ export default function BitcoinDcaTaxPage() {
                         Bitcoin DCA and taxes: tax lots and cost basis
                     </h1>
                     <p className="text-base sm:text-lg text-slate-600 dark:text-slate-300 leading-relaxed">
-                        Dollar-cost averaging has one consequence almost nobody mentions when they recommend it: every
-                        single purchase becomes its own tax lot, with its own cost basis and its own holding-period
-                        clock. Buy weekly for three years and you are not holding &quot;some Bitcoin&quot;. You are
-                        holding 156 separate parcels that an accountant has to be able to tell apart. This page explains
-                        the concepts so the paperwork stops being a surprise.
+                        Dollar-cost averaging has one consequence almost nobody mentions when they recommend it. Every
+                        single purchase becomes its own tax lot: a parcel of Bitcoin with its own cost basis (what you
+                        paid for it) and its own holding clock. Buy weekly for three years and you are not holding
+                        &quot;some Bitcoin&quot;. You are holding 156 separate parcels that an accountant has to be able
+                        to tell apart. This page explains the concepts so the paperwork stops being a surprise.
                     </p>
                 </header>
 
@@ -210,10 +210,10 @@ export default function BitcoinDcaTaxPage() {
                                 requirement or a country&apos;s rules as fact, because we are not in a position to.
                             </p>
                             <p>
-                                Everything below is framed as a <em>concept</em>: vocabulary and mechanics that help you
-                                understand your own situation and have a shorter, cheaper conversation with someone
-                                qualified. Before you act on any of it, consult a tax professional licensed in your own
-                                jurisdiction.
+                                Everything below is framed as a <em>concept</em>. It is vocabulary and mechanics, meant
+                                to help you understand your own situation and have a shorter, cheaper conversation with
+                                someone qualified. Before you act on any of it, consult a tax professional licensed in
+                                your own jurisdiction.
                             </p>
                         </div>
                     </div>
@@ -225,26 +225,26 @@ export default function BitcoinDcaTaxPage() {
                     <div className="space-y-4 text-sm sm:text-base text-slate-600 dark:text-slate-300 leading-relaxed">
                         <p>
                             A <strong className="font-semibold text-slate-800 dark:text-slate-100">tax lot</strong> is a
-                            single acquisition of an asset, recorded as three things: how much you acquired, what it
-                            cost you, and when you acquired it. That cost &mdash; usually the purchase price plus the
-                            fees you paid to acquire it &mdash; is the lot&apos;s{' '}
-                            <strong className="font-semibold text-slate-800 dark:text-slate-100">cost basis</strong>.
+                            single purchase of an asset, recorded as three things: how much you bought, what it cost
+                            you, and when. That cost is the lot&apos;s{' '}
+                            <strong className="font-semibold text-slate-800 dark:text-slate-100">cost basis</strong>,
+                            and it is usually the purchase price plus the fees you paid to acquire it.
                         </p>
                         <p>
                             The confusing part is that Bitcoin is fungible in every practical sense. The satoshis you
                             bought in 2019 are indistinguishable from the ones you bought last Tuesday, and your wallet
                             shows one balance. Accounting does not care. For tax purposes each purchase stays a separate
-                            parcel with its own history until you dispose of it, and the parcels are only merged on
-                            paper if a rule in your jurisdiction says they should be (some countries do use pooled or
-                            averaged basis instead of individual lots &mdash; another reason local rules matter).
+                            parcel with its own history until you dispose of it. The parcels are only merged on paper if
+                            a rule in your jurisdiction says they should be. Some countries do use a pooled or averaged
+                            basis instead of individual lots, which is another reason local rules matter.
                         </p>
                         <p>
                             Each lot also carries its own{' '}
                             <strong className="font-semibold text-slate-800 dark:text-slate-100">holding period</strong>:
                             the clock that starts on the day you acquired it. Many tax systems treat gains differently
                             depending on how long the specific parcel was held. The clock belongs to the lot, not to
-                            your account, so a stack built by DCA contains lots at every possible stage of that clock
-                            simultaneously.
+                            your account. So a stack built by DCA holds lots at every possible stage of that clock at
+                            once.
                         </p>
                     </div>
                 </section>
@@ -301,15 +301,15 @@ export default function BitcoinDcaTaxPage() {
                         <p>
                             Weekly buying for three years is the headline case: <strong className="font-semibold text-slate-800 dark:text-slate-100">52 &times; 3 = 156 lots</strong>.
                             One hundred and fifty-six acquisition dates, 156 cost bases, 156 independent holding clocks.
-                            If you ever sell, gift, spend or swap even a fraction of that stack, something has to decide
-                            which of those 156 parcels the disposal came out of &mdash; and that decision changes the
+                            If you ever sell, gift, spend, or swap even a fraction of that stack, something has to
+                            decide which of those 156 parcels the disposal came out of. That decision changes the
                             number you report.
                         </p>
                         <p>
-                            None of this makes DCA a bad idea. It makes DCA an idea with an administrative cost that is
-                            worth knowing about on day one, when setting up a folder and a spreadsheet takes ten
-                            minutes, rather than in year four when you are trying to reconstruct three exchanges&apos;
-                            worth of history from memory.
+                            None of this makes DCA a bad idea. It gives DCA an administrative cost, and that cost is
+                            worth knowing about on day one. Setting up a folder and a spreadsheet takes ten minutes at
+                            the start. Leaving it until year four means reconstructing three exchanges&apos; worth of
+                            history from memory.
                         </p>
                     </div>
                 </section>
@@ -320,7 +320,7 @@ export default function BitcoinDcaTaxPage() {
                     <div className="space-y-4 text-sm sm:text-base text-slate-600 dark:text-slate-300 leading-relaxed">
                         <p>
                             A <strong className="font-semibold text-slate-800 dark:text-slate-100">disposal</strong> is
-                            the event that turns an unrealised paper gain into a realised one that the accounting has to
+                            the event that turns an unrealized paper gain into a realized one that the accounting has to
                             deal with. Buying and holding generally does not do that; parting with the asset generally
                             does. The concept most people get wrong is how many everyday actions count as parting with
                             it. Depending on the jurisdiction, the list commonly includes:
@@ -328,11 +328,11 @@ export default function BitcoinDcaTaxPage() {
                         <ul className="space-y-2 ml-1">
                             <li className="flex items-start gap-2">
                                 <span className="text-amber-700 dark:text-amber-400 font-bold mt-0.5 shrink-0">&bull;</span>
-                                <span>Selling Bitcoin for fiat currency.</span>
+                                <span>Selling Bitcoin for fiat currency, meaning ordinary money like dollars or euros.</span>
                             </li>
                             <li className="flex items-start gap-2">
                                 <span className="text-amber-700 dark:text-amber-400 font-bold mt-0.5 shrink-0">&bull;</span>
-                                <span>Trading Bitcoin for another crypto asset &mdash; often a disposal of the Bitcoin even though no fiat was involved.</span>
+                                <span>Trading Bitcoin for another crypto asset. That often counts as a disposal of the Bitcoin even though no cash changed hands.</span>
                             </li>
                             <li className="flex items-start gap-2">
                                 <span className="text-amber-700 dark:text-amber-400 font-bold mt-0.5 shrink-0">&bull;</span>
@@ -346,9 +346,9 @@ export default function BitcoinDcaTaxPage() {
                         <p>
                             Moving coins between wallets you control is usually a transfer rather than a disposal,
                             because you have not given anything up. It is still the single most common place cost-basis
-                            records get destroyed: the receiving platform has no idea what those coins cost you, so if
+                            records get destroyed. The receiving platform has no idea what those coins cost you, and if
                             you did not keep the record yourself, nobody has it. Whether any of the above applies to you
-                            is a question for a professional where you live &mdash; the point here is only that
+                            is a question for a professional where you live. The point here is only that
                             &quot;disposal&quot; is broader than &quot;sold for cash&quot;.
                         </p>
                     </div>
@@ -361,17 +361,17 @@ export default function BitcoinDcaTaxPage() {
                         <p>
                             When you dispose of part of a stack made of many lots, something must decide which lots the
                             disposal is matched against. These four names are just the answers to that question. They
-                            are accounting conventions, not tax strategies in themselves, and{' '}
-                            <strong className="font-semibold text-slate-800 dark:text-slate-100">which of them you are permitted to use, and what you must document to use it, depends entirely on your jurisdiction.</strong>
+                            are accounting conventions, not tax strategies in themselves.{' '}
+                            <strong className="font-semibold text-slate-800 dark:text-slate-100">Which of them you are permitted to use, and what you must document to use it, depends entirely on your jurisdiction.</strong>
                         </p>
                         <ul className="space-y-3 ml-1">
                             <li className="flex items-start gap-2">
                                 <span className="text-amber-700 dark:text-amber-400 font-bold mt-0.5 shrink-0">&bull;</span>
                                 <span>
                                     <strong className="font-semibold text-slate-800 dark:text-slate-100">FIFO (first in, first out).</strong>{' '}
-                                    The oldest lots leave first. Simple, predictable, and in a rising market it tends to
-                                    match your cheapest coins against the sale &mdash; the largest gain, but also the
-                                    longest holding period.
+                                    The oldest lots leave first. Simple and predictable. In a rising market it tends to
+                                    match your cheapest coins against the sale, which means the largest gain but also
+                                    the longest holding period.
                                 </span>
                             </li>
                             <li className="flex items-start gap-2">
@@ -386,7 +386,7 @@ export default function BitcoinDcaTaxPage() {
                                 <span className="text-amber-700 dark:text-amber-400 font-bold mt-0.5 shrink-0">&bull;</span>
                                 <span>
                                     <strong className="font-semibold text-slate-800 dark:text-slate-100">HIFO (highest in, first out).</strong>{' '}
-                                    The most expensive lots leave first, which minimises the gain on that disposal. It is
+                                    The most expensive lots leave first, which minimizes the gain on that disposal. It is
                                     usually not a standalone method but a way of applying specific identification, with
                                     the documentation burden that implies.
                                 </span>
@@ -396,9 +396,9 @@ export default function BitcoinDcaTaxPage() {
                                 <span>
                                     <strong className="font-semibold text-slate-800 dark:text-slate-100">Specific identification.</strong>{' '}
                                     You nominate exactly which lots the disposal came from. It is the most flexible
-                                    approach and the most demanding: it generally requires contemporaneous records
-                                    identifying the specific units, and it is the reason lot-level record-keeping is
-                                    worth doing even if you never intend to use it.
+                                    approach and the most demanding. It generally requires contemporaneous records,
+                                    meaning ones written at the time, identifying the specific units. That is why
+                                    lot-level record-keeping is worth doing even if you never intend to use it.
                                 </span>
                             </li>
                         </ul>
@@ -446,19 +446,19 @@ export default function BitcoinDcaTaxPage() {
                             Now you sell <strong className="font-semibold text-slate-800 dark:text-slate-100">{EXAMPLE_SALE_BTC} BTC</strong> at{' '}
                             <strong className="font-semibold text-slate-800 dark:text-slate-100">${fmtInt(EXAMPLE_SALE_PRICE)}</strong>, for proceeds of{' '}
                             <strong className="font-semibold text-slate-800 dark:text-slate-100">${fmtInt(EXAMPLE_PROCEEDS)}</strong>.
-                            One sale, one amount of Bitcoin, one price. The realised gain depends entirely on which lot
+                            One sale, one amount of Bitcoin, one price. The realized gain depends entirely on which lot
                             the accounting says it came from:
                         </p>
 
                         <div className="overflow-x-auto">
                             <table className="w-full min-w-[460px] text-xs sm:text-sm tabular-nums">
-                                <caption className="sr-only">Realised gain on the same illustrative sale under FIFO, LIFO and HIFO.</caption>
+                                <caption className="sr-only">Realized gain on the same illustrative sale under FIFO, LIFO and HIFO.</caption>
                                 <thead>
                                     <tr className="text-left text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800">
                                         <th scope="col" className="py-2 pr-4 font-medium">Method</th>
                                         <th scope="col" className="py-2 pr-4 font-medium">Lot used</th>
                                         <th scope="col" className="py-2 pr-4 font-medium text-right">Basis</th>
-                                        <th scope="col" className="py-2 font-medium text-right">Realised gain</th>
+                                        <th scope="col" className="py-2 font-medium text-right">Realized gain</th>
                                     </tr>
                                 </thead>
                                 <tbody className="text-slate-700 dark:text-slate-300">
@@ -488,9 +488,9 @@ export default function BitcoinDcaTaxPage() {
 
                         <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
                             Notice the second-order effect. The highest-cost lot here happens to be the middle one by
-                            date, so HIFO does not reliably shorten or lengthen your holding period — that depends
+                            date, so HIFO does not reliably shorten or lengthen your holding period. That depends
                             entirely on where your expensive buys happen to sit in time. Whether a shorter or longer
-                            holding period helps or hurts depends on how your jurisdiction treats them, and a smaller
+                            holding period helps or hurts depends on how your jurisdiction treats them. And a smaller
                             gain today is not automatically the better outcome. Which is, again, a question for a
                             professional and not for a web page.
                         </p>
@@ -531,9 +531,9 @@ export default function BitcoinDcaTaxPage() {
                             </li>
                         </ul>
                         <p>
-                            The practical version of all this is unglamorous: keep a running ledger with one row per
-                            acquisition &mdash; date, amount of BTC, price, fee, total cost, and where it happened &mdash;
-                            plus one row per disposal, and back it up somewhere that is not the exchange. Do that from
+                            The practical version of all this is unglamorous. Keep a running ledger with one row per
+                            acquisition: date, amount of BTC, price, fee, total cost, and where it happened. Add one row
+                            per disposal, and back the whole thing up somewhere that is not the exchange. Do that from
                             the first buy and the eventual conversation with a professional is short. Start it in year
                             four and it is archaeology.
                         </p>
@@ -545,10 +545,10 @@ export default function BitcoinDcaTaxPage() {
                     <SectionHeading icon={<FileSpreadsheet className="w-6 h-6 sm:w-7 sm:h-7" />}>How this site&apos;s CSV export fits in</SectionHeading>
                     <div className="space-y-4 text-sm sm:text-base text-slate-600 dark:text-slate-300 leading-relaxed">
                         <p>
-                            The calculator on the homepage can export its purchase-by-purchase breakdown as CSV. It is
-                            genuinely useful for seeing the lot structure of a schedule before you commit to it &mdash;
-                            open the file and every simulated buy is a row, which is exactly the shape a lot ledger
-                            takes. The columns are:
+                            The calculator on the homepage can export its purchase-by-purchase breakdown as CSV. That is
+                            genuinely useful for seeing the lot structure of a schedule before you commit to it. Open
+                            the file and every simulated buy is a row, which is exactly the shape a lot ledger takes.
+                            The columns are:
                         </p>
                     </div>
 
@@ -566,7 +566,7 @@ export default function BitcoinDcaTaxPage() {
                                     {[
                                         ['Date', 'The purchase date as yyyy-MM-dd, in UTC.'],
                                         ['BTC Price', 'The simulated price for that day, to two decimal places, in your selected display currency.'],
-                                        ['Amount Invested', 'The amount put in on that date — the gross contribution, before any fee percentage is applied.'],
+                                        ['Amount Invested', 'The amount put in on that date: the gross contribution, before any fee percentage is applied.'],
                                         ['BTC Bought', 'The Bitcoin acquired by that single purchase, to eight decimal places. This is the size of the lot.'],
                                         ['Cumulative Invested', 'Running total invested up to and including that row.'],
                                         ['Cumulative BTC', 'Running total of Bitcoin held after that row.'],
@@ -581,7 +581,7 @@ export default function BitcoinDcaTaxPage() {
                             </table>
                         </div>
                         <p className="mt-3 text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-                            The currency columns are labelled with whichever display currency you have selected. The
+                            The currency columns are labeled with whichever display currency you have selected. The
                             file is written with a UTF-8 byte-order mark so spreadsheets read the encoding correctly.
                         </p>
                     </Card>
@@ -595,7 +595,7 @@ export default function BitcoinDcaTaxPage() {
                             </li>
                             <li className="flex items-start gap-2">
                                 <span className="text-amber-700 dark:text-amber-400 font-bold mt-0.5 shrink-0">&bull;</span>
-                                <span>There are <strong className="font-semibold text-slate-800 dark:text-slate-100">no disposals in it.</strong> It only ever accumulates, so it cannot tell you a realised gain under any method.</span>
+                                <span>There are <strong className="font-semibold text-slate-800 dark:text-slate-100">no disposals in it.</strong> It only ever accumulates, so it cannot tell you a realized gain under any method.</span>
                             </li>
                             <li className="flex items-start gap-2">
                                 <span className="text-amber-700 dark:text-amber-400 font-bold mt-0.5 shrink-0">&bull;</span>

@@ -17,11 +17,11 @@ interface FearGreedWidgetProps {
 const POLL_MS = 5 * 60_000; // this data changes slowly
 
 const getValueColor = (value: number) => {
-    if (value <= 25) return 'text-rose-500';
-    if (value <= 45) return 'text-orange-500';
-    if (value <= 55) return 'text-yellow-500';
-    if (value <= 75) return 'text-lime-500';
-    return 'text-emerald-500';
+    if (value <= 25) return 'text-rose-700 dark:text-rose-400';
+    if (value <= 45) return 'text-orange-700 dark:text-orange-400';
+    if (value <= 55) return 'text-yellow-700 dark:text-yellow-400';
+    if (value <= 75) return 'text-lime-700 dark:text-lime-400';
+    return 'text-emerald-700 dark:text-emerald-400';
 };
 
 export const FearGreedWidget = ({ initialData }: FearGreedWidgetProps) => {
@@ -110,7 +110,7 @@ export const FearGreedWidget = ({ initialData }: FearGreedWidgetProps) => {
                     href="https://alternative.me/crypto/fear-and-greed-index/"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 hover:text-amber-500 transition-colors"
+                    className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 hover:text-amber-700 dark:hover:text-amber-400 transition-colors"
                 >
                     Data from alternative.me
                 </a>

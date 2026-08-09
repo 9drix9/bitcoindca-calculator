@@ -71,7 +71,7 @@ const FeatureCard = ({
     const colorClasses = {
         amber: 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400',
         blue: 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400',
-        green: 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400',
+        green: 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400',
         purple: 'bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400',
         red: 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400',
         cyan: 'bg-cyan-100 dark:bg-cyan-900/30 text-cyan-600 dark:text-cyan-400',
@@ -236,7 +236,7 @@ export default function FeaturesPage() {
                     <FeatureCard
                         icon={Wallet}
                         title="Portfolio Summary"
-                        description="Total invested, BTC accumulated, current value, and profit or loss in a single row. One toggle switches the balance between BTC and satoshis."
+                        description="Total invested, BTC accumulated, current value, and profit or loss in a single row. One toggle switches the balance between BTC and satoshis, the smallest Bitcoin unit."
                         color="amber"
                     />
                     <FeatureCard
@@ -266,7 +266,7 @@ export default function FeaturesPage() {
                     <FeatureCard
                         icon={Sparkles}
                         title="Future Projections"
-                        description="Set an end date in the future and the tool projects forward from three editable annual rates that bracket a loss, no change and a gain (−20%, 0%, +20% by default). They are assumptions you can change, not forecasts."
+                        description="Set an end date in the future and the tool projects forward from three editable annual rates: a loss, no change, and a gain (−20%, 0%, +20% by default). They are assumptions you can change, not forecasts."
                         color="purple"
                     />
                 </div>
@@ -294,7 +294,7 @@ export default function FeaturesPage() {
                     <FeatureCard
                         icon={PiggyBank}
                         title="Savings Account Comparison"
-                        description="The same schedule parked in a high-yield savings account instead, with compound interest. Rates sit around 4-5% APY and vary by bank, so the rate is fully adjustable."
+                        description="The same schedule parked in a high-yield savings account instead, with compound interest. Rates sit around 4-5% APY (annual percentage yield) and vary by bank, so the rate is fully adjustable."
                         color="amber"
                     />
                     <FeatureCard
@@ -321,7 +321,7 @@ export default function FeaturesPage() {
                     />
                     <FeatureCard
                         icon={TrendingUp}
-                        title="Price Prediction Scenarios"
+                        title="Price Scenarios"
                         description="Type in a price ($100k, $500k, $1M) and see what your stack would be worth there. It's arithmetic, not a forecast."
                         color="green"
                     />
@@ -362,7 +362,7 @@ export default function FeaturesPage() {
                     <FeatureCard
                         icon={Calculator}
                         title="Exchange Fee Comparison"
-                        description="Fees side by side across Coinbase, Kraken, Binance, Cash App, Strike, Swan, and River, totalled for your specific buying pattern."
+                        description="Fees side by side across Coinbase, Kraken, Binance, Cash App, Strike, Swan, and River, totaled for your specific buying pattern."
                         color="amber"
                     />
                     <FeatureCard
@@ -457,7 +457,7 @@ export default function FeaturesPage() {
                                 <div className="w-10 h-10 rounded-lg bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 flex items-center justify-center">
                                     <TrendingUp className="w-5 h-5" />
                                 </div>
-                                <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-amber-500 transition-colors" />
+                                <ArrowRight className="w-4 h-4 text-slate-500 dark:text-slate-400 group-hover:text-amber-700 dark:group-hover:text-amber-400 transition-colors" />
                             </div>
                             <h3 className="font-semibold text-slate-800 dark:text-white mb-2">Why Bitcoin?</h3>
                             <p className="text-sm text-slate-600 dark:text-slate-400">
@@ -468,10 +468,10 @@ export default function FeaturesPage() {
                     <Link href="/self-custody" className="group">
                         <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 h-full hover:border-amber-300 dark:hover:border-amber-700 transition-colors">
                             <div className="flex items-center justify-between mb-3">
-                                <div className="w-10 h-10 rounded-lg bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 flex items-center justify-center">
+                                <div className="w-10 h-10 rounded-lg bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 flex items-center justify-center">
                                     <Shield className="w-5 h-5" />
                                 </div>
-                                <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-amber-500 transition-colors" />
+                                <ArrowRight className="w-4 h-4 text-slate-500 dark:text-slate-400 group-hover:text-amber-700 dark:group-hover:text-amber-400 transition-colors" />
                             </div>
                             <h3 className="font-semibold text-slate-800 dark:text-white mb-2">Self-Custody Guide</h3>
                             <p className="text-sm text-slate-600 dark:text-slate-400">
@@ -485,7 +485,7 @@ export default function FeaturesPage() {
                                 <div className="w-10 h-10 rounded-lg bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 flex items-center justify-center">
                                     <Cpu className="w-5 h-5" />
                                 </div>
-                                <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-amber-500 transition-colors" />
+                                <ArrowRight className="w-4 h-4 text-slate-500 dark:text-slate-400 group-hover:text-amber-700 dark:group-hover:text-amber-400 transition-colors" />
                             </div>
                             <h3 className="font-semibold text-slate-800 dark:text-white mb-2">Mining Guide</h3>
                             <p className="text-sm text-slate-600 dark:text-slate-400">

@@ -339,9 +339,9 @@ export const DrawdownCalculator: React.FC<DrawdownCalculatorProps> = ({ btcAccum
         };
 
         const scenarios = [
-            { key: 'bear', label: 'Bear', rate: clamp(annualGrowth - SCENARIO_SPREAD, GROWTH_MIN, GROWTH_MAX) },
+            { key: 'bear', label: 'Slower', rate: clamp(annualGrowth - SCENARIO_SPREAD, GROWTH_MIN, GROWTH_MAX) },
             { key: 'base', label: 'Your assumption', rate: annualGrowth },
-            { key: 'bull', label: 'Bull', rate: clamp(annualGrowth + SCENARIO_SPREAD, GROWTH_MIN, GROWTH_MAX) },
+            { key: 'bull', label: 'Faster', rate: clamp(annualGrowth + SCENARIO_SPREAD, GROWTH_MIN, GROWTH_MAX) },
         ].map((s) => ({
             ...s,
             result: simulateDrawdown({ ...base, annualGrowth: s.rate }, MAX_MONTHS, false),
@@ -489,7 +489,7 @@ export const DrawdownCalculator: React.FC<DrawdownCalculatorProps> = ({ btcAccum
                                     'inline-flex min-h-8 items-center rounded-lg px-2.5 py-1 text-xs font-medium tabular-nums transition-colors',
                                     active
                                         ? 'bg-amber-500 text-slate-950'
-                                        : 'border border-slate-200 bg-white text-slate-600 hover:border-amber-500/60 hover:text-amber-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-amber-500/40 dark:hover:text-amber-400',
+                                        : 'border border-slate-200 bg-white text-slate-600 hover:border-amber-500/60 hover:text-amber-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-amber-500/40 dark:hover:text-amber-400',
                                 )}
                             >
                                 {rate >= 0 ? '+' : ''}
@@ -525,20 +525,20 @@ export const DrawdownCalculator: React.FC<DrawdownCalculatorProps> = ({ btcAccum
                         </div>
                         <p className="mt-1.5 text-xs text-slate-600 dark:text-slate-300 sm:text-sm">
                             {model.base.neverExhausted
-                                ? `At ${formatPercent(annualGrowth)} a year, the stack grows faster than you spend it, so it never runs out inside 100 years. `
+                                ? `At ${formatPercent(annualGrowth)} a year the stack grows faster than you spend it. It never runs out inside 100 years. `
                                 : ''}
-                            Spending{' '}
+                            You spend{' '}
                             <span className="font-medium tabular-nums text-slate-800 dark:text-slate-100">
                                 {formatCurrency(monthlyWithdrawalUsd)}
                             </span>{' '}
-                            a month from{' '}
+                            a month out of{' '}
                             <span className="font-medium tabular-nums text-slate-800 dark:text-slate-100">
                                 {formatBtc(stackBtc)}
                             </span>{' '}
-                            ({formatCurrency(stackValueUsd)} at {formatCurrency(priceUsd)} per BTC), assuming Bitcoin{' '}
-                            {annualGrowth >= 0 ? 'grows' : 'falls'} {formatPercent(Math.abs(annualGrowth))} a year and
-                            withdrawals rise {formatPercent(annualInflation)} a year
-                            {floorBtc > 0 ? ` and you never sell below ${formatBtc(floorBtc)}` : ''}.
+                            ({formatCurrency(stackValueUsd)} at {formatCurrency(priceUsd)} per BTC). This run assumes Bitcoin{' '}
+                            {annualGrowth >= 0 ? 'grows' : 'falls'} {formatPercent(Math.abs(annualGrowth))} a year and that
+                            your withdrawals rise {formatPercent(annualInflation)} a year
+                            {floorBtc > 0 ? `, and that you never sell below ${formatBtc(floorBtc)}` : ''}.
                         </p>
                     </div>
 
@@ -646,10 +646,10 @@ export const DrawdownCalculator: React.FC<DrawdownCalculatorProps> = ({ btcAccum
 
             {/* Caveat — stated plainly, not buried */}
             <p className="mt-4 text-[11px] leading-relaxed text-slate-500 dark:text-slate-400 sm:text-xs">
-                This assumes a smooth compounding price path, which Bitcoin has never had. The order of returns
-                matters: an 80% drawdown in your first few years forces you to sell far more BTC at low prices, and
-                the stack can be gone long before this model says. Read the number as an upper bound, not a plan.
-                Not financial advice.
+                This assumes the price compounds smoothly, which Bitcoin has never done. The order the returns
+                arrive in matters too. An 80% crash in your first few years would force you to sell far more BTC
+                at low prices. The stack can then be gone long before this model says. Read the number as an upper
+                bound, not a plan. Not financial advice.
             </p>
         </Card>
     );

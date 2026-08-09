@@ -231,7 +231,7 @@ export const CostBasisTracker = ({ priceData, livePrice, priceMode, provider }: 
                         onClick={() => setShowForm(!showForm)}
                         className="inline-flex items-center justify-center px-3 py-1.5 min-h-9 text-xs font-medium rounded-lg bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/40 border border-amber-200/60 dark:border-amber-800/40 transition-colors"
                     >
-                        {showForm ? 'Cancel' : '+ Add Position'}
+                        {showForm ? 'Cancel' : '+ Add plan'}
                     </button>
                 }
             />
@@ -319,7 +319,7 @@ export const CostBasisTracker = ({ priceData, livePrice, priceMode, provider }: 
                         disabled={!label.trim() || !formStartDate || !formEndDate}
                         className="flex h-11 w-full items-center justify-center py-2 text-sm font-medium rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     >
-                        Add Position
+                        Add plan
                     </button>
                 </div>
             )}
@@ -333,7 +333,7 @@ export const CostBasisTracker = ({ priceData, livePrice, priceMode, provider }: 
                         <table className="w-full min-w-[520px] text-xs sm:text-sm">
                             <thead>
                                 <tr className="text-left text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-700">
-                                    <th scope="col" className="pb-2 pr-2 font-medium">Position</th>
+                                    <th scope="col" className="pb-2 pr-2 font-medium">Plan</th>
                                     <th scope="col" className="pb-2 pr-2 font-medium text-right whitespace-nowrap">Invested</th>
                                     <th scope="col" className="pb-2 pr-2 font-medium text-right whitespace-nowrap">BTC</th>
                                     <th scope="col" className="pb-2 pr-2 font-medium text-right whitespace-nowrap">Value</th>
@@ -358,8 +358,8 @@ export const CostBasisTracker = ({ priceData, livePrice, priceMode, provider }: 
                                             <button
                                                 onClick={() => removePosition(position.id)}
                                                 className="inline-flex items-center justify-center w-9 h-9 text-base leading-none rounded-md text-slate-500 dark:text-slate-400 hover:text-[var(--color-loss)] hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                                                title="Remove position"
-                                                aria-label={`Remove position ${position.label}`}
+                                                title="Remove plan"
+                                                aria-label={`Remove plan ${position.label}`}
                                             >
                                                 &times;
                                             </button>
@@ -392,7 +392,7 @@ export const CostBasisTracker = ({ priceData, livePrice, priceMode, provider }: 
                 </div>
             ) : (
                 <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 text-center py-4">
-                    Nothing tracked yet. Add a position to see what you paid per BTC.
+                    Nothing saved yet. Add a plan to see what you paid per BTC.
                 </p>
             )}
         </Card>

@@ -204,7 +204,7 @@ function PlanRow({
                     type="button"
                     onClick={onRemove}
                     aria-label={`Remove ${name}`}
-                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-200/60 hover:text-slate-600 dark:hover:bg-slate-700 dark:hover:text-slate-300"
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-slate-200/60 hover:text-slate-600 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-300"
                 >
                     <X className="h-4 w-4" />
                 </button>
@@ -669,7 +669,7 @@ export const PlanComparison: React.FC<{ basePlan: BasePlan }> = ({ basePlan }) =
                             </ResponsiveContainer>
                         </div>
                     ) : (
-                        <div className="flex h-[260px] items-center justify-center rounded-xl bg-slate-50 text-sm text-slate-400 dark:bg-slate-800/50 dark:text-slate-500">
+                        <div className="flex h-[260px] items-center justify-center rounded-xl bg-slate-50 text-sm text-slate-500 dark:bg-slate-800/50 dark:text-slate-400">
                             Chart data unavailable
                         </div>
                     )}

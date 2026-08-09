@@ -39,7 +39,7 @@ export default function OfflinePage() {
             <li>Pages you&apos;ve visited before are still available from the cache.</li>
             <li>
               The calculator works in Manual price mode if it&apos;s already
-              loaded — historical results need a connection to fetch price data.
+              loaded. Historical results need a connection to fetch price data.
             </li>
             <li>
               Live BTC price, network stats, and the Fear &amp; Greed index

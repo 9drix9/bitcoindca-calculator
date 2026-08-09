@@ -34,49 +34,51 @@ export default function TermsPage() {
 
                 <h2>Acceptance of Terms</h2>
                 <p>
-                    By accessing and using Bitcoin DCA Calculator (&quot;btcdollarcostaverage.com&quot;), you agree to be bound by these
-                    Terms of Service. If you do not agree to these terms, please do not use this website.
+                    Using Bitcoin DCA Calculator (&quot;btcdollarcostaverage.com&quot;) means you agree to these
+                    Terms of Service. If you do not agree to them, please do not use this website.
                 </p>
 
                 <h2>Not Financial Advice</h2>
                 <p>
-                    <strong>This tool is for informational and educational purposes only.</strong> Nothing on this website constitutes
-                    financial advice, investment advice, trading advice, or any other form of professional advice. The calculator
-                    results are hypothetical projections based on historical data and should not be relied upon for making
-                    investment decisions.
+                    <strong>This tool is for informational and educational purposes only.</strong> Nothing on this
+                    website is financial advice, investment advice, trading advice, or any other kind of professional
+                    advice. The results are hypothetical projections built from historical data. Do not rely on them
+                    to make investment decisions.
                 </p>
                 <p>
-                    Cryptocurrency investments are volatile and carry significant risk. You should consult a qualified financial
-                    advisor before making any investment decisions. Past performance is not indicative of future results.
+                    Cryptocurrency investments are volatile and carry significant risk. Consult a qualified financial
+                    advisor before you make any investment decision. Past performance is not indicative of future results.
                 </p>
 
                 <h2>Accuracy Disclaimer</h2>
                 <p>
-                    While we strive to provide accurate historical price data through reputable exchange APIs (Kraken, Coinbase),
-                    we make no warranties or representations regarding the accuracy, completeness, or reliability of any data
-                    displayed on this site. Price data may contain gaps, interpolations, or inaccuracies.
+                    We do our best to show accurate historical prices, sourced from reputable exchange APIs
+                    (Kraken, Coinbase). Even so, we make no warranties or representations about the accuracy,
+                    completeness, or reliability of any data on this site. Price data may contain gaps,
+                    interpolations, or inaccuracies.
                 </p>
                 <p>
-                    The calculator uses simplified models that may not account for all real-world factors such as slippage,
-                    exchange-specific pricing differences, network fees, tax implications, or other costs associated with
-                    actual Bitcoin purchases.
+                    The calculator uses simplified models. They may not account for every real-world factor:
+                    slippage, price differences between exchanges, network fees, tax implications, or the other
+                    costs of buying Bitcoin for real.
                 </p>
 
                 <h2>Intellectual Property</h2>
                 <p>
                     The source code of Bitcoin DCA Calculator is released under the{' '}
                     <a href="https://github.com/9drix9/bitcoindca-calculator/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">MIT License</a>.
-                    You may use, copy, modify, and redistribute the code on those terms, including commercially — the licence
-                    text governs, not this page.
+                    You may use, copy, modify, and redistribute the code on those terms, including commercially.
+                    The license text governs, not this page.
                 </p>
                 <p>
-                    Written content and the site&apos;s branding are not covered by that licence and remain the property of
-                    their creators. You are welcome to quote or cite the site&apos;s published figures with attribution and a link.
+                    Written content and the site&apos;s branding are not covered by that license. They remain the
+                    property of their creators. You are welcome to quote or cite the site&apos;s published figures
+                    with attribution and a link.
                 </p>
 
                 <h2>Third-Party Services</h2>
                 <p>
-                    This website integrates with third-party services including:
+                    This website relies on third-party services, including:
                 </p>
                 <ul>
                     <li><strong>Kraken &amp; Coinbase APIs:</strong> For historical and real-time Bitcoin price data</li>
@@ -96,9 +98,10 @@ export default function TermsPage() {
 
                 <h2>Limitation of Liability</h2>
                 <p>
-                    To the maximum extent permitted by law, Bitcoin DCA Calculator and its creators shall not be liable for any
-                    direct, indirect, incidental, special, consequential, or punitive damages arising from your use of, or
-                    inability to use, this website. This includes but is not limited to:
+                    To the maximum extent permitted by law, Bitcoin DCA Calculator and its creators shall not be
+                    liable for any damages arising from this website. That covers damages from using it and from
+                    being unable to use it, whether direct, indirect, incidental, special, consequential, or
+                    punitive. It includes, but is not limited to:
                 </p>
                 <ul>
                     <li>Financial losses resulting from investment decisions influenced by this calculator</li>
@@ -110,7 +113,7 @@ export default function TermsPage() {
                 <h2>Changes to Terms</h2>
                 <p>
                     We reserve the right to modify these terms at any time. Changes will be posted on this page with an
-                    updated date. Your continued use of the site after changes constitutes acceptance of the modified terms.
+                    updated date. If you keep using the site after a change, you accept the modified terms.
                 </p>
 
                 <h2>Contact</h2>

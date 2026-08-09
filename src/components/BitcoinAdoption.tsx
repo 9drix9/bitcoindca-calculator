@@ -34,7 +34,9 @@ const ADOPTION_PERCENT = 4.5;
 const INTERNET_COLOR = { light: '#7c3aed', dark: '#8b5cf6' };
 const BITCOIN_COLOR = '#d97706';
 const GRID_COLOR = { light: '#f1f5f9', dark: '#1e293b' };
-const AXIS_TEXT = '#64748b';
+// Theme-flipped: #64748b is 4.76:1 on the light card but only 3.75:1 on the dark
+// one, so a single fixed value cannot clear AA in both.
+const AXIS_TEXT = { light: '#64748b', dark: '#94a3b8' };
 
 // SSR renders the chart placeholder (recharts cannot hydrate safely); the store
 // snapshot flips to true on the client, replacing the old setState-in-effect trick.
@@ -47,6 +49,7 @@ export const BitcoinAdoption = () => {
     const isDark = useIsDark();
 
     const internetColor = isDark ? INTERNET_COLOR.dark : INTERNET_COLOR.light;
+    const axisText = isDark ? AXIS_TEXT.dark : AXIS_TEXT.light;
 
     return (
         <section className="space-y-6">
@@ -66,7 +69,7 @@ export const BitcoinAdoption = () => {
                         </div>
                     </div>
                     <div className="text-right">
-                        <div className="text-lg sm:text-xl font-bold text-amber-500">
+                        <div className="text-lg sm:text-xl font-bold text-amber-700 dark:text-amber-400">
                             {ADOPTION_PERCENT}%
                         </div>
                         <div className="text-xs text-slate-500 dark:text-slate-400">
@@ -158,12 +161,12 @@ export const BitcoinAdoption = () => {
                                         domain={['dataMin', 'dataMax']}
                                         ticks={[1990, 2000, 2010, 2020]}
                                         tickFormatter={(v: number) => String(v)}
-                                        tick={{ fontSize: 11, fill: AXIS_TEXT }}
+                                        tick={{ fontSize: 11, fill: axisText }}
                                         axisLine={false}
                                         tickLine={false}
                                     />
                                     <YAxis
-                                        tick={{ fontSize: 11, fill: AXIS_TEXT }}
+                                        tick={{ fontSize: 11, fill: axisText }}
                                         axisLine={false}
                                         tickLine={false}
                                         tickFormatter={v => `${v}%`}

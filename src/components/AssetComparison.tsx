@@ -203,6 +203,9 @@ export const AssetComparison = ({ btcResult, sp500Result, goldResult, loading }:
     }
 
     const gridStroke = isDark ? '#1e293b' : '#f1f5f9';
+    // Theme-flipped: #64748b is 4.76:1 on the light card but only 3.75:1 on the
+    // dark one, so a single fixed value cannot clear AA in both.
+    const axisText = isDark ? '#94a3b8' : '#64748b';
     const xTickStyle = chartData && chartData.spanDays > 550 ? 'shortMonthYear' : 'monthDay';
 
     const formatAxisValue = (usd: number) => {
@@ -237,7 +240,7 @@ export const AssetComparison = ({ btcResult, sp500Result, goldResult, loading }:
                                     type="number"
                                     domain={['dataMin', 'dataMax']}
                                     tickFormatter={(ts: number) => formatUtc(ts, xTickStyle)}
-                                    tick={{ fontSize: 11, fill: '#64748b' }}
+                                    tick={{ fontSize: 11, fill: axisText }}
                                     tickLine={false}
                                     axisLine={false}
                                     minTickGap={48}
@@ -245,7 +248,7 @@ export const AssetComparison = ({ btcResult, sp500Result, goldResult, loading }:
                                 <YAxis
                                     width={56}
                                     tickFormatter={formatAxisValue}
-                                    tick={{ fontSize: 11, fill: '#64748b' }}
+                                    tick={{ fontSize: 11, fill: axisText }}
                                     tickLine={false}
                                     axisLine={false}
                                 />

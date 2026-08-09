@@ -125,12 +125,12 @@ function Cite({ items }: { items: readonly Source[] }) {
 const misconceptions: { q: string; a: string; sources?: readonly Source[] }[] = [
     {
         q: 'Is Bitcoin anonymous?',
-        a: 'No. Bitcoin is pseudonymous, and the ledger is public forever. Every transaction ever made is visible to anyone, and chain-analysis firms are good at linking addresses to identities, especially once coins touch an exchange that verified your ID. Treat it as a permanent public record with a nickname attached, not as cash.',
+        a: 'No. Bitcoin is pseudonymous, meaning addresses stand in for names, and the ledger is public forever. Every transaction ever made is visible to anyone. Chain-analysis firms are good at linking addresses to identities, especially once coins touch an exchange that verified your ID. Treat it as a permanent public record with a nickname attached, not as cash.',
         sources: [SRC.privacy, SRC.whitepaperHtml],
     },
     {
         q: 'Is Bitcoin "backed by nothing"?',
-        a: 'It\'s backed by the same thing every modern currency is backed by: people\'s willingness to accept it, plus the cost of producing and defending it. The unusual part is where the enforcement lives. Bitcoin\'s supply schedule and settlement rules are checked by thousands of independent nodes running software, not by an institution that can change its mind. The 21 million cap is a single constant in the node software every user runs.',
+        a: 'It\'s backed by the same thing every modern currency is backed by: people\'s willingness to accept it, plus the cost of producing and defending it. The unusual part is where the enforcement lives. Bitcoin\'s supply schedule and settlement rules are checked by thousands of independent nodes, the computers running the software. They are not set by an institution that can change its mind. The 21 million cap is a single constant in the node software every user runs.',
         sources: [SRC.amountH, SRC.controlledSupply],
     },
     {
@@ -140,7 +140,7 @@ const misconceptions: { q: string; a: string; sources?: readonly Source[] }[] = 
     },
     {
         q: 'Does Bitcoin waste energy?',
-        a: 'Bitcoin uses real energy on purpose: that expenditure is what makes rewriting its history expensive. Whether it\'s worthwhile is a value judgment, not a technical fact. As for the numbers, Cambridge\'s most recent full study put the network at 138 TWh a year, roughly 0.54% of global electricity, with 52.4% of the mix from renewables and nuclear. Nobody meters the network, so every figure is a model, and the live index has run higher since.',
+        a: 'Bitcoin uses real energy on purpose: that expenditure is what makes rewriting its history expensive. Whether it\'s worthwhile is a value judgment, not a technical fact. As for the numbers, Cambridge\'s most recent full study put the network at 138 TWh a year. That is roughly 0.54% of global electricity, with 52.4% of the mix from renewables and nuclear. Nobody meters the network, so every figure is a model, and the live index has run higher since.',
         sources: [SRC.cambridge, SRC.cbeci],
     },
     {
@@ -150,7 +150,7 @@ const misconceptions: { q: string; a: string; sources?: readonly Source[] }[] = 
     },
     {
         q: 'Could a government just ban it?',
-        a: 'Governments can and do restrict on-ramps, exchanges, and banking access, and that moves both price and accessibility. Banning the protocol itself is much harder, because it\'s software and a peer-to-peer network with no headquarters. China\'s 2021 mining ban is the clearest test so far: it took more than half the network\'s hashrate offline within weeks, the chain kept producing blocks, and the hashrate reappeared elsewhere. Regulatory risk is real. But "ban" and "kill" are different outcomes.',
+        a: 'Governments can and do restrict on-ramps, meaning the services that turn cash into bitcoin, along with exchanges and banking access. That moves both price and accessibility. Banning the protocol itself is much harder, because it\'s software and a peer-to-peer network with no headquarters. China\'s 2021 mining ban is the clearest test so far. It took more than half the network\'s hashrate offline within weeks. The chain kept producing blocks, and the hashrate reappeared elsewhere. Regulatory risk is real. But "ban" and "kill" are different outcomes.',
         sources: [SRC.difficultyDrop],
     },
 ];
@@ -170,14 +170,14 @@ const claims: { claim: string; verdict: string; tone: 'solid' | 'mixed' | 'weak'
         claim: 'The supply is capped at 21 million',
         verdict: 'Well established',
         tone: 'solid',
-        detail: 'Enforced by every full node independently: MAX_MONEY is 21,000,000 × 100,000,000 satoshis in the reference implementation. Changing it would require nearly every user to adopt new software against their own economic interest. (Slightly fewer than 21M will ever be spendable, since the genesis block\'s 50 BTC is unspendable, some miners claimed less than they were owed, and an unknowable number of coins are lost.)',
+        detail: 'Enforced by every full node independently: MAX_MONEY is 21,000,000 × 100,000,000 satoshis in the reference implementation. Changing it would require nearly every user to adopt new software against their own economic interest. (Slightly fewer than 21M will ever be spendable. The genesis block\'s 50 BTC is unspendable, some miners claimed less than they were owed, and an unknowable number of coins are lost.)',
         sources: [SRC.amountH, SRC.controlledSupply],
     },
     {
         claim: 'The ledger is extremely hard to rewrite',
         verdict: 'Well established',
         tone: 'solid',
-        detail: 'Rewriting recent history means out-hashing the entire network. Note where the guarantee stops. The whitepaper is explicit that a majority attacker cannot make "arbitrary changes, such as creating value out of thin air or taking money that never belonged to the attacker" — it can reverse its own recent transactions, or censor other people\'s, and that is all.',
+        detail: 'Rewriting recent history means out-hashing the entire network. Note where the guarantee stops. The whitepaper is explicit that a majority attacker cannot make "arbitrary changes, such as creating value out of thin air or taking money that never belonged to the attacker". It can reverse its own recent transactions, or censor other people\'s, and that is all.',
         sources: [SRC.whitepaperHtml],
     },
     {
@@ -190,21 +190,21 @@ const claims: { claim: string; verdict: string; tone: 'solid' | 'mixed' | 'weak'
         claim: 'Halvings cause bull markets',
         verdict: 'Unproven: tiny sample',
         tone: 'mixed',
-        detail: 'There have been four halvings, the most recent at block 840,000 on 20 April 2024. Prices did rise substantially in the year or so after most of them. Four observations cannot separate the halving from the macro cycle, liquidity conditions, or reflexive expectations. Halvings are also perfectly predictable, so an efficient market should have priced them in years ahead.',
+        detail: 'A halving is the moment the reward for mining a block is cut in half. There have been four of them, the most recent at block 840,000 on 20 April 2024. Prices did rise substantially in the year or so after most of them. Four observations cannot separate the halving from the macro cycle, liquidity conditions, or reflexive expectations. Halvings are also perfectly predictable, so an efficient market should have priced them in years ahead.',
         sources: [SRC.block840k, SRC.controlledSupply],
     },
     {
         claim: 'Mining costs put a floor under the price',
         verdict: 'Backwards',
         tone: 'weak',
-        detail: 'The most common mistake in Bitcoin analysis. The causation runs the other way: difficulty re-targets every 2,016 blocks (about two weeks) in the node software itself, so when the price falls, unprofitable miners switch off, difficulty drops, and the cost of production falls to meet the price. Mining cost tracks price. It does not support it.',
+        detail: 'The most common mistake in Bitcoin analysis. The causation runs the other way. Difficulty re-targets every 2,016 blocks (about two weeks) in the node software itself. So when the price falls, unprofitable miners switch off, difficulty drops, and the cost of production falls to meet the price. Mining cost tracks price. It does not support it.',
         sources: [SRC.pow],
     },
     {
         claim: 'Bitcoin is an inflation hedge',
         verdict: 'Not supported short-term',
         tone: 'weak',
-        detail: 'In 2022 some US inflation measures reached their highest levels in more than 40 years, by the Federal Reserve\'s own description, and Bitcoin fell roughly 64% over the calendar year. Over short horizons it trades like a high-beta risk asset, selling off whenever liquidity tightens. The stronger version of the argument is about long-horizon debasement of the money supply, not about tracking monthly CPI prints.',
+        detail: 'In 2022 some US inflation measures reached their highest levels in more than 40 years, by the Federal Reserve\'s own description. Bitcoin fell roughly 64% over that same calendar year. Over short horizons it trades like a high-beta risk asset, meaning it swings harder than the market does, and it sells off whenever liquidity tightens. The stronger version of the argument is about long-horizon debasement of the money supply, not about tracking monthly CPI prints.',
         sources: [SRC.fedMpr],
     },
     {
@@ -246,7 +246,7 @@ export default function WhyBitcoinPage() {
             {/* Hero */}
             <section className="text-center max-w-3xl mx-auto space-y-3 sm:space-y-4">
                 <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-slate-900 dark:text-white text-balance">
-                    Where Does <span className="text-amber-500">Bitcoin&apos;s</span> Value Come From?
+                    Where Does <span className="text-amber-700 dark:text-amber-400">Bitcoin&apos;s</span> Value Come From?
                 </h1>
                 <p className="text-base sm:text-lg text-slate-600 dark:text-slate-300 max-w-2xl mx-auto leading-relaxed">
                     Bitcoin has no CEO, no marketing budget, and no physical form. It has produced a block roughly every ten
@@ -312,8 +312,9 @@ export default function WhyBitcoinPage() {
                         Two automatic adjustments keep the system on schedule. <strong className="text-slate-800 dark:text-slate-200">Difficulty
                         re-targets</strong> every <Src href={SRC.pow.url}>2,016 blocks</Src>, about two weeks, so blocks keep
                         arriving every ten minutes no matter how much mining power joins or leaves.{' '}
-                        <strong className="text-slate-800 dark:text-slate-200">The block subsidy
-                        halves</strong> every <Src href={SRC.controlledSupply.url}>210,000 blocks</Src>, stepping issuance down
+                        <strong className="text-slate-800 dark:text-slate-200">The block subsidy</strong>, the new coins paid
+                        to whoever mines a block, <strong className="text-slate-800 dark:text-slate-200">halves</strong> every{' '}
+                        <Src href={SRC.controlledSupply.url}>210,000 blocks</Src>, stepping issuance down
                         toward zero. Between them, the supply schedule is predictable decades in advance. The{' '}
                         <Link href="/mining" className={srcLink}>mining guide</Link>{' '}
                         has the full timetable.
@@ -339,7 +340,7 @@ export default function WhyBitcoinPage() {
                                 Plenty of things are scarce. Bitcoin is scarce in a way you can check yourself: run the software
                                 and it audits the entire money supply in minutes, no institution required. No commodity or currency
                                 offers that. Just over 20 million of the 21 million exist today, and new issuance is already small
-                                and shrinking &mdash; the <Link href="/mining" className={srcLink}>mining page</Link> computes the
+                                and shrinking. The <Link href="/mining" className={srcLink}>mining page</Link> computes the
                                 current figure live from the block height.
                             </p>
                             <Cite items={[SRC.amountH, SRC.controlledSupply]} />
@@ -415,7 +416,7 @@ export default function WhyBitcoinPage() {
                 </div>
                 <div className="space-y-4 text-sm sm:text-base text-slate-600 dark:text-slate-400 leading-relaxed">
                     <p>
-                        Fiat currencies — government-issued money like the dollar, euro, or yen — are managed to lose purchasing
+                        Fiat currencies (government-issued money like the dollar, euro, or yen) are managed to lose purchasing
                         power slowly and deliberately. The Federal Reserve, like most central banks, explicitly{' '}
                         <Src href={SRC.fedTarget.url}>targets 2% inflation over the longer run</Src>. That sounds small and
                         compounds into something substantial: run 1913 through the{' '}
@@ -428,7 +429,8 @@ export default function WhyBitcoinPage() {
                             <strong className="text-slate-800 dark:text-slate-200">The strongest version of this argument</strong> isn&apos;t
                             that cash is a scam. It&apos;s that cash is designed to be spent rather than saved, so anyone holding
                             savings in it is quietly taxed. And the comparison that matters isn&apos;t Bitcoin versus cash under a
-                            mattress. It&apos;s Bitcoin versus the other places people already move savings: index funds, property, gold.
+                            mattress. The real comparison is Bitcoin versus the other places people already move savings: index
+                            funds, property, gold.
                         </p>
                     </div>
 
@@ -448,11 +450,12 @@ export default function WhyBitcoinPage() {
                             <h3 className={cardTitle}>The volatility counterargument</h3>
                             <p className={cardBody}>
                                 A store of value that can fall well over half is a hard sell over any horizon shorter than several
-                                years, and Bitcoin has done it repeatedly &mdash; most recently across 2022, when it dropped
-                                roughly 64% over the calendar year. Anyone telling you it protects your savings without mentioning
-                                that is selling, not explaining. It&apos;s also the specific problem dollar-cost averaging is meant
-                                to manage, and you can measure any historical drawdown yourself in the{' '}
-                                <Link href="/" className={srcLink}>calculator</Link>.
+                                years. Bitcoin has done it repeatedly, most recently across 2022, when it dropped roughly 64% over
+                                the calendar year. Anyone telling you it protects your savings without mentioning that is selling,
+                                not explaining. It&apos;s also the specific problem dollar-cost averaging is meant to manage. You
+                                can measure any historical drawdown yourself in the{' '}
+                                <Link href="/" className={srcLink}>calculator</Link>. A drawdown is just the fall from a peak to
+                                the low that follows.
                             </p>
                         </div>
                     </div>
@@ -467,10 +470,10 @@ export default function WhyBitcoinPage() {
                 </div>
                 <div className="space-y-4 text-sm sm:text-base text-slate-600 dark:text-slate-400 leading-relaxed">
                     <p>
-                        Bitcoin went from a mailing-list experiment &mdash; the{' '}
-                        <Src href="https://mempool.space/block/0">genesis block was mined on 3 January 2009</Src> &mdash; to
-                        hundreds of millions of crypto users worldwide, though published user estimates vary widely, are not
-                        independently auditable, and should be treated as rough. User counts tell you less than the
+                        Bitcoin started as a mailing-list experiment. The{' '}
+                        <Src href="https://mempool.space/block/0">genesis block was mined on 3 January 2009</Src>. Since then it
+                        has reached hundreds of millions of crypto users worldwide, though published user estimates vary widely,
+                        are not independently auditable, and should be treated as rough. User counts tell you less than the
                         infrastructure that has grown up around it:
                     </p>
                     <div className="bg-slate-100 dark:bg-slate-900/50 p-5 sm:p-6 rounded-2xl border border-slate-200 dark:border-slate-800">
@@ -508,9 +511,9 @@ export default function WhyBitcoinPage() {
                             <div>
                                 <h3 className={cardTitle}>Sovereign and corporate holdings</h3>
                                 <p className={cardBody}>
-                                    Public companies hold bitcoin on their balance sheets, and several governments hold it too —
-                                    some deliberately, some from seizures. We have not tried to total those holdings here, because
-                                    the public trackers disagree and much of it is unaudited. National-level experiments with legal
+                                    Public companies hold bitcoin on their balance sheets, and several governments hold it too,
+                                    some deliberately and some from seizures. We have not tried to total those holdings here,
+                                    because the public trackers disagree and much of it is unaudited. National-level experiments with legal
                                     tender status have been mixed and politically fragile. Treat any single country&apos;s policy
                                     as reversible.
                                 </p>
@@ -536,7 +539,7 @@ export default function WhyBitcoinPage() {
                             <h3 className={cardTitle}>The security budget</h3>
                             <p className={cardBody}>
                                 The most interesting unsolved question in Bitcoin. Mining is paid mostly by newly issued coins
-                                today, and that subsidy halves every 210,000 blocks until integer satoshi arithmetic drives it to
+                                today. That subsidy halves every 210,000 blocks until integer satoshi arithmetic drives it to
                                 zero around 2140. Eventually transaction fees alone have to fund security. Whether fee revenue
                                 gets large and stable enough is unknown. It is decades away, and nobody serious hand-waves it.
                             </p>
@@ -572,9 +575,9 @@ export default function WhyBitcoinPage() {
                             <p className={cardBody}>
                                 Bitcoin&apos;s ECDSA and Schnorr public keys are vulnerable to Shor&apos;s algorithm on an
                                 idealized quantum computer, putting coins with exposed public keys at risk. No machine capable of
-                                this exists today; the working assumption among protocol developers is that capability grows
-                                gradually and post-quantum cryptography can be adopted before it becomes necessary. The migration
-                                itself would be a large coordination problem.
+                                this exists today. The working assumption among protocol developers is that capability grows
+                                gradually, and that post-quantum cryptography can be adopted before it becomes necessary. The
+                                migration itself would be a large coordination problem.
                             </p>
                             <Cite items={[SRC.quantum]} />
                         </div>
@@ -582,8 +585,9 @@ export default function WhyBitcoinPage() {
                             <h3 className={cardTitle}>Concentration</h3>
                             <p className={cardBody}>
                                 Mining pools, exchanges, and ETF custodians each concentrate influence in ways the design tried to
-                                avoid. A small number of pools have often directed a majority of hashrate between them; you can
-                                watch the current split yourself. None of it breaks the rules a node enforces. Still, a system
+                                avoid. A small number of pools have often directed a majority of the hashrate, the total computing
+                                power aimed at mining, between them. You can watch the current split yourself. None of it breaks
+                                the rules a node enforces. Still, a system
                                 whose stated virtue is decentralization deserves ongoing scrutiny about how decentralized it
                                 remains.
                             </p>
@@ -672,19 +676,19 @@ export default function WhyBitcoinPage() {
                     </p>
                     <ul className="space-y-2 ml-1">
                         <li className="flex items-start gap-2">
-                            <span className="text-amber-500 font-bold mt-0.5 shrink-0">&bull;</span>
+                            <span className="text-amber-700 dark:text-amber-400 font-bold mt-0.5 shrink-0">&bull;</span>
                             <span><strong className="text-slate-800 dark:text-slate-200">Size it so a 70% drawdown wouldn&apos;t change your life.</strong> That has happened repeatedly and will likely happen again.</span>
                         </li>
                         <li className="flex items-start gap-2">
-                            <span className="text-amber-500 font-bold mt-0.5 shrink-0">&bull;</span>
+                            <span className="text-amber-700 dark:text-amber-400 font-bold mt-0.5 shrink-0">&bull;</span>
                             <span><strong className="text-slate-800 dark:text-slate-200">Buy on a schedule rather than on conviction.</strong> That&apos;s what this site&apos;s <Link href="/" className="text-amber-700 dark:text-amber-400 hover:underline">calculator</Link> models, so you can check how any schedule would have performed.</span>
                         </li>
                         <li className="flex items-start gap-2">
-                            <span className="text-amber-500 font-bold mt-0.5 shrink-0">&bull;</span>
+                            <span className="text-amber-700 dark:text-amber-400 font-bold mt-0.5 shrink-0">&bull;</span>
                             <span><strong className="text-slate-800 dark:text-slate-200">Mind the fees.</strong> A 1.5% fee on every purchase compounds into real money over the years, and the calculator shows the difference between exchanges.</span>
                         </li>
                         <li className="flex items-start gap-2">
-                            <span className="text-amber-500 font-bold mt-0.5 shrink-0">&bull;</span>
+                            <span className="text-amber-700 dark:text-amber-400 font-bold mt-0.5 shrink-0">&bull;</span>
                             <span><strong className="text-slate-800 dark:text-slate-200">Learn custody before you need it.</strong> Start with <Link href="/self-custody" className="text-amber-700 dark:text-amber-400 hover:underline">self-custody basics</Link>. Exchanges have failed before and will again.</span>
                         </li>
                     </ul>
@@ -729,7 +733,7 @@ export default function WhyBitcoinPage() {
                     <ul className="space-y-1.5 text-xs sm:text-sm text-slate-600 dark:text-slate-400">
                         {Object.values(SRC).map((s) => (
                             <li key={s.url} className="flex items-start gap-2">
-                                <span className="text-amber-500 mt-0.5 shrink-0">&bull;</span>
+                                <span className="text-amber-700 dark:text-amber-400 mt-0.5 shrink-0">&bull;</span>
                                 <Src href={s.url}>{s.label}</Src>
                             </li>
                         ))}

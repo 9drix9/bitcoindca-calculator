@@ -48,13 +48,20 @@ export const ConsentGatedScripts = () => {
     }, []);
 
     useEffect(() => {
-        if (!analyticsGranted) return;
+        // Withdrawal has to push a denied update, not just unmount the <Script>.
+        // Once gtag.js has executed it stays resident on the page, so dropping the
+        // tag from the tree leaves it running with whatever consent state it last
+        // saw. Only this call actually revokes it. Guarded because gtag is absent
+        // until the script has loaded at least once — i.e. for anyone who has
+        // never granted consent, which is the common case.
+        if (typeof window.gtag !== 'function') return;
 
+        const state = analyticsGranted ? 'granted' : 'denied';
         window.gtag('consent', 'update', {
-            ad_storage: 'granted',
-            ad_user_data: 'granted',
-            ad_personalization: 'granted',
-            analytics_storage: 'granted',
+            ad_storage: state,
+            ad_user_data: state,
+            ad_personalization: state,
+            analytics_storage: state,
         });
     }, [analyticsGranted]);
 

@@ -71,7 +71,7 @@ export const DominanceWidget = ({ initialData }: DominanceWidgetProps) => {
             {data ? (
                 <>
                     <div className="text-center mb-3">
-                        <span className="text-2xl sm:text-3xl font-bold tabular-nums text-amber-500">
+                        <span className="text-2xl sm:text-3xl font-bold tabular-nums text-amber-700 dark:text-amber-400">
                             {data.dominancePercent.toFixed(1)}%
                         </span>
                     </div>
@@ -80,7 +80,7 @@ export const DominanceWidget = ({ initialData }: DominanceWidgetProps) => {
                         <div
                             className="h-2.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden"
                             role="meter"
-                            aria-label="Bitcoin share of total crypto market capitalization"
+                            aria-label="Bitcoin's share of the total value of all crypto"
                             aria-valuemin={0}
                             aria-valuemax={100}
                             aria-valuenow={Math.round(data.dominancePercent * 10) / 10}

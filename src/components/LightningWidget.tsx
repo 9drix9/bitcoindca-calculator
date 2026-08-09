@@ -74,7 +74,7 @@ export const LightningWidget = ({ initialData }: LightningWidgetProps) => {
                     href="https://mempool.space/lightning"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 hover:text-amber-500 transition-colors"
+                    className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 hover:text-amber-700 dark:hover:text-amber-400 transition-colors"
                 >
                     Data from mempool.space
                 </a>

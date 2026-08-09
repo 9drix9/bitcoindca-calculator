@@ -36,7 +36,7 @@ export const metadata: Metadata = {
         images: [{ url: '/opengraph-image', width: 1200, height: 630 }],
         title: 'Contact',
         description:
-            'Report a wrong number, open a GitHub issue, or make a privacy request. Maintained by one person — response expectations are stated plainly.',
+            'Report a wrong number, open a GitHub issue, or make a privacy request. Maintained by one person, with response expectations stated plainly.',
         url: '/contact',
         type: 'website',
         siteName: 'Bitcoin DCA Calculator',
@@ -122,7 +122,7 @@ function SectionHeading({ icon, children }: { icon: React.ReactNode; children: R
 function Bullet({ children }: { children: React.ReactNode }) {
     return (
         <li className="flex items-start gap-2">
-            <span className="text-amber-500 font-bold mt-0.5 shrink-0" aria-hidden="true">&bull;</span>
+            <span className="text-amber-700 dark:text-amber-400 font-bold mt-0.5 shrink-0" aria-hidden="true">&bull;</span>
             <span>{children}</span>
         </li>
     );
@@ -176,8 +176,8 @@ export default function ContactPage() {
                         This site is built and maintained by one person,{' '}
                         <Link href="/author" className="text-amber-700 dark:text-amber-400 hover:underline font-medium">
                             Ricky Thach
-                        </Link>. There&apos;s no support desk and no ticket queue &mdash; just two channels
-                        that reach me directly.
+                        </Link>. There&apos;s no support desk and no ticket queue. Just two channels that reach
+                        me directly.
                     </p>
                 </header>
 
@@ -215,8 +215,8 @@ export default function ContactPage() {
                             </h3>
                             <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed grow">
                                 Best for wrong numbers, bugs, and feature requests. Issues are public, which is
-                                the point: the report, the discussion, and the eventual fix all stay linked
-                                together where anyone can check them.
+                                the point. The report, the discussion, and the eventual fix stay linked together
+                                where anyone can check them.
                             </p>
                             <a
                                 href={NEW_ISSUE_URL}
@@ -232,7 +232,7 @@ export default function ContactPage() {
                     <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
                         There is deliberately no contact form and no published email address. A form would mean
                         collecting and storing your details on a server, and this site doesn&apos;t run one for
-                        user data &mdash; see the{' '}
+                        user data. See the{' '}
                         <Link href="/privacy" className="text-amber-700 dark:text-amber-400 hover:underline font-medium">
                             privacy policy
                         </Link>.
@@ -266,8 +266,8 @@ export default function ContactPage() {
                             <Bullet>
                                 <strong className="text-slate-800 dark:text-slate-200">Not everything gets built.</strong>{' '}
                                 Feature requests are read and appreciated, but the honest answer is often
-                                &quot;maybe, eventually&quot; &mdash; or you can send a pull request, since the
-                                code is MIT licensed.
+                                &quot;maybe, eventually&quot;. Or you can send a pull request, since the code is
+                                MIT licensed.
                             </Bullet>
                         </ul>
                     </Card>
@@ -287,17 +287,17 @@ export default function ContactPage() {
                             <Bullet>The page or tool (for example the main calculator, a <code className="text-xs sm:text-sm bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">/dca/</code> scenario page, or a specific widget).</Bullet>
                             <Bullet>Investment amount, frequency, start date, end date, and fee percentage.</Bullet>
                             <Bullet>The price source you had selected, and the display currency.</Bullet>
-                            <Bullet>What the site showed, and what you expected instead &mdash; ideally with the source you checked against.</Bullet>
+                            <Bullet>What the site showed, and what you expected instead, ideally with the source you checked against.</Bullet>
                             <Bullet>A screenshot, or the calculator URL, which encodes your settings in its query string.</Bullet>
                         </ul>
                         <p>
                             Before reporting, it&apos;s worth checking the{' '}
                             <Link href="/methodology" className="text-amber-700 dark:text-amber-400 hover:underline font-medium">
                                 methodology page
-                            </Link>. Several common surprises are documented and intentional: the default Kraken
-                            series is interpolated from weekly closes, purchases are bucketed on UTC calendar days,
-                            non-USD currencies convert at today&apos;s rate rather than historical ones, and taxes
-                            and spreads are not modelled at all.
+                            </Link>. Several common surprises there are documented and intentional. The default
+                            Kraken series is interpolated from weekly closes. Purchases are bucketed on UTC
+                            calendar days. Non-USD currencies convert at today&apos;s rate rather than historical
+                            ones. Taxes and spreads are not modeled at all.
                         </p>
                     </div>
                 </section>
@@ -327,16 +327,26 @@ export default function ContactPage() {
                             </h3>
                             <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
                                 There are no user accounts, no email list, and no server-side database of user
-                                data. Your calculator inputs are processed in your browser and encoded in the URL;
-                                preferences such as theme, currency, and saved positions live in your
-                                browser&apos;s localStorage. In practice that means there is usually nothing on my
-                                side to export or erase, and you can remove everything yourself by clearing site
-                                data for this domain in your browser settings.
+                                data. Your calculator inputs are processed in your browser and encoded in the URL.
+                                Preferences such as theme, currency, and saved positions live in your
+                                browser&apos;s localStorage. So there is usually nothing on my side to export or
+                                erase. You can remove everything yourself by clearing site data for this domain
+                                in your browser settings.
                             </p>
                             <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
                                 Aggregate, cookieless analytics (Vercel Web Analytics and Speed Insights) do not
-                                identify individuals or build profiles, so they can&apos;t be traced back to a
-                                single visitor on request. The{' '}
+                                identify individuals or build profiles. They can&apos;t be traced back to a single
+                                visitor on request.
+                            </p>
+                            <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+                                One more thing loads, but only with your permission. If you accept analytics in the
+                                cookie banner, Google Ads conversion tracking runs so I can measure whether my own
+                                advertising reaches anyone. Choose &quot;Essential Only&quot; and it never loads at
+                                all. Display ads themselves come from A-ADS, which is cookieless and does not
+                                profile you.
+                            </p>
+                            <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+                                The{' '}
                                 <Link href="/privacy" className="text-amber-700 dark:text-amber-400 hover:underline font-medium">
                                     privacy policy
                                 </Link>{' '}
@@ -359,8 +369,7 @@ export default function ContactPage() {
                                     className="text-amber-700 dark:text-amber-400 hover:underline font-medium"
                                 >
                                     @9drix9
-                                </a>{' '}
-                                and I will look into it and delete anything found.
+                                </a>. I will look into it and delete anything found.
                             </p>
                         </div>
                     </div>
@@ -373,9 +382,9 @@ export default function ContactPage() {
                     </SectionHeading>
                     <p className="text-sm sm:text-base text-slate-600 dark:text-slate-400 leading-relaxed">
                         Found a vulnerability? Please send it privately by direct message on X first, rather than
-                        opening a public issue, and give me a reasonable window to ship a fix. The site holds no
-                        user accounts or funds, but I&apos;d still rather not have a live problem discussed in
-                        public before it&apos;s patched. Credit in the{' '}
+                        opening a public issue. Give me a reasonable window to ship a fix. The site holds no user
+                        accounts or funds, but I&apos;d still rather not have a live problem discussed in public
+                        before it&apos;s patched. Credit in the{' '}
                         <Link href="/methodology" className="text-amber-700 dark:text-amber-400 hover:underline font-medium">
                             changelog
                         </Link>{' '}
@@ -398,13 +407,13 @@ export default function ContactPage() {
                             </Bullet>
                             <Bullet>
                                 <strong className="text-slate-800 dark:text-slate-200">Tax questions.</strong>{' '}
-                                The calculator models no taxes at all, on purpose. Cost-basis rules differ by
-                                country; ask an accountant in yours.
+                                The calculator models no taxes at all, on purpose. Cost-basis rules (what counts
+                                as the price you originally paid) differ by country. Ask an accountant in yours.
                             </Bullet>
                             <Bullet>
                                 <strong className="text-slate-800 dark:text-slate-200">Exchange or wallet support.</strong>{' '}
                                 This site is not an exchange, a broker, or a custodian. It never holds your keys
-                                or your coins, so it cannot recover an account, reverse a transaction, or restore
+                                or your coins. So it cannot recover an account, reverse a transaction, or restore
                                 a lost seed phrase.
                             </Bullet>
                             <Bullet>

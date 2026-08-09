@@ -60,7 +60,7 @@ export default function MethodologyPage() {
                 {/* Hero */}
                 <section className="text-center max-w-3xl mx-auto space-y-3 sm:space-y-4">
                     <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-slate-900 dark:text-white text-balance">
-                        Methodology &amp; <span className="text-amber-500">Data Sources</span>
+                        Methodology &amp; <span className="text-amber-700 dark:text-amber-400">Data Sources</span>
                     </h1>
                     <p className="text-base sm:text-lg text-slate-600 dark:text-slate-300 max-w-2xl mx-auto leading-relaxed">
                         A calculator you can&apos;t verify is a black box. This page lists every data source, walks
@@ -77,7 +77,8 @@ export default function MethodologyPage() {
                     <p className="text-sm sm:text-base text-slate-600 dark:text-slate-400 leading-relaxed">
                         Every request is proxied through our server so responses can be cached, and no personal data
                         is sent to any provider. The cadences below describe our own cache windows. They are not
-                        guarantees from the providers.
+                        guarantees from the providers. One piece of vocabulary before the table: a candle is one
+                        period&apos;s price summary, its open, high, low and close.
                     </p>
                     <div className="bg-slate-100 dark:bg-slate-900/50 p-5 sm:p-6 rounded-2xl border border-slate-200 dark:border-slate-800">
                         <div className="overflow-x-auto -mx-2 sm:mx-0">
@@ -135,10 +136,11 @@ export default function MethodologyPage() {
                             <div className="bg-white dark:bg-slate-800 p-4 sm:p-5 rounded-2xl border border-slate-200 dark:border-slate-700">
                                 <h3 className="text-sm sm:text-base font-bold text-slate-800 dark:text-white mb-2">XIRR (Annualized Return)</h3>
                                 <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-                                    The money-weighted annualized return: the discount rate at which the net present value of all
-                                    your dated purchases plus the final portfolio value equals zero. We solve it numerically,
-                                    with Newton&apos;s method and a bisection fallback. Under 90 days it isn&apos;t shown at
-                                    all, because annualizing a window that short is meaningless.
+                                    Your yearly return rate, adjusted for the fact that money went in at different times.
+                                    Formally: the money-weighted annualized return, meaning the discount rate at which the
+                                    net present value of all your dated purchases plus the final portfolio value equals zero.
+                                    We solve it numerically, with Newton&apos;s method and a bisection fallback. Under
+                                    90 days it isn&apos;t shown at all, because annualizing a window that short is meaningless.
                                 </p>
                             </div>
                             <div className="bg-white dark:bg-slate-800 p-4 sm:p-5 rounded-2xl border border-slate-200 dark:border-slate-700">
@@ -198,19 +200,19 @@ export default function MethodologyPage() {
                     </div>
                     <ul className="space-y-2 ml-1 text-sm sm:text-base text-slate-600 dark:text-slate-400 leading-relaxed">
                         <li className="flex items-start gap-2">
-                            <span className="text-amber-500 font-bold mt-0.5 shrink-0">&bull;</span>
+                            <span className="text-amber-700 dark:text-amber-400 font-bold mt-0.5 shrink-0">&bull;</span>
                             <span><strong className="text-slate-800 dark:text-slate-200">No taxes.</strong> Capital gains and income tax on rewards are not modeled, and neither are cost-basis accounting methods.</span>
                         </li>
                         <li className="flex items-start gap-2">
-                            <span className="text-amber-500 font-bold mt-0.5 shrink-0">&bull;</span>
+                            <span className="text-amber-700 dark:text-amber-400 font-bold mt-0.5 shrink-0">&bull;</span>
                             <span><strong className="text-slate-800 dark:text-slate-200">No withdrawal fees.</strong> Moving coins to self-custody costs an on-chain network fee, often plus an exchange withdrawal fee. Both are excluded.</span>
                         </li>
                         <li className="flex items-start gap-2">
-                            <span className="text-amber-500 font-bold mt-0.5 shrink-0">&bull;</span>
+                            <span className="text-amber-700 dark:text-amber-400 font-bold mt-0.5 shrink-0">&bull;</span>
                             <span><strong className="text-slate-800 dark:text-slate-200">No spread modeling.</strong> One fee percentage cannot capture bid-ask spreads or the price differences between exchanges, both of which can add a hidden cost on top of quoted fees.</span>
                         </li>
                         <li className="flex items-start gap-2">
-                            <span className="text-amber-500 font-bold mt-0.5 shrink-0">&bull;</span>
+                            <span className="text-amber-700 dark:text-amber-400 font-bold mt-0.5 shrink-0">&bull;</span>
                             <span><strong className="text-slate-800 dark:text-slate-200">One price per day.</strong> Every purchase executes at the day&apos;s series price. Intraday timing is not simulated.</span>
                         </li>
                     </ul>
@@ -229,15 +231,15 @@ export default function MethodologyPage() {
                                 <h3 className="font-bold text-sm sm:text-base text-slate-800 dark:text-white">Accuracy &amp; polish overhaul</h3>
                             </div>
                             <ul className="space-y-1.5 text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-                                <li className="flex items-start gap-2"><span className="text-amber-500 font-bold mt-0.5 shrink-0">&bull;</span><span>Fixed: future projections double-counted contributions in some scenarios.</span></li>
-                                <li className="flex items-start gap-2"><span className="text-amber-500 font-bold mt-0.5 shrink-0">&bull;</span><span>Fixed: currency conversion inconsistencies across the comparison and planning tools.</span></li>
-                                <li className="flex items-start gap-2"><span className="text-amber-500 font-bold mt-0.5 shrink-0">&bull;</span><span>Fixed: purchase dates now use UTC calendar days everywhere, eliminating timezone-dependent schedule shifts.</span></li>
-                                <li className="flex items-start gap-2"><span className="text-amber-500 font-bold mt-0.5 shrink-0">&bull;</span><span>New: live ECB exchange rates (frankfurter.app) replace hardcoded currency rates.</span></li>
-                                <li className="flex items-start gap-2"><span className="text-amber-500 font-bold mt-0.5 shrink-0">&bull;</span><span>New: XIRR (money-weighted annualized return) and max drawdown statistics.</span></li>
-                                <li className="flex items-start gap-2"><span className="text-amber-500 font-bold mt-0.5 shrink-0">&bull;</span><span>New: redesigned charts with single-axis tabs, plus this methodology page.</span></li>
-                                <li className="flex items-start gap-2"><span className="text-amber-500 font-bold mt-0.5 shrink-0">&bull;</span><span>New: real daily market prices (blockchain.info) for 2010&ndash;2015, replacing the earlier synthetic pre-2015 interpolation.</span></li>
-                                <li className="flex items-start gap-2"><span className="text-amber-500 font-bold mt-0.5 shrink-0">&bull;</span><span>New: historical win-rate stat, the share of comparable DCA windows since 2010 that ended in profit.</span></li>
-                                <li className="flex items-start gap-2"><span className="text-amber-500 font-bold mt-0.5 shrink-0">&bull;</span><span>New: result-specific share previews, plan-vs-plan comparison, and prerendered DCA scenario pages.</span></li>
+                                <li className="flex items-start gap-2"><span className="text-amber-700 dark:text-amber-400 font-bold mt-0.5 shrink-0">&bull;</span><span>Fixed: future projections double-counted contributions in some scenarios.</span></li>
+                                <li className="flex items-start gap-2"><span className="text-amber-700 dark:text-amber-400 font-bold mt-0.5 shrink-0">&bull;</span><span>Fixed: currency conversion inconsistencies across the comparison and planning tools.</span></li>
+                                <li className="flex items-start gap-2"><span className="text-amber-700 dark:text-amber-400 font-bold mt-0.5 shrink-0">&bull;</span><span>Fixed: purchase dates now use UTC calendar days everywhere, eliminating timezone-dependent schedule shifts.</span></li>
+                                <li className="flex items-start gap-2"><span className="text-amber-700 dark:text-amber-400 font-bold mt-0.5 shrink-0">&bull;</span><span>New: live ECB exchange rates (frankfurter.app) replace hardcoded currency rates.</span></li>
+                                <li className="flex items-start gap-2"><span className="text-amber-700 dark:text-amber-400 font-bold mt-0.5 shrink-0">&bull;</span><span>New: XIRR (money-weighted annualized return) and max drawdown statistics.</span></li>
+                                <li className="flex items-start gap-2"><span className="text-amber-700 dark:text-amber-400 font-bold mt-0.5 shrink-0">&bull;</span><span>New: redesigned charts with single-axis tabs, plus this methodology page.</span></li>
+                                <li className="flex items-start gap-2"><span className="text-amber-700 dark:text-amber-400 font-bold mt-0.5 shrink-0">&bull;</span><span>New: real daily market prices (blockchain.info) for 2010&ndash;2015, replacing the earlier synthetic pre-2015 interpolation.</span></li>
+                                <li className="flex items-start gap-2"><span className="text-amber-700 dark:text-amber-400 font-bold mt-0.5 shrink-0">&bull;</span><span>New: historical win-rate stat, the share of comparable DCA windows since 2010 that ended in profit.</span></li>
+                                <li className="flex items-start gap-2"><span className="text-amber-700 dark:text-amber-400 font-bold mt-0.5 shrink-0">&bull;</span><span>New: result-specific share previews, plan-vs-plan comparison, and prerendered DCA scenario pages.</span></li>
                             </ul>
                         </div>
                         <div className="bg-white dark:bg-slate-900 p-5 sm:p-6 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-3">

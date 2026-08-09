@@ -118,7 +118,7 @@ export const StackingGoalTracker = ({
                             <div className="flex items-center justify-between text-xs sm:text-sm">
                                 <div className="flex items-center gap-1.5">
                                     {completed ? (
-                                        <CheckCircle2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-500 shrink-0" />
+                                        <CheckCircle2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gain shrink-0" />
                                     ) : (
                                         <div className="w-3.5 h-3.5 sm:w-4 sm:h-4 rounded-full border-2 border-slate-300 dark:border-slate-600 shrink-0" />
                                     )}
@@ -167,9 +167,10 @@ export const StackingGoalTracker = ({
                         )}.
                     </p>
                     <p className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-                        That figure holds the price flat at today&apos;s. It is arithmetic, not a forecast: if bitcoin gets
-                        more expensive your contribution buys fewer sats and the goal takes longer; if it gets cheaper it
-                        arrives sooner. Exchange fees are not deducted, so treat it as a floor on the time required.
+                        That figure holds the price flat at today&apos;s. It is arithmetic, not a forecast. If bitcoin gets
+                        more expensive, the same contribution buys fewer sats and the goal takes longer. If it gets
+                        cheaper, the goal arrives sooner. Exchange fees are not deducted, so treat the estimate as a
+                        floor on the time required.
                     </p>
                 </div>
             )}

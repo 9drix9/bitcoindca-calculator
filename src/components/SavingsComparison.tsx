@@ -108,7 +108,7 @@ export const SavingsComparison = ({
             <div className="flex flex-wrap items-center justify-between gap-2 mb-3 sm:mb-4">
                 <h3 className="text-sm sm:text-base font-semibold text-slate-800 dark:text-slate-100">BTC vs Savings Account</h3>
                 <div className="flex items-center gap-2">
-                    <label htmlFor={apyInputId} className="text-xs text-slate-500 dark:text-slate-400">Assumed APY:</label>
+                    <label htmlFor={apyInputId} className="text-xs text-slate-500 dark:text-slate-400" title="Annual percentage yield: the interest a savings account pays over a year, with compounding included.">Assumed APY:</label>
                     <input
                         id={apyInputId}
                         type="number"
@@ -173,14 +173,14 @@ export const SavingsComparison = ({
                 the bitcoin at its live price, the deposits compounded daily to the same day.
                 {savingsResult.idleDays > 0 && (
                     <>
-                        {' '}Deposits stop on <span className="font-medium text-slate-700 dark:text-slate-300">{formatUtc(savingsResult.lastDepositTs, 'full')}</span>{' '}
-                        with the end of your schedule; the balance then sits and earns for another{' '}
-                        <span className="tabular-nums">{savingsResult.idleDays.toLocaleString()}</span> days so the two legs
-                        are measured at the same instant.
+                        {' '}Deposits stop on <span className="font-medium text-slate-700 dark:text-slate-300">{formatUtc(savingsResult.lastDepositTs, 'full')}</span>,
+                        when your schedule ends. The balance then sits and earns for another{' '}
+                        <span className="tabular-nums">{savingsResult.idleDays.toLocaleString()}</span> days, so both sides
+                        are measured at the same moment.
                     </>
                 )}{' '}
-                The APY is a flat assumption you set — real accounts move their rate, and interest is usually taxable, which
-                this does not model.
+                The interest rate is a flat assumption you set. Real accounts move their rate, and interest is usually
+                taxable, neither of which this models.
             </p>
         </Card>
     );

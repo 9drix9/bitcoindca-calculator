@@ -81,7 +81,7 @@ export const PurchasingPowerWidget = ({ initialData }: PurchasingPowerWidgetProp
                             <div className="text-sm sm:text-lg font-bold text-slate-900 dark:text-white tabular-nums">
                                 {formatCurrency(BASE_USD * inflationFactor)}
                             </div>
-                            <div className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400">
+                            <div className="text-[11px] sm:text-xs text-slate-600 dark:text-slate-400">
                                 needed today
                             </div>
                             <div className="text-[11px] sm:text-xs font-medium text-loss mt-1 tabular-nums">
@@ -97,7 +97,7 @@ export const PurchasingPowerWidget = ({ initialData }: PurchasingPowerWidgetProp
                             <div className="text-sm sm:text-lg font-bold text-slate-900 dark:text-white tabular-nums">
                                 {formatCurrency(BASE_USD * (data.btcPriceNow / data.btcPriceStart))}
                             </div>
-                            <div className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400">
+                            <div className="text-[11px] sm:text-xs text-slate-600 dark:text-slate-400">
                                 value today
                             </div>
                             <div className="text-[11px] sm:text-xs font-medium text-gain mt-1 tabular-nums">
@@ -107,7 +107,7 @@ export const PurchasingPowerWidget = ({ initialData }: PurchasingPowerWidgetProp
                     </div>
 
                     <p className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 mt-2.5 leading-relaxed">
-                        {baseDisplay} of fiat lost purchasing power to inflation, while {baseDisplay} of Bitcoin appreciated significantly.
+                        {baseDisplay} in cash buys less than it used to, because of inflation. The same {baseDisplay} held in Bitcoin went the other way.
                     </p>
                 </>
             ) : (

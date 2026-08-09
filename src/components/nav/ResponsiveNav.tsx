@@ -32,7 +32,7 @@ export function ResponsiveNav() {
         {/* Horizontal insets keep the logo clear of the notch and rounded
             corners when a notched phone is held in landscape. */}
         <div className="flex items-center justify-between h-14 pl-[max(env(safe-area-inset-left),1rem)] pr-[max(env(safe-area-inset-right),1rem)]">
-          <Link href="/" className="group" aria-label="Bitcoin DCA Calculator — home">
+          <Link href="/" className="group" aria-label="Bitcoin DCA Calculator, home">
             <LogoLockup markClassName="w-6 h-6" textClassName="text-lg" />
           </Link>
           <ThemeToggle />

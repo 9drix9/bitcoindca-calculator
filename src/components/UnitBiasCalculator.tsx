@@ -84,12 +84,13 @@ export const UnitBiasCalculator = ({ btcAccumulated }: UnitBiasCalculatorProps) 
                 </div>
 
                 <p className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 leading-relaxed text-left">
-                    How this is worked out: 21,000,000 BTC (the issuance cap, which is not fully mined until around 2140)
-                    divided by an assumed world population of 8.1 billion people alive now — a fixed number in this tool,
-                    not a live figure — giving {FAIR_SHARE_SATS.toLocaleString()} sats each. So it deliberately compares a
-                    future supply against a present headcount. An unknown but substantial number of coins are also lost for
-                    good, which would raise the real per-person share. This is an arithmetic curiosity about a fixed supply,
-                    not a claim about what anyone is owed or what a sat will be worth.
+                    How this is worked out: 21,000,000 BTC divided by 8.1 billion people, giving{' '}
+                    {FAIR_SHARE_SATS.toLocaleString()} sats each. There will only ever be 21,000,000 BTC, and the last of
+                    them is not mined until around 2140. The population is a fixed number in this tool, not a live figure.
+                    So this deliberately compares a future supply against a present headcount. An unknown but substantial
+                    number of coins are also lost for good, which would raise the real per-person share. It is an
+                    arithmetic curiosity about a fixed supply, not a claim about what anyone is owed or what a sat will be
+                    worth.
                 </p>
             </div>
         </Card>

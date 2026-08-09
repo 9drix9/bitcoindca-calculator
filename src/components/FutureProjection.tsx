@@ -334,7 +334,7 @@ export const FutureProjection = ({
                                 </span>
                             </div>
                             <div className="flex justify-between pt-1 border-t border-slate-200 dark:border-slate-700 mt-1">
-                                <span>ROI under this assumption</span>
+                                <span>Return under this assumption</span>
                                 <span className={clsx("font-semibold tabular-nums", scenario.projectedRoi >= 0 ? "text-gain" : "text-loss")}>
                                     {scenario.projectedRoi >= 0 ? '+' : ''}{scenario.projectedRoi.toFixed(1)}%
                                 </span>
@@ -355,26 +355,27 @@ export const FutureProjection = ({
                         <p>
                             There is no model behind the rate on each card and no source it was taken from. The card compounds
                             today&apos;s price forward at whatever number you type, walks a straight line to that end price,
-                            and buys along it. Bitcoin has never moved in a straight line: it has lost more than 70% of its
-                            value from a peak on four separate occasions, and any of these cards can be made to say anything
+                            and buys along it. Bitcoin has never moved in a straight line. It has lost more than 70% of its
+                            value from a peak on four separate occasions. And any of these cards can be made to say anything
                             by changing one field.
                         </p>
                         {realizedRatePercent !== null && (
                             <p>
-                                For scale, and as history rather than evidence about the future: this same plan, run from{' '}
-                                <span className="font-medium">{formatUtc(startTs, 'full')}</span> to today, returned{' '}
+                                For scale, here is history rather than evidence about the future. Run from{' '}
+                                <span className="font-medium">{formatUtc(startTs, 'full')}</span> to today, this same plan returned{' '}
                                 <span className={clsx(
                                     "font-semibold tabular-nums",
                                     realizedRatePercent >= 0 ? "text-emerald-700 dark:text-emerald-400" : "text-rose-700 dark:text-rose-400"
                                 )}>
                                     {realizedRatePercent >= 0 ? '+' : ''}{realizedRatePercent.toFixed(1)}%/yr
                                 </span>{' '}
-                                money-weighted. A realized rate over one window is not a rate you can expect to repeat.
+                                money-weighted, meaning it accounts for when each purchase happened. A rate from one
+                                window is not a rate you can expect to repeat.
                             </p>
                         )}
                         <p>
-                            Nothing here is financial advice, and no one — including us — knows what bitcoin will be worth on
-                            your end date.
+                            Nothing here is financial advice. Nobody knows what bitcoin will be worth on your end date,
+                            and that includes us.
                         </p>
                     </div>
                 </div>

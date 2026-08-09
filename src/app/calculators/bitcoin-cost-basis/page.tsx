@@ -203,24 +203,24 @@ async function loadData(): Promise<PageData | null> {
 
 const METHODS: { name: string; body: string }[] = [
     {
-        name: 'FIFO — first in, first out',
-        body: 'The oldest bitcoin you bought is treated as the bitcoin you sold. It is the default assumption in many jurisdictions and the easiest to defend because it needs no extra record-keeping beyond the order of your purchases. For a DCA plan running through a rising market, FIFO tends to match your sale against your cheapest, oldest lots, which usually produces the largest reported gain.',
+        name: 'FIFO: first in, first out',
+        body: 'The oldest bitcoin you bought is treated as the bitcoin you sold. It is the default assumption in many jurisdictions and the easiest to defend. All it needs is the order of your purchases, with no extra record-keeping. For a DCA plan running through a rising market, FIFO tends to match your sale against your cheapest, oldest lots. That usually produces the largest reported gain.',
     },
     {
-        name: 'LIFO — last in, first out',
-        body: 'The most recent purchase is treated as the one sold. It matches against your newest lots, which after a rally are typically your most expensive. Not permitted everywhere, and where it is permitted it usually requires the same record-keeping burden as specific identification.',
+        name: 'LIFO: last in, first out',
+        body: 'The most recent purchase is treated as the one sold. It matches against your newest lots, which after a rally are typically your most expensive. LIFO is not permitted everywhere. Where it is permitted, it usually needs the same record-keeping as specific identification.',
     },
     {
-        name: 'HIFO — highest in, first out',
-        body: 'The most expensive lots go first, minimising the reported gain on this disposal. HIFO is not a separate legal method in most places; it is a particular strategy applied within specific identification, so it only holds up if your records actually identify which units you sold.',
+        name: 'HIFO: highest in, first out',
+        body: 'The most expensive lots go first, which minimizes the reported gain on this disposal. In most places HIFO is not a separate legal method. It sits inside specific identification as a strategy, so it only holds up if your records actually identify which units you sold.',
     },
     {
         name: 'Specific identification',
-        body: 'You nominate exactly which units you are disposing of. This is the mechanism that makes HIFO or any other selection possible, and the price of admission is documentation: the acquisition date, quantity, cost, and disposal details of each unit, identified at or before the time of the sale rather than reconstructed afterwards. Requirements differ by jurisdiction and are strict where they exist.',
+        body: 'You nominate exactly which units you are disposing of. This is the mechanism that makes HIFO, or any other selection, possible. The price of admission is documentation: the acquisition date, quantity, cost, and disposal details of each unit. You have to identify them at or before the time of the sale, rather than reconstruct them afterwards. Requirements differ by jurisdiction and are strict where they exist.',
     },
     {
         name: 'Pooling / average cost',
-        body: 'Some jurisdictions do not let you choose lots at all. The UK, for example, pools identical assets into a single holding with one averaged cost (with additional same-day and 30-day matching rules), and Canada uses an averaged adjusted cost base. Under a pooling regime the average cost basis this page calculates is not just a summary statistic — it is close to the number that actually matters.',
+        body: 'Some jurisdictions do not let you choose lots at all. The UK, for example, pools identical assets into a single holding with one averaged cost, plus same-day and 30-day matching rules. Canada uses an averaged adjusted cost base. Under a pooling regime the average cost basis this page calculates is more than a summary statistic. It is close to the number that actually matters.',
     },
 ];
 
@@ -228,7 +228,7 @@ const RECORDS: string[] = [
     'Date and time of each purchase, in a consistent timezone',
     'Fiat amount spent and the currency it was spent in',
     'Quantity of bitcoin received, after fees',
-    'The fee charged, separately from the amount — in most jurisdictions acquisition fees are added to your basis',
+    'The fee charged, listed separately from the amount. In most jurisdictions acquisition fees are added to your basis',
     'The exchange or venue, and the account it happened in',
     'For withdrawals: the destination wallet and the on-chain transaction ID',
     'For disposals: date, quantity, proceeds, and which lots you identified',
@@ -243,35 +243,35 @@ export default async function BitcoinCostBasisPage() {
         {
             question: 'What is cost basis for bitcoin?',
             answer:
-                'Cost basis is what you paid to acquire the bitcoin you hold, including acquisition fees in most jurisdictions. When you sell, spend or swap bitcoin, your gain or loss is the proceeds minus the basis of the specific units you disposed of. Your average cost basis is simply total spent divided by total bitcoin held — a useful summary of your position, and in pooling jurisdictions close to the figure the tax calculation itself uses.',
+                'Cost basis is what you paid to buy the bitcoin you hold. In most jurisdictions that includes the fees you paid to acquire it. When you sell, spend or swap bitcoin, that counts as a disposal. Your gain or loss is the proceeds minus the basis of the specific units you disposed of. Your average cost basis is total spent divided by total bitcoin held. It is a useful summary of your position, and in pooling jurisdictions it is close to the figure the tax calculation itself uses.',
         },
         {
             question: 'How do I calculate my average cost basis?',
             answer: sample
-                ? `Divide everything you have spent by all the bitcoin you hold. In the worked example on this page, ${fmtUsd(sample.totalInvested)} across ${sample.lotCount} weekly purchases bought ${fmtBtc(sample.btcAccumulated)}, giving an average cost of ${fmtUsd(sample.averageCost)} per bitcoin. Note that this is not the average of the prices you paid: it is weighted by how much bitcoin each purchase actually bought, so cheap buys carry more weight than expensive ones.`
-                : 'Divide everything you have spent by all the bitcoin you hold. This is not the same as averaging the prices you paid: it is weighted by how much bitcoin each purchase actually bought, so your cheaper buys carry more weight than your expensive ones.',
+                ? `Divide everything you have spent by all the bitcoin you hold. In the worked example on this page, ${fmtUsd(sample.totalInvested)} across ${sample.lotCount} weekly purchases bought ${fmtBtc(sample.btcAccumulated)}, giving an average cost of ${fmtUsd(sample.averageCost)} per bitcoin. That is not the same as averaging the prices you paid. Each purchase is weighted by how much bitcoin it actually bought, so cheap buys count for more than expensive ones.`
+                : 'Divide everything you have spent by all the bitcoin you hold. That is not the same as averaging the prices you paid. Each purchase is weighted by how much bitcoin it actually bought, so your cheaper buys count for more than your expensive ones.',
         },
         {
             question: 'Why does DCA create so many tax lots?',
             answer: sample
-                ? `Every purchase is a separate acquisition with its own date, price and quantity, and tax rules generally track disposals against those individual acquisitions rather than against a single blended pile. A weekly schedule creates 52 lots a year; the ${SAMPLE_YEARS}-year example on this page has ${sample.lotCount}. Nothing about that is a problem while you are only buying — it becomes work the moment you sell, spend, or move bitcoin between platforms.`
-                : 'Every purchase is a separate acquisition with its own date, price and quantity, and tax rules generally track disposals against those individual acquisitions. A weekly schedule creates 52 lots a year, so a five-year plan has more than 250. It only becomes work once you sell or spend.',
+                ? `Every purchase is its own tax lot: a date, a price, and a quantity. Tax rules generally track disposals against those individual purchases rather than against a single blended pile. A weekly schedule creates 52 lots a year. The ${SAMPLE_YEARS}-year example on this page has ${sample.lotCount}. None of that is a problem while you are only buying. It becomes work the moment you sell, spend, or move bitcoin between platforms.`
+                : 'Every purchase is its own tax lot: a date, a price, and a quantity. Tax rules generally track disposals against those individual purchases. A weekly schedule creates 52 lots a year, so a five-year plan has more than 250. It only becomes work once you sell or spend.',
         },
         {
             question: 'Does the method I choose change how much tax I owe?',
             answer: sample
-                ? `It changes the timing and size of the gain you report on a given sale. In the example above, disposing of the same ${fmtBtc(sample.disposal.qty)} produces a cost of ${fmtUsd(sample.disposal.fifoCost)} under FIFO and ${fmtUsd(sample.disposal.hifoCost)} under HIFO — a difference of ${fmtUsd(Math.abs(spread))} in reported gain on one transaction. Over your whole holding period the total gain is the same either way; what changes is which year you recognise it in and, in some systems, whether it is taxed at long-term or short-term rates. Whether you may choose at all depends on your jurisdiction.`
-                : 'It changes the timing and size of the gain you report on a given sale, not the total gain across your entire holding period. What method you may use, if any, depends on your jurisdiction — some require pooling and give you no choice.',
+                ? `It changes the timing and size of the gain you report on a given sale. In the example above, disposing of the same ${fmtBtc(sample.disposal.qty)} costs ${fmtUsd(sample.disposal.fifoCost)} under FIFO and ${fmtUsd(sample.disposal.hifoCost)} under HIFO. That is a difference of ${fmtUsd(Math.abs(spread))} in reported gain on one transaction. Over your whole holding period the total gain is the same either way. What changes is which year you recognize it in, and in some systems whether it is taxed at long-term or short-term rates. Whether you may choose at all depends on your jurisdiction.`
+                : 'It changes the timing and size of the gain you report on a given sale. The total gain across your entire holding period does not change. What method you may use, if any, depends on your jurisdiction. Some require pooling and give you no choice.',
         },
         {
             question: 'Does the data I enter here leave my browser?',
             answer:
-                'No. Positions you add to the tracker are stored in your browser\'s localStorage under a single key and every figure is computed in your browser from price data already loaded with the page. Nothing is sent to a server, there is no account, and we never see it. The flip side is that clearing your browser data deletes your positions, and they do not follow you to another device or browser. Keep your own records elsewhere.',
+                'No. The tracker stores your positions in your browser\'s local storage, under a single key. Every figure is computed on your device from price data already loaded with the page. Nothing is sent to a server, there is no account, and we never see it. The flip side: clearing your browser data deletes your positions, and they do not follow you to another device or browser. Keep your own records elsewhere.',
         },
         {
             question: 'Is this tax advice?',
             answer:
-                'No. This page explains concepts and does arithmetic; it does not know your jurisdiction, your residency, your other transactions, or the rules that apply to you, and those rules change. Treat every number here as an estimate for planning and understanding. Before you file anything, use a proper tax tool or an accountant who works with digital assets in your country.',
+                'No. This page explains concepts and does arithmetic. It does not know your jurisdiction, your residency, your other transactions, or the rules that apply to you. Those rules also change. Treat every number here as an estimate for planning and understanding. Before you file anything, use a proper tax tool or an accountant who works with digital assets in your country.',
         },
     ];
 
@@ -319,18 +319,18 @@ export default async function BitcoinCostBasisPage() {
                         Bitcoin cost basis calculator
                     </h1>
                     <p className="text-base sm:text-lg text-slate-600 dark:text-slate-300 leading-relaxed">
-                        Your cost basis is what you paid for the bitcoin you hold. Averaged across a DCA plan it answers
-                        &ldquo;what is my real buy price?&rdquo; &mdash; and split back out into individual purchases it is
-                        the thing every tax authority actually cares about. This page does both: a worked example on real
-                        prices, then a tracker you can put your own positions into.
+                        Your cost basis is what you paid for the bitcoin you hold. Average it across a DCA plan and it
+                        answers &ldquo;what is my real buy price?&rdquo; Split it back out into individual purchases and
+                        it becomes the thing every tax authority actually cares about. This page does both. First a
+                        worked example on real prices, then a tracker you can put your own positions into.
                     </p>
                     <p className="inline-flex items-start gap-2 text-sm text-slate-600 dark:text-slate-300 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-2.5">
                         <Lock className="w-4 h-4 mt-0.5 shrink-0 text-amber-700 dark:text-amber-400" aria-hidden="true" />
                         <span>
-                            Your positions are stored in this browser&apos;s local storage and every figure is calculated
-                            on your device. There is no account and no database. One honest caveat: to price buys that
-                            fall outside the window this page loads, the tracker asks our server for prices covering the
-                            date range your positions span &mdash; so those dates leave your browser, though the amounts,
+                            Your positions are stored in this browser&apos;s local storage, and every figure is
+                            calculated on your device. There is no account and no database. One honest caveat. To price
+                            buys that fall outside the window this page loads, the tracker asks our server for prices
+                            covering the date range your positions span. Those dates do leave your browser. The amounts,
                             labels and results never do.
                         </span>
                     </p>
@@ -344,16 +344,16 @@ export default async function BitcoinCostBasisPage() {
                     <div className="space-y-4 text-sm sm:text-base text-slate-600 dark:text-slate-400 leading-relaxed">
                         <p>
                             Average cost basis is total fiat spent divided by total bitcoin held. That is the whole formula.
-                            The part people get wrong is assuming it equals the average of the prices they paid &mdash; it does
-                            not, because a fixed-dollar purchase buys more bitcoin when the price is low. A $100 buy at
-                            $20,000 acquires five times the bitcoin of a $100 buy at $100,000, so it pulls the average down
-                            five times as hard. That asymmetry is the entire mechanical argument for dollar-cost averaging,
-                            and it falls out of the arithmetic rather than out of any claim about future prices.
+                            People often assume it equals the average of the prices they paid. It does not, because a
+                            fixed-dollar purchase buys more bitcoin when the price is low. A $100 buy at $20,000 gets
+                            five times the bitcoin of a $100 buy at $100,000. So it pulls the average down five times as
+                            hard. That asymmetry is the entire mechanical argument for dollar-cost averaging. It falls
+                            out of the arithmetic, not out of any claim about future prices.
                         </p>
                         <p>
-                            In most jurisdictions acquisition fees are added to basis, so a purchase with a 1% fee has a
-                            slightly higher basis per coin than the raw price suggests. The worked example below uses a zero
-                            fee to keep the illustration clean; the tracker lets you set a fee per position.
+                            In most jurisdictions acquisition fees are added to basis. A purchase with a 1% fee therefore
+                            has a slightly higher basis per coin than the raw price suggests. The worked example below
+                            uses a zero fee to keep things clean. The tracker lets you set a fee per position.
                         </p>
                     </div>
                 </section>
@@ -390,7 +390,7 @@ export default async function BitcoinCostBasisPage() {
                                     <StatRow label="Price now" value={fmtUsd(data.price)} />
                                     <StatRow label="Value now" value={fmtUsd(sample.currentValue)} />
                                     <StatRow
-                                        label="Unrealised gain"
+                                        label="Unrealized gain"
                                         value={`${sample.profit >= 0 ? '+' : ''}${fmtUsd(sample.profit)} (${fmtPct(sample.roi, true)})`}
                                         valueClassName={sample.profit >= 0 ? 'text-gain' : 'text-loss'}
                                     />
@@ -405,8 +405,8 @@ export default async function BitcoinCostBasisPage() {
                                 </Card>
                             </div>
                             <p className="text-sm sm:text-base text-slate-600 dark:text-slate-400 leading-relaxed">
-                                Note the gap between the cheapest and priciest lot. Both are yours, both are bitcoin, and they
-                                are indistinguishable on-chain &mdash; but for tax purposes they are very different assets.
+                                Note the gap between the cheapest and priciest lot. Both are yours, both are bitcoin, and
+                                on-chain they are indistinguishable. For tax purposes they are very different assets.
                                 That is the whole reason lot accounting exists.
                             </p>
                         </>
@@ -439,12 +439,12 @@ export default async function BitcoinCostBasisPage() {
                     </div>
                     <div className="space-y-4 text-sm sm:text-base text-slate-600 dark:text-slate-400 leading-relaxed">
                         <p>
-                            A single lot is one acquisition: a date, a quantity, and a cost. Buying weekly creates 52 of them
-                            a year whether you notice or not
+                            A single tax lot is one purchase: a date, a quantity, and a cost. Buying weekly creates 52 of
+                            them a year whether you notice or not
                             {sample ? `, which is how the example above ended up with ${sample.lotCount}` : ''}. While you are
                             only accumulating, none of it matters. The moment you sell, spend, or swap any bitcoin, the
                             question becomes: <em>which</em> bitcoin did you dispose of? Your wallet cannot answer that,
-                            because units are fungible. Your records have to.
+                            because one unit of bitcoin is interchangeable with any other. Your records have to.
                         </p>
                         <p>
                             Here is what that choice is worth, using the same schedule as above.
@@ -485,16 +485,16 @@ export default async function BitcoinCostBasisPage() {
                                 </div>
                                 <p className="mt-3 text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
                                     Same bitcoin, same sale price, {fmtUsd(Math.abs(spread))} of difference in the gain you
-                                    report this year. The totals converge once you eventually dispose of everything &mdash;
-                                    lot selection moves gains between tax years, it does not erase them.
+                                    report this year. The totals converge once you eventually dispose of everything.
+                                    Lot selection moves gains between tax years. It does not erase them.
                                 </p>
                             </Card>
                         ) : null}
                         <p>
                             Two practical consequences. First, if you ever intend to select lots, you need the records in
                             place <em>before</em> the sale, not reconstructed afterwards. Second, moving bitcoin between your
-                            own wallets is generally not a disposal, but your basis has to travel with it &mdash; and once
-                            coins have moved between platforms, no single exchange has the history to work it out for you.
+                            own wallets is generally not a disposal, but your basis has to travel with it. Once coins have
+                            moved between platforms, no single exchange has the history to work it out for you.
                         </p>
                     </div>
                 </section>
@@ -505,10 +505,10 @@ export default async function BitcoinCostBasisPage() {
                         FIFO, HIFO and specific identification, as concepts
                     </h2>
                     <p className="text-sm sm:text-base text-slate-600 dark:text-slate-400 leading-relaxed">
-                        These are accounting conventions for matching a disposal to acquisitions. Which of them you are
-                        allowed to use &mdash; and whether you get a choice at all &mdash; depends entirely on where you are
-                        tax resident, and the rules change. What follows is the shape of the ideas, not guidance on which to
-                        apply.
+                        These are accounting conventions for matching a disposal to the purchases behind it. Which of them
+                        you are allowed to use depends entirely on where you are tax resident. So does whether you get a
+                        choice at all. And the rules change. What follows is the shape of the ideas, not guidance on
+                        which to apply.
                     </p>
                     <div className="space-y-3">
                         {METHODS.map((m) => (
@@ -552,11 +552,11 @@ export default async function BitcoinCostBasisPage() {
                         Track your own positions
                     </h2>
                     <p className="text-sm sm:text-base text-slate-600 dark:text-slate-400 leading-relaxed">
-                        Add each DCA schedule you have actually run &mdash; a label, the date range, the amount per buy, the
+                        Add each DCA schedule you have actually run: a label, the date range, the amount per buy, the
                         cadence and the fee. The tracker backtests each one against historical prices and shows the combined
                         average cost basis across all of them. Positions persist in this browser only and there is no
                         account. The only thing that reaches our server is the date range they span, which is what the
-                        price lookup needs; the amounts and the results stay on your device.
+                        price lookup needs. The amounts and the results stay on your device.
                     </p>
                     {data ? (
                         <>
@@ -565,11 +565,11 @@ export default async function BitcoinCostBasisPage() {
                                 seeded window are priced correctly too. */}
                             <CostBasisTracker priceData={data.trackerData} livePrice={data.price} priceMode="api" provider="kraken" />
                             <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
-                                This page opens on prices from {formatUtc(data.trackerFromIso, 'full')} onward, but once you
-                                add a position the tracker loads whatever range your own positions actually span, back to{' '}
-                                {formatUtc(EARLIEST_PRICE_DATE, 'full')} — the first day with real market data. Amounts are
-                                stored in USD and displayed in whichever currency you have selected. Nothing you enter leaves
-                                your browser.
+                                This page opens on prices from {formatUtc(data.trackerFromIso, 'full')} onward. Once you
+                                add a position, the tracker loads whatever range your own positions actually span, back to{' '}
+                                {formatUtc(EARLIEST_PRICE_DATE, 'full')}. That is the first day with real market data.
+                                Amounts are stored in USD and displayed in whichever currency you have selected. Nothing
+                                you enter leaves your browser.
                             </p>
                         </>
                     ) : (
@@ -590,10 +590,10 @@ export default async function BitcoinCostBasisPage() {
                     </h2>
                     <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
                         Rules for cost basis, permitted accounting methods, record-keeping standards and what counts as a
-                        taxable disposal vary by country and change from year to year. Nothing here knows your jurisdiction,
-                        your residency, or the rest of your transaction history, and none of it has been reviewed by a tax
-                        professional. Use these figures to understand your position and to plan; use a qualified accountant
-                        or a dedicated tax tool in your country before you file.
+                        taxable disposal vary by country. They also change from year to year. Nothing here knows your
+                        jurisdiction, your residency, or the rest of your transaction history. None of it has been
+                        reviewed by a tax professional. Use these figures to understand your position and to plan. Before
+                        you file, use a qualified accountant or a dedicated tax tool in your country.
                     </p>
                 </Card>
 
@@ -620,7 +620,7 @@ export default async function BitcoinCostBasisPage() {
                         Run your own numbers
                     </h2>
                     <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300 mb-5 max-w-xl mx-auto">
-                        The full calculator backtests any schedule against real historical prices and reports your average
+                        The full calculator backtests any schedule against real historical prices. You get your average
                         cost, every individual purchase, fees paid, and a downloadable CSV of the lot-by-lot detail.
                     </p>
                     <Link

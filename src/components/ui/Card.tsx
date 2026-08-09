@@ -120,7 +120,7 @@ export function EmptyState({
             <span className="text-2xs font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">
                 {children}
             </span>
-            {hint && <span className="text-2xs text-slate-400 dark:text-slate-500">{hint}</span>}
+            {hint && <span className="text-2xs text-slate-500 dark:text-slate-400">{hint}</span>}
         </div>
     );
 }

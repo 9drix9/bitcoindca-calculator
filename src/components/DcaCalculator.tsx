@@ -18,7 +18,7 @@ import {
     utcIsoYearsAgo,
 } from '@/utils/dates';
 import dynamic from 'next/dynamic';
-import { SkeletonCard, SkeletonChart } from './Skeleton';
+import { SkeletonCard, SkeletonChart, SkeletonPanel } from './Skeleton';
 import { AdSlot } from './AdSlot';
 import { Card, chip } from './ui/Card';
 
@@ -26,20 +26,25 @@ import { Card, chip } from './ui/Card';
 // ssr:false is load-bearing here. Now that the calculator itself server-renders,
 // without this Recharts (~370 KB) would be pulled into the homepage's server
 // render and its initial script set — trading the SSR win for a much worse LCP.
-const DcaChart = dynamic(() => import('./DcaChart').then(m => m.DcaChart), { ssr: false });
-const TransactionTable = dynamic(() => import('./TransactionTable').then(m => m.TransactionTable));
-const AssetComparison = dynamic(() => import('./AssetComparison').then(m => m.AssetComparison));
-const ExchangeFeeComparison = dynamic(() => import('./ExchangeFeeComparison').then(m => m.ExchangeFeeComparison));
-const StackingGoalTracker = dynamic(() => import('./StackingGoalTracker').then(m => m.StackingGoalTracker));
-const ShareMyStack = dynamic(() => import('./ShareMyStack').then(m => m.ShareMyStack));
-const UnitBiasCalculator = dynamic(() => import('./UnitBiasCalculator').then(m => m.UnitBiasCalculator));
-const SavingsComparison = dynamic(() => import('./SavingsComparison').then(m => m.SavingsComparison));
-const OpportunityCostCalculator = dynamic(() => import('./OpportunityCostCalculator').then(m => m.OpportunityCostCalculator));
-const FireCalculator = dynamic(() => import('./FireCalculator').then(m => m.FireCalculator));
-const CostBasisTracker = dynamic(() => import('./CostBasisTracker').then(m => m.CostBasisTracker));
-const PlanComparison = dynamic(() => import('./PlanComparison').then(m => m.PlanComparison));
-const FutureProjection = dynamic(() => import('./FutureProjection').then(m => m.FutureProjection));
-const DrawdownCalculator = dynamic(() => import('./DrawdownCalculator').then(m => m.DrawdownCalculator));
+// `loading` matters as much as `ssr: false` here: without it the chart renders
+// null until its chunk lands, and the page reflows by the chart's full height.
+const DcaChart = dynamic(() => import('./DcaChart').then(m => m.DcaChart), {
+    ssr: false,
+    loading: () => <SkeletonChart />,
+});
+const TransactionTable = dynamic(() => import('./TransactionTable').then(m => m.TransactionTable), { loading: () => <SkeletonPanel /> });
+const AssetComparison = dynamic(() => import('./AssetComparison').then(m => m.AssetComparison), { loading: () => <SkeletonPanel /> });
+const ExchangeFeeComparison = dynamic(() => import('./ExchangeFeeComparison').then(m => m.ExchangeFeeComparison), { loading: () => <SkeletonPanel /> });
+const StackingGoalTracker = dynamic(() => import('./StackingGoalTracker').then(m => m.StackingGoalTracker), { loading: () => <SkeletonPanel /> });
+const ShareMyStack = dynamic(() => import('./ShareMyStack').then(m => m.ShareMyStack), { loading: () => <SkeletonPanel /> });
+const UnitBiasCalculator = dynamic(() => import('./UnitBiasCalculator').then(m => m.UnitBiasCalculator), { loading: () => <SkeletonPanel /> });
+const SavingsComparison = dynamic(() => import('./SavingsComparison').then(m => m.SavingsComparison), { loading: () => <SkeletonPanel /> });
+const OpportunityCostCalculator = dynamic(() => import('./OpportunityCostCalculator').then(m => m.OpportunityCostCalculator), { loading: () => <SkeletonPanel /> });
+const FireCalculator = dynamic(() => import('./FireCalculator').then(m => m.FireCalculator), { loading: () => <SkeletonPanel /> });
+const CostBasisTracker = dynamic(() => import('./CostBasisTracker').then(m => m.CostBasisTracker), { loading: () => <SkeletonPanel /> });
+const PlanComparison = dynamic(() => import('./PlanComparison').then(m => m.PlanComparison), { loading: () => <SkeletonPanel /> });
+const FutureProjection = dynamic(() => import('./FutureProjection').then(m => m.FutureProjection), { loading: () => <SkeletonPanel /> });
+const DrawdownCalculator = dynamic(() => import('./DrawdownCalculator').then(m => m.DrawdownCalculator), { loading: () => <SkeletonPanel /> });
 import { TrendingUp, TrendingDown, DollarSign, Activity, Download, Share2, RefreshCw } from 'lucide-react';
 import clsx from 'clsx';
 
@@ -72,9 +77,9 @@ const roundTo2Sig = (n: number): number => {
  * history entries that break the back button on a calculator.
  */
 const RESULT_TABS = [
-    { id: 'compare' as const, label: 'Compare', hint: 'Against other assets and strategies' },
-    { id: 'project' as const, label: 'Project', hint: 'Forward-looking scenarios' },
-    { id: 'details' as const, label: 'Details', hint: 'Every purchase, and your own positions' },
+    { id: 'compare' as const, label: 'Compare', hint: 'How this plan did against other assets and other strategies' },
+    { id: 'project' as const, label: 'Project', hint: 'What happens if you keep buying' },
+    { id: 'details' as const, label: 'Details', hint: 'Every purchase, plus coins you already own' },
 ];
 
 type ResultTabId = (typeof RESULT_TABS)[number]['id'];
@@ -111,7 +116,7 @@ function ResultTabs({
         <div className="space-y-4 sm:space-y-6">
             <div
                 role="tablist"
-                aria-label="Further analysis"
+                aria-label="More analysis"
                 onKeyDown={onKeyDown}
                 className="flex gap-1 rounded-xl bg-slate-100 p-1 dark:bg-slate-800/70"
             >
@@ -155,7 +160,12 @@ function ResultTabs({
                     aria-labelledby={`${baseId}-tab-${t.id}`}
                     hidden={t.id !== active}
                     tabIndex={0}
-                    className="space-y-6 sm:space-y-8 focus-visible:outline-none"
+                    // min-h is a backstop, not decoration. Every real panel is far
+                    // taller than this, so it never adds dead space — but if a lazy
+                    // child ever loses its loading fallback, this stops the document
+                    // from collapsing and the browser from clamping the reader to the
+                    // bottom of the page mid-swap.
+                    className="space-y-6 sm:space-y-8 focus-visible:outline-none min-h-[420px]"
                 >
                     {/* Mount only the active panel so the inactive tabs' lazy chunks
                         are never fetched. */}
@@ -312,11 +322,11 @@ export const DcaCalculator = ({ initialPriceData, initialLivePrice }: DcaCalcula
     }, [presetGroups, amount, frequency, startDate, endDate]);
 
     const dateError = useMemo(() => {
-        if (!startDate || !endDate) return 'Please select both start and end dates';
-        if (startDate > endDate) return 'Start date must be before end date';
+        if (!startDate || !endDate) return 'Pick a start date and an end date';
+        if (startDate > endDate) return 'The start date has to come before the end date';
         // `min` on a date input is not enforced for typed values in every browser,
         // so guard here too rather than let the engine price the gap.
-        if (startDate < EARLIEST_PRICE_DATE) return 'Bitcoin market price data starts 18 August 2010. Pick a later start date.';
+        if (startDate < EARLIEST_PRICE_DATE) return 'Bitcoin price data starts on 18 August 2010. Pick a later start date.';
         return null;
     }, [startDate, endDate]);
 
@@ -341,7 +351,7 @@ export const DcaCalculator = ({ initialPriceData, initialLivePrice }: DcaCalcula
                 // Be honest: don't silently price everything at the manual default.
                 setPriceData([]);
                 setLivePrice(null);
-                setError('Live price data is unavailable right now, so there are no results to show. Try again, or switch to Manual mode.');
+                setError("We can't reach the live price data right now, so there are no results to show. Try again, or switch to Manual mode.");
             } finally {
                 if (!cancelled) setLoading(false);
             }
@@ -515,9 +525,9 @@ export const DcaCalculator = ({ initialPriceData, initialLivePrice }: DcaCalcula
         if (shareTimerRef.current) clearTimeout(shareTimerRef.current);
         try {
             await navigator.clipboard.writeText(url);
-            setShareMessage('Link copied to clipboard!');
+            setShareMessage('Link copied to your clipboard');
         } catch {
-            setShareMessage('Failed to copy link');
+            setShareMessage("Couldn't copy the link");
         }
         shareTimerRef.current = setTimeout(() => setShareMessage(null), 2000);
     }, [amount, frequency, startDate, endDate, feePercentage, priceMode, provider, manualPrice, currencyConfig.code]);
@@ -581,7 +591,7 @@ export const DcaCalculator = ({ initialPriceData, initialLivePrice }: DcaCalcula
             <div className="bg-white dark:bg-slate-900 p-4 sm:p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden">
                 <h2 className="text-lg sm:text-xl font-bold mb-4 text-slate-800 dark:text-white flex items-center gap-2">
                     <DollarSign className="w-5 h-5 text-amber-500 shrink-0" />
-                    Investment Parameters
+                    Your plan
                 </h2>
 
                 {/* Presets */}
@@ -755,7 +765,7 @@ export const DcaCalculator = ({ initialPriceData, initialLivePrice }: DcaCalcula
                                             : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
                                     )}
                                 >
-                                    Live API
+                                    Live
                                 </button>
                                 <button
                                     type="button"
@@ -775,7 +785,7 @@ export const DcaCalculator = ({ initialPriceData, initialLivePrice }: DcaCalcula
 
                         {priceMode === 'api' && (
                             <div className="fade-in">
-                                <label htmlFor="dca-provider" className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-1 block">Data Source</label>
+                                <label htmlFor="dca-provider" className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-1 block">Price source</label>
                                 <select
                                     id="dca-provider"
                                     value={provider}
@@ -808,7 +818,13 @@ export const DcaCalculator = ({ initialPriceData, initialLivePrice }: DcaCalcula
                 {/* Footer bar */}
                 <div className="mt-5 pt-4 border-t border-slate-100 dark:border-slate-800 flex flex-wrap justify-between items-center gap-3">
                     <div className="flex items-center gap-2">
-                        <span className="text-xs sm:text-sm text-slate-500">Projected</span>
+                        {/* Every other label in this component branches on the end
+                            date; this one was hardcoded "Projected", so a historical
+                            backtest — the default — labelled money already spent as a
+                            forecast. */}
+                        <span className="text-xs sm:text-sm text-slate-500">
+                            {isFutureEndDate ? 'Total to Invest' : 'Total Invested'}
+                        </span>
                         <span className="text-base sm:text-lg font-bold text-slate-800 dark:text-white tabular-nums">{formatCurrency(results.totalInvested)}</span>
                     </div>
                     <div className="flex items-center gap-1">
@@ -877,7 +893,7 @@ export const DcaCalculator = ({ initialPriceData, initialLivePrice }: DcaCalcula
                         No negative margins here: they let this row collide with the result cards. */}
                     <div className="flex flex-wrap items-center justify-end gap-x-2 gap-y-1">
                         <span id="dca-denomination-label" className="text-[11px] font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                            Denomination
+                            Units
                         </span>
                         <div
                             role="group"
@@ -976,7 +992,7 @@ export const DcaCalculator = ({ initialPriceData, initialLivePrice }: DcaCalcula
                             format={formatBtcAmount}
                             /* Sats strings blow out a half-width card on mobile — abbreviate below sm. */
                             formatShort={(n) => isSats ? satsShort(n) : `${n < 1 ? n.toFixed(4) : n.toFixed(2)} ₿`}
-                            subValue={isFutureEndDate ? "at current prices" : `Avg: ${formatCurrency(results.averageCost)}`}
+                            subValue={isFutureEndDate ? "at today’s price" : `Avg: ${formatCurrency(results.averageCost)}`}
                         />
                         <ResultCard
                             label={isFutureEndDate ? "Value at Current Price" : "Current Value"}
@@ -1000,7 +1016,7 @@ export const DcaCalculator = ({ initialPriceData, initialLivePrice }: DcaCalcula
                             icon={isProfit
                                 ? <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5 text-gain shrink-0" />
                                 : <TrendingDown className="w-4 h-4 sm:w-5 sm:h-5 text-loss shrink-0" />}
-                            subValue={isFutureEndDate ? "if price stays same" : `${results.roi.toFixed(1)}% ROI`}
+                            subValue={isFutureEndDate ? "if the price holds" : `${results.roi.toFixed(1)}% ROI`}
                             subValueClassName={profitClass}
                         />
                     </div>
@@ -1041,21 +1057,21 @@ export const DcaCalculator = ({ initialPriceData, initialLivePrice }: DcaCalcula
                         <p className="text-center text-xs sm:text-sm text-slate-500 dark:text-slate-400 leading-relaxed max-w-2xl mx-auto">
                             {isFutureEndDate ? (
                                 <>
-                                    If you invest {currencyConfig.symbol}{amount.toLocaleString()} every {frequency === 'daily' ? 'day' : frequency === 'biweekly' ? 'two weeks' : frequency.replace('ly', '')} from{' '}
-                                    {formatUtc(parseUtcDate(startDate), 'monthYear')} to {formatUtc(parseUtcDate(endDate), 'monthYear')}, you will spend{' '}
-                                    {formatCurrency(results.totalInvested)} and accumulate{' '}
-                                    <span className="font-medium text-slate-700 dark:text-slate-200">{formatBtcAmount(results.btcAccumulated)}</span>{' '}
-                                    (at current prices: {formatCurrency(results.currentValue)}).
+                                    Buy {currencyConfig.symbol}{amount.toLocaleString()} of Bitcoin every {frequency === 'daily' ? 'day' : frequency === 'biweekly' ? 'two weeks' : frequency.replace('ly', '')} from{' '}
+                                    {formatUtc(parseUtcDate(startDate), 'monthYear')} to {formatUtc(parseUtcDate(endDate), 'monthYear')} and you will spend{' '}
+                                    {formatCurrency(results.totalInvested)}. That buys{' '}
+                                    <span className="font-medium text-slate-700 dark:text-slate-200">{formatBtcAmount(results.btcAccumulated)}</span>,
+                                    worth {formatCurrency(results.currentValue)} at today&apos;s price.
                                 </>
                             ) : (
                                 <>
-                                    If you had invested {currencyConfig.symbol}{amount.toLocaleString()} every {frequency === 'daily' ? 'day' : frequency === 'biweekly' ? 'two weeks' : frequency.replace('ly', '')} from{' '}
-                                    {formatUtc(parseUtcDate(startDate), 'monthYear')} to {formatUtc(parseUtcDate(endDate), 'monthYear')}, you would have spent{' '}
-                                    {formatCurrency(results.totalInvested)}, stacked{' '}
+                                    Buying {currencyConfig.symbol}{amount.toLocaleString()} of Bitcoin every {frequency === 'daily' ? 'day' : frequency === 'biweekly' ? 'two weeks' : frequency.replace('ly', '')} from{' '}
+                                    {formatUtc(parseUtcDate(startDate), 'monthYear')} to {formatUtc(parseUtcDate(endDate), 'monthYear')} would have cost you{' '}
+                                    {formatCurrency(results.totalInvested)}. It would have bought{' '}
                                     <span className="font-medium text-slate-700 dark:text-slate-200">{formatBtcAmount(results.btcAccumulated)}</span>,{' '}
-                                    and it would now be worth{' '}
-                                    <span className="font-medium text-slate-700 dark:text-slate-200">{formatCurrency(results.currentValue)}</span>,{' '}
-                                    a <span className={clsx("font-medium", isProfit ? "text-gain" : "text-loss")}>{results.roi.toFixed(1)}% return</span>.
+                                    worth{' '}
+                                    <span className="font-medium text-slate-700 dark:text-slate-200">{formatCurrency(results.currentValue)}</span>{' '}
+                                    today. That is a <span className={clsx("font-medium", isProfit ? "text-gain" : "text-loss")}>{results.roi.toFixed(1)}% return</span>.
                                 </>
                             )}
                         </p>
@@ -1079,7 +1095,7 @@ export const DcaCalculator = ({ initialPriceData, initialLivePrice }: DcaCalcula
                     {inflationStats && (
                         <div className="bg-white dark:bg-slate-900 px-4 sm:px-6 py-3 sm:py-4 rounded-2xl border border-slate-200 dark:border-slate-800 fade-in">
                             <div className="text-[11px] sm:text-xs font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400 text-center mb-2">
-                                Real (inflation-adjusted) value, using full-period CPI
+                                Real value: what it is worth after inflation, using CPI over the whole period
                             </div>
                             <div className="grid grid-cols-3 gap-2 sm:gap-4 text-center text-xs sm:text-sm">
                                 <div>
@@ -1108,7 +1124,7 @@ export const DcaCalculator = ({ initialPriceData, initialLivePrice }: DcaCalcula
                     {/* Lump Sum Comparison */}
                     {lumpSumResult && (
                         <div className="bg-white dark:bg-slate-900 p-4 sm:p-6 rounded-2xl border border-slate-200 dark:border-slate-800 fade-in">
-                            <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 text-slate-800 dark:text-slate-100">DCA vs Lump Sum</h3>
+                            <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 text-slate-800 dark:text-slate-100">Buying steadily vs all at once</h3>
                             <div className="grid grid-cols-2 gap-3 sm:gap-6">
                                 <div className="p-3 sm:p-4 rounded-lg bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/50">
                                     <div className="text-xs sm:text-sm font-medium text-amber-700 dark:text-amber-400 mb-1">DCA Strategy</div>
@@ -1192,7 +1208,7 @@ export const DcaCalculator = ({ initialPriceData, initialLivePrice }: DcaCalcula
                         />
                     )}
 
-                    {/* Price Prediction */}
+                    {/* Price scenarios */}
                     <PricePredictionScenario btcAmount={results.btcAccumulated} totalInvested={results.totalInvested} />
 
                     {/* Stacking Goals */}
@@ -1327,7 +1343,7 @@ const StatsStrip = memo(function StatsStrip({ stats }: { stats: DcaStats }) {
         <Card className="p-4 sm:p-5 fade-in">
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-3">
                 <div>
-                    <div className={labelClass}>Annualized return (XIRR)</div>
+                    <div className={labelClass} title="Your yearly return, adjusted for the fact that your money went in at different times. Also called XIRR.">Annualized return (XIRR)</div>
                     <div className={clsx(
                         "text-sm sm:text-base font-semibold tabular-nums",
                         xirr === null
@@ -1338,7 +1354,7 @@ const StatsStrip = memo(function StatsStrip({ stats }: { stats: DcaStats }) {
                     </div>
                 </div>
                 <div>
-                    <div className={labelClass}>Max drawdown</div>
+                    <div className={labelClass} title="The deepest your portfolio ever fell from a high point along the way.">Max drawdown</div>
                     <div className={valueClass}>
                         {stats.maxDrawdownPercent > 0 ? `-${stats.maxDrawdownPercent.toFixed(1)}%` : '0%'}
                     </div>
@@ -1393,8 +1409,8 @@ const ProfitableWindows = memo(function ProfitableWindows({ frequency, startDate
             <span className="font-semibold text-gain tabular-nums">
                 {data.profitablePercent.toFixed(0)}%
             </span>{' '}
-            of all {months}-month {frequency} DCA windows since 2010 ended in profit
-            <span className="text-slate-400 dark:text-slate-500"> · {data.windowCount.toLocaleString('en-US')} windows, before fees</span>
+            of every {months}-month {frequency} buying run since 2010 ended in profit
+            <span className="text-slate-500 dark:text-slate-400"> · {data.windowCount.toLocaleString('en-US')} runs, before fees</span>
         </p>
     );
 });
@@ -1442,7 +1458,10 @@ const PricePredictionScenario = memo(function PricePredictionScenario({ btcAmoun
         <div className="bg-gradient-to-br from-slate-50 to-white dark:from-slate-900 dark:to-slate-800 text-slate-900 dark:text-white p-4 sm:p-6 rounded-2xl shadow-sm dark:shadow-lg border border-slate-200 dark:border-slate-700">
             <h3 className="text-base sm:text-xl font-bold mb-3 sm:mb-4 flex items-center gap-2">
                 <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5 text-gain shrink-0" />
-                Price Prediction
+                {/* Not "Price Prediction": nothing here forecasts anything. You supply
+                    a price and it multiplies. The site's credibility rests on refusing
+                    to predict, so the heading should not claim otherwise. */}
+                Price scenarios
             </h3>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-8 items-center">

@@ -274,7 +274,7 @@ async function computeAnalysis(): Promise<Analysis | null> {
 
 const TITLE = 'Best Day of the Week to Buy Bitcoin? We Ran All Seven';
 const FALLBACK_DESCRIPTION =
-    'Seven identical weekly Bitcoin DCA schedules, one for each weekday, run over the full price history. We publish all seven results — and the answer is that the gap is noise.';
+    'Seven identical weekly Bitcoin DCA schedules, one for each weekday, run over the full price history. We publish all seven results. The gap between them is noise.';
 
 export async function generateMetadata(): Promise<Metadata> {
     let description = FALLBACK_DESCRIPTION;
@@ -381,15 +381,15 @@ export default async function BestDayToBuyBitcoinPage() {
         ? [
             {
                 q: 'Is there a best day of the week to buy Bitcoin?',
-                a: `No, not one you can rely on. Running seven identical $${WEEKLY_AMOUNT}/week schedules from ${formatUtc(analysis.full.firstBuyTs, 'full')} to today, the gap between the best and worst weekday is ${fmtPct(analysis.full.spreadPercent)} of BTC accumulated. ${recent ? `More importantly, the winner is not stable: ${analysis.full.bestName} leads over the full history, but ${recent.bestName} leads over ${recent.label.toLowerCase()}. ` : ''}A real edge would show up in every window. This one does not.`,
+                a: `No, not one you can rely on. We ran seven identical $${WEEKLY_AMOUNT}/week schedules from ${formatUtc(analysis.full.firstBuyTs, 'full')} to today. The gap between the best and worst weekday is ${fmtPct(analysis.full.spreadPercent)} of the Bitcoin accumulated. ${recent ? `More importantly, the winner is not stable: ${analysis.full.bestName} leads over the full history, but ${recent.bestName} leads over ${recent.label.toLowerCase()}. ` : ''}A real edge would show up in every window. This one does not.`,
             },
             {
                 q: 'Which weekday came out ahead over the full history?',
-                a: `${analysis.full.bestName}, by ${fmtPct(analysis.full.spreadPercent)} over the worst weekday (${analysis.full.worstName}) — but that number does not mean what it looks like it means. Roughly ${Math.round(analysis.full.concentrationPercent)}% of every schedule's final BTC comes from its first ${analysis.full.concentrationBuys} purchases, made in August 2010 when Bitcoin was quoted to the whole cent. At those prices one cent of rounding is a double-digit percentage swing, which is larger than the ${fmtPct(analysis.full.spreadPercent)} spread being reported. The seven schedules also start on ${analysis.full.startSpanDays + 1} different days, so what the full-history table actually ranks is which start date caught the cheapest penny prints. It is a description of one week in 2010, not a prediction about weekdays.`,
+                a: `${analysis.full.bestName}, by ${fmtPct(analysis.full.spreadPercent)} over the worst weekday (${analysis.full.worstName}). That number does not mean what it looks like it means. About ${Math.round(analysis.full.concentrationPercent)}% of every schedule's final Bitcoin came from its first ${analysis.full.concentrationBuys} purchases. Those buys were made in August 2010, when Bitcoin was quoted in whole cents and a single cent was a big slice of the entire price. So one cent of rounding moves the Bitcoin you end up with by a double-digit percentage, which is more than the ${fmtPct(analysis.full.spreadPercent)} spread being reported. The seven schedules also begin on ${analysis.full.startSpanDays + 1} different days, because no two weekdays share a date. What the full-history table really ranks is which of those start dates caught the cheapest penny prints. It describes one week in 2010. It does not predict anything about weekdays.`,
             },
             {
                 q: 'Why do people say weekends are cheaper for Bitcoin?',
-                a: 'The usual story is that institutional desks and bank rails are closed at the weekend, so liquidity thins out and prices drift. Bitcoin trades 24/7, so any persistent weekend discount would be arbitraged away almost immediately. In the numbers on this page the weekend days do not consistently beat weekdays across time windows.',
+                a: 'The usual story is that big trading desks and bank transfers shut down at the weekend, so fewer buyers and sellers are around and prices drift. But Bitcoin trades every hour of every day. Any weekend discount that stuck around would be free money, so traders would close it almost immediately. In the numbers on this page the weekend days do not consistently beat weekdays across time windows.',
             },
             {
                 q: 'How much money is a weekday difference actually worth?',
@@ -398,12 +398,12 @@ export default async function BestDayToBuyBitcoinPage() {
                     : 'Less than a typical exchange fee spread. Choosing a cheaper exchange or not missing contributions matters far more than which weekday you buy on.',
             },
             {
-                q: 'What should I optimise instead of the weekday?',
-                a: 'The controllable variables that actually move the outcome are how much you contribute, how long you keep contributing, the fees you pay, and whether you stop buying during drawdowns. Pick whichever weekday you are least likely to forget, usually the day after you get paid, and automate it.',
+                q: 'What should I optimize instead of the weekday?',
+                a: 'Four things you control actually move the outcome. How much you put in. How long you keep going. The fees you pay. And whether you stop buying during a drawdown, meaning a long stretch when the price sits well below its peak. Pick whichever weekday you are least likely to forget, usually the day after you get paid, and automate it.',
             },
             {
                 q: 'How are these numbers calculated?',
-                a: `Each schedule buys $${WEEKLY_AMOUNT} at the daily close on its anchor weekday, in UTC, with no fees. Every schedule makes exactly the same number of purchases (${analysis.full.purchases} over the full window), so total invested is identical. The weekday is not the only thing that differs, though: seven weekdays cannot share a start date, so the seven schedules begin on ${analysis.full.startSpanDays + 1} consecutive days. In a recent window that is irrelevant. Over the full history those days fall in August 2010, and about ${Math.round(analysis.full.concentrationPercent)}% of every schedule's final BTC comes from its first ${analysis.full.concentrationBuys} purchases — so the full-history ranking mostly reflects which start date caught the cheapest days, not which weekday is better. The figures are recomputed once a day against fresh prices.`,
+                a: `Each schedule buys $${WEEKLY_AMOUNT} at the daily close on its anchor weekday, in UTC, with no fees. Every schedule makes exactly the same number of purchases (${analysis.full.purchases} over the full window), so total invested is identical. The weekday is not the only thing that differs, though. Seven weekdays cannot share a start date, so the seven schedules begin on ${analysis.full.startSpanDays + 1} consecutive days. In a recent window that does not matter. Over the full history those days fall in August 2010, and about ${Math.round(analysis.full.concentrationPercent)}% of every schedule's final Bitcoin came from its first ${analysis.full.concentrationBuys} purchases. So the full-history ranking mostly reflects which start date caught the cheapest days, not which weekday is better. The figures are recomputed once a day against fresh prices.`,
             },
         ]
         : [];
@@ -451,19 +451,22 @@ export default async function BestDayToBuyBitcoinPage() {
                     </h1>
                     {analysis ? (
                         <p className="text-base sm:text-lg text-slate-600 dark:text-slate-300 leading-relaxed">
-                            We ran seven identical weekly DCA schedules &mdash; ${WEEKLY_AMOUNT} every Monday, every Tuesday,
-                            and so on &mdash; over the full Bitcoin price history, from{' '}
+                            We ran seven buying plans side by side: ${WEEKLY_AMOUNT} every Monday, ${WEEKLY_AMOUNT} every
+                            Tuesday, and so on through the week. That is dollar-cost averaging, or DCA, which just means
+                            buying the same amount on a fixed schedule whatever the price is doing. Each plan ran over the
+                            full Bitcoin price history, from{' '}
                             <strong className="font-semibold text-slate-900 dark:text-white">{formatUtc(analysis.full.firstBuyTs, 'full')}</strong>{' '}
                             to <strong className="font-semibold text-slate-900 dark:text-white">{formatUtc(analysis.lastDataTs, 'full')}</strong>.
                             Same amount, same number of purchases, same fees. The gap between the best and worst day is{' '}
                             <strong className="font-semibold text-slate-900 dark:text-white">{fmtPct(analysis.full.spreadPercent)}</strong>,
-                            and the day that &ldquo;wins&rdquo; changes every time you change the window. It is noise &mdash;
-                            and below we show you exactly where that noise comes from.
+                            and the day that &ldquo;wins&rdquo; changes every time you change the date range. That makes it
+                            noise. Below, we show you exactly where the noise comes from.
                         </p>
                     ) : (
                         <p className="text-base sm:text-lg text-slate-600 dark:text-slate-300 leading-relaxed">
                             This page runs seven identical weekly DCA schedules, one anchored to each weekday, over the
-                            full Bitcoin price history and publishes all seven results.
+                            full Bitcoin price history and publishes all seven results. DCA, or dollar-cost averaging, is
+                            buying the same amount on a fixed schedule whatever the price is doing.
                         </p>
                     )}
                 </header>
@@ -487,13 +490,14 @@ export default async function BestDayToBuyBitcoinPage() {
                                                 <strong className="font-semibold text-slate-800 dark:text-slate-100">{recent.bestName}</strong>.
                                             </>
                                         )}{' '}
-                                        Nothing about Bitcoin&apos;s market changed to cause that. A genuine day-of-week effect
-                                        would persist across windows; a coin flip would not. This behaves like a coin flip.
-                                        The full-history figure is worse than merely noisy: roughly{' '}
-                                        {Math.round(analysis.full.concentrationPercent)}% of every schedule&apos;s BTC comes from
-                                        its first {analysis.full.concentrationBuys} buys in August 2010, and since seven
-                                        weekdays cannot share a start date, that column ranks start dates more than weekdays.
-                                        Publish the number, then ignore it.
+                                        Nothing about Bitcoin&apos;s market changed to cause that. A real day-of-week effect
+                                        would show up in every window. A coin flip would not, and this behaves like a coin
+                                        flip. The full-history figure is worse than merely noisy. About{' '}
+                                        {Math.round(analysis.full.concentrationPercent)}% of every schedule&apos;s Bitcoin came
+                                        from its first {analysis.full.concentrationBuys} buys, all made in August 2010. And
+                                        seven weekdays cannot share a start date, so the seven plans had to start on seven
+                                        different days of that week. What the column ranks is those start dates, more than
+                                        the weekdays. Publish the number, then ignore it.
                                     </p>
                                 </div>
                             </div>
@@ -504,7 +508,7 @@ export default async function BestDayToBuyBitcoinPage() {
                             <StatCard
                                 label="Best day, full history"
                                 value={analysis.full.bestName}
-                                sub={`${fmtPct(analysis.full.spreadPercent)} ahead of ${analysis.full.worstName} — an artefact, see below`}
+                                sub={`${fmtPct(analysis.full.spreadPercent)} ahead of ${analysis.full.worstName}. An artifact, see below`}
                             />
                             {recent && (
                                 <StatCard
@@ -533,11 +537,12 @@ export default async function BestDayToBuyBitcoinPage() {
                                     <AlertTriangle className="w-5 h-5 text-amber-700 dark:text-amber-400 shrink-0 mt-0.5" aria-hidden="true" />
                                     <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
                                         <strong className="font-semibold text-slate-800 dark:text-slate-100">Heads up: fallback data in use.</strong>{' '}
-                                        Coinbase&apos;s daily candles were unavailable when this page last rebuilt, so the numbers
-                                        below come from the Kraken series, which is interpolated from weekly closes. That
-                                        interpolation smooths out intra-week movement, so it pushes the seven weekdays closer
-                                        together than real daily data would. Treat today&apos;s spread figures as a floor, not a
-                                        measurement. The page recomputes daily and will switch back automatically.
+                                        Coinbase&apos;s daily prices were unavailable when this page last rebuilt. The numbers
+                                        below come from the Kraken series instead, which only has weekly closing prices and
+                                        draws a straight line between them. That smooths away the day-to-day movement, which
+                                        pushes the seven weekdays closer together than real daily prices would. Treat
+                                        today&apos;s gap figures as a floor, not a measurement. The page recomputes daily and
+                                        will switch back on its own.
                                     </p>
                                 </div>
                             </Card>
@@ -606,19 +611,27 @@ export default async function BestDayToBuyBitcoinPage() {
                                 </table>
                             </div>
                             <p className="mt-4 text-xs sm:text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
-                                <strong className="font-semibold text-slate-600 dark:text-slate-300">Read this table carefully.</strong>{' '}
+                                <strong className="font-semibold text-slate-600 dark:text-slate-300">
+                                    Read this table carefully. The ranking is an accident of one week in 2010.
+                                </strong>{' '}
                                 About{' '}
                                 <strong className="font-semibold text-slate-600 dark:text-slate-300">
                                     {Math.round(analysis.full.concentrationPercent)}%
                                 </strong>{' '}
-                                of the BTC in every row was bought in that row&apos;s first {analysis.full.concentrationBuys}{' '}
-                                purchases &mdash; {fmtUsd(analysis.full.concentrationBuys * WEEKLY_AMOUNT)} of the{' '}
-                                {fmtUsd(analysis.full.invested)} invested. Those buys landed in August 2010, when Bitcoin was
-                                quoted to the whole cent, so a one-cent difference in the print is a double-digit swing in BTC
-                                &mdash; bigger than the {fmtPct(analysis.full.spreadPercent)} spread this table reports. Since
-                                the seven schedules must start on seven consecutive days, the full-history ordering is
-                                substantially a ranking of <em>start dates</em> in one week of 2010, not of weekdays. The value
-                                column is the arithmetic of a fifteen-year schedule nobody actually ran; it is here for
+                                of the Bitcoin in every row came from that row&apos;s first {analysis.full.concentrationBuys}{' '}
+                                purchases. That is {fmtUsd(analysis.full.concentrationBuys * WEEKLY_AMOUNT)} of the{' '}
+                                {fmtUsd(analysis.full.invested)} invested doing most of the work. Those buys all landed in
+                                August 2010, when the price was quoted in whole cents and one cent was a big slice of the whole
+                                price. Nudge that price by a single cent and the Bitcoin you walk away with changes by a
+                                double-digit percentage. That wobble is bigger than the {fmtPct(analysis.full.spreadPercent)}{' '}
+                                spread this entire table reports.
+                            </p>
+                            <p className="mt-3 text-xs sm:text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
+                                Then there is the second problem. Seven weekly plans cannot all begin on the same date, because
+                                only one weekday falls on any given day, so they start on seven days in a row. Over the full
+                                history those seven days sit inside that same August 2010 week, at those same penny prices. So
+                                the order of this table is largely a ranking of <em>start dates</em>, not of weekdays. The value
+                                column is the arithmetic of a fifteen-year schedule nobody actually ran. It is here for
                                 completeness, not as a target. The window table below is the honest test.
                             </p>
                         </Card>
@@ -666,7 +679,7 @@ export default async function BestDayToBuyBitcoinPage() {
                                                                             row.rank === 1
                                                                                 ? 'bg-amber-100 text-amber-800 dark:bg-amber-500/20 dark:text-amber-300'
                                                                                 : row.rank === 7
-                                                                                    ? 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'
+                                                                                    ? 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
                                                                                     : 'text-slate-600 dark:text-slate-300',
                                                                         )}
                                                                     >
@@ -704,13 +717,12 @@ export default async function BestDayToBuyBitcoinPage() {
                                     </table>
                                 </div>
                                 <p className="mt-4 text-xs sm:text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
-                                    Each column is an independent run: seven schedules anchored to the seven weekdays, with
-                                    identical purchase counts and identical total invested within the column. The seven
-                                    necessarily begin (and therefore end) on seven consecutive days, since no two weekdays
-                                    share a date. Windows overlap, so
-                                    the columns are not independent samples in a statistical sense &mdash; which makes the rank
-                                    reshuffling even more telling, since heavily overlapping data should produce similar
-                                    rankings if the effect were real.
+                                    Each column is worked out from scratch: seven schedules, one per weekday, with the same
+                                    number of purchases and the same total invested inside that column. The seven have to begin
+                                    on seven days in a row, and so they also end on seven days in a row, since no two weekdays
+                                    share a date. The windows overlap, so these columns are not independent samples in the
+                                    statistical sense. That makes the reshuffling more damning, not less. Heavily overlapping
+                                    data should produce similar rankings if the effect were real.
                                 </p>
                             </Card>
                         )}
@@ -722,33 +734,34 @@ export default async function BestDayToBuyBitcoinPage() {
                             </h2>
                             <div className="space-y-4 text-sm sm:text-base text-slate-600 dark:text-slate-400 leading-relaxed">
                                 <p>
-                                    <strong className="text-slate-800 dark:text-slate-200">Bitcoin never closes.</strong> Equity
-                                    markets have real calendar structure: a weekend gap, an opening auction, index rebalancing
-                                    on set dates. Bitcoin trades every hour of every day on hundreds of venues. There is no
-                                    mechanism that makes Tuesday systematically cheaper, and if one appeared, the cost of
-                                    exploiting it would be roughly zero, so it would disappear within days.
+                                    <strong className="text-slate-800 dark:text-slate-200">Bitcoin never closes.</strong> Stock
+                                    markets have a real calendar: a weekend gap, an opening auction, index rebalancing on set
+                                    dates. Bitcoin trades every hour of every day on hundreds of venues. Nothing about it makes
+                                    one weekday reliably cheaper. If something did, exploiting it would cost almost nothing, so
+                                    it would be gone within days.
                                 </p>
                                 <p>
                                     <strong className="text-slate-800 dark:text-slate-200">Seven buckets, one dataset.</strong>{' '}
-                                    Split any volatile price series into seven arbitrary groups and one of them will come out on
-                                    top. That is arithmetic, not a discovery. The test of whether it means anything is whether
-                                    the same group keeps winning when you change the window, and here it does not.
+                                    Split any jumpy price history into seven arbitrary groups and one of them will come out on
+                                    top. That is arithmetic, not a discovery. The real test is whether the same group keeps
+                                    winning when you change the date range. Here it does not.
                                 </p>
                                 <p>
-                                    <strong className="text-slate-800 dark:text-slate-200">The spread is smaller than your
+                                    <strong className="text-slate-800 dark:text-slate-200">The gap is smaller than your
                                         fees.</strong>{' '}
                                     {fiveYear
                                         ? `Over ${fiveYear.label.toLowerCase()} the best and worst weekdays differ by ${fmtPct(fiveYear.spreadPercent)}. `
                                         : ''}
-                                    A retail exchange spread plus commission is commonly 0.5% to 1.5% per purchase. Moving from
-                                    a 1.49% fee tier to a 0.4% one changes your outcome by more than every weekday decision you
-                                    will ever make, and unlike the weekday, it is a real, repeatable saving.
+                                    Now compare that to what an exchange charges. Commission plus the spread, meaning the gap
+                                    between the price you buy at and the price you could sell at, commonly runs 0.5% to 1.5% per
+                                    purchase. Moving from a 1.49% fee tier to a 0.4% one changes your outcome by more than every
+                                    weekday decision you will ever make. Unlike the weekday, that saving is real and it repeats.
                                 </p>
                                 <p>
-                                    <strong className="text-slate-800 dark:text-slate-200">Consistency beats timing.</strong> The
-                                    variable that dominates a DCA outcome is how many contributions you actually make. A missed
-                                    month costs you a whole contribution. Waiting for the &ldquo;right&rdquo; day is how missed
-                                    months happen. Pick the day after payday, automate it, and stop thinking about it.
+                                    <strong className="text-slate-800 dark:text-slate-200">Consistency beats timing.</strong> What
+                                    really decides a DCA outcome is how many purchases you actually make. A missed month costs
+                                    you a whole contribution. Waiting for the &ldquo;right&rdquo; day is how missed months
+                                    happen. Pick the day after payday, automate it, and stop thinking about it.
                                 </p>
                             </div>
                         </section>
@@ -759,13 +772,12 @@ export default async function BestDayToBuyBitcoinPage() {
                                 How these numbers were computed
                             </h2>
                             <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
-                                For each window we take the first UTC date on or after the window start whose weekday matches,
-                                then run a weekly schedule from that date: ${WEEKLY_AMOUNT} per purchase, priced at that
-                                day&apos;s closing price, zero fees, using the same engine as the main calculator. The number of
-                                purchases is clamped to the minimum across the seven anchors, so all seven schedules invest
-                                exactly the same total and differ only in the weekday. All date bucketing is UTC, because
-                                exchange candles are UTC-aligned and doing this in local time would shift the entire schedule by
-                                a day for anyone west of Greenwich. Prices are{' '}
+                                For each window we find the first UTC date on or after the window start whose weekday matches.
+                                A weekly schedule then runs from that date: ${WEEKLY_AMOUNT} per purchase, priced at that
+                                day&apos;s closing price, zero fees, using the same engine as the main calculator. We cap the
+                                number of purchases at the lowest of the seven, so all seven schedules invest exactly the same
+                                total. All dates are bucketed in UTC. Exchange candles are UTC-aligned, and doing this in local
+                                time would shift the whole schedule by a day for anyone west of Greenwich. Prices are{' '}
                                 {analysis.interpolatedSeries
                                     ? 'currently coming from the Kraken weekly series interpolated to daily values (see the note above)'
                                     : 'Coinbase daily candles from July 2015 onward, and real daily market prices from blockchain.info for August 2010 to mid-2015'}
@@ -820,8 +832,8 @@ export default async function BestDayToBuyBitcoinPage() {
                         Run your own numbers
                     </h2>
                     <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300 mb-5 max-w-xl mx-auto">
-                        Pick any weekday you like &mdash; it barely matters. What does matter is the amount, the fee, and how
-                        long you keep going. Change all three in the calculator and see what the same history does to your
+                        Pick any weekday you like. It barely matters. What does matter is the amount, the fee, and how long
+                        you keep going. Change all three in the calculator and see what the same history does to your
                         actual plan.
                     </p>
                     <Link
@@ -860,8 +872,8 @@ export default async function BestDayToBuyBitcoinPage() {
                 {/* Disclaimer */}
                 <p className="border-t border-slate-200 dark:border-slate-800 pt-6 text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
                     Not financial advice. This page is a historical simulation published for educational purposes. Past
-                    performance does not guarantee future results, and a pattern found in historical data is not a prediction
-                    &mdash; that is the entire point of this page. Bitcoin is volatile and you can lose money.
+                    performance does not guarantee future results, and a pattern found in historical data is not a
+                    prediction. That is the entire point of this page. Bitcoin is volatile and you can lose money.
                 </p>
 
             </div>

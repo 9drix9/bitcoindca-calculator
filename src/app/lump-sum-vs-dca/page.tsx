@@ -236,7 +236,7 @@ async function computeAnalysis(): Promise<Analysis | null> {
 
 const TITLE = 'Lump Sum vs DCA for Bitcoin: Every Start Month Since 2010';
 const FALLBACK_DESCRIPTION =
-    'We put the same capital into Bitcoin two ways — all at once, or spread over 12 monthly buys — starting on every month since 2010, and published the full comparison. Lump sum usually wins; here is by how much, and when it does not.';
+    'We put the same money into Bitcoin two ways, all at once or spread over 12 monthly buys, starting every month since 2010. Lump sum usually wins. Here is by how much, and when it does not.';
 
 export async function generateMetadata(): Promise<Metadata> {
     let description = FALLBACK_DESCRIPTION;
@@ -344,29 +344,29 @@ export default async function LumpSumVsDcaPage() {
         ? [
             {
                 q: 'Is lump sum or DCA better for Bitcoin?',
-                a: `Historically, lump sum. Across ${analysis.headline.windows} start months since ${formatUtc(analysis.firstStartTs, 'monthYear')}, putting ${fmtUsd(CAPITAL)} in at once beat spreading it over ${HEADLINE_MONTHS} monthly buys in ${fmtPct(analysis.headline.lumpWinPercent)} of windows, with a median advantage of ${fmtPct(analysis.headline.medianDiff, true)} more BTC. But "better on average" and "better for you" are different questions: the worst lump-sum window in this sample ended ${fmtPct(analysis.headline.worst.diffPercent, true)} behind DCA, and most people never have the lump in the first place.`,
+                a: `Historically, lump sum. A lump sum means putting the whole amount in on day one. DCA, or dollar-cost averaging, means splitting it into equal buys spread over time. Across ${analysis.headline.windows} start months since ${formatUtc(analysis.firstStartTs, 'monthYear')}, putting ${fmtUsd(CAPITAL)} in at once beat spreading it over ${HEADLINE_MONTHS} monthly buys in ${fmtPct(analysis.headline.lumpWinPercent)} of windows. The middle result was ${fmtPct(analysis.headline.medianDiff, true)} more BTC for the lump sum, with half the windows above that and half below. But "better on average" and "better for you" are different questions. The worst lump-sum window in this sample ended ${fmtPct(analysis.headline.worst.diffPercent, true)} behind DCA, and most people never have the lump in the first place.`,
             },
             {
                 q: 'Why does lump sum usually win?',
-                a: 'Because Bitcoin has spent most of its history rising, and money that is still sitting in cash is not exposed to that rise. Spreading a fixed sum over 12 months means that on average only about half of it is invested during those 12 months. Any asset with a positive expected return rewards time in the market, so the strategy that gets invested sooner wins more often. The same result holds for stock indices in academic studies, for the same reason.',
+                a: 'Because Bitcoin has spent most of its history rising, and money still sitting in cash misses that rise. Spread a fixed sum over 12 months and, on average, only about half of it is invested during those 12 months. If an asset tends to rise over time, the strategy that gets invested sooner wins more often. That is not a Bitcoin quirk. Academic studies find the same thing for stock indexes, for the same reason.',
             },
             {
                 q: 'When does DCA beat lump sum?',
                 a: topRegime && deepRegime
-                    ? `When the market falls after you start. That is much more likely if you begin near a peak: for start months within 10% of the all-time high, lump sum won ${fmtPct(topRegime.lumpWinPercent)} of the time, versus ${fmtPct(deepRegime.lumpWinPercent)} for start months that began 50% or more below the high. DCA is the strategy that pays off precisely when you were unlucky about your entry.`
-                    : 'When the market falls after you start. Spreading purchases means the later ones buy at lower prices, so a drawdown right after the start date is where DCA earns its keep.',
+                    ? `When the market falls after you start. That is much more likely if you begin near a peak. For start months within 10% of the all-time high, lump sum won ${fmtPct(topRegime.lumpWinPercent)} of the time, versus ${fmtPct(deepRegime.lumpWinPercent)} for start months that began 50% or more below the high. DCA pays off exactly when you were unlucky about your entry.`
+                    : 'When the market falls after you start. Spreading purchases means the later ones buy at lower prices, so a fall right after the start date is where DCA earns its keep.',
             },
             {
                 q: 'Does DCA reduce risk?',
-                a: `It reduces the spread of outcomes, not the risk of losing money. In this sample the middle 80% of ${HEADLINE_MONTHS}-month windows ran from ${fmtPct(analysis.headline.p10, true)} to ${fmtPct(analysis.headline.p90, true)} for lump sum versus DCA. DCA narrows that range because it averages several entry prices instead of betting everything on one. It does nothing about the risk that Bitcoin itself falls and stays down.`,
+                a: `It narrows the range of outcomes. It does not reduce the risk of losing money. In this sample the middle 80% of ${HEADLINE_MONTHS}-month windows ran from ${fmtPct(analysis.headline.p10, true)} to ${fmtPct(analysis.headline.p90, true)} for lump sum versus DCA. DCA narrows that range because it averages several entry prices instead of betting everything on one. It does nothing about the risk that Bitcoin itself falls and stays down.`,
             },
             {
                 q: 'I get paid monthly and do not have a lump sum. Does this page apply to me?',
-                a: 'Not really, and that is the most important caveat here. This comparison only makes sense if the money already exists as a lump today — an inheritance, a bonus, a house sale. If you are investing out of income, you are not choosing between lump sum and DCA; you are choosing between DCA and doing nothing, and DCA wins that comparison by definition.',
+                a: 'Not really, and that is the most important caveat here. This comparison only makes sense if the money already exists as a lump today: an inheritance, a bonus, a house sale. If you are investing out of income, you are not choosing between lump sum and DCA. You are choosing between DCA and doing nothing, and DCA wins that comparison by definition.',
             },
             {
                 q: 'How were these numbers calculated?',
-                a: `For each start month, ${fmtUsd(CAPITAL)} is deployed both ways at daily closing prices with zero fees, using the same engine as the main calculator, and both legs are valued at the same spot price. Because both hold only Bitcoin at the end, the ratio of final values equals the ratio of BTC accumulated, so the answer does not depend on today's price. All date bucketing is UTC. Windows overlap and Bitcoin has exactly one price history, so these are descriptive percentages, not probabilities.`,
+                a: `For each start month, ${fmtUsd(CAPITAL)} goes in both ways at daily closing prices with zero fees, using the same engine as the main calculator. Both sides are then valued at the same current price. Because both end up holding only Bitcoin, the ratio of final values equals the ratio of BTC accumulated, so the answer does not depend on today's price. All date bucketing is UTC. Windows overlap and Bitcoin has exactly one price history, so these are descriptive percentages, not probabilities.`,
             },
         ]
         : [];
@@ -414,8 +414,9 @@ export default async function LumpSumVsDcaPage() {
                     </h1>
                     {analysis ? (
                         <p className="text-base sm:text-lg text-slate-600 dark:text-slate-300 leading-relaxed">
-                            We took {fmtUsd(CAPITAL)} and deployed it into Bitcoin two ways &mdash; all at once, or in{' '}
-                            {HEADLINE_MONTHS} equal monthly buys &mdash; starting on the first of{' '}
+                            We took {fmtUsd(CAPITAL)} and put it into Bitcoin two ways. Once as a lump sum, meaning the whole
+                            amount on day one. Once as {HEADLINE_MONTHS} equal monthly buys, which is dollar-cost averaging, or
+                            DCA. Then we did it again starting on the first of{' '}
                             <strong className="font-semibold text-slate-900 dark:text-white">
                                 every month from {formatUtc(analysis.firstStartTs, 'monthYear')} to {formatUtc(analysis.lastStartTs, 'monthYear')}
                             </strong>
@@ -428,9 +429,8 @@ export default async function LumpSumVsDcaPage() {
                         </p>
                     ) : (
                         <p className="text-base sm:text-lg text-slate-600 dark:text-slate-300 leading-relaxed">
-                            This page deploys the same capital into Bitcoin two ways &mdash; all at once, or spread over
-                            several months &mdash; across every start month in Bitcoin&apos;s price history, and publishes the
-                            full comparison.
+                            This page puts the same money into Bitcoin two ways, all at once or spread over several months,
+                            across every start month in Bitcoin&apos;s price history. It publishes the full comparison.
                         </p>
                     )}
                 </header>
@@ -471,9 +471,9 @@ export default async function LumpSumVsDcaPage() {
                                         Read the question before the answer
                                     </h2>
                                     <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300 leading-relaxed">
-                                        This comparison only exists if you already have the money as a lump today. If you are
-                                        investing out of a monthly paycheck, you are not choosing between lump sum and DCA
-                                        &mdash; you are choosing between DCA and waiting, and DCA wins that by default.
+                                        This comparison only exists if you already have the money sitting there today. If you
+                                        are investing out of a monthly paycheck, you are not choosing between lump sum and
+                                        DCA. You are choosing between DCA and waiting, and DCA wins that by default.
                                         Everything below applies to a windfall: an inheritance, a bonus, a sale.
                                     </p>
                                 </div>
@@ -534,10 +534,10 @@ export default async function LumpSumVsDcaPage() {
                             </div>
                             <p className="mt-4 text-xs sm:text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
                                 The pattern is mechanical, not mysterious. The longer you hold cash back, the more of the
-                                asset&apos;s average drift you miss &mdash; so the lump sum&apos;s win rate and its median edge
-                                both grow with the deployment period. Notice that the middle-80% range widens alongside them:
-                                a longer deployment does not only shift the average outcome, it stretches the gap between the
-                                two strategies in both directions.
+                                asset&apos;s upward drift you miss. So the lump sum&apos;s win rate and its median edge both
+                                grow as you spread the buys over more months. Notice that the middle-80% range widens
+                                alongside them. Spreading it out for longer does not just shift the average outcome. It
+                                stretches the gap between the two strategies in both directions.
                             </p>
                         </Card>
 
@@ -545,7 +545,7 @@ export default async function LumpSumVsDcaPage() {
                         {analysis.regimes.length > 0 && (
                             <Card className="p-4 sm:p-6">
                                 <h2 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white">
-                                    It depends where you are in the cycle &mdash; but less than you would think
+                                    It depends where you are in the cycle, but less than you would think
                                 </h2>
                                 <p className="mt-1 mb-4 text-sm text-slate-500 dark:text-slate-400">
                                     The same {HEADLINE_MONTHS}-month windows, grouped by how far below the running all-time
@@ -588,15 +588,15 @@ export default async function LumpSumVsDcaPage() {
                                 <p className="mt-4 text-xs sm:text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
                                     {topRegime && deepRegime ? (
                                         <>
-                                            Starting near an all-time high should be the worst case for a lump sum, and it is:
-                                            its win rate is {fmtPct(topRegime.lumpWinPercent)} for start months near the high
+                                            Starting near an all-time high should be the worst case for a lump sum, and it is.
+                                            Its win rate is {fmtPct(topRegime.lumpWinPercent)} for start months near the high,
                                             against {fmtPct(deepRegime.lumpWinPercent)} for start months 50% or more below it.
                                             {topRegime.lumpWinPercent > 50 ? (
                                                 <>
-                                                    {' '}But note what did <em>not</em> happen &mdash; even at the top, the
-                                                    lump sum still came out ahead in most windows. Bitcoin has made new
-                                                    all-time highs often enough that &ldquo;near the high&rdquo; has
-                                                    historically not been a reliable reason to wait.
+                                                    {' '}But note what did <em>not</em> happen. Even at the top, the lump sum
+                                                    still came out ahead in most windows. Bitcoin has made new all-time highs
+                                                    often enough that &ldquo;near the high&rdquo; has historically not been a
+                                                    reliable reason to wait.
                                                 </>
                                             ) : (
                                                 <>
@@ -631,45 +631,46 @@ export default async function LumpSumVsDcaPage() {
                                 <p>
                                     <strong className="text-slate-800 dark:text-slate-200">Lump sum wins on average because
                                         of time in the market, not timing.</strong>{' '}
-                                    If you spread {fmtUsd(CAPITAL)} over {HEADLINE_MONTHS} months, then on average only about
-                                    half of it is invested at any point during that year. For an asset whose price has drifted
-                                    upward over time, half-invested is a cost. It is not a Bitcoin-specific result: the same
-                                    finding shows up in equity studies going back decades, for exactly the same reason.
+                                    Spread {fmtUsd(CAPITAL)} over {HEADLINE_MONTHS} months and, on average, only about half of
+                                    it is invested at any point during that year. For an asset whose price has drifted upward
+                                    over time, being half-invested is a cost. This is not a Bitcoin quirk. The same finding
+                                    shows up in stock market studies going back decades, for exactly the same reason.
                                 </p>
                                 <p>
                                     <strong className="text-slate-800 dark:text-slate-200">DCA buys you a narrower range of
                                         outcomes.</strong>{' '}
-                                    Averaging over {HEADLINE_MONTHS} entry prices instead of one means no single bad day can
-                                    define your cost basis. In this sample the lump sum&apos;s edge ranged from{' '}
+                                    Averaging over {HEADLINE_MONTHS} prices instead of one means no single bad day can set what
+                                    you paid. In this sample the lump sum&apos;s edge ranged from{' '}
                                     {fmtPct(analysis.headline.p10, true)} to {fmtPct(analysis.headline.p90, true)} across the
-                                    middle 80% of windows &mdash; that whole range is the uncertainty you are choosing to take
-                                    on, or to give up.
+                                    middle 80% of windows. That whole range is the uncertainty you are choosing to take on, or
+                                    to give up.
                                 </p>
                                 <p>
                                     <strong className="text-slate-800 dark:text-slate-200">The real product DCA sells is
                                         regret insurance.</strong>{' '}
                                     The worst {HEADLINE_MONTHS}-month lump-sum window here finished{' '}
                                     {fmtPct(analysis.headline.worst.diffPercent, true)} behind DCA, starting in{' '}
-                                    {formatUtc(analysis.headline.worst.startTs, 'monthYear')}. An investor who deploys
-                                    everything the week before a 70% drawdown often does not calmly wait it out &mdash; they
-                                    sell. A strategy you can actually stick to beats a marginally better one you abandon.
-                                    That is a behavioural argument, not a mathematical one, and it is still a good argument.
+                                    {formatUtc(analysis.headline.worst.startTs, 'monthYear')}. A drawdown is a fall from a
+                                    previous peak. Someone who puts everything in the week before a 70% one often does not
+                                    calmly wait it out. They sell. A strategy you can actually stick to beats a slightly
+                                    better one you abandon. That is an argument about human behavior rather than about math,
+                                    and it is still a good argument.
                                 </p>
                                 <p>
                                     <strong className="text-slate-800 dark:text-slate-200">This is one price history, and
                                         the windows overlap.</strong>{' '}
-                                    Bitcoin has a single realised path, and consecutive {HEADLINE_MONTHS}-month windows share
-                                    eleven of their twelve months, so these {analysis.headline.windows} windows are nowhere
-                                    near {analysis.headline.windows} independent samples. The sample is also dominated by the
-                                    largest sustained appreciation in any liquid asset in modern history. A percentage on this
-                                    page describes what happened; it is not a probability of what will happen.
+                                    Bitcoin has only ever taken one path, and back-to-back {HEADLINE_MONTHS}-month windows
+                                    share eleven of their twelve months. So these {analysis.headline.windows} windows are
+                                    nowhere near {analysis.headline.windows} independent samples. The sample is also dominated
+                                    by the largest sustained rise in any easily traded asset in modern history. A percentage on
+                                    this page describes what happened. It is not a probability of what will happen.
                                 </p>
                                 <p>
                                     <strong className="text-slate-800 dark:text-slate-200">A middle path is legitimate.</strong>{' '}
-                                    Deploying part now and averaging the rest over a few months is not a compromise between
-                                    two correct answers &mdash; it is a deliberate trade of a little expected return for a lot
-                                    less exposure to a single date. If that is the version you would hold through a 70%
-                                    drawdown, it is the better plan for you regardless of what the median column says.
+                                    Putting part of it in now and spreading the rest over a few months is not a fudge between
+                                    two correct answers. It is a deliberate trade: a little expected return, given up in
+                                    exchange for a lot less depending on one date. If that is the version you would hold
+                                    through a 70% drawdown, it is the better plan for you whatever the median column says.
                                 </p>
                             </div>
                         </section>
@@ -681,18 +682,18 @@ export default async function LumpSumVsDcaPage() {
                             </h2>
                             <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
                                 Start dates step one calendar month at a time from{' '}
-                                {formatUtc(analysis.firstStartTs, 'full')} to {formatUtc(analysis.lastStartTs, 'full')}, keeping
-                                only windows whose full deployment period completes inside the price data. For each one, the
-                                lump-sum leg buys {fmtUsd(CAPITAL)} of Bitcoin at the closing price on the start date; the DCA
-                                leg buys an equal share on the same day of each following month, using the same engine as the
-                                main calculator. Fees are zero on both legs, and both are valued at the same current spot
-                                price. Because both end holding only Bitcoin, the ratio of final values equals the ratio of BTC
-                                accumulated, which is why the comparison does not depend on today&apos;s price at all. Market
-                                regime is classified by the running all-time high as of the start date, so no future
-                                information is used. All date bucketing is UTC. Prices come from Coinbase daily candles from
-                                July 2015 onward and real daily market prices from blockchain.info for August 2010 to mid-2015;
-                                if Coinbase is unavailable the calculator&apos;s Kraken series is used instead. Figures refresh
-                                once every 24 hours &mdash; the data currently runs to{' '}
+                                {formatUtc(analysis.firstStartTs, 'full')} to {formatUtc(analysis.lastStartTs, 'full')}. We keep
+                                only the windows that finish inside the price data. For each one, the lump-sum side buys{' '}
+                                {fmtUsd(CAPITAL)} of Bitcoin at the closing price on the start date. The DCA side buys an equal
+                                share on the same day of each following month, using the same engine as the main calculator.
+                                Fees are zero on both sides, and both are valued at the same current price. Because both end up
+                                holding only Bitcoin, the ratio of final values equals the ratio of BTC accumulated, which is
+                                why the comparison does not depend on today&apos;s price at all. Each window is sorted into a
+                                market phase using the running all-time high as of its start date, so no future information is
+                                used. All date bucketing is UTC. Prices come from Coinbase daily candles from July 2015 onward
+                                and real daily market prices from blockchain.info for August 2010 to mid-2015. If Coinbase is
+                                unavailable the calculator&apos;s Kraken series is used instead. Figures refresh once every 24
+                                hours, and the data currently runs to{' '}
                                 {formatUtc(analysis.lastDataTs, 'full')}. Full detail on the{' '}
                                 <Link href="/methodology" className="text-amber-700 dark:text-amber-400 hover:underline font-medium">
                                     methodology page
@@ -741,9 +742,9 @@ export default async function LumpSumVsDcaPage() {
                         Run your own numbers
                     </h2>
                     <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300 mb-5 max-w-xl mx-auto">
-                        Your amount, your dates, your fees. The calculator backtests a DCA schedule against the same price
-                        history and shows the lump-sum equivalent next to it, so you can see the trade-off on your actual
-                        numbers instead of an average.
+                        Your amount, your dates, your fees. The calculator runs a DCA schedule against the same price history
+                        and shows the lump-sum version right next to it. You get the trade-off on your own numbers instead of
+                        an average.
                     </p>
                     <Link
                         href={`/?amount=${CAPITAL / HEADLINE_MONTHS}&frequency=monthly&fee=0&provider=coinbase`}

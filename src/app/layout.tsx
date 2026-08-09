@@ -5,6 +5,7 @@ import './globals.css';
 
 import { LazyAnalytics } from '@/components/LazyAnalytics';
 import { CookieConsent } from '@/components/CookieConsent';
+import { CookiePreferencesButton } from '@/components/CookiePreferencesButton';
 import { ConsentGatedScripts } from '@/components/ConsentGatedScripts';
 import { BtcDonationButton } from '@/components/BtcDonationButton';
 import { Providers } from '@/components/Providers';
@@ -264,6 +265,8 @@ export default function RootLayout({
                     ].map(({ href, label }) => (
                       <Link key={href} href={href} className={footerLink}>{label}</Link>
                     ))}
+                    {/* Withdrawing consent has to be as easy as giving it. */}
+                    <CookiePreferencesButton className={`${footerLink} text-left`} />
                   </div>
                 </div>
 
@@ -277,7 +280,7 @@ export default function RootLayout({
 
               <div className="border-t border-slate-100 dark:border-slate-800 pt-6 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-500 dark:text-slate-400">
                 <p suppressHydrationWarning>&copy; {new Date().getFullYear()} Bitcoin DCA Calculator. Market data from public exchange APIs.</p>
-                <p className="text-slate-500 dark:text-slate-500">Not financial advice.</p>
+                <p className="text-slate-500 dark:text-slate-400">Not financial advice.</p>
               </div>
             </div>
           </footer>
