@@ -10,6 +10,7 @@ export const metadata: Metadata = {
         canonical: '/about',
     },
     openGraph: {
+        images: [{ url: '/opengraph-image', width: 1200, height: 630 }],
         title: 'About This Project',
         description: 'A free, open-source Bitcoin DCA calculator. No accounts, no email capture, no shitcoins. Learn who built it and why.',
         type: 'article',
@@ -17,6 +18,7 @@ export const metadata: Metadata = {
         locale: 'en_US',
     },
     twitter: {
+        images: ['/opengraph-image'],
         card: 'summary_large_image',
         title: 'About This Project',
         description: 'A free, open-source Bitcoin DCA calculator. No accounts, no email capture, no shitcoins.',

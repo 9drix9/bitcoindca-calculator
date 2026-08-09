@@ -91,6 +91,7 @@ export const metadata: Metadata = {
   description: 'An honest guide to Bitcoin self-custody: what a seed phrase really is, how people lose coins, verifying addresses on-device, testing your recovery, passphrases, multisig, inheritance planning, and a current hardware wallet comparison.',
   keywords: ['bitcoin self custody', 'hardware wallet guide', 'seed phrase backup', 'bip39 recovery phrase', 'bitcoin multisig', 'bitcoin inheritance planning', 'passphrase 25th word', 'best bitcoin hardware wallet 2026'],
   openGraph: {
+        images: [{ url: '/opengraph-image', width: 1200, height: 630 }],
     title: 'Self-Custody: How to Hold Bitcoin Without Losing It',
     description: 'Self-custody removes exchange risk and hands you operational risk. Here is how to take it on properly: seed phrases, backups, threat models, inheritance, and which device to buy.',
     url: '/self-custody',
@@ -99,6 +100,7 @@ export const metadata: Metadata = {
     locale: 'en_US',
   },
   twitter: {
+        images: ['/opengraph-image'],
     card: 'summary_large_image',
     title: 'Self-Custody: How to Hold Bitcoin Without Losing It',
     description: 'Self-custody removes exchange risk and hands you operational risk. Here is how to take it on properly.',

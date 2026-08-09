@@ -33,6 +33,7 @@ export const metadata: Metadata = {
         canonical: '/author',
     },
     openGraph: {
+        images: [{ url: '/opengraph-image', width: 1200, height: 630 }],
         title: 'Ricky Thach — Who Builds and Maintains This Site',
         description:
             'The person behind the Bitcoin DCA Calculator: what he works on, how the site is funded, and how errors get reported and fixed.',
@@ -42,6 +43,7 @@ export const metadata: Metadata = {
         locale: 'en_US',
     },
     twitter: {
+        images: ['/opengraph-image'],
         card: 'summary_large_image',
         title: 'Ricky Thach — Who Builds and Maintains This Site',
         description:

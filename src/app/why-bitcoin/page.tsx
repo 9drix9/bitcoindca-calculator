@@ -14,6 +14,7 @@ export const metadata: Metadata = {
         canonical: '/why-bitcoin',
     },
     openGraph: {
+        images: [{ url: '/opengraph-image', width: 1200, height: 630 }],
         title: 'Where Does Bitcoin\'s Value Come From?',
         description: 'How the network works, what the evidence supports, the common misconceptions, and the open risks. A straight explainer with no hype.',
         type: 'article',
@@ -22,6 +23,7 @@ export const metadata: Metadata = {
         locale: 'en_US',
     },
     twitter: {
+        images: ['/opengraph-image'],
         card: 'summary_large_image',
         title: 'Where Does Bitcoin\'s Value Come From?',
         description: 'How the network works, what the evidence supports, the common misconceptions, and the open risks. A straight explainer with no hype.',

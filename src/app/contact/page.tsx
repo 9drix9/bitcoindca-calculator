@@ -33,6 +33,7 @@ export const metadata: Metadata = {
         canonical: '/contact',
     },
     openGraph: {
+        images: [{ url: '/opengraph-image', width: 1200, height: 630 }],
         title: 'Contact',
         description:
             'Report a wrong number, open a GitHub issue, or make a privacy request. Maintained by one person — response expectations are stated plainly.',
@@ -42,6 +43,7 @@ export const metadata: Metadata = {
         locale: 'en_US',
     },
     twitter: {
+        images: ['/opengraph-image'],
         card: 'summary_large_image',
         title: 'Contact the Bitcoin DCA Calculator',
         description:

@@ -28,6 +28,7 @@ export const metadata: Metadata = {
     ],
     alternates: { canonical: PAGE_PATH },
     openGraph: {
+        images: [{ url: '/opengraph-image', width: 1200, height: 630 }],
         title: 'Bitcoin Exchange Fee Calculator — What DCA Fees Really Cost',
         description:
             'What a 0.1% vs 1.49% fee costs across a real five-year DCA schedule, plus the spread nobody itemises.',
@@ -37,6 +38,7 @@ export const metadata: Metadata = {
         locale: 'en_US',
     },
     twitter: {
+        images: ['/opengraph-image'],
         card: 'summary_large_image',
         title: 'Bitcoin Exchange Fee Calculator — What DCA Fees Really Cost',
         description:

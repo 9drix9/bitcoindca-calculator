@@ -172,6 +172,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
         description,
         alternates: { canonical: `/dca/${slug}` },
         openGraph: {
+        images: [{ url: '/opengraph-image', width: 1200, height: 630 }],
             title,
             description,
             type: 'article',
@@ -179,6 +180,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
             locale: 'en_US',
         },
         twitter: {
+        images: ['/opengraph-image'],
             card: 'summary_large_image',
             title,
             description,

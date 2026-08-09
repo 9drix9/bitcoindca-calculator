@@ -243,6 +243,7 @@ export async function generateMetadata({ searchParams }: PageProps): Promise<Met
         ],
         alternates: { canonical: PATH },
         openGraph: {
+        images: [{ url: '/opengraph-image', width: 1200, height: 630 }],
             title,
             description,
             url: PATH,
@@ -251,6 +252,7 @@ export async function generateMetadata({ searchParams }: PageProps): Promise<Met
             locale: 'en_US',
         },
         twitter: {
+        images: ['/opengraph-image'],
             card: 'summary_large_image',
             title,
             description,

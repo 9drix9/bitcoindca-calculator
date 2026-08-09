@@ -317,6 +317,7 @@ export async function generateMetadata(): Promise<Metadata> {
         ],
         alternates: { canonical: PATH },
         openGraph: {
+        images: [{ url: '/opengraph-image', width: 1200, height: 630 }],
             title,
             description,
             url: PATH,
@@ -325,6 +326,7 @@ export async function generateMetadata(): Promise<Metadata> {
             locale: 'en_US',
         },
         twitter: {
+        images: ['/opengraph-image'],
             card: 'summary_large_image',
             title,
             description,

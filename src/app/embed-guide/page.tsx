@@ -11,6 +11,7 @@ export const metadata: Metadata = {
         canonical: '/embed-guide',
     },
     openGraph: {
+        images: [{ url: '/opengraph-image', width: 1200, height: 630 }],
         title: 'Embed the Bitcoin DCA Calculator',
         description: 'A live, self-updating Bitcoin DCA result card for your site. One iframe, no API key, free to use.',
         url: '/embed-guide',
@@ -19,6 +20,7 @@ export const metadata: Metadata = {
         locale: 'en_US',
     },
     twitter: {
+        images: ['/opengraph-image'],
         card: 'summary_large_image',
         title: 'Embed the Bitcoin DCA Calculator',
         description: 'A live, self-updating Bitcoin DCA result card for your site. One iframe, no API key, free to use.',

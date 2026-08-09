@@ -10,6 +10,7 @@ export const metadata: Metadata = {
         canonical: '/methodology',
     },
     openGraph: {
+        images: [{ url: '/opengraph-image', width: 1200, height: 630 }],
         title: 'Methodology & Data Sources',
         description: 'Every data source, every formula, every limitation. No black box: this is exactly how the calculator works.',
         url: '/methodology',
@@ -18,6 +19,7 @@ export const metadata: Metadata = {
         locale: 'en_US',
     },
     twitter: {
+        images: ['/opengraph-image'],
         card: 'summary_large_image',
         title: 'Methodology & Data Sources',
         description: 'Every data source, every formula, every limitation. No black box: this is exactly how the calculator works.',

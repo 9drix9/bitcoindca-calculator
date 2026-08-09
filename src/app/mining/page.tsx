@@ -57,6 +57,7 @@ export const metadata: Metadata = {
         canonical: '/mining',
     },
     openGraph: {
+        images: [{ url: '/opengraph-image', width: 1200, height: 630 }],
         title: 'How Bitcoin Mining Works',
         description: 'Hashing, difficulty, pools, ASIC economics, the security budget, the energy debate. Explained straight, with the common myths corrected.',
         type: 'article',
@@ -65,6 +66,7 @@ export const metadata: Metadata = {
         locale: 'en_US',
     },
     twitter: {
+        images: ['/opengraph-image'],
         card: 'summary_large_image',
         title: 'How Bitcoin Mining Works',
         description: 'Hashing, difficulty, pools, ASIC economics, the security budget, the energy debate. Explained straight, with the common myths corrected.',

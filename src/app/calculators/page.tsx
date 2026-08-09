@@ -131,6 +131,7 @@ export const metadata: Metadata = {
         canonical: '/calculators',
     },
     openGraph: {
+        images: [{ url: '/opengraph-image', width: 1200, height: 630 }],
         title: TITLE,
         description: DESCRIPTION,
         type: 'website',
@@ -138,6 +139,7 @@ export const metadata: Metadata = {
         locale: 'en_US',
     },
     twitter: {
+        images: ['/opengraph-image'],
         card: 'summary_large_image',
         title: TITLE,
         description: DESCRIPTION,

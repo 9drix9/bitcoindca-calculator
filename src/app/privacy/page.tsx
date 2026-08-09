@@ -8,6 +8,7 @@ export const metadata: Metadata = {
         canonical: '/privacy',
     },
     openGraph: {
+        images: [{ url: '/opengraph-image', width: 1200, height: 630 }],
         title: 'Privacy Policy',
         description: 'Learn how Bitcoin DCA Calculator handles your data. No personal financial data is collected or stored.',
         url: '/privacy',
@@ -16,6 +17,7 @@ export const metadata: Metadata = {
         locale: 'en_US',
     },
     twitter: {
+        images: ['/opengraph-image'],
         card: 'summary_large_image',
         title: 'Privacy Policy',
         description: 'Learn how Bitcoin DCA Calculator handles your data. No personal financial data is collected or stored.',

@@ -27,6 +27,7 @@ export const metadata: Metadata = {
     ],
     alternates: { canonical: PAGE_PATH },
     openGraph: {
+        images: [{ url: '/opengraph-image', width: 1200, height: 630 }],
         title: 'Bitcoin Cost Basis Calculator — Average Price Per BTC',
         description:
             'Average cost basis across a DCA schedule, why DCA creates hundreds of tax lots, and how FIFO, HIFO and spec-ID differ.',
@@ -36,6 +37,7 @@ export const metadata: Metadata = {
         locale: 'en_US',
     },
     twitter: {
+        images: ['/opengraph-image'],
         card: 'summary_large_image',
         title: 'Bitcoin Cost Basis Calculator — Average Price Per BTC',
         description:
@@ -324,8 +326,11 @@ export default async function BitcoinCostBasisPage() {
                     <p className="inline-flex items-start gap-2 text-sm text-slate-600 dark:text-slate-300 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-2.5">
                         <Lock className="w-4 h-4 mt-0.5 shrink-0 text-amber-700 dark:text-amber-400" aria-hidden="true" />
                         <span>
-                            Anything you type into the tracker stays in your browser&apos;s local storage and is calculated
-                            on your device. It is never sent to a server.
+                            Your positions are stored in this browser&apos;s local storage and every figure is calculated
+                            on your device. There is no account and no database. One honest caveat: to price buys that
+                            fall outside the window this page loads, the tracker asks our server for prices covering the
+                            date range your positions span &mdash; so those dates leave your browser, though the amounts,
+                            labels and results never do.
                         </span>
                     </p>
                 </header>
@@ -548,8 +553,9 @@ export default async function BitcoinCostBasisPage() {
                     <p className="text-sm sm:text-base text-slate-600 dark:text-slate-400 leading-relaxed">
                         Add each DCA schedule you have actually run &mdash; a label, the date range, the amount per buy, the
                         cadence and the fee. The tracker backtests each one against historical prices and shows the combined
-                        average cost basis across all of them. Positions persist in this browser only; there is no account
-                        and nothing is uploaded.
+                        average cost basis across all of them. Positions persist in this browser only and there is no
+                        account. The only thing that reaches our server is the date range they span, which is what the
+                        price lookup needs; the amounts and the results stay on your device.
                     </p>
                     {data ? (
                         <>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useCallback, useEffect, useId } from 'react';
+import { useState, useMemo, useCallback, useEffect, useId, useSyncExternalStore } from 'react';
 import { CostBasisPosition, Frequency, PriceMode } from '@/types';
 import { calculateDca } from '@/utils/dca';
 import { parseUtcDate, DAY_MS } from '@/utils/dates';
@@ -55,11 +55,63 @@ const savePositions = (positions: CostBasisPosition[]) => {
     } catch { /* ignore */ }
 };
 
+/**
+ * localStorage as an external store, read through useSyncExternalStore.
+ *
+ * This component server-renders, and localStorage is client-only, so reading it
+ * during the initial render made the server (no positions) disagree with the
+ * client (positions) — a hydration mismatch for exactly the people who had used
+ * the feature. Loading it in an effect fixes the mismatch but is a setState-in-
+ * effect, which is the pattern useSyncExternalStore exists to replace.
+ *
+ * getSnapshot MUST return a stable reference or React re-renders forever, so the
+ * parsed array is cached against the raw string it came from.
+ */
+const EMPTY: CostBasisPosition[] = [];
+let snapshotRaw: string | null = null;
+let snapshotValue: CostBasisPosition[] = EMPTY;
+const listeners = new Set<() => void>();
+
+const emit = () => listeners.forEach((l) => l());
+
+const positionsStore = {
+    subscribe(listener: () => void) {
+        listeners.add(listener);
+        // Another tab editing the same key should update this one.
+        window.addEventListener('storage', emit);
+        return () => {
+            listeners.delete(listener);
+            if (listeners.size === 0) window.removeEventListener('storage', emit);
+        };
+    },
+    getSnapshot(): CostBasisPosition[] {
+        let raw: string | null = null;
+        try { raw = localStorage.getItem(STORAGE_KEY); } catch { /* ignore */ }
+        if (raw !== snapshotRaw) {
+            snapshotRaw = raw;
+            snapshotValue = loadPositions();
+        }
+        return snapshotValue;
+    },
+    /** The server has no localStorage, so it always renders the empty state. */
+    getServerSnapshot: (): CostBasisPosition[] => EMPTY,
+    write(next: CostBasisPosition[]) {
+        savePositions(next);
+        snapshotRaw = null; // force a re-read on the next snapshot
+        emit();
+    },
+};
+
 export const CostBasisTracker = ({ priceData, livePrice, priceMode, provider }: CostBasisTrackerProps) => {
     const { formatCurrency, currencyConfig } = useCurrency();
     // Stored position amounts are always USD; the form input is in the selected
     // display currency and converted once on save.
-    const [positions, setPositions] = useState<CostBasisPosition[]>(() => loadPositions());
+    //
+    const positions = useSyncExternalStore(
+        positionsStore.subscribe,
+        positionsStore.getSnapshot,
+        positionsStore.getServerSnapshot,
+    );
     const [showForm, setShowForm] = useState(false);
     const formId = useId();
 
@@ -84,8 +136,7 @@ export const CostBasisTracker = ({ priceData, livePrice, priceMode, provider }: 
             feePercentage: formFee,
         };
         const updated = [...positions, newPosition];
-        setPositions(updated);
-        savePositions(updated);
+        positionsStore.write(updated);
         setShowForm(false);
         setLabel('');
         setFormStartDate('');
@@ -97,8 +148,7 @@ export const CostBasisTracker = ({ priceData, livePrice, priceMode, provider }: 
 
     const removePosition = useCallback((id: string) => {
         const updated = positions.filter(p => p.id !== id);
-        setPositions(updated);
-        savePositions(updated);
+        positionsStore.write(updated);
     }, [positions]);
 
     /**

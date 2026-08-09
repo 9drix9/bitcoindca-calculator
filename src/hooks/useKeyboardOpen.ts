@@ -20,6 +20,14 @@ const KEYBOARD_MIN_PX = 150;
 const isOpen = (): boolean => {
     const vv = window.visualViewport;
     if (!vv) return false;
+
+    // Pinch-zoom is NOT a keyboard. On Chromium `innerHeight` tracks the layout
+    // viewport and ignores zoom, while `visualViewport.height` is divided by the
+    // scale — so at ~1.22x zoom the height delta alone crosses the threshold and
+    // the entire bottom bar unmounts, taking the only way to open the More drawer
+    // with it. Bail out whenever the user is zoomed.
+    if (vv.scale > 1.05) return false;
+
     // On iOS the visual viewport also shrinks as the toolbar expands, which is
     // only ~60-80px — well under this threshold.
     return window.innerHeight - vv.height > KEYBOARD_MIN_PX;

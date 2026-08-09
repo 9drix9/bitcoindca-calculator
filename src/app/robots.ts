@@ -8,7 +8,12 @@ export default function robots(): MetadataRoute.Robots {
         rules: [
             {
                 userAgent: '*',
-                allow: '/',
+                // /api/og renders the share card image, and /share points both
+                // og:image and twitter:image at it. Blanket-disallowing /api/ told
+                // every crawler not to fetch the one asset the sharing loop depends
+                // on, so a shared result unfurled as a bare link. The more specific
+                // allow wins over the disallow below for that one path.
+                allow: ['/', '/api/og'],
                 // NOTE: never disallow /_next/ — it blocks Googlebot from all JS/CSS
                 // and breaks rendering-based indexing.
                 disallow: ['/api/', '/offline'],

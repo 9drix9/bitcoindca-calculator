@@ -14,6 +14,7 @@ export const metadata: Metadata = {
         canonical: '/dca',
     },
     openGraph: {
+        images: [{ url: '/opengraph-image', width: 1200, height: 630 }],
         title: 'Bitcoin DCA Scenarios: What Steady Buying Would Be Worth',
         description:
             'Precomputed Bitcoin DCA outcomes: $10 to $250 every week or month, starting 2013 to 2025. Real historical prices, refreshed daily.',
@@ -22,6 +23,7 @@ export const metadata: Metadata = {
         locale: 'en_US',
     },
     twitter: {
+        images: ['/opengraph-image'],
         card: 'summary_large_image',
         title: 'Bitcoin DCA Scenarios: What Steady Buying Would Be Worth',
         description:

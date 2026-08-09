@@ -27,6 +27,7 @@ export const metadata: Metadata = {
     ],
     alternates: { canonical: PAGE_PATH },
     openGraph: {
+        images: [{ url: '/opengraph-image', width: 1200, height: 630 }],
         title: 'How Long to Stack 1 Bitcoin — Sats Goal Calculator',
         description:
             'How long 0.01, 0.1 and 1 BTC take at your contribution rate, projected honestly at today’s price.',
@@ -36,6 +37,7 @@ export const metadata: Metadata = {
         locale: 'en_US',
     },
     twitter: {
+        images: ['/opengraph-image'],
         card: 'summary_large_image',
         title: 'How Long to Stack 1 Bitcoin — Sats Goal Calculator',
         description:
@@ -419,6 +421,11 @@ export default async function StackSatsGoalPage() {
                                 amount={50}
                                 frequency="weekly"
                                 unit="BTC"
+                                /* Without this the component's own guard returns null
+                                   and the time-to-goal projection — the entire reason
+                                   this page exists, and the thing the paragraph below
+                                   goes on to caveat — never renders at all. */
+                                currentPrice={data.price}
                             />
                             <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
                                 One caveat worth stating plainly: the estimate at the bottom of that card extrapolates the

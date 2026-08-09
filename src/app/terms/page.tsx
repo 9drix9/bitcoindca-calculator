@@ -8,6 +8,7 @@ export const metadata: Metadata = {
         canonical: '/terms',
     },
     openGraph: {
+        images: [{ url: '/opengraph-image', width: 1200, height: 630 }],
         title: 'Terms of Service',
         description: 'Usage conditions, disclaimers, and liability limitations for Bitcoin DCA Calculator.',
         url: '/terms',
@@ -16,6 +17,7 @@ export const metadata: Metadata = {
         locale: 'en_US',
     },
     twitter: {
+        images: ['/opengraph-image'],
         card: 'summary_large_image',
         title: 'Terms of Service',
         description: 'Usage conditions, disclaimers, and liability limitations for Bitcoin DCA Calculator.',
