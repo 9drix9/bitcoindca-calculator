@@ -132,6 +132,11 @@ export function MobileMenuDrawer({ open, onClose, triggerRef }: MobileMenuDrawer
   useEffect(() => {
     if (!open) return;
     const scrollY = window.scrollY;
+    // Restoring the offset is only right when the close happens on the SAME
+    // page. When a drawer link navigates, this cleanup runs after the route
+    // change and was stamping the OLD page's scroll position onto the new one
+    // — every drawer navigation landed mid-page instead of at the top.
+    const lockedHref = window.location.pathname + window.location.hash;
     const { style } = document.body;
     const prev = {
       position: style.position,
@@ -154,7 +159,8 @@ export function MobileMenuDrawer({ open, onClose, triggerRef }: MobileMenuDrawer
       style.right = prev.right;
       style.width = prev.width;
       style.overflow = prev.overflow;
-      window.scrollTo(0, scrollY);
+      const sameSpot = window.location.pathname + window.location.hash === lockedHref;
+      window.scrollTo(0, sameSpot ? scrollY : 0);
     };
   }, [open]);
 
