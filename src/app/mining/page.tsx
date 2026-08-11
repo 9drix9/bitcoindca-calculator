@@ -103,7 +103,7 @@ const articleJsonLd = {
     },
     "datePublished": "2026-02-05",
     // Static date. Update when the content changes, and keep in sync with sitemap.ts.
-    "dateModified": "2026-08-10",
+    "dateModified": "2026-08-11",
 };
 
 const faqs: { q: string; a: string; sources?: readonly Source[] }[] = [
@@ -1080,7 +1080,7 @@ export default async function MiningPage() {
                                         <div className="flex flex-wrap items-center gap-2 mb-1">
                                             <h3 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">{GOMINING_DATA.name}</h3>
                                             <span className="text-[10px] sm:text-xs font-semibold px-2 py-0.5 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 uppercase tracking-wider">
-                                                Affiliate / sponsored
+                                                Affiliate
                                             </span>
                                             <span className={`text-[10px] sm:text-xs font-medium px-2 py-0.5 rounded-full ${affiliateClasses.badge}`}>{GOMINING_DATA.price}</span>
                                         </div>

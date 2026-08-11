@@ -16,10 +16,10 @@ const PAGE_DATES = {
     // Google to distrust lastmod for the whole domain.
     whyBitcoin: new Date('2026-08-10'),
     selfCustody: new Date('2026-08-11'),
-    mining: new Date('2026-08-10'),
+    mining: new Date('2026-08-11'),
     // Must match dateModified in the coldcard page's Article JSON-LD.
     coldcard: new Date('2026-08-11'),
-    about: new Date('2026-08-10'),
+    about: new Date('2026-08-11'),
     methodology: new Date('2026-08-08'),
     embedGuide: new Date('2026-07-25'),
     developers: new Date('2026-08-11'),

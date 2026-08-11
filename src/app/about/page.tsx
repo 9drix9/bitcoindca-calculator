@@ -58,7 +58,7 @@ const articleJsonLd = {
     "datePublished": "2025-01-01",
     // Static date: update when the content itself changes (build-date freshness
     // is a spam-adjacent signal). Keep in sync with sitemap.ts.
-    "dateModified": "2026-08-10",
+    "dateModified": "2026-08-11",
 };
 
 export default function AboutPage() {
@@ -169,7 +169,7 @@ export default function AboutPage() {
                             <li className="flex items-start gap-2">
                                 <span className="text-amber-700 dark:text-amber-400 font-bold mt-0.5 shrink-0">&bull;</span>
                                 <span>Affiliate links point to Bitcoin-aligned, non-custodial tools, with one exception: the mining page carries a{' '}
-                                <Link href="/mining#gomining" className="text-amber-700 dark:text-amber-400 hover:underline font-medium">clearly labeled sponsored placement for GoMining</Link>, a custodial, token-based hashrate product. That section leads with our own warnings rather than an endorsement, and we would rather you skip it than get hurt by it. No shitcoin products, ever.</span>
+                                <Link href="/mining#gomining" className="text-amber-700 dark:text-amber-400 hover:underline font-medium">clearly labeled affiliate placement for GoMining</Link>, a custodial, token-based hashrate product. That section leads with our own warnings rather than an endorsement, and we would rather you skip it than get hurt by it. No shitcoin products, ever.</span>
                             </li>
                         </ul>
                     </div>
