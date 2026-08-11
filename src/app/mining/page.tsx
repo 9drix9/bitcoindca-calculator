@@ -383,9 +383,10 @@ export default async function MiningPage() {
                 <Image
                     src="/illustrations/mining.webp"
                     alt=""
-                    width={1376}
-                    height={768}
+                    width={2752}
+                    height={1536}
                     priority={false}
+                sizes="(min-width: 1024px) 832px, 100vw"
                     className="w-full rounded-2xl border border-slate-200 dark:border-slate-800"
                 />
 
