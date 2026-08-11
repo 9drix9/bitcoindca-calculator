@@ -185,7 +185,9 @@ export function PwaInstallPrompt() {
                   Install Bitcoin DCA Calculator
                 </p>
                 <p className="text-xs text-slate-500 dark:text-slate-400">
-                  Add to your home screen for quick access
+                  {/* beforeinstallprompt also fires on desktop Chromium, so
+                      keep this line platform-neutral. */}
+                  Quick access from your home screen or dock
                 </p>
               </>
             ) : (

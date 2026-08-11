@@ -9,14 +9,23 @@ interface ExchangeFeeComparisonProps {
     purchaseCount: number;
 }
 
-const EXCHANGES: { name: string; feeRate: number; note?: string }[] = [
-    { name: 'Strike', feeRate: 0, note: 'excludes spread' },
-    { name: 'River', feeRate: 0, note: 'recurring buys; excludes spread' },
-    { name: 'Binance', feeRate: 0.1 },
-    { name: 'Kraken', feeRate: 0.26 },
-    { name: 'Swan', feeRate: 0.99 },
-    { name: 'Coinbase', feeRate: 1.49 },
-    { name: 'Cash App', feeRate: 2.2, note: 'approx.; varies by amount' },
+/**
+ * Effective cost of a RECURRING buy on each platform, verified August 2026.
+ * The platforms price differently — some charge an explicit fee, some only a
+ * spread, Coinbase a flat dollar amount per order — so each row carries its
+ * own basis. `flatPerBuyUsd` models the flat component; a percentage alone
+ * would be wrong for it at most order sizes. Sources:
+ * Cash App cash.app/bitcoin/fees; Strike strike.me/faq; River river.com/zero-fee;
+ * Swan help.swanbitcoin.com (360045394134); Kraken support article 360030303832.
+ */
+const VERIFIED_LABEL = 'August 2026';
+const EXCHANGES: { name: string; rate: number; flatPerBuyUsd?: number; rateLabel: string; note?: string }[] = [
+    { name: 'Cash App', rate: 0, rateLabel: '0%', note: 'recurring buys: no fee, no spread' },
+    { name: 'Strike', rate: 0.22, rateLabel: '~0.22%', note: 'spread only; recurring buys fee-free after week one' },
+    { name: 'River', rate: 0.25, rateLabel: '~0.25%', note: 'spread only; recurring buys fee-free after week one' },
+    { name: 'Swan', rate: 0.5, rateLabel: '0.5%', note: 'promo until Sep 8, 2026, then 1%' },
+    { name: 'Kraken', rate: 1, rateLabel: '1% + spread', note: 'Instant Buy fee; spread not included' },
+    { name: 'Coinbase', rate: 0.5, flatPerBuyUsd: 2.99, rateLabel: '$2.99 + ~0.5%', note: 'flat fee per buy plus spread' },
 ];
 
 export const ExchangeFeeComparison = ({ totalInvested, purchaseCount }: ExchangeFeeComparisonProps) => {
@@ -24,13 +33,17 @@ export const ExchangeFeeComparison = ({ totalInvested, purchaseCount }: Exchange
 
     if (totalInvested <= 0 || purchaseCount <= 0) return null;
 
-    const maxFeeRate = Math.max(...EXCHANGES.map(e => e.feeRate));
+    const rows = EXCHANGES.map((exchange) => {
+        const totalFees = totalInvested * (exchange.rate / 100) + (exchange.flatPerBuyUsd ?? 0) * purchaseCount;
+        return { ...exchange, totalFees };
+    });
+    const maxTotalFees = Math.max(...rows.map((r) => r.totalFees));
 
     return (
         <Card className="p-4 sm:p-6">
             <CardHeader
                 title="Exchange Fee Comparison"
-                subtitle={<>What {formatCurrency(totalInvested)} over {purchaseCount} purchase{purchaseCount === 1 ? '' : 's'} costs you in fees</>}
+                subtitle={<>What {formatCurrency(totalInvested)} over {purchaseCount} recurring purchase{purchaseCount === 1 ? '' : 's'} costs you, at rates as of {VERIFIED_LABEL}</>}
                 className="mb-3 sm:mb-4"
             />
 
@@ -39,19 +52,18 @@ export const ExchangeFeeComparison = ({ totalInvested, purchaseCount }: Exchange
                     <thead>
                         <tr className="bg-slate-50 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400">
                             <th scope="col" className="text-left px-3 sm:px-4 py-2.5 font-medium whitespace-nowrap">Exchange</th>
-                            <th scope="col" className="text-right px-3 sm:px-4 py-2.5 font-medium whitespace-nowrap">Rate</th>
+                            <th scope="col" className="text-right px-3 sm:px-4 py-2.5 font-medium whitespace-nowrap">Pricing</th>
                             <th scope="col" className="text-right px-3 sm:px-4 py-2.5 font-medium whitespace-nowrap">Total Fees</th>
                             <th scope="col" className="text-right px-3 sm:px-4 py-2.5 font-medium whitespace-nowrap">Net Invested</th>
                             <th scope="col" className="text-right px-3 sm:px-4 py-2.5 font-medium whitespace-nowrap">Per Purchase</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                        {EXCHANGES.map((exchange) => {
-                            const totalFees = totalInvested * (exchange.feeRate / 100);
-                            const netInvested = totalInvested - totalFees;
-                            const feePerPurchase = purchaseCount > 0 ? totalFees / purchaseCount : 0;
-                            const isZeroFee = exchange.feeRate === 0;
-                            const isHighest = exchange.feeRate === maxFeeRate;
+                        {rows.map((exchange) => {
+                            const netInvested = totalInvested - exchange.totalFees;
+                            const feePerPurchase = purchaseCount > 0 ? exchange.totalFees / purchaseCount : 0;
+                            const isZeroFee = exchange.totalFees === 0;
+                            const isHighest = exchange.totalFees === maxTotalFees;
 
                             return (
                                 <tr key={exchange.name} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
@@ -72,13 +84,13 @@ export const ExchangeFeeComparison = ({ totalInvested, purchaseCount }: Exchange
                                         "px-3 sm:px-4 py-2 text-right whitespace-nowrap tabular-nums",
                                         isZeroFee ? "text-gain font-medium" : isHighest ? "text-loss font-medium" : "text-slate-600 dark:text-slate-400"
                                     )}>
-                                        {exchange.feeRate}%
+                                        {exchange.rateLabel}
                                     </td>
                                     <td className={clsx(
                                         "px-3 sm:px-4 py-2 text-right whitespace-nowrap tabular-nums",
                                         isZeroFee ? "text-gain" : isHighest ? "text-loss" : "text-slate-600 dark:text-slate-400"
                                     )}>
-                                        {formatCurrency(totalFees)}
+                                        {formatCurrency(exchange.totalFees)}
                                     </td>
                                     <td className="px-3 sm:px-4 py-2 text-right whitespace-nowrap tabular-nums text-slate-600 dark:text-slate-400">
                                         {formatCurrency(netInvested)}
@@ -94,10 +106,14 @@ export const ExchangeFeeComparison = ({ totalInvested, purchaseCount }: Exchange
             </div>
 
             <p className="mt-3 text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-                Rates last verified July 2026. These percentages cover the trading fee on each purchase and nothing
-                else. Your own rate can move with your order size and how much you trade. Exchanges also earn a
-                spread, the gap between the price they buy at and the price they sell at. Strike and River&apos;s 0%
-                leaves their spread out, and Cash App&apos;s ~2.2% is an approximation that varies by purchase amount.
+                Rates last verified {VERIFIED_LABEL}, and each platform charges differently, so these are effective
+                costs of a recurring buy, not one comparable fee. Cash App charges no fee and no spread on
+                recurring buys. Strike and River charge no fee on recurring buys after the first week, so their
+                cost is the spread (Strike&apos;s first buy runs ~1.11% all-in). Swan&apos;s 0.5% is a promotional
+                rate through September 8, 2026, after which its standard 1% returns. Kraken&apos;s 1% Instant Buy
+                fee excludes its spread (0.5&ndash;2%) and any card or payment cost. Coinbase charges a flat fee
+                per order ($2.99 on a $50&ndash;200 buy; other sizes differ) plus roughly 0.5% spread, which hits
+                small orders hardest. Your own rate moves with order size and payment method.
             </p>
         </Card>
     );

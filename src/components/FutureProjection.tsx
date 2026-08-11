@@ -220,7 +220,7 @@ export const FutureProjection = ({
                         "flex-1 py-1.5 text-xs sm:text-sm font-medium rounded-md transition-colors",
                         mode === 'growth'
                             ? "bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300"
-                            : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+                            : "text-slate-600 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300"
                     )}
                 >
                     Rate Scenarios
@@ -233,7 +233,7 @@ export const FutureProjection = ({
                         "flex-1 py-1.5 text-xs sm:text-sm font-medium rounded-md transition-colors",
                         mode === 'price'
                             ? "bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300"
-                            : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+                            : "text-slate-600 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300"
                     )}
                 >
                     Target Price

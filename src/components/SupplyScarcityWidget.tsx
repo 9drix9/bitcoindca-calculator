@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { Scale } from 'lucide-react';
-import { getCirculatingSupply } from '@/app/actions';
+import { getCirculatingSupply, getBlockHeight } from '@/app/actions';
 import { Card, CardHeader, StatRow, EmptyState } from '@/components/ui/Card';
 
 const MAX_SUPPLY = 21_000_000;
@@ -17,7 +17,10 @@ interface SupplyScarcityWidgetProps {
 
 export const SupplyScarcityWidget = ({ initialSupply, blockHeight }: SupplyScarcityWidgetProps) => {
     const [supply, setSupply] = useState<number | null>(initialSupply);
-    const hadInitialData = useRef(initialSupply !== null);
+    // Height lives in state (not the SSR prop) so a failed server fetch
+    // self-heals from the client poll instead of hiding the reward all session.
+    const [height, setHeight] = useState<number | null>(blockHeight);
+    const hadInitialData = useRef(initialSupply !== null && blockHeight !== null);
 
     useEffect(() => {
         let mounted = true;
@@ -26,10 +29,14 @@ export const SupplyScarcityWidget = ({ initialSupply, blockHeight }: SupplyScarc
 
         const refresh = async () => {
             lastFetched = Date.now();
-            try {
-                const fresh = await getCirculatingSupply();
-                if (mounted && fresh !== null) setSupply(fresh);
-            } catch { /* keep last known */ }
+            // Independent providers: either can fail without discarding the other.
+            const [freshSupply, freshHeight] = await Promise.allSettled([
+                getCirculatingSupply(),
+                getBlockHeight(),
+            ]);
+            if (!mounted) return;
+            if (freshSupply.status === 'fulfilled' && freshSupply.value !== null) setSupply(freshSupply.value);
+            if (freshHeight.status === 'fulfilled' && freshHeight.value !== null) setHeight(freshHeight.value);
         };
 
         if (!hadInitialData.current) refresh();
@@ -53,11 +60,13 @@ export const SupplyScarcityWidget = ({ initialSupply, blockHeight }: SupplyScarc
         if (supply === null) return null;
         const circulatingBtc = supply / 100_000_000;
         const percentMined = (circulatingBtc / MAX_SUPPLY) * 100;
-        const epoch = blockHeight !== null ? Math.floor(blockHeight / BLOCKS_PER_EPOCH) : 0;
-        const blockReward = 50 / Math.pow(2, epoch);
+        // No height means no honest reward figure — epoch 0 would claim 50 BTC.
+        const blockReward = height !== null
+            ? 50 / Math.pow(2, Math.floor(height / BLOCKS_PER_EPOCH))
+            : null;
         const availableBtc = circulatingBtc - ESTIMATED_LOST;
         return { circulatingBtc, percentMined, blockReward, availableBtc };
-    }, [supply, blockHeight]);
+    }, [supply, height]);
 
     return (
         <Card className="p-4">
@@ -92,11 +101,13 @@ export const SupplyScarcityWidget = ({ initialSupply, blockHeight }: SupplyScarc
                         value={`${ESTIMATED_LOST.toLocaleString()} BTC`}
                         valueClassName="font-normal text-loss"
                     />
-                    <StatRow
-                        label="Block Reward"
-                        value={`${stats.blockReward} BTC`}
-                        valueClassName="text-amber-700 dark:text-amber-400"
-                    />
+                    {stats.blockReward !== null && (
+                        <StatRow
+                            label="Block Reward"
+                            value={`${stats.blockReward} BTC`}
+                            valueClassName="text-amber-700 dark:text-amber-400"
+                        />
+                    )}
                 </div>
             ) : (
                 <EmptyState />

@@ -146,8 +146,12 @@ function priceAtOrBefore(series: [number, number][], ts: number): number | null 
 async function loadData(plan: Plan): Promise<PageData | null> {
     try {
         const now = Date.now();
+        // Coinbase daily candles, matching the heatmap/drawdown/lump-sum pages: the
+        // kraken history is weekly closes interpolated to daily, which this page's
+        // "backtested against real historical prices" claim cannot stand on. Spot
+        // price is a live ticker, unaffected by interpolation, so kraken is fine there.
         const [history, livePrice] = await Promise.all([
-            getBitcoinPriceHistory(EARLIEST_PRICE_TS, now + DAY_MS, 'kraken'),
+            getBitcoinPriceHistory(EARLIEST_PRICE_TS, now + DAY_MS, 'coinbase'),
             getCurrentBitcoinPrice('kraken').catch(() => null),
         ]);
         if (!history || history.length < 100) return null;
@@ -371,8 +375,8 @@ export default async function BitcoinFirePage({ searchParams }: PageProps) {
             a:
                 'No. It is arithmetic on assumptions you supply. It compounds a constant growth rate and assumes you keep contributing at the same rate without ' +
                 'interruption. It ignores taxes, exchange fees and spreads, ignores the possibility of a permanent loss, and reports a single path rather than a ' +
-                'probability. Read the gap between the conservative and aggressive columns as the honest message. The answer is not a date. It is a very wide range ' +
-                'that depends on something unknowable.',
+                'probability. Read the gap between the falling-price and rising-price scenarios as the honest message. The answer is not a date. It is a very wide ' +
+                'range that depends on something unknowable.',
         },
     ];
 
@@ -633,7 +637,10 @@ export default async function BitcoinFirePage({ searchParams }: PageProps) {
                             <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300 leading-relaxed">
                                 Enter what you actually spend in a month. The tool converts that to a FIRE number at 4% and
                                 shows how much of it the stack above already covers. It then projects how many years of
-                                continued contributions it takes to close the gap, under three growth assumptions.
+                                continued contributions it takes to close the gap, under three growth assumptions you can
+                                edit, including a falling price. The spending target rises 3% a year with inflation inside
+                                the projection, since that is what the 4% rule&apos;s definition assumes; the FIRE number
+                                shown stays in today&apos;s dollars.
                             </p>
                             <FireCalculator
                                 btcAccumulated={data.btcAccumulated}
@@ -701,9 +708,9 @@ export default async function BitcoinFirePage({ searchParams }: PageProps) {
                                 <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300 leading-relaxed">
                                     There is also an arithmetic ceiling worth keeping in mind. A rate that compounds at 50% a
                                     year for long enough implies a market value larger than every asset on earth combined.
-                                    So the aggressive scenario cannot persist indefinitely, whatever you believe about
-                                    Bitcoin. The realistic use of this tool is comparison: see how many years separate the
-                                    conservative and aggressive answers, and treat that spread as the real output.
+                                    So a strongly positive scenario cannot persist indefinitely, whatever you believe about
+                                    Bitcoin. The realistic use of this tool is comparison: see how many years separate your
+                                    most pessimistic and most optimistic answers, and treat that spread as the real output.
                                 </p>
                             </section>
                         )}

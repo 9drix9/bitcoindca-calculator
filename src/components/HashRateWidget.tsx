@@ -69,6 +69,7 @@ export const HashRateWidget = ({ initialData }: HashRateWidgetProps) => {
     }, []);
 
     const isNegativeAdj = data !== null && data.adjustmentPercent < 0;
+    const retargetDate = data?.estimatedRetargetDate ? new Date(data.estimatedRetargetDate) : null;
 
     return (
         <Card className="p-4">
@@ -77,13 +78,28 @@ export const HashRateWidget = ({ initialData }: HashRateWidgetProps) => {
             {data ? (
                 <div className="space-y-2">
                     <StatRow label="Hashrate" value={formatHashrate(data.hashrate)} />
-                    <StatRow label="Difficulty" value={formatDifficulty(data.difficulty)} />
+                    {/* The action nulls the whole payload on shape drift, so any value
+                        that reaches here is real — including 0 blocks at a retarget boundary. */}
+                    <StatRow label="Difficulty" value={data.difficulty > 0 ? formatDifficulty(data.difficulty) : '—'} />
+                    {/* Rising difficulty means hashrate growth — network strength, green like everywhere else. */}
                     <StatRow
                         label="Next Adjustment"
                         value={`${data.adjustmentPercent > 0 ? '+' : ''}${data.adjustmentPercent.toFixed(2)}%`}
-                        valueClassName={isNegativeAdj ? 'text-gain' : 'text-loss'}
+                        valueClassName={isNegativeAdj ? 'text-loss' : 'text-gain'}
                     />
-                    <StatRow label="Blocks Until Retarget" value={data.blocksUntilAdjustment.toLocaleString()} />
+                    <StatRow
+                        label="Blocks Until Retarget"
+                        value={data.blocksUntilAdjustment >= 0 ? data.blocksUntilAdjustment.toLocaleString() : '—'}
+                    />
+                    <StatRow
+                        label="Est. Retarget"
+                        value={retargetDate ? (
+                            // Locale date formatting can differ between server and client
+                            <span suppressHydrationWarning>
+                                {retargetDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                            </span>
+                        ) : '—'}
+                    />
                 </div>
             ) : (
                 <EmptyState />

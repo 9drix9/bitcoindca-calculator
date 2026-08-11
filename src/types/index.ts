@@ -15,8 +15,9 @@ export interface DcaParams {
 export interface DcaStats {
     /** Money-weighted annualized return (XIRR), % — null when the period is under ~90 days */
     xirrPercent: number | null;
-    /** Largest peak-to-trough decline of portfolio value across the purchase series, % */
-    maxDrawdownPercent: number;
+    /** Largest peak-to-trough decline of portfolio value, sampled daily over the
+     *  holding period, % — null in manual mode, where a fixed price makes the walk meaningless */
+    maxDrawdownPercent: number | null;
     bestBuy: { date: string; price: number } | null;
     worstBuy: { date: string; price: number } | null;
     /** Total exchange fees paid in USD */

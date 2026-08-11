@@ -24,8 +24,14 @@ const formatTimeAgo = (timestamp: number) => {
     const minutes = Math.floor(seconds / 60);
     if (minutes < 60) return `${minutes}m ago`;
     const hours = Math.floor(minutes / 60);
-    return `${hours}h ago`;
+    if (hours < 24) return `${hours}h ago`;
+    return `${Math.floor(hours / 24)}d ago`;
 };
+
+// Blocks arrive every ~10 minutes; a newest block this old means the feed is
+// down (the widget keeps last-known data on failed refreshes), not that no
+// blocks were mined.
+const STALE_AFTER_S = 2 * 3600;
 
 const formatSize = (bytes: number) => {
     return (bytes / 1_000_000).toFixed(2);
@@ -85,14 +91,20 @@ export const LiveBlocksWidget = ({ initialData }: LiveBlocksWidgetProps) => {
         };
     }, []);
 
-    // Update time-ago labels every 10 seconds (skipped while the tab is hidden)
-    const [, setTick] = useState(0);
+    // Update time-ago labels every 10 seconds (skipped while the tab is hidden).
+    // 0 during SSR/hydration so the staleness check below is deterministic there.
+    const [now, setNow] = useState(0);
     useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time client clock sync after hydration; SSR deterministically skips the stale notice
+        setNow(Date.now());
         const timer = setInterval(() => {
-            if (!document.hidden) setTick(t => t + 1);
+            if (!document.hidden) setNow(Date.now());
         }, 10_000);
         return () => clearInterval(timer);
     }, []);
+
+    const newestTs = data?.length ? Math.max(...data.map(b => b.timestamp)) : null;
+    const isStale = now > 0 && newestTs !== null && now / 1000 - newestTs > STALE_AFTER_S;
 
     return (
         <Card className="p-4">
@@ -100,6 +112,11 @@ export const LiveBlocksWidget = ({ initialData }: LiveBlocksWidgetProps) => {
 
             {data ? (
                 <div className="space-y-2">
+                    {isStale && (
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                            Feed may be out of date — showing the last blocks we saw.
+                        </p>
+                    )}
                     {data.map((block) => (
                         <div
                             key={block.height}

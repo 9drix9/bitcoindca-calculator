@@ -68,7 +68,9 @@ const contactPageJsonLd = {
     },
     mainEntity: {
         '@type': 'Organization',
-        '@id': `${BASE_URL}#organization`,
+        // Must string-match the root layout's Organization @id exactly (slash
+        // before the fragment) — JSON-LD entity merging is exact-IRI based.
+        '@id': `${BASE_URL}/#organization`,
         name: 'Bitcoin DCA Calculator',
         url: BASE_URL,
         sameAs: [X_URL, REPO_URL],
@@ -424,8 +426,12 @@ export default function ContactPage() {
                             </Bullet>
                             <Bullet>
                                 <strong className="text-slate-800 dark:text-slate-200">Paid placements.</strong>{' '}
-                                Guest posts, sponsored links, and &quot;partnership&quot; pitches for altcoin or
-                                custodial products are declined without reply.
+                                Guest posts, sponsored links, and &quot;partnership&quot; pitches are declined
+                                without reply. The paid placements this site already carries are labelled
+                                where they appear and listed in the{' '}
+                                <Link href="/about#affiliate-disclosure" className="text-amber-700 dark:text-amber-400 hover:underline">
+                                    ads &amp; disclosure section
+                                </Link>.
                             </Bullet>
                         </ul>
                     </div>

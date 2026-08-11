@@ -1,21 +1,23 @@
 'use client';
 
 import { useState, useEffect, useMemo, useCallback, useDeferredValue, useId, useRef, memo } from 'react';
-import { format, subYears, subMonths, startOfToday, differenceInMonths } from 'date-fns';
+import { differenceInMonths } from 'date-fns';
 import { Frequency, PriceMode, AssetDcaResult, DcaStats } from '@/types';
 import { useCurrency, CurrencyCode } from '@/context/CurrencyContext';
 import { calculateDca, calculateLumpSum, calculateAssetDca } from '@/utils/dca';
-import { getBitcoinPriceHistory, getCurrentBitcoinPrice, getAssetPriceHistory, getCpiData, getProfitableWindows } from '@/app/actions';
+import { getBitcoinPriceHistory, getCurrentBitcoinPriceWithFallback, getAssetPriceHistory, getCpiData, getProfitableWindows } from '@/app/actions';
 import { generateCsvContent, downloadCsv } from '@/utils/csv';
 import { encodeParams, decodeParams } from '@/utils/urlParams';
 import {
     formatUtc,
     parseUtcDate,
+    utcDayStart,
     DAY_MS,
     EARLIEST_PRICE_DATE,
     DEFAULT_YEARS_BACK,
     utcIsoToday,
     utcIsoYearsAgo,
+    utcIsoMonthsAgo,
 } from '@/utils/dates';
 import dynamic from 'next/dynamic';
 import { SkeletonCard, SkeletonChart, SkeletonPanel } from './Skeleton';
@@ -50,12 +52,16 @@ import clsx from 'clsx';
 
 type Preset = { label: string; amount: number; frequency: Frequency; yearsBack?: number; monthsBack?: number; startDate?: string };
 
+// Effective all-in cost of a RECURRING buy (fee + typical spread), as of
+// August 2026 — sourced per platform in ExchangeFeeComparison. Coinbase has no
+// chip: its flat fee ($2.99 on a $50 buy ≈ 6%) depends on the amount, so any
+// fixed percentage here would be wrong for most inputs.
 const FEE_PRESETS: { name: string; fee: number }[] = [
-    { name: 'River', fee: 0 },
-    { name: 'Strike', fee: 0 },
-    { name: 'Kraken', fee: 0.26 },
-    { name: 'Swan', fee: 0.99 },
-    { name: 'Coinbase', fee: 1.49 },
+    { name: 'Cash App', fee: 0 },
+    { name: 'Strike', fee: 0.22 },
+    { name: 'River', fee: 0.25 },
+    { name: 'Swan', fee: 0.5 },
+    { name: 'Kraken', fee: 1 },
 ];
 
 /** Round to 2 significant figures (used to keep converted quick-pick prices tidy). */
@@ -131,7 +137,7 @@ function ResultTabs({
                             aria-selected={selected}
                             aria-controls={`${baseId}-panel-${t.id}`}
                             tabIndex={selected ? 0 : -1}
-                            title={t.hint}
+                            aria-describedby={`${baseId}-hint`}
                             onClick={() => setActive(t.id)}
                             className={clsx(
                                 'flex-1 rounded-lg px-3 py-2 text-sm transition-colors',
@@ -151,6 +157,12 @@ function ResultTabs({
                     );
                 })}
             </div>
+
+            {/* Visible on every device — these hints lived in title attributes,
+                which touch users and screen readers never see. */}
+            <p id={`${baseId}-hint`} className="-mt-2 text-xs text-slate-500 dark:text-slate-400 px-1">
+                {RESULT_TABS.find((t) => t.id === active)?.hint}
+            </p>
 
             {RESULT_TABS.map((t) => (
                 <div
@@ -176,6 +188,46 @@ function ResultTabs({
     );
 }
 
+/**
+ * Numeric field that tolerates being empty while the user types.
+ *
+ * Binding the input straight to the number state meant clearing the field
+ * snapped it back to a forced value mid-keystroke — on mobile, backspacing
+ * "50" to type "75" produced "0", then "075". The text is the source of truth
+ * while focused; the parsed number updates live when valid and the text
+ * resnaps to the committed number on blur or when a preset/URL changes it.
+ */
+function useNumericInput(value: number, setValue: (n: number) => void, clamp: (n: number) => number) {
+    const [text, setText] = useState<string>(() => String(value));
+    const [focused, setFocused] = useState(false);
+    // "Adjust state during render", not an effect: when the committed number
+    // changes underneath an unfocused field (presets, shared links), the text
+    // resyncs before paint instead of one frame later.
+    const [lastValue, setLastValue] = useState(value);
+    if (value !== lastValue) {
+        setLastValue(value);
+        if (!focused) setText(String(value));
+    }
+    return {
+        value: text,
+        onChange: (e: React.ChangeEvent<HTMLInputElement>) => {
+            const raw = e.target.value;
+            setText(raw);
+            if (raw.trim() === '') return;
+            const n = Number(raw);
+            if (Number.isFinite(n)) setValue(clamp(n));
+        },
+        onFocus: (e: React.FocusEvent<HTMLInputElement>) => {
+            setFocused(true);
+            e.target.select();
+        },
+        onBlur: () => {
+            setFocused(false);
+            setText(String(value));
+        },
+    };
+}
+
 /** Compact sats rendering for narrow columns. */
 const satsShort = (btc: number): string => {
     const sats = Math.floor(btc * 100_000_000);
@@ -195,19 +247,23 @@ export interface DcaCalculatorProps {
 }
 
 export const DcaCalculator = ({ initialPriceData, initialLivePrice }: DcaCalculatorProps = {}) => {
-    const { currency, setCurrency, currencyConfig, currencies, formatCurrency, formatCompact, denomination, setDenomination, formatBtcAmount } = useCurrency();
+    const { currency, setCurrency, setSessionCurrency, currencyConfig, currencies, formatCurrency, formatCompact, denomination, setDenomination, formatBtcAmount } = useCurrency();
     const isSats = denomination === 'SATS';
-    const [today, setToday] = useState(() => startOfToday());
+    // UTC end to end: the engine buckets by UTC day and the default end date is
+    // utcIsoToday(), so a LOCAL calendar date here mislabelled the default view
+    // as a "projection" for every user west of UTC in their evening (and put a
+    // different date in the server HTML than the browser produced).
+    const [todayUtcTs, setTodayUtcTs] = useState(() => utcDayStart(Date.now()));
 
     useEffect(() => {
         const interval = setInterval(() => {
-            const now = startOfToday();
-            if (now.getTime() !== today.getTime()) {
-                setToday(now);
+            const now = utcDayStart(Date.now());
+            if (now !== todayUtcTs) {
+                setTodayUtcTs(now);
             }
         }, 60_000);
         return () => clearInterval(interval);
-    }, [today]);
+    }, [todayUtcTs]);
 
     const [amount, setAmount] = useState<number>(50);
     const deferredAmount = useDeferredValue(amount);
@@ -225,11 +281,21 @@ export const DcaCalculator = ({ initialPriceData, initialLivePrice }: DcaCalcula
     const deferredManualPrice = useDeferredValue(manualPrice);
     const [provider, setProvider] = useState<'kraken' | 'coinbase'>('kraken');
     const [priceData, setPriceData] = useState<[number, number][]>(initialPriceData ?? []);
+    // The REQUESTED range of the last successful fetch — not the bar coverage of
+    // priceData, which legitimately starts later than requested for early dates.
+    // Lets the maths tell "computing from a superset" (fine) apart from
+    // "computing from a window that doesn't cover these dates yet" (wrong totals).
+    const [fetchedWindow, setFetchedWindow] = useState<{ start: string; end: string } | null>(() =>
+        initialPriceData && initialPriceData.length > 0
+            ? { start: utcIsoYearsAgo(DEFAULT_YEARS_BACK), end: utcIsoToday() }
+            : null,
+    );
     const [livePrice, setLivePrice] = useState<number | null>(initialLivePrice ?? null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [retryToken, setRetryToken] = useState(0);
     const firstFetchRef = useRef(true);
+    const urlAppliedRef = useRef(false);
     // When the server already supplied prices for the default window, the mount
     // fetch would re-request exactly that data and briefly blank the results.
     const skipSeededFetchRef = useRef(Boolean(initialPriceData && initialPriceData.length > 0));
@@ -241,16 +307,18 @@ export const DcaCalculator = ({ initialPriceData, initialLivePrice }: DcaCalcula
     const [cpiData, setCpiData] = useState<[number, number][] | null>(null);
 
     const applyPreset = useCallback((preset: Preset) => {
-        const now = startOfToday();
+        // UTC helpers, same as the defaults and activePresetLabel below — the
+        // local-date versions desynced by a day near midnight UTC, so a chip a
+        // user had just clicked never highlighted.
         setAmount(preset.amount);
         setFrequency(preset.frequency);
-        setEndDate(format(now, 'yyyy-MM-dd'));
+        setEndDate(utcIsoToday());
         if (preset.startDate) {
             setStartDate(preset.startDate);
         } else if (preset.yearsBack) {
-            setStartDate(format(subYears(now, preset.yearsBack), 'yyyy-MM-dd'));
+            setStartDate(utcIsoYearsAgo(preset.yearsBack));
         } else if (preset.monthsBack) {
-            setStartDate(format(subMonths(now, preset.monthsBack), 'yyyy-MM-dd'));
+            setStartDate(utcIsoMonthsAgo(preset.monthsBack));
         }
         setPriceMode('api');
     }, []);
@@ -284,7 +352,9 @@ export const DcaCalculator = ({ initialPriceData, initialLivePrice }: DcaCalcula
         const sp = new URLSearchParams(window.location.search);
         const params = decodeParams(Object.fromEntries(sp.entries()));
         if (params) {
-            if (params.currency) setCurrency(params.currency as CurrencyCode);
+            // Session-only override: the sharer's currency should shape THIS
+            // visit, not silently overwrite the visitor's saved preference.
+            if (params.currency) setSessionCurrency(params.currency as CurrencyCode);
             if (params.amount !== undefined) setAmount(params.amount);
             if (params.frequency) setFrequency(params.frequency);
             if (params.startDate) setStartDate(params.startDate);
@@ -293,8 +363,11 @@ export const DcaCalculator = ({ initialPriceData, initialLivePrice }: DcaCalcula
             if (params.priceMode) setPriceMode(params.priceMode);
             if (params.provider) setProvider(params.provider);
             if (params.manualPrice !== undefined) setManualPrice(params.manualPrice);
+            // A shared link is a single programmatic change, not typing — skip
+            // the fetch debounce so the recipient isn't parked on a skeleton.
+            if (params.startDate || params.endDate) urlAppliedRef.current = true;
         }
-    }, [setCurrency]);
+    }, [setSessionCurrency]);
 
     /** Label of the preset the current inputs correspond to, if any. */
     const activePresetLabel = useMemo(() => {
@@ -308,12 +381,7 @@ export const DcaCalculator = ({ initialPriceData, initialLivePrice }: DcaCalcula
                     : preset.yearsBack
                         ? utcIsoYearsAgo(preset.yearsBack)
                         : preset.monthsBack
-                            ? (() => {
-                                const n = new Date();
-                                return new Date(Date.UTC(n.getUTCFullYear(), n.getUTCMonth() - preset.monthsBack!, n.getUTCDate()))
-                                    .toISOString()
-                                    .slice(0, 10);
-                            })()
+                            ? utcIsoMonthsAgo(preset.monthsBack)
                             : null;
                 if (presetStart === startDate) return preset.label;
             }
@@ -331,7 +399,13 @@ export const DcaCalculator = ({ initialPriceData, initialLivePrice }: DcaCalcula
     }, [startDate, endDate]);
 
     useEffect(() => {
-        if (priceMode !== 'api' || dateError) return;
+        if (priceMode !== 'api' || dateError) {
+            // A fetch cancelled mid-flight never reaches its finally, so the
+            // flag must be cleared here or Manual mode (and date errors) can
+            // inherit a skeleton that nothing will ever dismiss.
+            setLoading(false);
+            return;
+        }
         let cancelled = false;
         const fetchPrices = async () => {
             setLoading(true);
@@ -339,17 +413,22 @@ export const DcaCalculator = ({ initialPriceData, initialLivePrice }: DcaCalcula
             try {
                 const startTs = new Date(startDate).getTime();
                 const endTs = new Date(endDate).getTime();
+                // The spot quote must not sink a successful history fetch: with
+                // history in hand the engine values the stack at the last bar
+                // (correctly dated for XIRR), which beats an error card.
                 const [history, current] = await Promise.all([
                     getBitcoinPriceHistory(startTs, endTs + 86400000, provider),
-                    getCurrentBitcoinPrice(provider)
+                    getCurrentBitcoinPriceWithFallback(provider).catch(() => null),
                 ]);
                 if (cancelled) return;
                 setPriceData(history);
+                setFetchedWindow({ start: startDate, end: endDate });
                 setLivePrice(current);
             } catch {
                 if (cancelled) return;
                 // Be honest: don't silently price everything at the manual default.
                 setPriceData([]);
+                setFetchedWindow(null);
                 setLivePrice(null);
                 setError("We can't reach the live price data right now, so there are no results to show. Try again, or switch to Manual mode.");
             } finally {
@@ -366,9 +445,11 @@ export const DcaCalculator = ({ initialPriceData, initialLivePrice }: DcaCalcula
         }
         // The debounce exists to absorb typing in the date/amount fields. On the
         // very first run there is nothing to absorb, and paying it delayed the
-        // first result by 500ms for every visitor.
-        if (firstFetchRef.current) {
+        // first result by 500ms for every visitor. A decoded share link is the
+        // same situation: one programmatic change, no typing to absorb.
+        if (firstFetchRef.current || urlAppliedRef.current) {
             firstFetchRef.current = false;
+            urlAppliedRef.current = false;
             fetchPrices();
             return () => {
                 cancelled = true;
@@ -386,6 +467,8 @@ export const DcaCalculator = ({ initialPriceData, initialLivePrice }: DcaCalcula
             setSp500Data(null);
             setGoldData(null);
             setCpiData(null);
+            // Same stuck-flag hazard as the price fetch above.
+            setComparisonLoading(false);
             return;
         }
         let cancelled = false;
@@ -427,9 +510,6 @@ export const DcaCalculator = ({ initialPriceData, initialLivePrice }: DcaCalcula
 
     const amountUsd = useMemo(() => deferredAmount / currencyConfig.rate, [deferredAmount, currencyConfig.rate]);
 
-    // Today as a UTC-midnight timestamp of the user's local calendar date — the
-    // engine buckets by UTC day, so this is the correct "today" for comparisons.
-    const todayUtcTs = Date.UTC(today.getFullYear(), today.getMonth(), today.getDate());
     const isFutureEndDate = parseUtcDate(endDate) > todayUtcTs;
 
     const results = useMemo(() => {
@@ -467,11 +547,25 @@ export const DcaCalculator = ({ initialPriceData, initialLivePrice }: DcaCalcula
         return calculateAssetDca(amountUsd, frequency, new Date(startDate), new Date(endDate), deferredFee, goldData, 'GC=F', 'Gold');
     }, [goldData, amountUsd, frequency, startDate, endDate, deferredFee]);
 
-    const btcAssetResult: AssetDcaResult = useMemo(() => ({
-        asset: 'BTC', label: 'Bitcoin', totalInvested: results.totalInvested, currentValue: results.currentValue,
-        profit: results.profit, roi: results.roi,
-        breakdown: results.breakdown.map(b => ({ date: b.date, portfolioValue: b.portfolioValue })),
-    }), [results]);
+    // The comparison panel's BTC row is valued at the BTC window series' own
+    // last bar — the same semantics calculateAssetDca gives S&P/gold. Reusing
+    // the headline figures here valued BTC at TODAY's spot against comparators
+    // frozen at the window-end close, so a 2017→2019 backtest was "won" by
+    // years of post-window appreciation only one side received.
+    const btcAssetResult: AssetDcaResult = useMemo(() => {
+        const windowResult = dateError
+            ? results
+            : calculateDca(
+                { amount: amountUsd, frequency, startDate: new Date(startDate), endDate: new Date(endDate), feePercentage: deferredFee, priceMode, manualPrice: deferredManualPrice },
+                priceData,
+                undefined,
+            );
+        return {
+            asset: 'BTC', label: 'Bitcoin', totalInvested: windowResult.totalInvested, currentValue: windowResult.currentValue,
+            profit: windowResult.profit, roi: windowResult.roi,
+            breakdown: windowResult.breakdown.map(b => ({ date: b.date, portfolioValue: b.portfolioValue })),
+        };
+    }, [results, dateError, amountUsd, frequency, startDate, endDate, deferredFee, priceMode, deferredManualPrice, priceData]);
 
     const purchaseCount = results.breakdown.length;
 
@@ -555,14 +649,19 @@ export const DcaCalculator = ({ initialPriceData, initialLivePrice }: DcaCalcula
 
     const handleRetry = useCallback(() => setRetryToken(t => t + 1), []);
 
-    const handleFeeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const val = Math.min(50, Math.max(0, Number(e.target.value)));
-        setFeePercentage(val);
-    };
+    const amountField = useNumericInput(amount, setAmount, (n) => Math.min(1e9, Math.max(0, n)));
+    const feeField = useNumericInput(feePercentage, setFeePercentage, (n) => Math.min(50, Math.max(0, n)));
+    const manualPriceField = useNumericInput(manualPrice, setManualPrice, (n) => Math.min(1e9, Math.max(1, n)));
 
     // In API mode with no data, results would be silently priced at the manual
-    // default — never show those phantom numbers.
-    const apiDataMissing = priceMode === 'api' && !dateError && priceData.length === 0;
+    // default — never show those phantom numbers. A range that EXTENDS beyond
+    // the last fetched window counts as missing too: computing from the stale
+    // partial window briefly showed wrong totals until the refetch landed.
+    // (A shrunk range computes correctly from superset data and keeps rendering.)
+    const rangeExtendsFetched = fetchedWindow !== null
+        && (startDate < fetchedWindow.start || endDate > fetchedWindow.end);
+    const apiDataMissing = priceMode === 'api' && !dateError
+        && (priceData.length === 0 || rangeExtendsFetched);
     const showSkeleton = loading || (apiDataMissing && !error);
     const showEmptyError = !loading && apiDataMissing && !!error;
 
@@ -636,9 +735,7 @@ export const DcaCalculator = ({ initialPriceData, initialLivePrice }: DcaCalcula
                                 id="dca-amount"
                                 type="number"
                                 inputMode="decimal"
-                                value={amount}
-                                onChange={(e) => setAmount(Math.max(0, Number(e.target.value)))}
-                                onFocus={(e) => e.target.select()}
+                                {...amountField}
                                 className="w-full pl-7 pr-3 py-2 text-base sm:text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500 outline-none transition-colors"
                             />
                         </div>
@@ -670,9 +767,7 @@ export const DcaCalculator = ({ initialPriceData, initialLivePrice }: DcaCalcula
                             step="0.1"
                             min={0}
                             max={50}
-                            value={feePercentage}
-                            onChange={handleFeeChange}
-                            onFocus={(e) => e.target.select()}
+                            {...feeField}
                             className="w-full px-3 py-2 text-base sm:text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500 outline-none transition-colors"
                         />
                     </div>
@@ -762,7 +857,7 @@ export const DcaCalculator = ({ initialPriceData, initialLivePrice }: DcaCalcula
                                         "flex-1 py-1.5 text-xs sm:text-sm font-medium rounded-md transition-colors",
                                         priceMode === 'api'
                                             ? "bg-white dark:bg-slate-700 shadow-sm text-amber-700 dark:text-amber-400"
-                                            : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+                                            : "text-slate-600 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300"
                                     )}
                                 >
                                     Live
@@ -775,7 +870,7 @@ export const DcaCalculator = ({ initialPriceData, initialLivePrice }: DcaCalcula
                                         "flex-1 py-1.5 text-xs sm:text-sm font-medium rounded-md transition-colors",
                                         priceMode === 'manual'
                                             ? "bg-white dark:bg-slate-700 shadow-sm text-amber-700 dark:text-amber-400"
-                                            : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+                                            : "text-slate-600 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300"
                                     )}
                                 >
                                     Manual
@@ -806,9 +901,7 @@ export const DcaCalculator = ({ initialPriceData, initialLivePrice }: DcaCalcula
                                 id="dca-manual-price"
                                 type="number"
                                 inputMode="decimal"
-                                value={manualPrice}
-                                onChange={(e) => setManualPrice(Math.max(1, Number(e.target.value)))}
-                                onFocus={(e) => e.target.select()}
+                                {...manualPriceField}
                                 className="w-full px-3 py-2 text-base sm:text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500 outline-none transition-colors"
                             />
                         </div>
@@ -822,7 +915,7 @@ export const DcaCalculator = ({ initialPriceData, initialLivePrice }: DcaCalcula
                             date; this one was hardcoded "Projected", so a historical
                             backtest — the default — labelled money already spent as a
                             forecast. */}
-                        <span className="text-xs sm:text-sm text-slate-500">
+                        <span className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
                             {isFutureEndDate ? 'Total to Invest' : 'Total Invested'}
                         </span>
                         <span className="text-base sm:text-lg font-bold text-slate-800 dark:text-white tabular-nums">{formatCurrency(results.totalInvested)}</span>
@@ -1208,8 +1301,10 @@ export const DcaCalculator = ({ initialPriceData, initialLivePrice }: DcaCalcula
                         />
                     )}
 
-                    {/* Price scenarios */}
-                    <PricePredictionScenario btcAmount={results.btcAccumulated} totalInvested={results.totalInvested} />
+                    {/* Price scenarios — the past-only run: for future-dated plans
+                        the full-range figures include purchases not yet made, which
+                        overstated holdings and contradicted FutureProjection above. */}
+                    <PricePredictionScenario btcAmount={pastResults.btcAccumulated} totalInvested={pastResults.totalInvested} />
 
                     {/* Stacking Goals */}
                     <StackingGoalTracker
@@ -1272,6 +1367,9 @@ export const DcaCalculator = ({ initialPriceData, initialLivePrice }: DcaCalcula
                         amount={amount}
                         frequency={frequency}
                         feePercentage={feePercentage}
+                        priceMode={priceMode}
+                        provider={provider}
+                        manualPrice={manualPrice}
                     />
                             </>
                         }
@@ -1339,11 +1437,12 @@ const StatsStrip = memo(function StatsStrip({ stats }: { stats: DcaStats }) {
     const xirr = stats.xirrPercent;
     const labelClass = "text-[11px] font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-0.5";
     const valueClass = "text-sm sm:text-base font-semibold tabular-nums text-slate-800 dark:text-slate-100";
+    const subClass = "text-[11px] text-slate-500 dark:text-slate-400";
     return (
         <Card className="p-4 sm:p-5 fade-in">
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-3">
                 <div>
-                    <div className={labelClass} title="Your yearly return, adjusted for the fact that your money went in at different times. Also called XIRR.">Annualized return (XIRR)</div>
+                    <div className={labelClass}>Annualized return (XIRR)</div>
                     <div className={clsx(
                         "text-sm sm:text-base font-semibold tabular-nums",
                         xirr === null
@@ -1352,11 +1451,23 @@ const StatsStrip = memo(function StatsStrip({ stats }: { stats: DcaStats }) {
                     )}>
                         {xirr === null ? '—' : `${xirr >= 0 ? '+' : ''}${xirr.toFixed(1)}%`}
                     </div>
+                    {/* Visible, not a title attribute: most visitors are on touch,
+                        where hover tooltips simply do not exist. */}
+                    <div className={subClass}>Yearly return, timing-adjusted</div>
                 </div>
                 <div>
-                    <div className={labelClass} title="The deepest your portfolio ever fell from a high point along the way.">Max drawdown</div>
+                    <div className={labelClass}>Max drawdown</div>
                     <div className={valueClass}>
-                        {stats.maxDrawdownPercent > 0 ? `-${stats.maxDrawdownPercent.toFixed(1)}%` : '0%'}
+                        {stats.maxDrawdownPercent === null
+                            ? '—'
+                            : stats.maxDrawdownPercent > 0 ? `-${stats.maxDrawdownPercent.toFixed(1)}%` : '0%'}
+                    </div>
+                    <div className={subClass}>
+                        {stats.maxDrawdownPercent === null
+                            ? 'Not measurable at a fixed price'
+                            /* "of total value": ongoing deposits can mask a falling
+                               price, so 0% here never means the price didn't fall. */
+                            : 'Biggest fall in total value, deposits included'}
                     </div>
                 </div>
                 <div>
@@ -1463,6 +1574,11 @@ const PricePredictionScenario = memo(function PricePredictionScenario({ btcAmoun
                     to predict, so the heading should not claim otherwise. */}
                 Price scenarios
             </h3>
+            {/* For future-dated plans this card values the coins bought SO FAR;
+                the Future Projection card above includes purchases still to come. */}
+            <p className="-mt-2 mb-3 text-xs text-slate-500 dark:text-slate-400 sm:mb-4">
+                Values the coins this plan has bought so far.
+            </p>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-8 items-center">
                 <div className="space-y-3">

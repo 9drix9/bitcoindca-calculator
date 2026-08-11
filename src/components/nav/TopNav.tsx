@@ -29,9 +29,14 @@ export function TopNav() {
   return (
     <header className="hidden md:block border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-950/80 backdrop-blur-md sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-        <nav aria-label="Main navigation" className="flex items-center gap-6">
+        {/* gap-4 below lg: at 768px (iPad portrait) gap-6 left 0px between the
+            last link and the theme toggle, wrapped the wordmark to two lines,
+            and broke "Self-Custody" at its hyphen. nowrap keeps every label on
+            one line; the header only renders at md+, so no md: prefix needed. */}
+        <nav aria-label="Main navigation" className="flex items-center gap-4 lg:gap-6">
           <Link href="/" className="group" aria-label="Bitcoin DCA Calculator, home">
-            <LogoLockup />
+            {/* textClassName replaces the default, so text-xl is restated. */}
+            <LogoLockup textClassName="text-xl whitespace-nowrap" />
           </Link>
 
           {links.map(({ href, label }) => {
@@ -47,7 +52,7 @@ export function TopNav() {
                 key={href}
                 href={href}
                 aria-current={isActive ? 'page' : undefined}
-                className={`relative py-1 text-sm transition-colors ${
+                className={`relative py-1 text-sm whitespace-nowrap transition-colors ${
                   isActive
                     ? 'text-amber-700 dark:text-amber-400 font-semibold'
                     : 'text-slate-600 dark:text-slate-400 hover:text-amber-700 dark:hover:text-amber-400'

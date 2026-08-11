@@ -219,7 +219,13 @@ export const AssetComparison = ({ btcResult, sp500Result, goldResult, loading }:
 
     return (
         <Card className="p-4 sm:p-6">
-            <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 text-slate-800 dark:text-slate-100">BTC vs Other Assets (DCA)</h3>
+            <h3 className="text-base sm:text-lg font-semibold mb-1 text-slate-800 dark:text-slate-100">BTC vs Other Assets (DCA)</h3>
+            {/* One valuation instant for every asset: the headline card values BTC
+                at today's spot, but the comparators end at the window's last close —
+                mixing the two let post-window appreciation decide the comparison. */}
+            <p className="mb-3 sm:mb-4 text-xs text-slate-500 dark:text-slate-400">
+                Same plan, same dates, each asset valued at its last price in the range.
+            </p>
             <div className="grid grid-cols-3 gap-2 sm:gap-4">
                 <AssetCard result={btcResult} style={cardStyles.btc} formatCurrency={formatCurrency} formatCompact={formatCompact} />
                 <AssetCard result={sp500Result} style={cardStyles.sp500} unavailable={!sp500Result} formatCurrency={formatCurrency} formatCompact={formatCompact} />
@@ -232,7 +238,7 @@ export const AssetComparison = ({ btcResult, sp500Result, goldResult, loading }:
                         Portfolio value over time
                     </div>
                     <div className="h-[180px] tabular-nums">
-                        <ResponsiveContainer width="100%" height="100%">
+                        <ResponsiveContainer width="100%" height="100%" initialDimension={{ width: 358, height: 220 }}>
                             <LineChart data={chartData.rows} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
                                 <CartesianGrid vertical={false} stroke={gridStroke} />
                                 <XAxis

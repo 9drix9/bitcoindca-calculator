@@ -30,7 +30,7 @@ export default function TermsPage() {
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
             <article className="prose dark:prose-invert prose-sm sm:prose-base max-w-none prose-headings:scroll-mt-20">
                 <h1>Terms of Service</h1>
-                <p className="text-sm text-slate-500 dark:text-slate-400">Last updated: July 24, 2026</p>
+                <p className="text-sm text-slate-500 dark:text-slate-400">Last updated: August 10, 2026</p>
 
                 <h2>Acceptance of Terms</h2>
                 <p>
@@ -84,7 +84,7 @@ export default function TermsPage() {
                     <li><strong>Kraken &amp; Coinbase APIs:</strong> For historical and real-time Bitcoin price data</li>
                     <li><strong>mempool.space:</strong> For block height, network fees, hash rate, and Lightning Network data</li>
                     <li><strong>CoinGecko:</strong> For market capitalization and Bitcoin dominance data</li>
-                    <li><strong>FRED API:</strong> For inflation (CPI) and money supply (M2) data</li>
+                    <li><strong>FRED API:</strong> For inflation (CPI) data</li>
                     <li><strong>Yahoo Finance API:</strong> For S&amp;P 500 and Gold comparison data</li>
                     <li><strong>alternative.me:</strong> For the Fear &amp; Greed Index</li>
                     <li><strong>blockchain.info:</strong> For circulating supply data</li>

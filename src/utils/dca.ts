@@ -193,8 +193,14 @@ export function calculateDca(params: DcaParams, priceData?: [number, number][], 
     }
 
     let finalPrice = currentPrice || manualPrice;
+    // When the spot quote is missing, the stack is valued at the last bar's
+    // close — so the XIRR terminal flow below must be dated at that bar, not
+    // "now". Dating a window-end valuation at today stretches the same return
+    // over extra years and understates the rate.
+    let valuationNowTs = Date.now();
     if (!currentPrice && priceMode === 'api' && priceData && priceData.length > 0) {
         finalPrice = priceData[priceData.length - 1][1];
+        valuationNowTs = utcDayStart(priceData[priceData.length - 1][0]);
     }
 
     const currentValue = totalBtc * finalPrice;
@@ -202,21 +208,25 @@ export function calculateDca(params: DcaParams, priceData?: [number, number][], 
     const profit = currentValue - totalInvested;
     const roi = totalInvested > 0 ? (profit / totalInvested) * 100 : 0;
 
-    // `currentValue` is measured at TODAY's price, so the terminal cash flow must
-    // be dated today too. Dating it at `endTs` while valuing it at today's price
-    // compressed years of growth into the backtest window and inflated XIRR by an
-    // order of magnitude ($50/wk 2016-2018 reported +574%/yr instead of +54%).
+    // The terminal cash flow must be dated at the same instant the stack is
+    // valued (usually today's spot; the last bar when the spot is missing).
+    // Dating it at `endTs` while valuing at today's price compressed years of
+    // growth into the backtest window and inflated XIRR by an order of
+    // magnitude ($50/wk 2016-2018 reported +574%/yr instead of +54%).
     // Never earlier than the last purchase, so a future-dated schedule stays sane.
     const valuationTs = purchases.length > 0
-        ? Math.max(Date.now(), purchases[purchases.length - 1].ts)
+        ? Math.max(valuationNowTs, purchases[purchases.length - 1].ts)
         : endTs;
     const xirr = calculateXirr(purchases, currentValue, valuationTs);
 
-    const maxDrawdown = computeMaxDrawdown(holdings, priceData, endTs);
+    // At a fixed manual price the portfolio can never fall, so a market-data
+    // drawdown walk would report risk for a series the user explicitly priced
+    // flat. No number is honest here — null renders as "—".
+    const maxDrawdown = priceMode === 'manual' ? null : computeMaxDrawdown(holdings, priceData, endTs);
 
     const stats: DcaStats = {
         xirrPercent: xirr !== null ? xirr * 100 : null,
-        maxDrawdownPercent: maxDrawdown * 100,
+        maxDrawdownPercent: maxDrawdown !== null ? maxDrawdown * 100 : null,
         bestBuy,
         worstBuy,
         feesPaid: totalInvested * (clampedFee / 100),
@@ -294,17 +304,17 @@ export function calculateLumpSum(
         return { totalInvested: totalAmount, btcAccumulated: 0, currentValue: 0, profit: -totalAmount, roi: -100 };
     }
 
-    // Find the price entry closest to (at or after) the user's start date
+    // Price the entry with the same lookback the DCA leg uses (last bar at or
+    // before the start day) — a forward scan priced the two strategies on
+    // different days whenever the start day itself had no bar, which biased
+    // the comparison. Falling forward is kept only for starts that predate
+    // all data: the lump sum "waits" and buys at the first bar, mirroring a
+    // DCA plan whose earliest purchases are skipped for lack of a price.
     const startTs = utcDayStart(startDate.getTime());
-    let entryPrice = 0;
-    for (const [ts, price] of priceData) {
-        if (ts >= startTs) {
-            entryPrice = price;
-            break;
-        }
-    }
+    const priceAt = createPriceLookup(priceData);
+    let entryPrice = priceAt(utcDayIndex(startTs)) ?? 0;
     if (entryPrice <= 0) {
-        entryPrice = priceData[priceData.length - 1][1];
+        entryPrice = priceData[0][1];
     }
     if (entryPrice <= 0) {
         return { totalInvested: totalAmount, btcAccumulated: 0, currentValue: 0, profit: -totalAmount, roi: -100 };

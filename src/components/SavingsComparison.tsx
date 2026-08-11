@@ -29,6 +29,19 @@ interface SavingsComparisonProps {
     valuationDate?: string;
 }
 
+/** Parse a user-typed number. Returns null for empty / partial / non-finite input. */
+// Mirrors DrawdownCalculator's parseInput: tolerating empty and partial strings is
+// what lets the field be cleared mid-edit without snapping back to a clamped value.
+const parseInput = (raw: string): number | null => {
+    const cleaned = raw.replace(/[,\s]/g, '');
+    if (cleaned === '' || cleaned === '-' || cleaned === '.' || cleaned === '-.') return null;
+    const n = Number(cleaned);
+    return Number.isFinite(n) ? n : null;
+};
+
+const APY_MIN = 0;
+const APY_MAX = 20;
+
 export const SavingsComparison = ({
     totalInvested,
     btcCurrentValue,
@@ -41,8 +54,10 @@ export const SavingsComparison = ({
 }: SavingsComparisonProps) => {
     const { formatCurrency, formatCompact } = useCurrency();
     // APY is a rate, not a money amount — no currency conversion needed.
-    const [apy, setApy] = useState<number>(4.5);
+    const [apyInput, setApyInput] = useState('4.5');
     const apyInputId = useId();
+
+    const apy = Math.min(APY_MAX, Math.max(APY_MIN, parseInput(apyInput) ?? 0));
 
     const savingsResult = useMemo(() => {
         if (totalInvested <= 0 || !startDate || !endDate) return null;
@@ -95,7 +110,21 @@ export const SavingsComparison = ({
         const roi = totalDeposited > 0 ? (profit / totalDeposited) * 100 : 0;
         const idleDays = Math.max(0, Math.round((valuedAtTs - lastDepositTs) / DAY_MS));
 
-        return { balance, totalDeposited, profit, roi, valuedAtTs, lastDepositTs, idleDays };
+        return {
+            balance,
+            totalDeposited,
+            profit,
+            roi,
+            valuedAtTs,
+            lastDepositTs,
+            idleDays,
+            // A schedule running past today means the two legs are NOT valued at the
+            // same instant: the bitcoin is marked at today's live price (future buys
+            // priced at the last known price by the engine's forward fill), while the
+            // savings deposits keep earning APY through the end date. The footnote
+            // must say so instead of claiming a same-day valuation.
+            endsInFuture: lastDepositTs > markTs,
+        };
     }, [apy, amount, frequency, startDate, endDate, totalInvested, valuationDate]);
 
     if (!savingsResult || totalInvested <= 0) return null;
@@ -114,10 +143,11 @@ export const SavingsComparison = ({
                         type="number"
                         inputMode="decimal"
                         step="0.1"
-                        min={0}
-                        max={20}
-                        value={apy}
-                        onChange={(e) => setApy(Math.min(20, Math.max(0, Number(e.target.value))))}
+                        min={APY_MIN}
+                        max={APY_MAX}
+                        value={apyInput}
+                        onChange={(e) => setApyInput(e.target.value)}
+                        onBlur={() => setApyInput(String(apy))}
                         onFocus={(e) => e.target.select()}
                         className="w-20 px-2 py-1.5 text-base sm:text-xs tabular-nums rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500 outline-none transition-shadow"
                     />
@@ -168,15 +198,27 @@ export const SavingsComparison = ({
             </div>
 
             <p className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-                Both sides are valued on{' '}
-                <span className="font-medium text-slate-700 dark:text-slate-300">{formatUtc(savingsResult.valuedAtTs, 'full')}</span>:
-                the bitcoin at its live price, the deposits compounded daily to the same day.
-                {savingsResult.idleDays > 0 && (
+                {savingsResult.endsInFuture ? (
                     <>
-                        {' '}Deposits stop on <span className="font-medium text-slate-700 dark:text-slate-300">{formatUtc(savingsResult.lastDepositTs, 'full')}</span>,
-                        when your schedule ends. The balance then sits and earns for another{' '}
-                        <span className="tabular-nums">{savingsResult.idleDays.toLocaleString()}</span> days, so both sides
-                        are measured at the same moment.
+                        Your schedule runs into the future, so the two sides are priced differently. The bitcoin
+                        is valued at today&apos;s live price, with buys after today assumed at the last known
+                        price. The savings deposits are projected forward at the assumed APY through{' '}
+                        <span className="font-medium text-slate-700 dark:text-slate-300">{formatUtc(savingsResult.lastDepositTs, 'full')}</span>,
+                        your last scheduled deposit.
+                    </>
+                ) : (
+                    <>
+                        Both sides are valued on{' '}
+                        <span className="font-medium text-slate-700 dark:text-slate-300">{formatUtc(savingsResult.valuedAtTs, 'full')}</span>:
+                        the bitcoin at its live price, the deposits compounded daily to the same day.
+                        {savingsResult.idleDays > 0 && (
+                            <>
+                                {' '}Deposits stop on <span className="font-medium text-slate-700 dark:text-slate-300">{formatUtc(savingsResult.lastDepositTs, 'full')}</span>,
+                                when your schedule ends. The balance then sits and earns for another{' '}
+                                <span className="tabular-nums">{savingsResult.idleDays.toLocaleString()}</span> days, so both sides
+                                are measured at the same moment.
+                            </>
+                        )}
                     </>
                 )}{' '}
                 The interest rate is a flat assumption you set. Real accounts move their rate, and interest is usually

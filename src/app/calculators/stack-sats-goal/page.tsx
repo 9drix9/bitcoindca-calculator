@@ -431,11 +431,11 @@ export default async function StackSatsGoalPage() {
                                 currentPrice={data.price}
                             />
                             <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
-                                One caveat worth stating plainly. The estimate at the bottom of that card projects forward
-                                the sats-per-day this schedule actually achieved over the last twelve months. So it reflects
-                                the average price across that window, not today&apos;s price. If bitcoin is more expensive
-                                now than it averaged over the year, that estimate is optimistic. The table at the top of this
-                                page is the version priced at today&apos;s market.
+                                The time-to-goal estimate at the bottom of that card prices every future buy at
+                                today&apos;s market, the same assumption as the table at the top of this page, so the
+                                two agree. The fragile part is the assumption itself: holding the price flat makes the
+                                date pure arithmetic, and the price will not stay flat. The card states that, along
+                                with the fees it leaves out.
                             </p>
                         </>
                     ) : (

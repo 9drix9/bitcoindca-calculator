@@ -15,8 +15,10 @@ export default function robots(): MetadataRoute.Robots {
                 // allow wins over the disallow below for that one path.
                 allow: ['/', '/api/og'],
                 // NOTE: never disallow /_next/ — it blocks Googlebot from all JS/CSS
-                // and breaks rendering-based indexing.
-                disallow: ['/api/', '/offline'],
+                // and breaks rendering-based indexing. /offline is deliberately NOT
+                // disallowed: it relies on its meta noindex, which a crawl-blocked
+                // URL could never surface (same pattern as /share and /embed).
+                disallow: ['/api/'],
             },
         ],
         sitemap: `${baseUrl}/sitemap.xml`,

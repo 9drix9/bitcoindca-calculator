@@ -9,12 +9,12 @@ const STEPS = [
     {
         icon: Calendar,
         title: 'Set your schedule',
-        description: 'Daily, weekly, bi-weekly, or monthly, across any date range you pick',
+        description: 'Daily, weekly, bi-weekly, or monthly, across any date range you pick.',
     },
     {
         icon: TrendingUp,
         title: 'See your results',
-        description: 'The Bitcoin you’d be holding today, and what it would be worth',
+        description: 'The Bitcoin you’d be holding today, and what it would be worth.',
     },
 ];
 
@@ -29,6 +29,10 @@ const STEPS = [
  */
 export const HowItWorks = () => (
     <section aria-label="How it works">
+        {/* Keeps the document outline intact: the step titles are h3s, and
+            without this the homepage jumps from h1 straight to h3. */}
+        <h2 className="sr-only">How it works</h2>
+
         {/* Mobile: one card, three tight rows */}
         <div className="sm:hidden rounded-2xl border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-900">
             <ol className="space-y-2.5">

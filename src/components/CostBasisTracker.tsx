@@ -115,25 +115,36 @@ export const CostBasisTracker = ({ priceData, livePrice, priceMode, provider }: 
     const [showForm, setShowForm] = useState(false);
     const formId = useId();
 
-    // Form state
+    // Form state. Amount and fee are held as strings so the field can be
+    // cleared while editing (`Number('') === 0` used to snap it to 0); both
+    // are parsed and clamped once on save.
     const [label, setLabel] = useState('');
     const [formStartDate, setFormStartDate] = useState('');
     const [formEndDate, setFormEndDate] = useState('');
-    const [formAmount, setFormAmount] = useState<number>(50);
+    const [formAmount, setFormAmount] = useState('50');
     const [formFrequency, setFormFrequency] = useState<Frequency>('weekly');
-    const [formFee, setFormFee] = useState<number>(0.5);
+    const [formFee, setFormFee] = useState('0.5');
+
+    const amountNum = Number(formAmount);
+    const amountInvalid = formAmount !== '' && !(Number.isFinite(amountNum) && amountNum > 0);
+    const datesInverted =
+        formStartDate !== '' && formEndDate !== '' &&
+        parseUtcDate(formEndDate) < parseUtcDate(formStartDate);
+    const canAdd =
+        label.trim() !== '' && formStartDate !== '' && formEndDate !== '' &&
+        Number.isFinite(amountNum) && amountNum > 0 && !datesInverted;
 
     const addPosition = useCallback(() => {
-        if (!label.trim() || !formStartDate || !formEndDate) return;
+        if (!canAdd) return;
         const newPosition: CostBasisPosition = {
             id: generateId(),
             label: label.trim(),
             startDate: formStartDate,
             endDate: formEndDate,
             // Convert the display-currency input to USD once; the DCA engine is USD-only.
-            amount: formAmount / currencyConfig.rate,
+            amount: amountNum / currencyConfig.rate,
             frequency: formFrequency,
-            feePercentage: formFee,
+            feePercentage: Math.min(50, Math.max(0, Number(formFee) || 0)),
         };
         const updated = [...positions, newPosition];
         positionsStore.write(updated);
@@ -141,10 +152,10 @@ export const CostBasisTracker = ({ priceData, livePrice, priceMode, provider }: 
         setLabel('');
         setFormStartDate('');
         setFormEndDate('');
-        setFormAmount(50);
+        setFormAmount('50');
         setFormFrequency('weekly');
-        setFormFee(0.5);
-    }, [label, formStartDate, formEndDate, formAmount, formFrequency, formFee, positions, currencyConfig.rate]);
+        setFormFee('0.5');
+    }, [canAdd, label, formStartDate, formEndDate, amountNum, formFrequency, formFee, positions, currencyConfig.rate]);
 
     const removePosition = useCallback((id: string) => {
         const updated = positions.filter(p => p.id !== id);
@@ -229,6 +240,8 @@ export const CostBasisTracker = ({ priceData, livePrice, priceMode, provider }: 
                 action={
                     <button
                         onClick={() => setShowForm(!showForm)}
+                        aria-expanded={showForm}
+                        aria-controls={`${formId}-form`}
                         className="inline-flex items-center justify-center px-3 py-1.5 min-h-9 text-xs font-medium rounded-lg bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/40 border border-amber-200/60 dark:border-amber-800/40 transition-colors"
                     >
                         {showForm ? 'Cancel' : '+ Add plan'}
@@ -238,7 +251,7 @@ export const CostBasisTracker = ({ priceData, livePrice, priceMode, provider }: 
 
             {/* Add Position Form */}
             {showForm && (
-                <div className="mb-4 p-3 sm:p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700 space-y-3 fade-in">
+                <div id={`${formId}-form`} className="mb-4 p-3 sm:p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700 space-y-3 fade-in">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div className="space-y-1">
                             <label htmlFor={`${formId}-label`} className="text-xs text-slate-500 dark:text-slate-400">Label</label>
@@ -259,7 +272,7 @@ export const CostBasisTracker = ({ priceData, livePrice, priceMode, provider }: 
                                 inputMode="decimal"
                                 min={0}
                                 value={formAmount}
-                                onChange={(e) => setFormAmount(Math.max(0, Number(e.target.value)))}
+                                onChange={(e) => setFormAmount(e.target.value)}
                                 onFocus={(e) => e.target.select()}
                                 className="w-full px-2.5 py-1.5 text-base sm:text-sm tabular-nums rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 outline-none focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500 transition-shadow"
                             />
@@ -308,15 +321,21 @@ export const CostBasisTracker = ({ priceData, livePrice, priceMode, provider }: 
                                 min={0}
                                 max={50}
                                 value={formFee}
-                                onChange={(e) => setFormFee(Math.min(50, Math.max(0, Number(e.target.value))))}
+                                onChange={(e) => setFormFee(e.target.value)}
                                 onFocus={(e) => e.target.select()}
                                 className="w-full px-2.5 py-1.5 text-base sm:text-sm tabular-nums rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 outline-none focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500 transition-shadow"
                             />
                         </div>
                     </div>
+                    {datesInverted && (
+                        <p className="text-xs text-loss">End date must be on or after the start date.</p>
+                    )}
+                    {amountInvalid && (
+                        <p className="text-xs text-loss">Amount must be more than zero.</p>
+                    )}
                     <button
                         onClick={addPosition}
-                        disabled={!label.trim() || !formStartDate || !formEndDate}
+                        disabled={!canAdd}
                         className="flex h-11 w-full items-center justify-center py-2 text-sm font-medium rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     >
                         Add plan

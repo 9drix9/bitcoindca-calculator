@@ -30,7 +30,7 @@ export default function PrivacyPage() {
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
             <article className="prose dark:prose-invert prose-sm sm:prose-base max-w-none prose-headings:scroll-mt-20">
                 <h1>Privacy Policy</h1>
-                <p className="text-sm text-slate-500 dark:text-slate-400">Last updated: July 24, 2026</p>
+                <p className="text-sm text-slate-500 dark:text-slate-400">Last updated: August 10, 2026</p>
 
                 <h2>Data Collection</h2>
                 <p>
@@ -61,11 +61,13 @@ export default function PrivacyPage() {
 
                 <h2>Cookies &amp; Tracking</h2>
                 <p>
-                    The site stores very little, and only for two reasons:
+                    The site stores very little, and everything it stores stays in your browser. Here is the complete list:
                 </p>
                 <ul>
-                    <li><strong>Essential:</strong> your theme preference and your cookie consent answer are kept in your browser&apos;s localStorage. They are needed for the site to work properly.</li>
-                    <li><strong>Marketing measurement:</strong> if you consent to analytics, Google Ads conversion tracking loads so we can measure whether our own advertising reaches people. It is not loaded at all unless you accept.</li>
+                    <li><strong>Essential preferences:</strong> your theme choice, your cookie consent answer, your display currency, and your BTC/sats denomination choice are kept in your browser&apos;s localStorage so the site remembers them between visits.</li>
+                    <li><strong>Install prompt state:</strong> if you dismiss the &quot;install this app&quot; prompt, a flag in localStorage remembers that, and a visit counter in sessionStorage decides when the prompt is offered. Neither leaves your device.</li>
+                    <li><strong>Cost Basis Tracker positions:</strong> any purchases you enter into the Cost Basis Tracker are saved only in your browser&apos;s localStorage so they survive a reload. They are never sent to any server, and we cannot see them.</li>
+                    <li><strong>Marketing measurement:</strong> if you consent to analytics, Google Ads conversion tracking loads so we can measure whether our own advertising reaches people. It is not loaded at all unless you accept. A one-word flag in sessionStorage remembers that a conversion was already counted this session, so it is never counted twice.</li>
                 </ul>
 
                 <h2>Third-Party Advertising</h2>
@@ -92,9 +94,10 @@ export default function PrivacyPage() {
 
                 <h2>Data Retention</h2>
                 <p>
-                    Your preferences live in your browser, not on our servers. Theme and cookie consent sit in localStorage, and
-                    calculator settings travel in the URL. We do not maintain any server-side database of user data. Clearing your
-                    browser&apos;s local storage removes every stored preference.
+                    Your preferences live in your browser, not on our servers. Theme, cookie consent, currency and denomination
+                    choices, install-prompt state, and any Cost Basis Tracker positions you enter sit in your browser&apos;s
+                    localStorage and sessionStorage, and calculator settings travel in the URL. We do not maintain any server-side
+                    database of user data. Clearing your browser&apos;s site data removes everything the site has stored.
                 </p>
 
                 <h2>Children&apos;s Privacy</h2>

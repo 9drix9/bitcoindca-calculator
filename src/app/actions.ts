@@ -85,6 +85,12 @@ export type Provider = 'kraken' | 'coinbase';
 const normalizeProvider = (provider: unknown): Provider =>
     provider === 'coinbase' ? 'coinbase' : 'kraken';
 
+// Both providers fetch their full history, so cache provider-wide and slice per
+// request. v3: the Kraken merge now prefers the bundled daily snapshot for its
+// whole span and the snapshot was extended through 2015-07-19 — a warm
+// long-lived instance must not keep serving the old series until restart.
+const keyFor = (p: Provider) => p === 'kraken' ? 'kraken_full_v3' : 'coinbase_full_v3';
+
 /** Fill day gaps between points with linear interpolation. Pure UTC ms math — no local-time day shifts. */
 function interpolateDaily(points: [number, number][]): [number, number][] {
     const out: [number, number][] = [];
@@ -108,10 +114,19 @@ function interpolateDaily(points: [number, number][]): [number, number][] {
  * Prepend real daily market prices (blockchain.info, 2010-2015) for the era
  * before the provider's own candles begin. Replaces the old synthetic
  * $0.05-anchor linear interpolation.
+ *
+ * `preferSnapshot` decides who wins where both have data. Kraken's series is
+ * interpolated from WEEKLY closes, so the snapshot's real daily prices must win
+ * for its entire span; Coinbase has real daily candles, so it keeps its own.
  */
-async function prependHistorical(points: [number, number][]): Promise<[number, number][]> {
+async function prependHistorical(points: [number, number][], preferSnapshot: boolean): Promise<[number, number][]> {
     const { BTC_HISTORICAL_DAILY } = await import('@/data/btcHistorical');
     if (points.length === 0) return [...BTC_HISTORICAL_DAILY];
+    if (preferSnapshot) {
+        // Boundary derived from the data itself so it can never drift from the file.
+        const snapEnd = BTC_HISTORICAL_DAILY[BTC_HISTORICAL_DAILY.length - 1][0];
+        return [...BTC_HISTORICAL_DAILY, ...points.filter(([ts]) => ts > snapEnd)];
+    }
     const firstTs = points[0][0];
     const pre = BTC_HISTORICAL_DAILY.filter(([ts]) => ts < firstTs);
     return pre.length > 0 ? [...pre, ...points] : points;
@@ -139,7 +154,11 @@ async function fetchProviderHistory(
             // partial fetch previously caused those dates to be linearly fabricated from the
             // 2010 genesis point. Full history is ~14 chunks and cached for an hour.
             const chunks: { start: string; end: string }[] = [];
-            let currentEnd = Date.now();
+            // Quantized to the next UTC midnight: Next's data cache is keyed by URL,
+            // so a ms-precision Date.now() end minted unique URLs and the
+            // `next: { revalidate }` below could never hit. Coinbase accepts a
+            // future `end` and returns candles up to now.
+            let currentEnd = Math.ceil(Date.now() / DAY_MS) * DAY_MS;
             const coinbaseLaunchMs = Date.UTC(2015, 0, 1);
             const effectiveStart = coinbaseLaunchMs;
 
@@ -229,7 +248,7 @@ async function fetchProviderHistory(
             // as if it were current history.
             if (coinbaseDailyPrices.length === 0) throw new Error('Coinbase returned no usable candles');
 
-            dailyPrices.push(...interpolateDaily(await prependHistorical(coinbaseDailyPrices)));
+            dailyPrices.push(...interpolateDaily(await prependHistorical(coinbaseDailyPrices, false)));
 
         } else {
             // Kraken (Existing Logic)
@@ -274,7 +293,7 @@ async function fetchProviderHistory(
 
             if (weeklyPoints.length === 0) throw new Error('Kraken returned no usable candles');
 
-            dailyPrices.push(...interpolateDaily(await prependHistorical(weeklyPoints)));
+            dailyPrices.push(...interpolateDaily(await prependHistorical(weeklyPoints, true)));
         }
     }
 
@@ -291,8 +310,6 @@ export async function getBitcoinPriceHistory(
     // Untrusted input — see normalizeProvider. Everything below uses `provider`.
     const provider = normalizeProvider(providerArg);
     const revalidate = normalizeRevalidate(revalidateArg, HISTORY_REVALIDATE);
-    // Both providers now return their full history, so cache provider-wide and slice per request.
-    const keyFor = (p: Provider) => p === 'kraken' ? 'kraken_full_v2' : 'coinbase_full_v2';
     const cacheKey = keyFor(provider);
 
     const readCache = (): [number, number][] | null => {
@@ -331,9 +348,33 @@ export async function getBitcoinPriceHistory(
             return slice(data);
         } catch (fallbackError) {
             console.error(`[getBitcoinPriceHistory] fallback ${fallback} also failed:`, fallbackError);
+            // readCache rejects entries older than 60 minutes but never deletes
+            // them. During a transient dual outage an hour-stale daily series is
+            // strictly more honest than an error page.
+            const stale = memoryCache.get(cacheKey) ?? memoryCache.get(keyFor(fallback));
+            if (stale) return slice(stale.data);
             throw fallbackError;
         }
     }
+}
+
+/**
+ * Provider-specific history probe for /api/health. getBitcoinPriceHistory
+ * silently falls back to the other exchange — right for visitors, blinding for
+ * a health check: 'coinbase-history' stayed green as long as Kraken was up.
+ * This path never falls back. It still coalesces and shares the memory cache
+ * (with a short freshness gate matching the health route's revalidate) so a
+ * public caller cannot use it to hammer the upstreams, while a single-provider
+ * outage becomes visible within a minute instead of an hour.
+ */
+export async function probeProviderHistory(providerArg: Provider): Promise<[number, number][]> {
+    const provider = normalizeProvider(providerArg);
+    const cacheKey = keyFor(provider);
+    const cached = memoryCache.get(cacheKey);
+    if (cached && Date.now() - cached.timestamp < 60_000) return cached.data;
+    const data = await coalesced(cacheKey, () => fetchProviderHistory(provider));
+    memoryCache.set(cacheKey, { timestamp: Date.now(), data });
+    return data;
 }
 
 // Comparison series are fetched ONCE over the full usable range and sliced per
@@ -350,6 +391,19 @@ const ASSET_HISTORY_START = Date.UTC(2009, 0, 1);
  * unrestricted symbol turns the action into a generic Yahoo Finance proxy.
  */
 const ALLOWED_ASSET_SYMBOLS = new Set(['^SP500TR', '^GSPC', 'GC=F']);
+
+// Set when a comparison series was served from an EXPIRED cache because the
+// refetch failed; cleared by the next successful fetch. Serving stale data is
+// right for visitors but it also makes an outage look healthy to /api/health —
+// these markers let the route tell the difference.
+const staleServeMarkers = new Map<string, number>();
+
+export async function getComparisonStaleness(): Promise<{ yahooStale: boolean; fredStale: boolean }> {
+    return {
+        yahooStale: ['asset_^SP500TR', 'asset_^GSPC', 'asset_GC=F'].some((k) => staleServeMarkers.has(k)),
+        fredStale: staleServeMarkers.has('cpi_full'),
+    };
+}
 
 export async function getAssetPriceHistory(symbol: string, from: number, to: number): Promise<[number, number][] | null> {
     if (!ALLOWED_ASSET_SYMBOLS.has(symbol)) return null;
@@ -370,7 +424,9 @@ export async function getAssetPriceHistory(symbol: string, from: number, to: num
 
     try {
         const period1 = Math.floor(ASSET_HISTORY_START / 1000);
-        const period2 = Math.floor(Date.now() / 1000);
+        // Rounded UP to the hour (matching revalidate: 3600) so the URL repeats and
+        // the Next data cache can hit; a ms-precision end minted a unique URL per call.
+        const period2 = Math.ceil(Date.now() / 3_600_000) * 3600;
 
         // Use Yahoo Finance v8 chart API (more reliable than v7 download)
         const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?period1=${period1}&period2=${period2}&interval=1d`;
@@ -411,8 +467,15 @@ export async function getAssetPriceHistory(symbol: string, from: number, to: num
 
         data.sort((a, b) => a[0] - b[0]);
         memoryCache.set(cacheKey, { timestamp: Date.now(), data });
+        staleServeMarkers.delete(cacheKey);
         return slice(data);
     } catch {
+        // A stale series still in the LRU beats dropping the comparison overlay.
+        const stale = memoryCache.get(cacheKey);
+        if (stale) {
+            staleServeMarkers.set(cacheKey, Date.now());
+            return slice(stale.data);
+        }
         return null;
     }
 }
@@ -440,7 +503,7 @@ export async function getCpiData(from: number, to: number): Promise<[number, num
         const endDate = new Date(Date.now()).toISOString().split('T')[0];
         const url = `https://api.stlouisfed.org/fred/series/observations?series_id=CPIAUCSL&api_key=${apiKey}&file_type=json&observation_start=${startDate}&observation_end=${endDate}`;
 
-        const response = await fetch(url, {
+        const response = await fetchWithTimeout(url, {
             next: { revalidate: 86400 }
         });
 
@@ -465,8 +528,15 @@ export async function getCpiData(from: number, to: number): Promise<[number, num
 
         data.sort((a, b) => a[0] - b[0]);
         memoryCache.set(cacheKey, { timestamp: Date.now(), data });
+        staleServeMarkers.delete(cacheKey);
         return slice(data);
     } catch {
+        // Stale monthly CPI is fine; the alternative is losing the inflation overlay.
+        const stale = memoryCache.get(cacheKey);
+        if (stale) {
+            staleServeMarkers.set(cacheKey, Date.now());
+            return slice(stale.data);
+        }
         return null;
     }
 }
@@ -558,9 +628,16 @@ export async function getHashRateDifficulty(): Promise<{
         const hashrate = Number(hashJson.currentHashrate);
         if (!Number.isFinite(hashrate) || hashrate <= 0) return null;
 
+        // Same rule as hashrate: shape drift must read as "unavailable", never as
+        // "Difficulty 0" / "+0.00%" / "0 blocks until retarget" rendered as fact.
+        // A negative adjustment is legitimate; blocksUntilAdjustment of exactly 0
+        // (the retarget boundary) is legitimate.
         const difficulty = Number(hashJson.currentDifficulty);
+        if (!Number.isFinite(difficulty) || difficulty <= 0) return null;
         const adjustmentPercent = Number(diffJson.difficultyChange);
+        if (!Number.isFinite(adjustmentPercent)) return null;
         const blocksUntilAdjustment = Number(diffJson.remainingBlocks);
+        if (!Number.isFinite(blocksUntilAdjustment) || blocksUntilAdjustment < 0) return null;
 
         // `new Date(garbage).toISOString()` throws a RangeError, which the catch below
         // turned into a null for the entire widget. mempool.space sends an epoch in ms,
@@ -575,9 +652,9 @@ export async function getHashRateDifficulty(): Promise<{
 
         return {
             hashrate,
-            difficulty: Number.isFinite(difficulty) && difficulty > 0 ? difficulty : 0,
-            adjustmentPercent: Number.isFinite(adjustmentPercent) ? adjustmentPercent : 0,
-            blocksUntilAdjustment: Number.isFinite(blocksUntilAdjustment) && blocksUntilAdjustment >= 0 ? blocksUntilAdjustment : 0,
+            difficulty,
+            adjustmentPercent,
+            blocksUntilAdjustment,
             estimatedRetargetDate,
         };
     } catch {
@@ -685,7 +762,9 @@ export async function getPurchasingPowerData(): Promise<{
             getCurrentBitcoinPrice(),
         ]);
         if (!cpiData || cpiData.length < 2) return null;
-        const cpiStart = cpiData[0][1];
+        // getCpiData's slice keeps a 40-day lead-in, so cpiData[0] is the Dec 2014
+        // reading — but the widget labels the baseline "in 2015".
+        const cpiStart = cpiData.find(([ts]) => ts >= jan2015)?.[1] ?? NaN;
         const cpiNow = cpiData[cpiData.length - 1][1];
         // The widget divides by cpiStart, so a zero or non-finite reading would render
         // "Infinity%" / "$NaN" instead of the card's own empty state.
@@ -749,7 +828,10 @@ export async function getCurrentBitcoinPriceWithChange(providerArg: Provider = '
     try {
         let url = '';
         if (provider === 'coinbase') {
-            url = 'https://api.exchange.coinbase.com/products/BTC-USD/ticker';
+            // /ticker has no 24h open (open_24h does not exist there, so the change
+            // rendered as a permanent 0.00%); /stats returns {open, last} for the
+            // rolling 24h window.
+            url = 'https://api.exchange.coinbase.com/products/BTC-USD/stats';
         } else {
             url = 'https://api.kraken.com/0/public/Ticker?pair=XBTUSD';
         }
@@ -762,8 +844,8 @@ export async function getCurrentBitcoinPriceWithChange(providerArg: Provider = '
         let price: number;
         let open24h: number;
         if (provider === 'coinbase') {
-            price = parseFloat(json.price);
-            open24h = parseFloat(json.open_24h ?? json.price);
+            price = parseFloat(json.last);
+            open24h = parseFloat(json.open);
         } else {
             if (json && Array.isArray(json.error) && json.error.length > 0) {
                 throw new Error(`API Error: ${json.error.join(', ')}`);
@@ -823,17 +905,41 @@ export async function getCurrentBitcoinPrice(
     }
 }
 
+/**
+ * Spot price with cross-provider fallback, for UI surfaces. Deliberately NOT
+ * folded into getCurrentBitcoinPrice: /api/health uses that as a
+ * provider-specific probe, and a silent fallback there would mask a
+ * single-exchange outage. Returns null on total failure — calculateDca already
+ * degrades gracefully to the last candle when the spot price is null.
+ */
+export async function getCurrentBitcoinPriceWithFallback(
+    providerArg: Provider = 'kraken',
+    revalidateArg: number = DEFAULT_PRICE_REVALIDATE,
+): Promise<number | null> {
+    const provider = normalizeProvider(providerArg);
+    const fallback: Provider = provider === 'kraken' ? 'coinbase' : 'kraken';
+    return getCurrentBitcoinPrice(provider, revalidateArg)
+        .catch(() => getCurrentBitcoinPrice(fallback, revalidateArg))
+        .catch(() => null);
+}
+
 // ── Profitable windows ─────────────────────────────────────────────────────────
 // "X% of all N-month DCA windows in history ended in profit" — computed over the
 // full price history, windows stepped weekly. Fee-free (stated in the UI).
 
 let windowsCache: Map<string, { timestamp: number; result: { profitablePercent: number; windowCount: number; durationDays: number } }> | null = null;
 
+// Same reasoning as normalizeProvider: `frequency` is a public argument AND a
+// cache key. Unknown strings used to silently compute monthly-stepped stats and
+// mint unbounded Map entries.
+const ALLOWED_FREQUENCIES = new Set(['daily', 'weekly', 'biweekly', 'monthly']);
+
 export async function getProfitableWindows(
     frequency: 'daily' | 'weekly' | 'biweekly' | 'monthly',
     durationDays: number,
 ): Promise<{ profitablePercent: number; windowCount: number; durationDays: number } | null> {
     try {
+        if (!ALLOWED_FREQUENCIES.has(frequency)) return null;
         // Bucket duration so the cache stays small and results stable
         const bucketed = Math.max(90, Math.round(durationDays / 30) * 30);
         const cacheKey = `${frequency}_${bucketed}`;
@@ -889,6 +995,12 @@ export async function getProfitableWindows(
             windowCount,
             durationDays: bucketed,
         };
+        // Defense-in-depth size cap; the frequency/duration validation above already
+        // bounds the keyspace to 4 × ~190 buckets.
+        if (windowsCache.size >= 800) {
+            const oldest = windowsCache.keys().next().value;
+            if (oldest !== undefined) windowsCache.delete(oldest);
+        }
         windowsCache.set(cacheKey, { timestamp: Date.now(), result });
         return result;
     } catch (error) {

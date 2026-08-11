@@ -28,6 +28,10 @@ const INTERNET_ADOPTION = [
 const GLOBAL_OWNERS_M = 560;
 const WORLD_POPULATION_B = 8;
 const ADOPTION_PERCENT = 4.5;
+// Last year the figures above (and the chart series) are supported by data.
+// Labels must cite this vintage, not the visitor's clock — update it together
+// with the constants when the estimates are refreshed.
+const DATA_VINTAGE = 2024;
 
 // Chart palette per design spec (validated for both modes):
 // Internet = violet, Bitcoin = amber.
@@ -112,12 +116,12 @@ export const BitcoinAdoption = () => {
                             ~150M users worldwide
                         </div>
                         <div className="text-xs text-violet-700 dark:text-violet-400 mt-1 font-medium">
-                            Now: 67% (5.4B users)
+                            {DATA_VINTAGE}: 67% (5.4B users)
                         </div>
                     </div>
                     <div className="rounded-xl bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/50 p-3 sm:p-4">
-                        <div suppressHydrationWarning className="text-xs sm:text-sm font-medium text-amber-700 dark:text-amber-400 mb-1">
-                            Bitcoin in {new Date().getFullYear()}
+                        <div className="text-xs sm:text-sm font-medium text-amber-700 dark:text-amber-400 mb-1">
+                            Bitcoin in {DATA_VINTAGE}
                         </div>
                         <div className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">
                             4.5%
@@ -138,7 +142,7 @@ export const BitcoinAdoption = () => {
                     </div>
                     {mounted ? (
                         <div className="tabular-nums">
-                            <ResponsiveContainer width="100%" height={180}>
+                            <ResponsiveContainer width="100%" height={180} initialDimension={{ width: 358, height: 180 }}>
                                 <AreaChart data={INTERNET_ADOPTION} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
                                     <defs>
                                         <linearGradient id="fillInternet" x1="0" y1="0" x2="0" y2="1">

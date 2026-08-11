@@ -32,6 +32,9 @@ interface CurrencyContextType {
     currencyConfig: CurrencyConfig;
     currencies: CurrencyConfig[];
     setCurrency: (code: CurrencyCode) => void;
+    /** Applies for this visit only — never writes the stored preference. For
+     *  shared links, where the sharer's currency must not overwrite the visitor's. */
+    setSessionCurrency: (code: CurrencyCode) => void;
     formatCurrency: (usdValue: number, maximumFractionDigits?: number) => string;
     formatCompact: (usdValue: number) => string;
     convertFromUsd: (usdValue: number) => number;
@@ -96,6 +99,12 @@ export const CurrencyProvider = ({ children }: { children: ReactNode }) => {
     const setCurrency = useCallback((code: CurrencyCode) => {
         setOverride(code);
         try { window.localStorage.setItem(CURRENCY_STORAGE_KEY, code); } catch { /* private mode */ }
+    }, []);
+
+    // The session override already wins (`override ?? storedCurrency`), so this
+    // shapes the whole visit without touching storage.
+    const setSessionCurrency = useCallback((code: CurrencyCode) => {
+        setOverride(code);
     }, []);
 
     const setDenomination = useCallback((next: Denomination) => {
@@ -179,6 +188,7 @@ export const CurrencyProvider = ({ children }: { children: ReactNode }) => {
             currencyConfig,
             currencies,
             setCurrency,
+            setSessionCurrency,
             formatCurrency,
             formatCompact,
             convertFromUsd,
@@ -188,7 +198,7 @@ export const CurrencyProvider = ({ children }: { children: ReactNode }) => {
             setDenomination,
             formatBtcAmount,
         }),
-        [currency, currencyConfig, currencies, setCurrency, formatCurrency, formatCompact, convertFromUsd, formatBtc, formatSats, denomination, setDenomination, formatBtcAmount]
+        [currency, currencyConfig, currencies, setCurrency, setSessionCurrency, formatCurrency, formatCompact, convertFromUsd, formatBtc, formatSats, denomination, setDenomination, formatBtcAmount]
     );
 
     return (

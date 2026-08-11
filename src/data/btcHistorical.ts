@@ -1,6 +1,7 @@
-// Real daily BTC market prices, 2010-08 through 2015-06, from blockchain.info
-// (charts/market-price, fetched 2026-07-24). Replaces the old synthetic
-// $0.05-anchor linear interpolation for the pre-exchange-data era.
+// Real daily BTC market prices, 2010-08 through 2015-07-19, from blockchain.info
+// (charts/market-price, fetched 2026-07-24; extended 2026-08-10 to meet
+// Coinbase's first BTC-USD daily candle on 2015-07-20 with no gap). Replaces the
+// old synthetic $0.05-anchor linear interpolation for the pre-exchange-data era.
 // Server-side only: imported by actions.ts, never shipped to the client bundle.
 
 export const BTC_HISTORICAL_DAILY: [number, number][] = [
@@ -1782,4 +1783,23 @@ export const BTC_HISTORICAL_DAILY: [number, number][] = [
     [1435449600000,251.21],
     [1435536000000,248.57],
     [1435622400000,256.05],
+    [1435708800000,262.43],
+    [1435795200000,257.78],
+    [1435881600000,254.68],
+    [1435968000000,256.12],
+    [1436054400000,260.33],
+    [1436140800000,271.34],
+    [1436227200000,268.53],
+    [1436313600000,265.83],
+    [1436400000000,270.31],
+    [1436486400000,269.00],
+    [1436572800000,284.92],
+    [1436659200000,291.64],
+    [1436745600000,310.55],
+    [1436832000000,291.94],
+    [1436918400000,287.92],
+    [1437004800000,285.66],
+    [1437091200000,277.78],
+    [1437177600000,279.43],
+    [1437264000000,276.74],
 ];

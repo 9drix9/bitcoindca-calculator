@@ -61,7 +61,6 @@ const SLOTS = [
 ];
 
 const PATH_FULL = [...COLUMNS.map((c) => bar(c, 1.6)), ...SLOTS.map(slot)].join(' ');
-const PATH_COMPACT = COLUMNS.map((c) => bar(c, 1.6)).join(' ');
 
 /**
  * Favicon-only geometry on a 16-unit integer lattice: 3-wide columns with 1-unit

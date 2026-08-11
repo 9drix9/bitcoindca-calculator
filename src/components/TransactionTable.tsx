@@ -58,26 +58,33 @@ export const TransactionTable = memo(function TransactionTable({ breakdown, unit
 
     return (
         <Card className="overflow-hidden">
-            <button
-                type="button"
-                onClick={() => setOpen(!open)}
-                aria-expanded={open}
-                aria-label={`${open ? 'Hide' : 'Show'} transaction history`}
-                className="flex w-full items-center justify-between p-4 text-left transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/50 sm:p-5"
-            >
-                <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100 sm:text-lg">
-                    Transaction History{' '}
-                    <span className="font-normal text-slate-500 dark:text-slate-400 tabular-nums">
-                        ({breakdown.length.toLocaleString()})
+            {/* Heading wraps the button (WAI-ARIA disclosure pattern) — nested the
+                other way round, role=button flattened its children and the heading
+                vanished from the accessibility tree. No aria-label: the visible
+                text plus the count is the accessible name, and aria-expanded
+                already carries the state. */}
+            <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100 sm:text-lg">
+                <button
+                    type="button"
+                    onClick={() => setOpen(!open)}
+                    aria-expanded={open}
+                    className="flex w-full items-center justify-between p-4 text-left transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/50 sm:p-5"
+                >
+                    <span>
+                        Transaction History{' '}
+                        <span className="font-normal text-slate-500 dark:text-slate-400 tabular-nums">
+                            ({breakdown.length.toLocaleString()})
+                        </span>
                     </span>
-                </h3>
-                <ChevronDown
-                    className={clsx(
-                        'h-4 w-4 shrink-0 text-slate-500 transition-transform duration-200 dark:text-slate-400',
-                        open && 'rotate-180',
-                    )}
-                />
-            </button>
+                    <ChevronDown
+                        aria-hidden="true"
+                        className={clsx(
+                            'h-4 w-4 shrink-0 text-slate-500 transition-transform duration-200 dark:text-slate-400',
+                            open && 'rotate-180',
+                        )}
+                    />
+                </button>
+            </h3>
 
             {open && (
                 <div className="border-t border-slate-200 dark:border-slate-800">

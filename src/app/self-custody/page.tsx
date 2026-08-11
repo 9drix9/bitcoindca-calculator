@@ -20,7 +20,7 @@ import {
 import { WalletImage } from '@/components/WalletImage';
 
 /** Date the factual claims on this page were last checked against their sources. */
-const LAST_REVIEWED = '8 August 2026';
+const LAST_REVIEWED = '10 August 2026';
 
 /** A single external reference. `label` is what the reader sees inline. */
 type Source = { label: string; url: string };
@@ -94,7 +94,6 @@ export const metadata: Metadata = {
   description: 'An honest guide to Bitcoin self-custody: what a seed phrase really is, how people lose coins, verifying addresses on-device, testing your recovery, passphrases, multisig, inheritance planning, and a current hardware wallet comparison.',
   keywords: ['bitcoin self custody', 'hardware wallet guide', 'seed phrase backup', 'bip39 recovery phrase', 'bitcoin multisig', 'bitcoin inheritance planning', 'passphrase 25th word', 'best bitcoin hardware wallet 2026'],
   openGraph: {
-        images: [{ url: '/opengraph-image', width: 1200, height: 630 }],
     title: 'Self-Custody: How to Hold Bitcoin Without Losing It',
     description: 'Self-custody removes exchange risk and hands you operational risk. Here is how to take it on properly: seed phrases, backups, threat models, inheritance, and which device to buy.',
     url: '/self-custody',
@@ -103,7 +102,6 @@ export const metadata: Metadata = {
     locale: 'en_US',
   },
   twitter: {
-        images: ['/opengraph-image'],
     card: 'summary_large_image',
     title: 'Self-Custody: How to Hold Bitcoin Without Losing It',
     description: 'Self-custody removes exchange risk and hands you operational risk. Here is how to take it on properly.',
@@ -198,6 +196,8 @@ type WalletColor = 'violet' | 'amber' | 'green' | 'blue' | 'cyan' | 'emerald' | 
 
 interface Wallet {
   name: string;
+  /** Anchor slug: the full card renders with id={`wallet-${slug}`} and the comparison table links to it. */
+  slug: string;
   tagline: string;
   description: string;
   features: string[];
@@ -208,15 +208,20 @@ interface Wallet {
   color: WalletColor;
   image: string;
   bestFor: string;
+  /** Short answers for the at-a-glance comparison table. */
+  openSource: string;
+  secureElement: string;
+  airGap: string;
   affiliate: boolean;
   sources?: readonly Source[];
 }
 
 // Ordered roughly from most beginner-friendly to most specialist.
-// Prices checked July 2026 and deliberately stated as approximations; vendors discount often.
+// Prices checked August 2026 and deliberately stated as approximations; vendors discount often.
 const WALLETS: Wallet[] = [
   {
     name: 'Trezor',
+    slug: 'trezor',
     tagline: 'Open-source, and the easiest to verify',
     description: 'SatoshiLabs shipped the Trezor Model One in 2014, the first hardware wallet of its kind. Its firmware has always been open-source and reproducibly built, so independent researchers can confirm the code on your device matches the published source. The current Safe line adds a certified secure element, and every model can run Bitcoin-only firmware that strips the altcoin code out entirely.',
     features: ['Open-source firmware with reproducible builds', 'EAL6+ secure element across the Safe line', 'Bitcoin-only firmware option on every model', 'Shamir backup on Safe 5 and Safe 7', 'Works with Trezor Suite, Sparrow, Electrum, and Nunchuk'],
@@ -227,26 +232,34 @@ const WALLETS: Wallet[] = [
     color: 'emerald',
     image: '/wallets/trezor.png',
     bestFor: 'Best for: a first hardware wallet you can independently verify',
+    openSource: 'Yes, reproducible builds',
+    secureElement: 'Yes (EAL6+)',
+    airGap: 'No (USB)',
     affiliate: true,
     sources: [SRC.trezorOne, SRC.trezorSafe3, SRC.trezorTropic, SRC.trezorLeak],
   },
   {
     name: 'Blockstream Jade',
+    slug: 'blockstream-jade',
     tagline: 'Bitcoin-focused, fully open, well priced',
     description: 'Built by Blockstream, Jade is fully open-source in both hardware and firmware. The lineup now splits into three devices: Classic and Core for a quick move off an exchange, Jade Plus for camera-based QR signing and SD-card air-gapping. All three run identical firmware and the same security model.',
     features: ['Fully open-source hardware and firmware', 'Bitcoin and Liquid; no altcoin code', 'Air-gapped QR signing and SD card support (Plus)', 'Camera, USB-C, Bluetooth, built-in battery', 'Pairs with Blockstream Green, Sparrow, Electrum, Nunchuk'],
     price: 'from ~$79',
-    lineup: 'Jade Classic around $79, Jade Core around $99, Jade Plus around $149-$169 depending on the case material.',
+    lineup: 'Jade Classic around $79, Jade Core around $99, Jade Plus around $169 list and often on sale near $143. Stock runs out regularly, so check availability.',
     caveat: 'Jade has no dedicated secure element chip. Instead it encrypts your key material and unlocks it through a handshake with a "blind oracle" PIN server. That server is blind to the PIN by design, and exists mainly to enforce a three-attempt limit. Blockstream runs one by default. The server is open source and Dockerized, so you can run your own. Signing still happens offline and the seed never leaves the device. But if you want zero third-party dependency in the unlock path, plan to self-host the oracle.',
     href: 'https://oshi.link/ETC6DL',
     color: 'green',
     image: '/wallets/blockstream-jade.png',
     bestFor: 'Best for: open-source purists and the best value in the category',
+    openSource: 'Yes, hardware and firmware',
+    secureElement: 'No (blind-oracle PIN server)',
+    airGap: 'Optional (QR on the Plus)',
     affiliate: true,
     sources: [SRC.jadeRepo, SRC.jadeOracle],
   },
   {
     name: 'Ledger',
+    slug: 'ledger',
     tagline: 'The most polished software, with a real trade-off',
     description: 'Ledger has sold more hardware wallets than anyone, and Ledger Live is the most approachable companion app in the category. Its secure element chips carry independent security certifications, and no Ledger device has ever been remotely compromised. The trade-off is transparency. The device operating system and the secure element firmware are both proprietary.',
     features: ['Certified secure element (CC EAL5+ / EAL6+)', 'Ledger Live handles buy, send, receive, and staking', 'Bluetooth on Nano X and Gen5; NFC on Gen5', 'Very broad multi-asset support', 'Largest ecosystem of third-party integrations'],
@@ -257,41 +270,53 @@ const WALLETS: Wallet[] = [
     color: 'amber',
     image: '/wallets/ledger.png',
     bestFor: 'Best for: people who want the smoothest app and accept the closed-source trade-off',
+    openSource: 'No (proprietary device OS)',
+    secureElement: 'Yes (EAL5+/EAL6+)',
+    airGap: 'No (USB/Bluetooth)',
     affiliate: true,
     sources: [SRC.ledger2020, SRC.ledger2020Ceo, SRC.ledger2026, SRC.ledgerRecover],
   },
   {
     name: 'BitBox02',
+    slug: 'bitbox02',
     tagline: 'Swiss-made, minimal, quietly excellent',
     description: 'Shift Crypto builds the BitBox02 in Switzerland. A dual-chip design pairs an ATECC608B secure element with an ATSAMD51 microcontroller, so neither one alone can release your keys. The Bitcoin-only edition strips out every other coin and costs the same as the multi edition. The newer Nova adds a glass display plus native iPhone and iPad support.',
     features: ['Bitcoin-only edition at no extra cost', 'Open-source firmware, reproducible builds', 'Dual-chip security design', 'microSD backup as well as a written 12-word seed', 'Nova adds iOS/iPadOS support and a glass display'],
-    price: 'from ~$136',
-    lineup: 'BitBox02 around $136, BitBox02 Nova around $159. Bitcoin-only and multi editions are the same price.',
+    price: 'from ~$109',
+    lineup: 'The BitBox02 Nova, around €175, is the current flagship; the original BitBox02, around $109, is still sold. Bitcoin-only and multi editions are the same price.',
     caveat: 'The microSD backup is convenient. It is also a full copy of your seed sitting on a small piece of plastic that degrades and is easy to misplace. Treat it exactly as you would treat written words, and keep a durable written or metal copy too.',
     href: 'https://shop.bitbox.swiss/?ref=pnuwdpiq',
     color: 'slate',
     image: '/wallets/bitbox.png',
     bestFor: 'Best for: minimalists who want Bitcoin-only without the complexity tax',
+    openSource: 'Yes, reproducible builds',
+    secureElement: 'Yes (dual-chip)',
+    airGap: 'No (USB)',
     affiliate: true,
     sources: [SRC.bitbox],
   },
   {
     name: 'Coldcard',
+    slug: 'coldcard',
     tagline: 'Bitcoin-only, air-gapped, expert-grade',
     description: 'Coinkite\'s Coldcard is the device most long-term Bitcoiners eventually graduate to. It runs fully air-gapped, meaning it never has to touch a computer: you move transactions across on a microSD card, or by QR code on the Q. Two secure elements from different vendors must both agree before anything gets signed.',
     features: ['Bitcoin-only, always has been', 'Fully air-gapped via microSD (Q adds QR + keyboard)', 'Two independent secure elements', 'Firmware source published with reproducible builds', 'Multisig, BIP-85, seed XOR, duress and brick-me PINs'],
-    price: 'Mk5 ~$170, Q ~$249',
-    lineup: 'Current models are the Mk5 (around $170) and the Q (around $249). The Mk4 has been superseded.',
+    price: 'Mk4 ~$178, Q ~$249',
+    lineup: 'Current models are the Mk4 (around $178) and the Q (around $249), the premium option with a camera and keyboard.',
     caveat: 'Two honest notes. The firmware ships under an MIT grant with a "Commons Clause" condition attached, which withholds the right to sell the software. That makes it source-available rather than open-source in the strict sense. Anyone can still read the code and reproduce the build. The advanced features also cut both ways. Duress PINs, seed XOR, and BIP-85 will destroy your access as efficiently as they protect it if you turn them on without understanding them. This is not a first device.',
     href: 'https://coldcard.com/',
     color: 'blue',
     image: '/wallets/coldcard.png',
     bestFor: 'Best for: larger balances, multisig setups, and people who want an air gap',
+    openSource: 'Source-available (Commons Clause)',
+    secureElement: 'Yes (two, different vendors)',
+    airGap: 'Yes (microSD; QR on the Q)',
     affiliate: false,
     sources: [SRC.coldcardLicence],
   },
   {
     name: 'Cypherock X1',
+    slug: 'cypherock-x1',
     tagline: 'Nothing to write down, five things to protect',
     description: 'Cypherock takes a different approach. Instead of one seed phrase on paper, it splits your key material into five shares using Shamir Secret Sharing. One share sits inside the X1 Vault, and one on each of four NFC cards. Any two shares reconstruct the wallet, so you can lose up to three components and still recover.',
     features: ['No written seed phrase required', 'Shamir 2-of-5 across the vault and four cards', 'EAL6+ secure elements', 'Source-available firmware (MIT + Commons Clause)', 'BIP-39 export available as an escape hatch'],
@@ -302,11 +327,15 @@ const WALLETS: Wallet[] = [
     color: 'violet',
     image: '/wallets/cypherock.png',
     bestFor: 'Best for: people who distrust their ability to protect a single paper backup',
+    openSource: 'Source-available (Commons Clause)',
+    secureElement: 'Yes (EAL6+)',
+    airGap: 'No (USB)',
     affiliate: true,
     sources: [SRC.cypherock],
   },
   {
     name: 'SeedSigner',
+    slug: 'seedsigner',
     tagline: 'DIY, stateless, and holds nothing',
     description: 'SeedSigner is a community project rather than a product. You assemble it yourself from a Raspberry Pi Zero, a camera, and a small screen, then flash software you can verify byte-for-byte against the published source. It is stateless, meaning it stores no keys at all. You enter your seed words each time you sign and the device forgets them the moment it powers off. There is nothing on it to steal.',
     features: ['Around $50 in commodity parts', 'Stateless: stores no private keys, ever', 'Air-gapped by design: QR codes only, no cables', 'Reproducible builds since v0.7.0', 'Strong multisig and Sparrow/Nunchuk support'],
@@ -317,6 +346,9 @@ const WALLETS: Wallet[] = [
     color: 'cyan',
     image: '/wallets/seedsigner.png',
     bestFor: 'Best for: technical users, multisig signers, and maximum verifiability',
+    openSource: 'Yes, reproducible builds',
+    secureElement: 'No (stateless, stores nothing)',
+    airGap: 'Yes (QR only)',
     affiliate: false,
     sources: [SRC.seedsigner],
   },
@@ -391,7 +423,7 @@ const FAQ: { q: string; a: string; sources?: readonly Source[] }[] = [
   },
   {
     q: 'Is self-custody worth it for small amounts?',
-    a: 'Not always, and pretending otherwise does beginners no favors. If you hold a few hundred dollars you are actively trading, a reputable exchange with a hardware security key on the account is a defensible choice. A badly executed self-custody setup loses money more reliably than a well-run exchange does. But the moment the balance becomes savings rather than a trading position, or crosses the point where losing it would hurt, self-custody is worth the effort. Devices on this page run from roughly $50 for a DIY build or about $79 for an entry-level Trezor, Jade, or Ledger, up to around $250 for high-end models.',
+    a: 'Not always, and pretending otherwise does beginners no favors. If you hold a few hundred dollars you are actively trading, a reputable exchange with a hardware security key on the account is a defensible choice. A badly executed self-custody setup loses money more reliably than a well-run exchange does. But the moment the balance becomes savings rather than a trading position, or crosses the point where losing it would hurt, self-custody is worth the effort. Devices on this page run from roughly $50 for a DIY build or about $79 for an entry-level Trezor, Jade, or Ledger, up to $250-$400 for the high-end models.',
   },
   {
     q: 'What happens to my Bitcoin if I die?',
@@ -492,6 +524,23 @@ const sectionIcon = 'w-6 h-6 sm:w-8 sm:h-8 text-amber-600 dark:text-amber-500 sh
 const sectionHeading = 'text-xl sm:text-3xl font-bold text-slate-900 dark:text-white';
 const prose = 'text-sm sm:text-base text-slate-600 dark:text-slate-400 leading-relaxed';
 
+/** In-page navigation. Each href must match a section id below. */
+const TOC = [
+  { href: '#the-trade', label: 'The trade you are making' },
+  { href: '#worth-it-yet', label: 'Is it worth it yet?' },
+  { href: '#exchange-failures', label: 'Exchange failures' },
+  { href: '#how-coins-get-lost', label: 'How coins get lost' },
+  { href: '#seed-phrases', label: 'What a seed phrase is' },
+  { href: '#three-habits', label: 'The three habits' },
+  { href: '#what-hardware-does', label: 'What hardware does' },
+  { href: '#leaving-the-exchange', label: 'Leaving the exchange' },
+  { href: '#beginner-path', label: 'The beginner path' },
+  { href: '#passphrases-multisig', label: 'Passphrases and multisig' },
+  { href: '#inheritance', label: 'Inheritance' },
+  { href: '#wallets', label: 'Hardware wallet comparison' },
+  { href: '#faq', label: 'Common questions' },
+] as const;
+
 const breadcrumbJsonLd = {
   "@context": "https://schema.org",
   "@type": "BreadcrumbList",
@@ -507,9 +556,10 @@ const articleJsonLd = {
   "headline": "Self-Custody: How to Hold Bitcoin Without Losing It",
   "description": "An honest guide to Bitcoin self-custody: seed phrases, on-device verification, tested backups, threat models, passphrases, multisig, inheritance planning, and a current hardware wallet comparison.",
   "author": {
-    "@type": "Organization",
-    "name": "Bitcoin DCA Calculator",
-    "url": "https://btcdollarcostaverage.com"
+    "@type": "Person",
+    "@id": "https://btcdollarcostaverage.com/author#person",
+    "name": "Ricky Thach",
+    "url": "https://btcdollarcostaverage.com/author"
   },
   "publisher": {
     "@type": "Organization",
@@ -522,7 +572,7 @@ const articleJsonLd = {
   },
   "datePublished": "2025-01-01",
   // Static date. Update when the content changes, and keep it in sync with sitemap.ts.
-  "dateModified": "2026-08-08",
+  "dateModified": "2026-08-10",
 };
 
 const howToJsonLd = {
@@ -585,10 +635,32 @@ export default function SelfCustodyPage() {
         <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 max-w-2xl mx-auto">
           Written for someone who has never done this, with the parts experienced holders get wrong marked clearly.
         </p>
+        <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 max-w-2xl mx-auto">
+          By{' '}
+          <Link href="/author" className={`${citeLink} font-medium`}>Ricky Thach</Link>
+          {' '}&middot; Last reviewed {LAST_REVIEWED}
+        </p>
       </section>
 
+      {/* On this page */}
+      <nav
+        aria-label="On this page"
+        className="bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-2xl border border-slate-200 dark:border-slate-800"
+      >
+        <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-3">
+          On this page
+        </p>
+        <ul className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-1.5 text-xs sm:text-sm">
+          {TOC.map((item) => (
+            <li key={item.href}>
+              <a href={item.href} className={citeLink}>{item.label}</a>
+            </li>
+          ))}
+        </ul>
+      </nav>
+
       {/* Section 1: The trade you're making */}
-      <section className="space-y-4">
+      <section id="the-trade" className="space-y-4 scroll-mt-24">
         <div className="flex items-center gap-2 sm:gap-3">
           <Scale className={sectionIcon} />
           <h2 className={sectionHeading}>The Trade You Are Making</h2>
@@ -640,7 +712,7 @@ export default function SelfCustodyPage() {
       </section>
 
       {/* Section 2: Is it worth it for you yet */}
-      <section className="space-y-4">
+      <section id="worth-it-yet" className="space-y-4 scroll-mt-24">
         <div className="flex items-center gap-2 sm:gap-3">
           <Users className={sectionIcon} />
           <h2 className={sectionHeading}>Is It Worth It For You Yet?</h2>
@@ -698,7 +770,7 @@ export default function SelfCustodyPage() {
       </section>
 
       {/* Section 3: Exchange failures */}
-      <section className="space-y-4">
+      <section id="exchange-failures" className="space-y-4 scroll-mt-24">
         <div className="flex items-center gap-2 sm:gap-3">
           <AlertTriangle className={sectionIcon} />
           <h2 className={sectionHeading}>Why Exchanges Are the Weak Link for Savings</h2>
@@ -736,7 +808,7 @@ export default function SelfCustodyPage() {
       </section>
 
       {/* Section 4: Threat model */}
-      <section className="space-y-4">
+      <section id="how-coins-get-lost" className="space-y-4 scroll-mt-24">
         <div className="flex items-center gap-2 sm:gap-3">
           <ShieldAlert className={sectionIcon} />
           <h2 className={sectionHeading}>How People Lose Coins</h2>
@@ -776,7 +848,7 @@ export default function SelfCustodyPage() {
       </section>
 
       {/* Section 5: What a seed phrase is */}
-      <section className="space-y-4">
+      <section id="seed-phrases" className="space-y-4 scroll-mt-24">
         <div className="flex items-center gap-2 sm:gap-3">
           <Key className={sectionIcon} />
           <h2 className={sectionHeading}>What a Seed Phrase Really Is</h2>
@@ -849,7 +921,7 @@ export default function SelfCustodyPage() {
       </section>
 
       {/* Section 6: The three habits */}
-      <section className="space-y-4">
+      <section id="three-habits" className="space-y-4 scroll-mt-24">
         <div className="flex items-center gap-2 sm:gap-3">
           <Eye className={sectionIcon} />
           <h2 className={sectionHeading}>The Three Habits That Matter Most</h2>
@@ -911,7 +983,7 @@ export default function SelfCustodyPage() {
       </section>
 
       {/* Section 7: What a hardware wallet does */}
-      <section className="space-y-4">
+      <section id="what-hardware-does" className="space-y-4 scroll-mt-24">
         <div className="flex items-center gap-2 sm:gap-3">
           <Lock className={sectionIcon} />
           <h2 className={sectionHeading}>What a Hardware Wallet Does and Does Not Do</h2>
@@ -962,7 +1034,7 @@ export default function SelfCustodyPage() {
       </section>
 
       {/* Section 8: Moving off the exchange */}
-      <section className="space-y-4">
+      <section id="leaving-the-exchange" className="space-y-4 scroll-mt-24">
         <div className="flex items-center gap-2 sm:gap-3">
           <Send className={sectionIcon} />
           <h2 className={sectionHeading}>Moving Coins Off an Exchange</h2>
@@ -1016,7 +1088,7 @@ export default function SelfCustodyPage() {
       </section>
 
       {/* Section 9: Beginner path steps */}
-      <section className="space-y-4">
+      <section id="beginner-path" className="space-y-4 scroll-mt-24">
         <div className="text-center space-y-2">
           <h2 className={sectionHeading}>The Beginner Path, Step by Step</h2>
           <p className={prose}>
@@ -1038,7 +1110,7 @@ export default function SelfCustodyPage() {
       </section>
 
       {/* Section 10: Advanced */}
-      <section className="space-y-4">
+      <section id="passphrases-multisig" className="space-y-4 scroll-mt-24">
         <div className="flex items-center gap-2 sm:gap-3">
           <Layers className={sectionIcon} />
           <h2 className={sectionHeading}>Beyond the Basics: Passphrases and Multisig</h2>
@@ -1101,7 +1173,7 @@ export default function SelfCustodyPage() {
       </section>
 
       {/* Section 11: Inheritance */}
-      <section className="space-y-4">
+      <section id="inheritance" className="space-y-4 scroll-mt-24">
         <div className="flex items-center gap-2 sm:gap-3">
           <Users className={sectionIcon} />
           <h2 className={sectionHeading}>If You Died Tonight, Could Anyone Recover This?</h2>
@@ -1166,7 +1238,7 @@ export default function SelfCustodyPage() {
       </section>
 
       {/* Hardware Wallet Recommendations */}
-      <section className="space-y-6" id="wallets">
+      <section className="space-y-6 scroll-mt-24" id="wallets">
         <div className="text-center space-y-2">
           <h2 className={sectionHeading}>Hardware Wallets Worth Buying</h2>
           <p className={prose}>
@@ -1175,7 +1247,7 @@ export default function SelfCustodyPage() {
             so each entry carries its caveat as well as its pitch.
           </p>
           <p className="text-xs text-slate-500 dark:text-slate-400">
-            Prices checked July 2026 and stated as approximations; vendors discount frequently, so confirm current
+            Prices checked August 2026 and stated as approximations; vendors discount frequently, so confirm current
             pricing on the manufacturer&apos;s site. Links marked <strong className="text-slate-600 dark:text-slate-300">(affiliate)</strong> support this project at no extra cost to you.
           </p>
         </div>
@@ -1191,13 +1263,51 @@ export default function SelfCustodyPage() {
           </p>
         </div>
 
+        {/* At-a-glance comparison, rendered from the same WALLETS data as the full cards below. */}
+        <div className="bg-slate-100 dark:bg-slate-900/50 p-5 sm:p-6 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-4">
+          <h3 className="text-sm sm:text-base font-bold text-slate-800 dark:text-white">The Short Version</h3>
+          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
+            Approximate prices as of August 2026. Tap a name to jump to the full write-up, which carries the caveats
+            this table is too small for.
+          </p>
+          <div className="overflow-x-auto -mx-2 sm:mx-0">
+            <table className="w-full text-xs sm:text-sm min-w-[640px]">
+              <thead>
+                <tr className="text-left text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-700">
+                  <th scope="col" className="pb-2 pr-3 font-medium">Wallet</th>
+                  <th scope="col" className="pb-2 pr-3 font-medium">Price</th>
+                  <th scope="col" className="pb-2 pr-3 font-medium">Open source</th>
+                  <th scope="col" className="pb-2 pr-3 font-medium">Secure element</th>
+                  <th scope="col" className="pb-2 pr-3 font-medium">Air-gapped</th>
+                  <th scope="col" className="pb-2 font-medium">Best for</th>
+                </tr>
+              </thead>
+              <tbody className="text-slate-700 dark:text-slate-300 align-top">
+                {WALLETS.map((w) => (
+                  <tr key={w.name} className="border-t border-slate-200 dark:border-slate-700/50">
+                    <td className="py-2 pr-3 font-medium">
+                      <a href={`#wallet-${w.slug}`} className={citeLink}>{w.name}</a>
+                    </td>
+                    <td className="py-2 pr-3 whitespace-nowrap tabular-nums">{w.price}</td>
+                    <td className="py-2 pr-3">{w.openSource}</td>
+                    <td className="py-2 pr-3">{w.secureElement}</td>
+                    <td className="py-2 pr-3">{w.airGap}</td>
+                    <td className="py-2">{w.bestFor.replace(/^Best for: /, '')}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
         <div className="space-y-6">
           {WALLETS.map((wallet) => {
             const colors = walletColorClasses[wallet.color];
             return (
               <div
                 key={wallet.name}
-                className={`${colors.bg} border ${colors.border} rounded-2xl overflow-hidden`}
+                id={`wallet-${wallet.slug}`}
+                className={`${colors.bg} border ${colors.border} rounded-2xl overflow-hidden scroll-mt-24`}
               >
                 <div className="p-5 sm:p-8">
                   <div className="flex flex-col sm:flex-row gap-5 sm:gap-8">
@@ -1276,7 +1386,7 @@ export default function SelfCustodyPage() {
       </section>
 
       {/* Common Concerns */}
-      <section className="space-y-4">
+      <section id="faq" className="space-y-4 scroll-mt-24">
         <h2 className={`${sectionHeading} text-center`}>Common Questions</h2>
         <div className="space-y-2.5">
           {FAQ.map((item) => (

@@ -19,7 +19,7 @@ import { useCurrency } from '@/context/CurrencyContext';
 import { useIsDark } from '@/hooks/useIsDark';
 import { DcaResult, Frequency } from '@/types';
 import { calculateDca } from '@/utils/dca';
-import { DAY_MS, formatUtc, parseUtcDate, utcDayStart } from '@/utils/dates';
+import { DAY_MS, EARLIEST_PRICE_DATE, EARLIEST_PRICE_TS, formatUtc, parseUtcDate, utcDayStart } from '@/utils/dates';
 
 // ── Props contract (wired into DcaCalculator by the orchestrator) ─────────────
 
@@ -100,7 +100,8 @@ const FREQUENCY_NOUN: Record<Frequency, string> = {
 
 const DEBOUNCE_MS = 500;
 const MAX_CHART_POINTS = 300;
-const AXIS_COLOR = '#64748b';
+// slate-500 fails contrast on the dark card — same pair DcaChart documents.
+const axisColor = (isDark: boolean): string => (isDark ? '#94a3b8' : '#64748b');
 
 /** CVD-validated comparison palette (all-pairs, both modes) — do not change.
     Plan C is magenta, not violet: blue↔violet fails deutan separation in light mode. */
@@ -250,6 +251,7 @@ function PlanRow({
                     <input
                         id={`${uid}-start`}
                         type="date"
+                        min={EARLIEST_PRICE_DATE}
                         max={maxDate}
                         value={plan.startDate}
                         onChange={(e) => onChange({ startDate: e.target.value })}
@@ -408,12 +410,16 @@ export const PlanComparison: React.FC<{ basePlan: BasePlan }> = ({ basePlan }) =
                       },
                       ...sortedAlts.map((p): PlanSpec => {
                           const fee = parseFloat(p.feeInput);
+                          const startTs = finiteOrNull(parseUtcDate(p.startDate));
                           return {
                               key: p.slot,
                               // Display-currency input → USD for all internal math (spec §3)
                               amountUsd: finiteOrNull(parseFloat(p.amountInput) / currencyConfig.rate),
                               frequency: p.frequency,
-                              startTs: finiteOrNull(parseUtcDate(p.startDate)),
+                              // `min` on the input is not enforced for typed values in
+                              // every browser; clamp like the main calculator does so a
+                              // pre-2010 date can't silently price purchases at nothing.
+                              startTs: startTs !== null ? Math.max(startTs, EARLIEST_PRICE_TS) : null,
                               feePercentage: Number.isFinite(fee) ? fee : 0,
                           };
                       }),
@@ -611,7 +617,7 @@ export const PlanComparison: React.FC<{ basePlan: BasePlan }> = ({ basePlan }) =
                             role="img"
                             aria-label={chartAriaLabel}
                         >
-                            <ResponsiveContainer width="100%" height="100%" debounce={150}>
+                            <ResponsiveContainer width="100%" height="100%" debounce={150} initialDimension={{ width: 358, height: 260 }}>
                                 <LineChart
                                     data={chartData}
                                     margin={{ top: 8, right: 12, left: 0, bottom: 0 }}
@@ -626,7 +632,7 @@ export const PlanComparison: React.FC<{ basePlan: BasePlan }> = ({ basePlan }) =
                                         domain={['dataMin', 'dataMax']}
                                         tickFormatter={(ts: number) => formatUtc(ts, 'shortMonthYear')}
                                         minTickGap={40}
-                                        tick={{ fontSize: 11, fill: AXIS_COLOR }}
+                                        tick={{ fontSize: 11, fill: axisColor(isDark) }}
                                         tickLine={false}
                                         axisLine={{ stroke: gridColor }}
                                     />
@@ -634,7 +640,7 @@ export const PlanComparison: React.FC<{ basePlan: BasePlan }> = ({ basePlan }) =
                                         width={48}
                                         domain={[0, 'auto']}
                                         tickFormatter={formatAxisTick}
-                                        tick={{ fontSize: 11, fill: AXIS_COLOR }}
+                                        tick={{ fontSize: 11, fill: axisColor(isDark) }}
                                         tickLine={false}
                                         axisLine={false}
                                     />
@@ -648,7 +654,7 @@ export const PlanComparison: React.FC<{ basePlan: BasePlan }> = ({ basePlan }) =
                                             height={24}
                                             iconSize={8}
                                             wrapperStyle={{ fontSize: 11 }}
-                                            formatter={(value) => <span style={{ color: AXIS_COLOR }}>{value}</span>}
+                                            formatter={(value) => <span style={{ color: axisColor(isDark) }}>{value}</span>}
                                         />
                                     )}
                                     {activePlans.map((p) => (

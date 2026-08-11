@@ -9,22 +9,47 @@ export function DcaCalculatorSkeleton() {
   <div className="space-y-6">
           <div className="bg-white dark:bg-slate-900 p-4 sm:p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 animate-pulse">
             <div className="h-6 w-48 bg-slate-200 dark:bg-slate-700 rounded mb-4" />
-            {/* preset chip rows */}
-            <div className="space-y-2 mb-5">
-              <div className="flex flex-wrap gap-1.5">
-                {Array.from({ length: 4 }).map((_, i) => (
-                  <div key={i} className="h-7 w-32 bg-slate-100 dark:bg-slate-800 rounded-full" />
-                ))}
+            {/* Preset chip rows. h-11 below sm: the real chips are <button>s, so
+                the globals.css 44px base-layer floor governs them on phones. */}
+            <div className="space-y-3 mb-5 sm:mb-6">
+              <div>
+                <div className="h-3 w-28 bg-slate-200 dark:bg-slate-700 rounded mb-1.5" />
+                <div className="flex flex-wrap gap-1.5 sm:gap-2">
+                  {Array.from({ length: 4 }).map((_, i) => (
+                    <div key={i} className="h-11 sm:h-7 w-32 bg-slate-100 dark:bg-slate-800 rounded-full" />
+                  ))}
+                </div>
               </div>
-              <div className="flex flex-wrap gap-1.5">
-                {Array.from({ length: 3 }).map((_, i) => (
-                  <div key={i} className="h-7 w-36 bg-slate-100 dark:bg-slate-800 rounded-full" />
-                ))}
+              <div>
+                <div className="h-3 w-28 bg-slate-200 dark:bg-slate-700 rounded mb-1.5" />
+                <div className="flex flex-wrap gap-1.5 sm:gap-2">
+                  {Array.from({ length: 3 }).map((_, i) => (
+                    <div key={i} className="h-11 sm:h-7 w-36 bg-slate-100 dark:bg-slate-800 rounded-full" />
+                  ))}
+                </div>
               </div>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-5">
-              {Array.from({ length: 6 }).map((_, i) => (
+            {/* Must mirror the real form grid in DcaCalculator (2-up on phones,
+                exchange presets spanning the full row after the third field) or
+                the swap shifts everything below by a couple hundred pixels. */}
+            <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-5">
+              {Array.from({ length: 3 }).map((_, i) => (
                 <div key={i} className="space-y-1.5">
+                  <div className="h-4 w-20 bg-slate-200 dark:bg-slate-700 rounded" />
+                  <div className="h-10 bg-slate-100 dark:bg-slate-800 rounded-lg" />
+                </div>
+              ))}
+              <div className="col-span-2 lg:col-span-3">
+                <div className="h-3 w-24 bg-slate-200 dark:bg-slate-700 rounded mb-1.5" />
+                <div className="flex flex-wrap gap-1.5">
+                  {Array.from({ length: 6 }).map((_, i) => (
+                    <div key={i} className="h-11 sm:h-7 w-24 bg-slate-100 dark:bg-slate-800 rounded-full" />
+                  ))}
+                </div>
+              </div>
+              {Array.from({ length: 4 }).map((_, i) => (
+                // The last cell mirrors the real Price Mode cell's spans.
+                <div key={i} className={`space-y-1.5${i === 3 ? ' sm:col-span-2 lg:col-span-1' : ''}`}>
                   <div className="h-4 w-20 bg-slate-200 dark:bg-slate-700 rounded" />
                   <div className="h-10 bg-slate-100 dark:bg-slate-800 rounded-lg" />
                 </div>

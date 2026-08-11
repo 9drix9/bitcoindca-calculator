@@ -72,7 +72,10 @@ function fmtBtc(value: number): string {
 // The rates modelled on the site, quoted as percentages only. Rate tiers are
 // deliberately unlabelled here: exchanges change published fees and we do not
 // rank them. The comparison widget lower down names which exchange sits where.
-const FEE_RATES = [0, 0.1, 0.26, 0.99, 1.49, 2.2];
+// Tiers mirror that widget's August 2026 effective recurring-buy costs; the
+// 6.5% top tier is a flat $2.99-per-order fee plus ~0.5% spread expressed
+// against this page's $50 sample buy.
+const FEE_RATES = [0, 0.22, 0.25, 0.5, 1, 6.5];
 
 const SAMPLE_AMOUNT = 50;
 const SAMPLE_YEARS = 5;
@@ -222,7 +225,7 @@ export default async function ExchangeFeesPage() {
         {
             question: 'Are the rates on this page current?',
             answer:
-                'The comparison table quotes published rates last verified in July 2026, and exchanges change them without much notice. Treat them as a starting point and check the exchange\'s own fee page before committing. Tiered maker/taker schedules also mean your actual rate depends on your 30-day trading volume. A headline rate may not be the one you pay.',
+                'The comparison table quotes published rates last verified in August 2026, and exchanges change them without much notice. Treat them as a starting point and check the exchange\'s own fee page before committing. Tiered maker/taker schedules also mean your actual rate depends on your 30-day trading volume. A headline rate may not be the one you pay.',
         },
     ];
 

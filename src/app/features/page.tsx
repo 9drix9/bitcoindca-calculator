@@ -32,6 +32,9 @@ import {
     Cpu,
 } from 'lucide-react';
 
+/** Date this guide was last checked against the product it describes. */
+const LAST_REVIEWED = '10 August 2026';
+
 export const metadata: Metadata = {
     title: 'Features Guide',
     description: 'How every feature of the Bitcoin DCA Calculator works: the backtester, the comparison tools, the goal trackers, and the live network widgets, explained in plain terms.',
@@ -40,7 +43,6 @@ export const metadata: Metadata = {
         canonical: '/features',
     },
     openGraph: {
-        images: [{ url: '/opengraph-image', width: 1200, height: 630 }],
         title: 'Features Guide',
         description: 'Every tool in the Bitcoin DCA Calculator explained: backtesting, comparisons, goal tracking, fee analysis, and live network widgets.',
         url: '/features',
@@ -49,7 +51,6 @@ export const metadata: Metadata = {
         locale: 'en_US',
     },
     twitter: {
-        images: ['/opengraph-image'],
         card: 'summary_large_image',
         title: 'Features Guide',
         description: 'Every tool in the Bitcoin DCA Calculator explained: backtesting, comparisons, goal tracking, fee analysis, and live network widgets.',
@@ -117,9 +118,16 @@ export default function FeaturesPage() {
                 <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-900 dark:text-white mb-4">
                     Features Guide
                 </h1>
-                <p className="text-lg text-slate-600 dark:text-slate-300 max-w-2xl mx-auto mb-6">
+                <p className="text-lg text-slate-600 dark:text-slate-300 max-w-2xl mx-auto mb-4">
                     A plain-English tour of every tool on the site: what each one does,
                     what its numbers mean, and when it&apos;s worth your time.
+                </p>
+                <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mb-6">
+                    By{' '}
+                    <Link href="/author" className="text-amber-700 dark:text-amber-400 hover:underline font-medium">
+                        Ricky Thach
+                    </Link>
+                    {' '}&middot; Last reviewed {LAST_REVIEWED}
                 </p>
                 <Link
                     href="/"
@@ -221,7 +229,7 @@ export default function FeaturesPage() {
                     <ul className="text-sm text-slate-600 dark:text-slate-400 space-y-1">
                         <li>&bull; <strong>$50/week for 5 years</strong>: the classic long-term schedule</li>
                         <li>&bull; <strong>$100/week for 3 years</strong>: shorter window, bigger contributions</li>
-                        <li>&bull; <strong>&quot;What if I bought the peak?&quot;</strong>: how DCA recovers when you start at an all-time high</li>
+                        <li>&bull; <strong>&quot;What if I bought the peak?&quot;</strong>: how DCA plays out when your first buy lands on a cycle top. Bitcoin&apos;s most recent all-time high was about $126,000 in October 2025, and the 2021 top near $69,000 is the older test case</li>
                     </ul>
                 </div>
             </section>
@@ -242,7 +250,7 @@ export default function FeaturesPage() {
                     <FeatureCard
                         icon={LineChart}
                         title="Performance Chart"
-                        description="Portfolio value plotted across the whole period, stepping up with each purchase. There's an optional M2 money supply overlay if you want that comparison."
+                        description="Portfolio value plotted across the whole period, stepping up with each purchase. A second tab shows the Bitcoin price over the same window."
                         color="blue"
                     />
                     <FeatureCard
@@ -328,7 +336,7 @@ export default function FeaturesPage() {
                     <FeatureCard
                         icon={Flame}
                         title="FIRE Calculator"
-                        description="Financial Independence, Retire Early. Enter your monthly expenses and it works backward to the Bitcoin price at which your holdings could cover them."
+                        description="Financial Independence, Retire Early. Enter your monthly expenses and it estimates the years to financial independence under the 4% rule, across three editable price scenarios — falling, flat, and rising — so the downside is never hidden."
                         color="red"
                     />
                     <FeatureCard
@@ -384,7 +392,7 @@ export default function FeaturesPage() {
                     <FeatureCard
                         icon={Clock}
                         title="Halving Countdown"
-                        description="New supply gets cut in half roughly every 4 years. The widget counts down to the next halving, historically a bullish catalyst."
+                        description="New supply gets cut in half roughly every 4 years, on a schedule every node enforces. The widget counts down to the next halving, expected around April 2028."
                         color="amber"
                     />
                     <FeatureCard
@@ -396,7 +404,7 @@ export default function FeaturesPage() {
                     <FeatureCard
                         icon={Gauge}
                         title="Fear & Greed Index"
-                        description="A sentiment gauge running from 0 (Extreme Fear) to 100 (Extreme Greed). When everyone else is fearful, it might be a good time to buy."
+                        description="A sentiment gauge running from 0 (Extreme Fear) to 100 (Extreme Greed). Context, not a trading signal: this site's own pages argue against trying to time the market."
                         color="green"
                     />
                     <FeatureCard
@@ -461,7 +469,7 @@ export default function FeaturesPage() {
                             </div>
                             <h3 className="font-semibold text-slate-800 dark:text-white mb-2">Why Bitcoin?</h3>
                             <p className="text-sm text-slate-600 dark:text-slate-400">
-                                Where Bitcoin&apos;s value comes from: user adoption, network effects, mining costs, and the case for exiting fiat currency.
+                                Where Bitcoin&apos;s value comes from: verifiable scarcity, settlement nobody can reverse, portability without permission, and network effects. Plus a scorecard grading the popular claims.
                             </p>
                         </div>
                     </Link>

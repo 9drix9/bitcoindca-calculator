@@ -5,7 +5,7 @@ import { Download, Zap, Twitter, Link2, Check } from 'lucide-react';
 import { useCurrency } from '@/context/CurrencyContext';
 import { parseUtcDate, formatUtc } from '@/utils/dates';
 import { encodeParams } from '@/utils/urlParams';
-import type { Frequency } from '@/types';
+import type { Frequency, PriceMode } from '@/types';
 import { Logo } from '@/components/brand/Logo';
 
 interface ShareMyStackProps {
@@ -21,6 +21,11 @@ interface ShareMyStackProps {
     amount?: number;
     frequency?: Frequency;
     feePercentage?: number;
+    /** Pricing inputs — without them a Manual-mode share silently encoded
+     *  api/kraken, and the recipient saw different numbers than the card. */
+    priceMode?: PriceMode;
+    provider?: 'kraken' | 'coinbase';
+    manualPrice?: number;
 }
 
 const SITE_URL = 'https://btcdollarcostaverage.com';
@@ -91,6 +96,9 @@ export const ShareMyStack = ({
     amount,
     frequency,
     feePercentage,
+    priceMode,
+    provider,
+    manualPrice,
 }: ShareMyStackProps) => {
     const { formatCurrency, formatBtc, formatSats, currencyConfig } = useCurrency();
     const cardRef = useRef<HTMLDivElement>(null);
@@ -129,24 +137,27 @@ export const ShareMyStack = ({
 
     const buildShareUrl = useCallback(() => {
         const origin = typeof window === 'undefined' ? SITE_URL : window.location.origin;
-        // /share renders a preview card built from these exact params. Only use it when
-        // the full schedule is known — a partial set would render a wrong card.
-        if (amount !== undefined && frequency !== undefined && feePercentage !== undefined) {
+        // /share renders a preview card built from these exact params. Only use it
+        // when the full plan is known — a partial set would render a wrong card.
+        // priceMode/provider/manualPrice are part of that plan: hardcoding
+        // api/kraken here sent Manual-mode recipients to different numbers than
+        // the card they were shown.
+        if (amount !== undefined && frequency !== undefined && feePercentage !== undefined && priceMode !== undefined && provider !== undefined) {
             const params = encodeParams({
                 amount,
                 frequency,
                 startDate,
                 endDate,
                 feePercentage,
-                priceMode: 'api',
-                provider: 'kraken',
-                manualPrice: 0,
+                priceMode,
+                provider,
+                manualPrice: manualPrice ?? 0,
                 currency: currencyConfig.code,
             });
             return `${origin}/share?${params}`;
         }
         return typeof window === 'undefined' ? SITE_URL : window.location.href;
-    }, [amount, frequency, feePercentage, startDate, endDate, currencyConfig.code]);
+    }, [amount, frequency, feePercentage, priceMode, provider, manualPrice, startDate, endDate, currencyConfig.code]);
 
     const handleNostr = useCallback(async () => {
         const url = buildShareUrl();

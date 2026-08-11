@@ -35,7 +35,7 @@ function getSnapshot(): Theme {
 export const ThemeToggle = () => {
     const theme = useSyncExternalStore(subscribe, getSnapshot, () => 'system' as Theme);
     // Resolved theme, tracked post-mount so SSR/hydration stays consistent.
-    // null = unknown (before mount) -> generic label, aria-pressed=false.
+    // null = unknown (before mount) -> generic label.
     const [isDark, setIsDark] = useState<boolean | null>(null);
 
     useEffect(() => {
@@ -78,12 +78,14 @@ export const ThemeToggle = () => {
     // CSS-driven icon swap avoids hydration mismatch — the theme script
     // adds .dark before React hydrates, so the correct icon shows instantly.
     return (
+        // No aria-pressed: the accessible name describes the action ("Switch
+        // to…"), and the ARIA button pattern forbids combining a changing
+        // action label with a pressed state — "pressed" of what is ambiguous.
         <button
             onClick={toggle}
             className="w-11 h-11 flex items-center justify-center rounded-full bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 hover:bg-slate-200 dark:hover:bg-white/10 active:bg-slate-300 dark:active:bg-white/15 transition-colors"
             title={label}
             aria-label={label}
-            aria-pressed={isDark === true}
         >
             <Sun className="w-5 h-5 text-amber-400 hidden dark:block" />
             <Moon className="w-5 h-5 text-slate-600 block dark:hidden" />

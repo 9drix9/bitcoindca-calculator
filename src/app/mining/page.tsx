@@ -6,7 +6,7 @@ import { WalletImage } from '@/components/WalletImage';
 import { getBlockHeight } from '@/app/actions';
 
 /** Date the factual claims on this page were last checked against their sources. */
-const LAST_REVIEWED = '8 August 2026';
+const LAST_REVIEWED = '10 August 2026';
 
 /** A single external reference. `label` is what the reader sees inline. */
 type Source = { label: string; url: string };
@@ -57,7 +57,6 @@ export const metadata: Metadata = {
         canonical: '/mining',
     },
     openGraph: {
-        images: [{ url: '/opengraph-image', width: 1200, height: 630 }],
         title: 'How Bitcoin Mining Works',
         description: 'Hashing, difficulty, pools, ASIC economics, the security budget, the energy debate. Explained straight, with the common myths corrected.',
         type: 'article',
@@ -66,7 +65,6 @@ export const metadata: Metadata = {
         locale: 'en_US',
     },
     twitter: {
-        images: ['/opengraph-image'],
         card: 'summary_large_image',
         title: 'How Bitcoin Mining Works',
         description: 'Hashing, difficulty, pools, ASIC economics, the security budget, the energy debate. Explained straight, with the common myths corrected.',
@@ -89,9 +87,10 @@ const articleJsonLd = {
     "headline": "How Bitcoin Mining Works",
     "description": "What miners compute, how difficulty and halvings hold issuance to schedule, what a 51% attack can and cannot do, and the honest numbers on mining energy use.",
     "author": {
-        "@type": "Organization",
-        "name": "Bitcoin DCA Calculator",
-        "url": "https://btcdollarcostaverage.com"
+        "@type": "Person",
+        "@id": "https://btcdollarcostaverage.com/author#person",
+        "name": "Ricky Thach",
+        "url": "https://btcdollarcostaverage.com/author"
     },
     "publisher": {
         "@type": "Organization",
@@ -104,13 +103,13 @@ const articleJsonLd = {
     },
     "datePublished": "2026-02-05",
     // Static date. Update when the content changes, and keep in sync with sitemap.ts.
-    "dateModified": "2026-08-08",
+    "dateModified": "2026-08-10",
 };
 
 const faqs: { q: string; a: string; sources?: readonly Source[] }[] = [
     {
         q: 'Is Bitcoin mining still profitable at home?',
-        a: 'Almost never, at residential electricity prices. A current-generation machine such as the Antminer S21 XP draws about 3.6 kW, or roughly 2,600 kWh a month. At the US residential average of 18.4 cents per kWh that is about $480 of electricity. Industrial miners buy the same power for $0.03 to $0.05 per kWh, so their cost per bitcoin is roughly four to six times lower. And network difficulty is set by their economics, not yours. Home mining can still make sense as a hobby, as a heat source, or where power is unusually cheap. Treated purely as an investment, it is normally beaten by buying bitcoin outright.',
+        a: 'Almost never, at residential electricity prices. A recent machine such as the 2024 Antminer S21 XP draws about 3.6 kW, or roughly 2,600 kWh a month. At the US residential average of 18.4 cents per kWh that is about $480 of electricity. Industrial miners buy the same power for $0.03 to $0.05 per kWh, so their cost per bitcoin is roughly four to six times lower. And network difficulty is set by their economics, not yours. Home mining can still make sense as a hobby, as a heat source, or where power is unusually cheap. Treated purely as an investment, it is normally beaten by buying bitcoin outright.',
         sources: [SRC.asicValue, SRC.eia],
     },
     {
@@ -205,7 +204,7 @@ const HALVING_DATA = [
 const GOMINING_DATA = {
     name: 'GoMining',
     tagline: 'Hashrate exposure without owning hardware',
-    description: 'GoMining sells tokenized shares of hashrate hosted in its own facilities, paying holders a share of mining output in bitcoin. What you buy is exposure to mining revenue, not bitcoin itself, so your return depends on difficulty, on price, and on the operator staying solvent.',
+    description: 'GoMining sells tokenized shares of hashrate hosted in its own facilities, paying holders a share of mining output in bitcoin. Be clear about what that is: a custodial, token-based product. GoMining runs the machines and controls the hashrate; you hold a claim on the operator, not bitcoin and not hardware. Your return depends on difficulty, on price, and on the operator staying solvent.',
     claims: ['No equipment to buy or maintain', 'Payouts made in bitcoin', 'Entry from roughly $30', 'Hashrate hosted in operator-run data centers'],
     price: 'From ~$30',
     href: 'https://gomining.com/?ref=v56m_',
@@ -220,6 +219,21 @@ const affiliateClasses = {
     accent: 'text-amber-700 dark:text-amber-400',
     check: 'text-amber-500',
 };
+
+/** In-page navigation. Each href must match a section id below. */
+const TOC = [
+    { href: '#what-miners-compute', label: 'What miners compute' },
+    { href: '#difficulty', label: 'The difficulty adjustment' },
+    { href: '#halving-schedule', label: 'Halvings and issuance' },
+    { href: '#mining-pools', label: 'Mining pools' },
+    { href: '#asic-economics', label: 'ASIC economics' },
+    { href: '#price-floor-myth', label: 'The price-floor myth' },
+    { href: '#security-budget', label: 'Fees and the security budget' },
+    { href: '#attack-51', label: 'What a 51% attack can do' },
+    { href: '#energy', label: 'Energy use' },
+    { href: '#gomining', label: 'Hashrate without hardware' },
+    { href: '#faq', label: 'Common questions' },
+] as const;
 
 const cardClass = 'bg-white dark:bg-slate-800 p-4 sm:p-5 rounded-xl border border-slate-200 dark:border-slate-700';
 const cardTitle = 'text-sm sm:text-base font-bold text-slate-800 dark:text-white mb-2';
@@ -356,6 +370,11 @@ export default async function MiningPage() {
                     <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 max-w-2xl mx-auto">
                         It also corrects the most repeated myth in mining commentary: that production cost puts a floor under the price.
                     </p>
+                    <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 max-w-2xl mx-auto">
+                        By{' '}
+                        <Link href="/author" className={`${linkClass} font-medium`}>Ricky Thach</Link>
+                        {' '}&middot; Last reviewed {LAST_REVIEWED}
+                    </p>
                 </section>
 
                 {/* Live stats strip */}
@@ -369,8 +388,25 @@ export default async function MiningPage() {
                     ))}
                 </section>
 
+                {/* On this page */}
+                <nav
+                    aria-label="On this page"
+                    className="bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-2xl border border-slate-200 dark:border-slate-800"
+                >
+                    <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-3">
+                        On this page
+                    </p>
+                    <ul className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-1.5 text-xs sm:text-sm">
+                        {TOC.map((item) => (
+                            <li key={item.href}>
+                                <a href={item.href} className={linkClass}>{item.label}</a>
+                            </li>
+                        ))}
+                    </ul>
+                </nav>
+
                 {/* 1. What miners compute */}
-                <section className="space-y-4">
+                <section id="what-miners-compute" className="space-y-4 scroll-mt-24">
                     <div className="flex items-center gap-2 sm:gap-3">
                         <Hash className={sectionIcon} />
                         <h2 className={sectionHead}>What Miners Are Computing</h2>
@@ -426,7 +462,7 @@ export default async function MiningPage() {
                 </section>
 
                 {/* 2. Difficulty */}
-                <section className="space-y-4">
+                <section id="difficulty" className="space-y-4 scroll-mt-24">
                     <div className="flex items-center gap-2 sm:gap-3">
                         <BarChart3 className={sectionIcon} />
                         <h2 className={sectionHead}>Difficulty: The Thermostat</h2>
@@ -497,7 +533,7 @@ export default async function MiningPage() {
                 </section>
 
                 {/* 3. Halving + schedule */}
-                <section className="space-y-4">
+                <section id="halving-schedule" className="space-y-4 scroll-mt-24">
                     <div className="flex items-center gap-2 sm:gap-3">
                         <Clock className={sectionIcon} />
                         <h2 className={sectionHead}>The Halving and the Issuance Schedule</h2>
@@ -600,14 +636,14 @@ export default async function MiningPage() {
                 </section>
 
                 {/* 4. Mining pools */}
-                <section className="space-y-4">
+                <section id="mining-pools" className="space-y-4 scroll-mt-24">
                     <div className="flex items-center gap-2 sm:gap-3">
                         <Users className={sectionIcon} />
                         <h2 className={sectionHead}>Mining Pools: Selling Certainty</h2>
                     </div>
                     <div className={prose}>
                         <p>
-                            Solo mining is a lottery with brutal odds. A single top-end machine at roughly 250 TH/s is about one part in
+                            Solo mining is a lottery with brutal odds. A single machine at 270 TH/s, the 2024 S21 XP, is about one part in
                             four million of a network running near a{' '}
                             <Src href={SRC.hashrate.url}>zettahash per second</Src>. On average it finds a block once every seventy
                             years or so. And &ldquo;on average&rdquo; hides the real problem: the process is memoryless. Your block is
@@ -670,7 +706,7 @@ export default async function MiningPage() {
                 </section>
 
                 {/* 5. ASIC economics */}
-                <section className="space-y-4">
+                <section id="asic-economics" className="space-y-4 scroll-mt-24">
                     <div className="flex items-center gap-2 sm:gap-3">
                         <Cpu className={sectionIcon} />
                         <h2 className={sectionHead}>ASICs and the Economics of Hardware</h2>
@@ -689,8 +725,9 @@ export default async function MiningPage() {
                                 <h3 className={cardTitle}>Joules per terahash is the whole game</h3>
                                 <p className={cardBody}>
                                     Efficiency is measured in J/TH, energy burned per trillion hashes. The S9 generation ran at about
-                                    98 J/TH; the 2024 S21 XP does 13.5 J/TH, roughly seven times better. Every generation lowers the
-                                    electricity price at which the previous one breaks even, and eventually strands it entirely.
+                                    98 J/TH; the 2024 S21 XP does 13.5 J/TH, roughly seven times better; and the newest 2026 machines
+                                    push below 10 J/TH. Every generation lowers the electricity price at which the previous one breaks
+                                    even, and eventually strands it entirely.
                                 </p>
                                 <Cite items={[SRC.asicValue]} />
                             </div>
@@ -737,7 +774,7 @@ export default async function MiningPage() {
                 </section>
 
                 {/* 6. Mining and price: the correction */}
-                <section className="space-y-4">
+                <section id="price-floor-myth" className="space-y-4 scroll-mt-24">
                     <div className="flex items-center gap-2 sm:gap-3">
                         <TrendingUp className={sectionIcon} />
                         <h2 className={sectionHead}>Does Mining Cost Put a Floor Under the Price?</h2>
@@ -824,7 +861,7 @@ export default async function MiningPage() {
                 </section>
 
                 {/* 7. Fees and the security budget */}
-                <section className="space-y-4">
+                <section id="security-budget" className="space-y-4 scroll-mt-24">
                     <div className="flex items-center gap-2 sm:gap-3">
                         <Coins className={sectionIcon} />
                         <h2 className={sectionHead}>Fees and the Security Budget</h2>
@@ -878,7 +915,7 @@ export default async function MiningPage() {
                 </section>
 
                 {/* 8. 51% attack */}
-                <section className="space-y-4">
+                <section id="attack-51" className="space-y-4 scroll-mt-24">
                     <div className="flex items-center gap-2 sm:gap-3">
                         <ShieldAlert className={sectionIcon} />
                         <h2 className={sectionHead}>What a 51% Attack Can and Cannot Do</h2>
@@ -935,7 +972,7 @@ export default async function MiningPage() {
                 </section>
 
                 {/* 9. Energy */}
-                <section className="space-y-4">
+                <section id="energy" className="space-y-4 scroll-mt-24">
                     <div className="flex items-center gap-2 sm:gap-3">
                         <Leaf className={sectionIcon} />
                         <h2 className={sectionHead}>Energy, Without the Spin</h2>
@@ -993,7 +1030,7 @@ export default async function MiningPage() {
                 </section>
 
                 {/* 10. Affiliate / hashrate exposure */}
-                <section className="space-y-5" id="gomining">
+                <section className="space-y-5 scroll-mt-24" id="gomining">
                     <div className="flex items-center gap-2 sm:gap-3">
                         <Pickaxe className={sectionIcon} />
                         <h2 className={sectionHead}>Buying Mining Exposure Without Hardware</h2>
@@ -1014,6 +1051,12 @@ export default async function MiningPage() {
                             four things at minimum. How are fees deducted? Usually daily, in bitcoin, so a flat market quietly erodes
                             your position. Are advertised returns quoted before or after electricity? Is facility data independently
                             verifiable? And what happens to your position if the operator fails?
+                        </p>
+                        <p className={cardBody}>
+                            The placement below is a custodial product, and the one exception to the non-custodial rule the rest of this
+                            site&apos;s links follow. Our{' '}
+                            <Link href="/about#affiliate-disclosure" className={linkClass}>affiliate disclosure</Link> says so in the
+                            same words.
                         </p>
                     </div>
 
@@ -1083,7 +1126,7 @@ export default async function MiningPage() {
                 </section>
 
                 {/* 11. FAQ */}
-                <section className="space-y-4">
+                <section id="faq" className="space-y-4 scroll-mt-24">
                     <div className="flex items-center gap-2 sm:gap-3">
                         <HelpCircle className={sectionIcon} />
                         <h2 className={sectionHead}>Common Questions</h2>

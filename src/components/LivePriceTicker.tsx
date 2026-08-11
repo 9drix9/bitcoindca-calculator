@@ -19,7 +19,10 @@ const POLL_MS = 30_000;
 export const LivePriceTicker = ({ initialData = null }: LivePriceTickerProps) => {
     const { formatCurrency } = useCurrency();
     const [data, setData] = useState<PriceData | null>(initialData);
-    const [failed, setFailed] = useState(false);
+    // Consecutive refresh failures — one dropped 30s poll should not flicker
+    // the pill into its stale treatment, but two in a row means the shown
+    // price is at least a minute old and climbing.
+    const [failStreak, setFailStreak] = useState(0);
     const hadInitialData = useRef(initialData !== null);
 
     useEffect(() => {
@@ -33,10 +36,10 @@ export const LivePriceTicker = ({ initialData = null }: LivePriceTickerProps) =>
                 const fresh = await getCurrentBitcoinPriceWithChange();
                 if (mounted && Number.isFinite(fresh?.price) && fresh.price > 0) {
                     setData(fresh);
-                    setFailed(false);
+                    setFailStreak(0);
                 }
             } catch {
-                if (mounted) setFailed(true); // keep last known price if we have one
+                if (mounted) setFailStreak((n) => n + 1); // keep last known price if we have one
             }
         };
 
@@ -58,7 +61,7 @@ export const LivePriceTicker = ({ initialData = null }: LivePriceTickerProps) =>
     }, []);
 
     if (!data) {
-        if (failed) {
+        if (failStreak > 0) {
             return (
                 <div className="inline-flex items-center gap-2 mt-3 px-4 py-2 rounded-full bg-slate-100 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/50">
                     <span className="w-2 h-2 rounded-full bg-slate-400 dark:bg-slate-500" aria-hidden="true" />
@@ -86,18 +89,33 @@ export const LivePriceTicker = ({ initialData = null }: LivePriceTickerProps) =>
         ? 'text-gain'
         : 'text-loss';
 
+    // The dot is aria-hidden, so staleness also needs the visible "last known"
+    // text — a color/animation change alone is invisible to screen readers.
+    const stale = failStreak >= 2;
+
     return (
         // flex-wrap + max-w-full: a long value (JPY runs to "¥9,588,000" plus a
         // signed change and percent) must wrap onto a second line on a 390px
         // phone rather than overflow the pill and get clipped.
         <div className="inline-flex max-w-full flex-wrap items-center justify-center gap-x-2.5 gap-y-1 mt-3 px-4 py-2 rounded-full bg-slate-100 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/50">
             <span className="relative flex h-2 w-2 shrink-0" aria-hidden="true">
-                <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 animate-pulse-dot" />
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+                {stale ? (
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-slate-400 dark:bg-slate-500" />
+                ) : (
+                    <>
+                        <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 animate-pulse-dot" />
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+                    </>
+                )}
             </span>
             <span className="text-sm sm:text-base font-bold text-slate-900 dark:text-white tabular-nums whitespace-nowrap">
                 {formattedPrice}
             </span>
+            {stale && (
+                <span className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 whitespace-nowrap">
+                    last known
+                </span>
+            )}
             {/* Kraken's open resets at UTC midnight, so this is a "today" change, not rolling 24h */}
             <span className={`text-xs sm:text-sm font-medium tabular-nums whitespace-nowrap ${changeColor}`}>
                 {formattedChange} ({isPositive ? '+' : ''}{changePct.toFixed(2)}%) today

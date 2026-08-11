@@ -41,9 +41,10 @@ const articleJsonLd = {
     "headline": "About This Project",
     "description": "Who built this Bitcoin DCA calculator, why it exists, and what it stands for.",
     "author": {
-        "@type": "Organization",
-        "name": "Bitcoin DCA Calculator",
-        "url": "https://btcdollarcostaverage.com"
+        "@type": "Person",
+        "@id": "https://btcdollarcostaverage.com/author#person",
+        "name": "Ricky Thach",
+        "url": "https://btcdollarcostaverage.com/author"
     },
     "publisher": {
         "@type": "Organization",
@@ -57,7 +58,7 @@ const articleJsonLd = {
     "datePublished": "2025-01-01",
     // Static date: update when the content itself changes (build-date freshness
     // is a spam-adjacent signal). Keep in sync with sitemap.ts.
-    "dateModified": "2026-07-24",
+    "dateModified": "2026-08-10",
 };
 
 export default function AboutPage() {
@@ -106,7 +107,7 @@ export default function AboutPage() {
                             </li>
                             <li className="flex items-start gap-2">
                                 <span className="text-amber-700 dark:text-amber-400 font-bold mt-0.5 shrink-0">&bull;</span>
-                                <span><strong className="text-slate-800 dark:text-slate-200">Stay neutral and non-custodial.</strong> This site never holds your keys, never asks for personal info, and never pushes a specific exchange or product.</span>
+                                <span><strong className="text-slate-800 dark:text-slate-200">Stay neutral and non-custodial.</strong> This site never holds your keys, never asks for personal info, and never disguises a paid placement as advice. The few paid links it carries are labeled where they appear.</span>
                             </li>
                         </ul>
                     </div>
@@ -167,7 +168,8 @@ export default function AboutPage() {
                             </li>
                             <li className="flex items-start gap-2">
                                 <span className="text-amber-700 dark:text-amber-400 font-bold mt-0.5 shrink-0">&bull;</span>
-                                <span>We never recommend custodial or shitcoin products. Only Bitcoin-aligned tools and resources.</span>
+                                <span>Affiliate links point to Bitcoin-aligned, non-custodial tools, with one exception: the mining page carries a{' '}
+                                <Link href="/mining#gomining" className="text-amber-700 dark:text-amber-400 hover:underline font-medium">clearly labeled sponsored placement for GoMining</Link>, a custodial, token-based hashrate product. That section leads with our own warnings rather than an endorsement, and we would rather you skip it than get hurt by it. No shitcoin products, ever.</span>
                             </li>
                         </ul>
                     </div>
@@ -268,15 +270,21 @@ export default function AboutPage() {
                     </div>
                     <div className="space-y-3 text-sm sm:text-base text-slate-600 dark:text-slate-400 leading-relaxed">
                         <p>
-                            An independent Bitcoiner. No company, no VC funding, no team of marketers. Just someone who
-                            got tired of scattered, ad-ridden Bitcoin tools and decided to build something better.
+                            <strong className="text-slate-800 dark:text-slate-200">Ricky Thach</strong>, an independent
+                            Bitcoiner. No company, no VC funding, no team of marketers. Just someone who got tired of
+                            scattered, ad-ridden Bitcoin tools and decided to build something better.
                         </p>
                         <p>
                             The aim is a clean, honest calculator that shows what consistent Bitcoin accumulation
                             looks like over time. Nothing beyond that.
                         </p>
                         <p>
-                            You can find the builder on X (Twitter) at{' '}
+                            The{' '}
+                            <Link href="/author" className="text-amber-700 dark:text-amber-400 hover:underline font-medium">
+                                author page
+                            </Link>{' '}
+                            has the fuller story, including the corrections policy for fixing errors. You can also find
+                            him on X (Twitter) at{' '}
                             <a
                                 href="https://x.com/9drix9"
                                 target="_blank"

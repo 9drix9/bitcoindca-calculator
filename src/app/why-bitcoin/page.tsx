@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { Users, Network, Cpu, BadgeDollarSign, AlertTriangle, ArrowRight, KeyRound, Scale, HelpCircle, ShieldQuestion, BookOpen } from 'lucide-react';
 
 /** Date the factual claims on this page were last checked against their sources. */
-const LAST_REVIEWED = '8 August 2026';
+const LAST_REVIEWED = '10 August 2026';
 
 export const metadata: Metadata = {
     title: 'Why Bitcoin Has Value',
@@ -14,7 +14,6 @@ export const metadata: Metadata = {
         canonical: '/why-bitcoin',
     },
     openGraph: {
-        images: [{ url: '/opengraph-image', width: 1200, height: 630 }],
         title: 'Where Does Bitcoin\'s Value Come From?',
         description: 'How the network works, what the evidence supports, the common misconceptions, and the open risks. A straight explainer with no hype.',
         type: 'article',
@@ -23,7 +22,6 @@ export const metadata: Metadata = {
         locale: 'en_US',
     },
     twitter: {
-        images: ['/opengraph-image'],
         card: 'summary_large_image',
         title: 'Where Does Bitcoin\'s Value Come From?',
         description: 'How the network works, what the evidence supports, the common misconceptions, and the open risks. A straight explainer with no hype.',
@@ -46,9 +44,10 @@ const articleJsonLd = {
     "headline": "Where Does Bitcoin's Value Come From?",
     "description": "How Bitcoin works, where its value comes from, which popular claims the evidence supports, and the open risks.",
     "author": {
-        "@type": "Organization",
-        "name": "Bitcoin DCA Calculator",
-        "url": "https://btcdollarcostaverage.com"
+        "@type": "Person",
+        "@id": "https://btcdollarcostaverage.com/author#person",
+        "name": "Ricky Thach",
+        "url": "https://btcdollarcostaverage.com/author"
     },
     "publisher": {
         "@type": "Organization",
@@ -61,7 +60,7 @@ const articleJsonLd = {
     },
     "datePublished": "2025-01-01",
     // Static date. Update when the content changes, and keep in sync with sitemap.ts.
-    "dateModified": "2026-08-08",
+    "dateModified": "2026-08-10",
 };
 
 /** A single external reference. `label` is what the reader sees inline. */
@@ -150,7 +149,7 @@ const misconceptions: { q: string; a: string; sources?: readonly Source[] }[] = 
     },
     {
         q: 'Could a government just ban it?',
-        a: 'Governments can and do restrict on-ramps, meaning the services that turn cash into bitcoin, along with exchanges and banking access. That moves both price and accessibility. Banning the protocol itself is much harder, because it\'s software and a peer-to-peer network with no headquarters. China\'s 2021 mining ban is the clearest test so far. It took more than half the network\'s hashrate offline within weeks. The chain kept producing blocks, and the hashrate reappeared elsewhere. Regulatory risk is real. But "ban" and "kill" are different outcomes.',
+        a: 'Governments can and do restrict on-ramps, meaning the services that turn cash into bitcoin, along with exchanges and banking access. That moves both price and accessibility. Banning the protocol itself is much harder, because it\'s software and a peer-to-peer network with no headquarters. China\'s 2021 mining ban is the clearest test so far. A large share of the network\'s hashrate went offline within weeks: difficulty fell about 28% at the 3 July 2021 re-target, the largest drop on record. The chain kept producing blocks, and the hashrate reappeared elsewhere. Regulatory risk is real. But "ban" and "kill" are different outcomes.',
         sources: [SRC.difficultyDrop],
     },
 ];
@@ -256,6 +255,11 @@ export default function WhyBitcoinPage() {
                 </p>
                 <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 max-w-2xl mx-auto">
                     Written to be useful whether you end up buying any or not.
+                </p>
+                <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 max-w-2xl mx-auto">
+                    By{' '}
+                    <Link href="/author" className={`${srcLink} font-medium`}>Ricky Thach</Link>
+                    {' '}&middot; Last reviewed {LAST_REVIEWED}
                 </p>
             </section>
 

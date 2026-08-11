@@ -43,6 +43,10 @@ export const metadata: Metadata = {
   },
   manifest: '/manifest.json',
   other: {
+    // Chrome deprecated the apple- prefixed name; emit both so Android/desktop
+    // Chromium honors it (and stops logging a deprecation warning) while iOS
+    // Safari keeps its own.
+    'mobile-web-app-capable': 'yes',
     'apple-mobile-web-app-capable': 'yes',
     'apple-mobile-web-app-status-bar-style': 'default',
     'apple-mobile-web-app-title': 'BTC DCA Calc',
@@ -192,7 +196,9 @@ export default function RootLayout({
           {/* Bottom-nav clearance lives in globals.css (#site-footer), which accounts
               for the safe-area inset that a flat pb-20 cannot. */}
           <footer id="site-footer" className="bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 mt-12">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10">
+            {/* Safe-area-aware horizontal padding: viewport-fit=cover otherwise
+                lets landscape-notch insets (~47px) eat into a flat px-4. */}
+            <div className="max-w-7xl mx-auto pl-[max(env(safe-area-inset-left),1rem)] pr-[max(env(safe-area-inset-right),1rem)] sm:pl-[max(env(safe-area-inset-left),1.5rem)] sm:pr-[max(env(safe-area-inset-right),1.5rem)] lg:pl-[max(env(safe-area-inset-left),2rem)] lg:pr-[max(env(safe-area-inset-right),2rem)] py-8 sm:py-10">
               {/* 5 columns now (brand + Tools + Learn + Site + Support), so the
                   breakpoint moves to lg — at md they were 5-across and cramped. */}
               <nav aria-label="Footer navigation" className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6 sm:gap-8 mb-8">

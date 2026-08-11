@@ -152,7 +152,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     const { slug } = await params;
     const scenario = getScenario(slug);
     if (!scenario) return {};
-    const { amount, freqSlug, year } = scenario;
+    const { amount, freqSlug, frequency, year, startDateIso } = scenario;
 
     // Root layout template appends "| Bitcoin DCA Calculator", so no suffix here.
     const title = `$${amount}/${freqSlug === 'week' ? 'Week' : 'Month'} in Bitcoin Since ${year}: What It's Worth Today`;
@@ -168,12 +168,22 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
         // Keep the generic description.
     }
 
+    // The /api/og result-card renderer accepts the same query params as /share.
+    // fee=0 matches this page's computation, and omitting endDate makes the
+    // card default to "today" at image render time — matching the title.
+    const ogImage = `/api/og?${new URLSearchParams({
+        amount: String(amount),
+        frequency,
+        startDate: startDateIso,
+        fee: '0',
+    })}`;
+
     return {
         title,
         description,
         alternates: { canonical: `/dca/${slug}` },
         openGraph: {
-        images: [{ url: '/opengraph-image', width: 1200, height: 630 }],
+            images: [{ url: ogImage, width: 1200, height: 630, alt: title }],
             title,
             description,
             type: 'article',
@@ -181,7 +191,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
             locale: 'en_US',
         },
         twitter: {
-        images: ['/opengraph-image'],
+            images: [ogImage],
             card: 'summary_large_image',
             title,
             description,
@@ -261,7 +271,7 @@ export default async function DcaScenarioPage({ params }: PageProps) {
             },
             {
                 q: 'What is the annualized return of this DCA schedule?',
-                a: stats?.xirrPercent != null
+                a: stats?.xirrPercent != null && stats.maxDrawdownPercent != null
                     ? `The money-weighted annualized return (XIRR) is ${fmtPct(stats.xirrPercent, true)} per year, with a maximum portfolio drawdown of ${fmtPct(stats.maxDrawdownPercent)} along the way.`
                     : `The total return since ${year} is ${fmtPct(result.roi, true)}. The period is too short for a meaningful annualized figure.`,
             },
@@ -362,7 +372,7 @@ export default async function DcaScenarioPage({ params }: PageProps) {
                                 <div>
                                     <p className="text-xs font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">Max drawdown</p>
                                     <p className="mt-1 text-sm font-semibold text-slate-800 dark:text-slate-100 tabular-nums">
-                                        {stats ? `−${fmtPct(stats.maxDrawdownPercent)}` : '—'}
+                                        {stats?.maxDrawdownPercent != null ? `−${fmtPct(stats.maxDrawdownPercent)}` : '—'}
                                     </p>
                                 </div>
                                 <div>

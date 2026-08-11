@@ -31,7 +31,7 @@ const CALCULATORS: CalculatorEntry[] = [
         name: 'Bitcoin Drawdown Calculator',
         question: 'How far did it fall from the top, and how long did getting back take?',
         body:
-            'Every Bitcoin holder eventually watches their position drop. This measures the real ones: how deep each fall from a previous high went, and how long the position stayed underwater. It also flags the worst stretch in your date range.',
+            'Every Bitcoin holder eventually watches their position drop. This measures the real ones: how deep each fall from a previous high went, and how long the position stayed underwater. It also flags the worst stretch in Bitcoin’s history, and lets you model spending your own stack down.',
         caveat: 'Measured on one price per UTC day, so intraday spikes and wicks are not counted.',
         icon: TrendingDown,
     },
@@ -40,7 +40,7 @@ const CALCULATORS: CalculatorEntry[] = [
         name: 'Bitcoin FIRE Calculator',
         question: 'How much Bitcoin would it take to cover what I spend?',
         body:
-            'Pick your annual spending and the withdrawal rate you would trust. This works backwards to the stack that supports it. It also shows how far the BTC you already hold gets you toward that number.',
+            'Pick your annual spending and this works backwards, at the standard 4% rule, to the stack that supports it. It also shows how far the BTC you already hold gets you toward that number, and why applying that rule to Bitcoin is contested.',
         caveat: 'A withdrawal rate is an assumption, not a law. Bitcoin has never had a smooth return path.',
         icon: Flame,
     },

@@ -14,6 +14,10 @@ function isValidDateString(s: string): boolean {
     return d.getFullYear() === y && d.getMonth() + 1 === m && d.getDate() === day;
 }
 
+// $1B per purchase / per coin is beyond any real plan but small enough that
+// every downstream product (value × 40k purchases) stays comfortably finite.
+const MAX_URL_AMOUNT = 1e9;
+
 const VALID_CURRENCIES = ['USD', 'EUR', 'GBP', 'CAD', 'AUD', 'JPY'] as const;
 export type UrlCurrency = typeof VALID_CURRENCIES[number];
 
@@ -64,7 +68,9 @@ export function decodeParams(searchParams: CalculatorSearchParams): {
 
     if (searchParams.amount) {
         const n = Number(searchParams.amount);
-        if (!isNaN(n) && n > 0) result.amount = n;
+        // Ceiling mirrors the fee's range check: a crafted ?amount=1e308 URL
+        // must degrade to a large finite result, not NaN profit/ROI.
+        if (!isNaN(n) && n > 0) result.amount = Math.min(n, MAX_URL_AMOUNT);
     }
     if (searchParams.frequency && VALID_FREQUENCIES.includes(searchParams.frequency as Frequency)) {
         result.frequency = searchParams.frequency as Frequency;
@@ -92,7 +98,7 @@ export function decodeParams(searchParams: CalculatorSearchParams): {
     }
     if (searchParams.manualPrice) {
         const n = Number(searchParams.manualPrice);
-        if (!isNaN(n) && n > 0) result.manualPrice = n;
+        if (!isNaN(n) && n > 0) result.manualPrice = Math.min(n, MAX_URL_AMOUNT);
     }
     if (searchParams.currency && (VALID_CURRENCIES as readonly string[]).includes(searchParams.currency)) {
         result.currency = searchParams.currency as UrlCurrency;

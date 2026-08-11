@@ -33,11 +33,6 @@ const nextConfig: NextConfig = {
                 // impossible — /embed-guide has been publishing a copy-paste
                 // iframe snippet that could never render anywhere but here.
                 //
-                // The embeddable widget only has a reason to exist inside someone
-                // else's page, and the site-wide SAMEORIGIN above made that
-                // impossible — /embed-guide has been publishing a copy-paste iframe
-                // snippet that could never render anywhere but here.
-                //
                 // Later rules override earlier ones per header key, so this rule
                 // relaxes framing for /embed alone. X-Frame-Options has no
                 // "allow any origin" value, so it is set to a deliberately invalid

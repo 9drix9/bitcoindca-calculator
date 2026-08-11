@@ -539,6 +539,61 @@ export default async function StartDateHeatmapPage() {
                                     reads the same with the colors ignored.
                                 </p>
                             </div>
+
+                            {/* The per-cell dollar detail lives in each cell's hover tooltip, which never
+                                fires on touch and is unreliable for screen readers. This native disclosure
+                                is the same data reachable by tap and keyboard — no client JS on this page. */}
+                            <details className="border-t border-slate-200 dark:border-slate-800 pt-4 group">
+                                <summary className="cursor-pointer list-none text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-amber-700 dark:hover:text-amber-400 flex items-center justify-between gap-3">
+                                    Every completed window in dollars: invested, end value and total return
+                                    <ChevronDown
+                                        className="w-4 h-4 shrink-0 text-slate-500 dark:text-slate-400 transition-transform group-open:rotate-180"
+                                        aria-hidden="true"
+                                    />
+                                </summary>
+                                <div className="mt-3 overflow-x-auto">
+                                    <table className="w-full min-w-[520px] text-xs sm:text-sm tabular-nums">
+                                        <thead>
+                                            <tr className="text-left text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800">
+                                                <th scope="col" className="py-1.5 pr-3 font-medium">Window</th>
+                                                <th scope="col" className="py-1.5 pr-3 font-medium text-right">Invested</th>
+                                                <th scope="col" className="py-1.5 pr-3 font-medium text-right">Buys</th>
+                                                <th scope="col" className="py-1.5 pr-3 font-medium text-right">End value</th>
+                                                <th scope="col" className="py-1.5 pr-3 font-medium text-right">Total return</th>
+                                                <th scope="col" className="py-1.5 font-medium text-right">Annualized</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="text-slate-700 dark:text-slate-300">
+                                            {grid.startYears.flatMap((year, rowIndex) =>
+                                                grid.cells[rowIndex].flatMap((cell, colIndex) => {
+                                                    if (cell.state !== 'done') return [];
+                                                    const hold = HOLD_YEARS[colIndex];
+                                                    return [(
+                                                        <tr key={`${year}-${hold}`} className="border-b border-slate-100 dark:border-slate-800/60 last:border-0">
+                                                            <th scope="row" className="py-1.5 pr-3 text-left font-medium text-slate-800 dark:text-slate-100 whitespace-nowrap">
+                                                                {year}&ndash;{year + hold}
+                                                                <span className="font-normal text-slate-500 dark:text-slate-400"> · {hold} yr{hold === 1 ? '' : 's'}</span>
+                                                            </th>
+                                                            <td className="py-1.5 pr-3 text-right">{fmtUsd(cell.invested)}</td>
+                                                            <td className="py-1.5 pr-3 text-right">{cell.purchases}</td>
+                                                            <td className="py-1.5 pr-3 text-right">{fmtUsd(cell.endValue)}</td>
+                                                            <td className={clsx(
+                                                                'py-1.5 pr-3 text-right font-medium',
+                                                                cell.totalReturn >= 0
+                                                                    ? 'text-emerald-700 dark:text-emerald-400'
+                                                                    : 'text-rose-700 dark:text-rose-400',
+                                                            )}>
+                                                                {fmtPct(cell.totalReturn, true)}
+                                                            </td>
+                                                            <td className="py-1.5 text-right">{fmtPct(cell.annualized, true)}</td>
+                                                        </tr>
+                                                    )];
+                                                }),
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </details>
                         </Card>
 
                         {/* Column summary */}

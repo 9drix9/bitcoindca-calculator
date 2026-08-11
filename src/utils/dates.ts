@@ -30,6 +30,13 @@ export const utcIsoYearsAgo = (years: number): string => {
         .slice(0, 10);
 };
 
+export const utcIsoMonthsAgo = (months: number): string => {
+    const now = new Date();
+    return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - months, now.getUTCDate()))
+        .toISOString()
+        .slice(0, 10);
+};
+
 /** The window the calculator opens on: the last 5 years. */
 export const DEFAULT_YEARS_BACK = 5;
 

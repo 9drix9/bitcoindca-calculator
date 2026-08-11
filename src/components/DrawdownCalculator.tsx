@@ -40,6 +40,9 @@ const SCENARIO_SPREAD = 0.2; // bear / bull sit ±20pp around the user's assumpt
 const GROWTH_MIN = -0.9;
 const GROWTH_MAX = 3;
 
+const INFLATION_MIN = -0.1;
+const INFLATION_MAX = 0.25;
+
 interface SimParams {
     startBtc: number;
     priceUsd: number;
@@ -77,6 +80,18 @@ const parseInput = (raw: string): number | null => {
     if (cleaned === '' || cleaned === '-' || cleaned === '.' || cleaned === '-.') return null;
     const n = Number(cleaned);
     return Number.isFinite(n) ? n : null;
+};
+
+/**
+ * The simulation clamps growth and inflation internally, so a field left showing
+ * an out-of-range number (say 500) would contradict the headline's stated
+ * assumption (300%). Snapping on blur keeps field and simulation in agreement
+ * without fighting the user mid-keystroke.
+ */
+const snapToRange = (raw: string, lo: number, hi: number): string | null => {
+    const v = parseInput(raw);
+    if (v === null || (v >= lo && v <= hi)) return null;
+    return String(clamp(v, lo, hi));
 };
 
 /**
@@ -323,7 +338,7 @@ export const DrawdownCalculator: React.FC<DrawdownCalculatorProps> = ({ btcAccum
             : 0;
 
     const annualGrowth = clamp((parseInput(growthInput) ?? 0) / 100, GROWTH_MIN, GROWTH_MAX);
-    const annualInflation = clamp((parseInput(inflationInput) ?? 0) / 100, -0.1, 0.25);
+    const annualInflation = clamp((parseInput(inflationInput) ?? 0) / 100, INFLATION_MIN, INFLATION_MAX);
     const floorBtc = clamp(parseInput(floorInput) ?? 0, 0, stackBtc);
 
     const model = useMemo(() => {
@@ -438,6 +453,10 @@ export const DrawdownCalculator: React.FC<DrawdownCalculatorProps> = ({ btcAccum
                             autoComplete="off"
                             value={growthInput}
                             onChange={(e) => setGrowthInput(e.target.value)}
+                            onBlur={() => {
+                                const snapped = snapToRange(growthInput, GROWTH_MIN * 100, GROWTH_MAX * 100);
+                                if (snapped !== null) setGrowthInput(snapped);
+                            }}
                             className={inputClass}
                         />
                     </div>
@@ -452,6 +471,10 @@ export const DrawdownCalculator: React.FC<DrawdownCalculatorProps> = ({ btcAccum
                             autoComplete="off"
                             value={inflationInput}
                             onChange={(e) => setInflationInput(e.target.value)}
+                            onBlur={() => {
+                                const snapped = snapToRange(inflationInput, INFLATION_MIN * 100, INFLATION_MAX * 100);
+                                if (snapped !== null) setInflationInput(snapped);
+                            }}
                             className={inputClass}
                         />
                     </div>

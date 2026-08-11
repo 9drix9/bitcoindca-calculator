@@ -264,6 +264,47 @@ describe('max drawdown', () => {
         );
         expect(stats!.maxDrawdownPercent).toBeCloseTo(0, 6);
     });
+
+    it('reports null in manual mode, even when a crashing market series is supplied', () => {
+        const start = Date.UTC(2021, 0, 1);
+        const prices = series(start, 200, (i) => (i > 100 ? 20 : 100));
+        const { stats } = calculateDca(
+            params({
+                startDate: new Date(start),
+                endDate: new Date(start + 180 * DAY_MS),
+                priceMode: 'manual',
+                manualPrice: 50_000,
+            }),
+            prices,
+            null,
+        );
+        expect(stats!.maxDrawdownPercent).toBeNull();
+    });
+});
+
+// ── XIRR terminal-flow dating ─────────────────────────────────────────────────
+
+describe('XIRR valuation dating', () => {
+    it('dates the terminal flow at the last bar when no spot price is available', () => {
+        // Window ends long ago, no currentPrice: value = last bar's close.
+        // Dated "today" the same doubling would be diluted over ~5x the years.
+        const start = Date.UTC(2020, 0, 1);
+        const prices = series(start, 366, (i) => 10_000 + (10_000 * i) / 365);
+        const { stats } = calculateDca(
+            params({
+                startDate: new Date(start),
+                endDate: new Date(start + 365 * DAY_MS),
+                frequency: 'monthly',
+            }),
+            prices,
+            null,
+        );
+        // Money went in across the year at rising prices and the stack roughly
+        // doubled versus its average cost — an annualized rate way above what
+        // today-dating (extra years, same gain) could ever produce.
+        expect(stats!.xirrPercent).not.toBeNull();
+        expect(stats!.xirrPercent!).toBeGreaterThan(50);
+    });
 });
 
 // ── Aggregates ────────────────────────────────────────────────────────────────
@@ -312,12 +353,29 @@ describe('result aggregates', () => {
 describe('calculateLumpSum', () => {
     const start = Date.UTC(2021, 0, 1);
 
-    it('buys once at the first bar on or after the start date', () => {
+    it('buys once at the start date bar', () => {
         const prices = series(start, 100, (i) => (i === 0 ? 10_000 : 50_000));
         const result = calculateLumpSum(10_000, new Date(start), prices, 20_000, 0);
         expect(result.btcAccumulated).toBeCloseTo(1, 12);
         expect(result.currentValue).toBeCloseTo(20_000, 6);
         expect(result.roi).toBeCloseTo(100, 6);
+    });
+
+    it('prices a gap day at the previous close, matching the DCA leg', () => {
+        // Bars on day 0 and day 5 only; a start on day 3 must look BACK to
+        // day 0's close, exactly like the DCA engine, not forward to day 5.
+        const prices: [number, number][] = [
+            [start, 10_000],
+            [start + 5 * DAY_MS, 50_000],
+        ];
+        const result = calculateLumpSum(10_000, new Date(start + 3 * DAY_MS), prices, 20_000, 0);
+        expect(result.btcAccumulated).toBeCloseTo(1, 12);
+    });
+
+    it('falls forward to the first bar only when the start predates all data', () => {
+        const prices = series(start, 10, () => 20_000);
+        const result = calculateLumpSum(10_000, new Date(start - 30 * DAY_MS), prices, 20_000, 0);
+        expect(result.btcAccumulated).toBeCloseTo(0.5, 12);
     });
 
     it('applies the same fee the DCA side pays, for a fair comparison', () => {

@@ -181,9 +181,16 @@ async function SeededCalculator() {
 function SidebarSkeleton() {
   return (
     <div className="space-y-4 lg:sticky lg:top-20">
+      {/* Mirror MobileCollapse: below lg the resolved sidebar shows 3 cards plus
+          a toggle button, so 10 unconditional cards left the streaming page
+          ~700px taller than its final height on phones. */}
       {Array.from({ length: 10 }).map((_, i) => (
-        <SkeletonCard key={i} />
+        <div key={i} className={i >= 3 ? 'hidden lg:block' : undefined}>
+          <SkeletonCard />
+        </div>
       ))}
+      {/* Stand-in for the "Show more" toggle (lg:hidden in MobileCollapse). */}
+      <div className="lg:hidden h-12 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 animate-pulse" />
     </div>
   );
 }
@@ -234,7 +241,11 @@ export default function Home() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
       />
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-8 sm:space-y-12">
+      {/* viewport-fit=cover extends layout into the notch zone; on a notched
+          phone in landscape safe-area-inset-left/right is ~47px, so a flat px-4
+          put the first ~30px of every line under the sensor housing. Same
+          max(env(),…) pattern the nav uses (ResponsiveNav.tsx). */}
+      <div className="max-w-7xl mx-auto pl-[max(env(safe-area-inset-left),1rem)] pr-[max(env(safe-area-inset-right),1rem)] sm:pl-[max(env(safe-area-inset-left),1.5rem)] sm:pr-[max(env(safe-area-inset-right),1.5rem)] lg:pl-[max(env(safe-area-inset-left),2rem)] lg:pr-[max(env(safe-area-inset-right),2rem)] py-6 sm:py-8 space-y-8 sm:space-y-12">
 
         {/* Hero Section */}
         {/* No hero-glow: the radial wash was a 1.04:1 tint that read as gradient
@@ -286,12 +297,12 @@ export default function Home() {
             <BitcoinAdoption />
 
             <section className="space-y-4">
-              <h3 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">Frequently Asked Questions</h3>
+              <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">Frequently Asked Questions</h2>
               <div className="space-y-2.5">
                 {faqItems.map((item, i) => (
                   <details key={i} className="group bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 transition-shadow hover:shadow-sm">
                     <summary className="flex items-center justify-between cursor-pointer p-4 list-none [&::-webkit-details-marker]:hidden">
-                      <h4 className="font-semibold text-sm sm:text-base text-slate-800 dark:text-slate-200 pr-4">{item.question}</h4>
+                      <h3 className="font-semibold text-sm sm:text-base text-slate-800 dark:text-slate-200 pr-4">{item.question}</h3>
                       <svg className="w-4 h-4 text-slate-500 dark:text-slate-400 transition-transform duration-200 group-open:rotate-180 shrink-0" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
                     </summary>
                     <div className="px-4 pb-4 -mt-1">

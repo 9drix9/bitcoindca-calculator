@@ -53,7 +53,9 @@ export const metadata: Metadata = {
 };
 
 const PERSON_ID = `${BASE_URL}/author#person`;
-const ORG_ID = `${BASE_URL}#organization`;
+// Must string-match the root layout's Organization @id exactly (slash before
+// the fragment) — JSON-LD entity merging is exact-IRI based.
+const ORG_ID = `${BASE_URL}/#organization`;
 
 const personJsonLd = {
     '@context': 'https://schema.org',

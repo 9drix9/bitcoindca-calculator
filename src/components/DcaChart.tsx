@@ -290,10 +290,11 @@ function ChartTooltip({
     );
 }
 
-// min-h-8 + padding: the checkbox alone is a 16px target, so the label carries the
-// tap area (clicking a label toggles its input) and clears the 24px minimum on touch.
+// The checkbox alone is a 16px target, so the label carries the tap area
+// (clicking a label toggles its input). min-h-11 below sm: phones get the full
+// 44px touch floor; pointer devices keep the tighter 32px row.
 const toggleLabelClass =
-    'flex min-h-8 cursor-pointer select-none items-center gap-1.5 whitespace-nowrap py-1 pr-1 text-[11px] text-slate-500 dark:text-slate-400';
+    'flex min-h-11 sm:min-h-8 cursor-pointer select-none items-center gap-1.5 whitespace-nowrap py-1 pr-1 text-[11px] text-slate-500 dark:text-slate-400';
 
 export const DcaChart = memo(function DcaChart({ data, unit }: DcaChartProps) {
     const { currencyConfig, convertFromUsd, denomination, formatCurrency, formatBtc, formatSats } = useCurrency();
@@ -309,6 +310,8 @@ export const DcaChart = memo(function DcaChart({ data, unit }: DcaChartProps) {
     const [showPowerLaw, setShowPowerLaw] = useState(false);
     const [showEvents, setShowEvents] = useState(false);
     const [isLog, setIsLog] = useState(false);
+    const [exportError, setExportError] = useState<string | null>(null);
+    const exportErrorTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
     const isDark = useIsDark();
     const isWide = useIsWideViewport();
 
@@ -337,6 +340,8 @@ export const DcaChart = memo(function DcaChart({ data, unit }: DcaChartProps) {
             if (abs >= 10_000) return `${sign}${sym}${(abs / 1_000).toFixed(0)}k`;
             if (abs >= 1_000) return `${sign}${sym}${(abs / 1_000).toFixed(1)}k`;
             if (abs >= 1) return `${sign}${sym}${abs.toFixed(0)}`;
+            // "$0.00" next to "$8.5k" read as a different unit; zero is just $0.
+            if (abs === 0) return `${sym}0`;
             return `${sign}${sym}${abs.toFixed(2)}`;
         },
         [convertFromUsd, currencyConfig.symbol],
@@ -494,7 +499,10 @@ export const DcaChart = memo(function DcaChart({ data, unit }: DcaChartProps) {
             link.href = dataUrl;
             link.click();
         } catch {
-            // Chart export failed silently
+            // A silent failure reads as a dead button — say so, briefly.
+            setExportError("Couldn't create the image. Try again.");
+            if (exportErrorTimer.current) clearTimeout(exportErrorTimer.current);
+            exportErrorTimer.current = setTimeout(() => setExportError(null), 4000);
         }
     }, []);
 
@@ -507,6 +515,29 @@ export const DcaChart = memo(function DcaChart({ data, unit }: DcaChartProps) {
     // and only while a traveller or the slide is actually being dragged — a drag
     // anywhere else on the chart still scrolls the page normally.
     const showBrush = (data?.length ?? 0) > BRUSH_MIN_POINTS;
+
+    useEffect(() => () => {
+        if (exportErrorTimer.current) clearTimeout(exportErrorTimer.current);
+    }, []);
+
+    // The brush travellers are SVG rects Recharts makes keyboard-focusable, but
+    // they sit inside the role=img subtree, so a keyboard user tabs into two
+    // stops that announce raw pixel coordinates. The sr-only table is the
+    // accessible path; take the travellers out of the tab order (re-applied via
+    // observer because Recharts recreates them on every data change).
+    useEffect(() => {
+        const el = plotRef.current;
+        if (!el || !showBrush) return;
+        const detune = () => {
+            el.querySelectorAll<SVGElement>('.recharts-brush-traveller').forEach((t) => {
+                t.setAttribute('tabindex', '-1');
+            });
+        };
+        detune();
+        const observer = new MutationObserver(detune);
+        observer.observe(el, { childList: true, subtree: true });
+        return () => observer.disconnect();
+    }, [showBrush]);
 
     useEffect(() => {
         const el = plotRef.current;
@@ -589,11 +620,15 @@ export const DcaChart = memo(function DcaChart({ data, unit }: DcaChartProps) {
 
                 {/* Toggles + export */}
                 <div className="mb-1 flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1 sm:mb-2">
+                    {/* title attrs stay as hover garnish; the real explanation is the
+                        visible caption below — hover doesn't exist for the touch
+                        majority and titles are silent to screen readers. */}
                     <label className={toggleLabelClass} title="Log scale: the same percentage move takes up the same space, whatever the price.">
                         <input
                             type="checkbox"
                             checked={isLog}
                             onChange={(e) => setIsLog(e.target.checked)}
+                            aria-describedby={isLog ? `${uid}-log-hint` : undefined}
                             className="h-4 w-4 rounded border-slate-300 text-amber-700 dark:text-amber-400 focus:ring-amber-500 dark:border-slate-600"
                         />
                         Log
@@ -604,6 +639,7 @@ export const DcaChart = memo(function DcaChart({ data, unit }: DcaChartProps) {
                                 type="checkbox"
                                 checked={showPowerLaw}
                                 onChange={(e) => setShowPowerLaw(e.target.checked)}
+                                aria-describedby={showPowerLaw ? `${uid}-pl-hint` : undefined}
                                 className="h-4 w-4 rounded border-slate-300 text-violet-600 focus:ring-violet-500 dark:border-slate-600"
                             />
                             Power Law
@@ -622,12 +658,32 @@ export const DcaChart = memo(function DcaChart({ data, unit }: DcaChartProps) {
                     <button
                         type="button"
                         onClick={handleExport}
-                        className="rounded-lg p-1.5 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-600 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-300 sm:p-2"
+                        className="flex items-center justify-center rounded-lg p-1.5 max-sm:min-h-11 max-sm:min-w-11 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-600 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-300 sm:p-2"
                         aria-label="Save the chart as a PNG image"
                         title="Save the chart as a PNG image"
                     >
                         <Camera className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                     </button>
+                </div>
+
+                {(isLog || (tab === 'price' && showPowerLaw)) && (
+                    <div className="mb-1 shrink-0 space-y-0.5 text-[11px] leading-snug text-slate-500 dark:text-slate-400">
+                        {isLog && (
+                            <p id={`${uid}-log-hint`}>Log scale: equal percentage moves take equal space.</p>
+                        )}
+                        {tab === 'price' && showPowerLaw && (
+                            <p id={`${uid}-pl-hint`}>Power law: a curve fitted to Bitcoin’s whole history — a fit, not a forecast.</p>
+                        )}
+                    </div>
+                )}
+                {/* Always mounted: a live region inserted together with its message
+                    is often not announced at all. */}
+                <div
+                    role="status"
+                    aria-live="polite"
+                    className={exportError ? 'mb-1 shrink-0 text-[11px] leading-snug text-loss' : 'sr-only'}
+                >
+                    {exportError}
                 </div>
 
                 <div
@@ -642,12 +698,17 @@ export const DcaChart = memo(function DcaChart({ data, unit }: DcaChartProps) {
                     </p>
                     <p id={summaryId} className="sr-only">
                         {chartSummary}
+                        {tab === 'price' && showPowerLaw
+                            ? ' A power-law trend line fitted to Bitcoin’s full price history is also drawn — a curve fit, not a forecast.'
+                            : ''}
                     </p>
                     {/* role="img" collapses the whole SVG — axis ticks, legend, reference-line
                         labels, brush ticks — into one node, so none of it is read out a second
                         time next to the table below. */}
                     <div ref={plotRef} className="min-h-0 flex-1" role="img" aria-label={chartAriaLabel}>
-                        <ResponsiveContainer width="100%" height="100%" debounce={150}>
+                        {/* initialDimension: without it the first render measures -1×-1,
+                            spamming a console warning and flashing an empty chart. */}
+                        <ResponsiveContainer width="100%" height="100%" debounce={150} initialDimension={{ width: 358, height: 260 }}>
                             {/* accessibilityLayer off: Recharts' own keyboard layer would fight the
                                 role="img" collapse above. The text alternative is the caption,
                                 summary and sr-only table in this same figure. */}

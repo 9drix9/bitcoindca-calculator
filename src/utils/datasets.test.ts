@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
     makeDayPriceLookup,
     firstWeekdayOnOrAfter,
@@ -8,6 +8,7 @@ import {
 } from './datasets';
 import { calculateDca, calculateXirr } from './dca';
 import { DAY_MS } from './dates';
+import { BTC_HISTORICAL_DAILY } from '@/data/btcHistorical';
 
 const series = (startTs: number, days: number, priceFn: (i: number) => number): [number, number][] =>
     Array.from({ length: days }, (_, i) => [startTs + i * DAY_MS, priceFn(i)] as [number, number]);
@@ -211,5 +212,73 @@ describe('heatmap cell valuation (regression)', () => {
         expect(correct.xirr!).toBeGreaterThan(misdated.xirr! * 2);
         expect(correct.xirr!).toBeGreaterThan(0.3);
         expect(misdated.xirr!).toBeLessThan(0.2);
+    });
+});
+
+// ── Bundled historical snapshot (regression) ──────────────────────────────────
+
+describe('bundled historical snapshot', () => {
+    it('runs daily with no gaps through 2015-07-19', () => {
+        const last = BTC_HISTORICAL_DAILY[BTC_HISTORICAL_DAILY.length - 1];
+        expect(last[0]).toBe(Date.UTC(2015, 6, 19));
+        expect(last[1]).toBeCloseTo(276.74);
+        const gaps = BTC_HISTORICAL_DAILY.filter(
+            (row, i) => i > 0 && row[0] - BTC_HISTORICAL_DAILY[i - 1][0] !== DAY_MS,
+        );
+        expect(gaps).toEqual([]);
+    });
+
+    it('meets the first Coinbase daily candle (2015-07-20) with no seam hole', () => {
+        // Anything short of this re-opens the 19-day gap that interpolateDaily
+        // silently straight-lined — pricing 2015-07-13 ~13% under reality.
+        const COINBASE_FIRST_CANDLE = Date.UTC(2015, 6, 20);
+        const last = BTC_HISTORICAL_DAILY[BTC_HISTORICAL_DAILY.length - 1];
+        expect(last[0]).toBeGreaterThanOrEqual(COINBASE_FIRST_CANDLE - DAY_MS);
+    });
+});
+
+// ── Kraken-mode provider merging (regression) ─────────────────────────────────
+
+describe('kraken-mode history merging', () => {
+    afterEach(() => {
+        vi.unstubAllGlobals();
+    });
+
+    it('keeps every bundled real daily price and only appends provider data after the snapshot', async () => {
+        const WEEK_S = 604_800;
+        // Fake weekly closes from Kraken's real first candle (2013-10-03), priced
+        // far from the snapshot so any replacement of real days is unmistakable.
+        const candles: number[][] = [];
+        for (let t = Date.UTC(2013, 9, 3) / 1000; t < Date.UTC(2016, 0, 1) / 1000; t += WEEK_S) {
+            candles.push([t, 0, 0, 0, 999_999, 0, 0, 0]);
+        }
+        vi.stubGlobal('fetch', vi.fn(async () =>
+            new Response(JSON.stringify({ error: [], result: { XXBTZUSD: candles, last: 0 } })),
+        ));
+
+        const { getBitcoinPriceHistory } = await import('@/app/actions');
+        const merged = await getBitcoinPriceHistory(0, Date.UTC(2016, 0, 1), 'kraken');
+        const byTs = new Map(merged);
+
+        // The old `ts < firstProviderTs` merge discarded ~630 real daily rows
+        // (2013-10-10..2015-07-19) and rebuilt them from weekly straight lines.
+        for (const [ts, price] of BTC_HISTORICAL_DAILY) {
+            expect(byTs.get(ts)).toBe(price);
+        }
+
+        // Provider candles still supply everything after the snapshot's last day.
+        const snapEnd = BTC_HISTORICAL_DAILY[BTC_HISTORICAL_DAILY.length - 1][0];
+        expect(merged[merged.length - 1][0]).toBeGreaterThan(snapEnd);
+        const anchoredAfterSnap = candles
+            .map((c) => (c[0] + WEEK_S) * 1000)
+            .filter((ts) => ts > snapEnd && ts <= Date.UTC(2016, 0, 1));
+        expect(anchoredAfterSnap.length).toBeGreaterThan(0);
+        for (const ts of anchoredAfterSnap) {
+            expect(byTs.get(ts)).toBe(999_999);
+        }
+
+        // Sorted, deduped, and gapless across the seam.
+        const gaps = merged.filter((row, i) => i > 0 && row[0] - merged[i - 1][0] !== DAY_MS);
+        expect(gaps).toEqual([]);
     });
 });
