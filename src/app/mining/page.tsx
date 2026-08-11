@@ -1,7 +1,6 @@
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
 import { Pickaxe, Hash, Clock, BarChart3, Users, Cpu, TrendingUp, Coins, ShieldAlert, Leaf, HelpCircle, AlertTriangle, ArrowRight, CheckCircle2, ExternalLink, BookOpen } from 'lucide-react';
 import { WalletImage } from '@/components/WalletImage';
 import { getBlockHeight } from '@/app/actions';
@@ -377,18 +376,6 @@ export default async function MiningPage() {
                         {' '}&middot; Last reviewed {LAST_REVIEWED}
                     </p>
                 </section>
-
-                {/* Decorative header art — dark-field illustration framed as a card so it
-                    sits cleanly on both themes. Purely decorative, hence the empty alt. */}
-                <Image
-                    src="/illustrations/mining.webp"
-                    alt=""
-                    width={2752}
-                    height={1536}
-                    priority={false}
-                sizes="(min-width: 1024px) 832px, 100vw"
-                    className="w-full rounded-2xl border border-slate-200 dark:border-slate-800"
-                />
 
                 {/* Live stats strip */}
                 <section aria-label="Current network figures" className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">

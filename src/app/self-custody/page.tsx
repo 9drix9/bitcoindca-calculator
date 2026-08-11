@@ -1,7 +1,6 @@
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
 import {
   Shield,
   AlertTriangle,
@@ -642,18 +641,6 @@ export default function SelfCustodyPage() {
           {' '}&middot; Last reviewed {LAST_REVIEWED}
         </p>
       </section>
-
-      {/* Decorative header art — dark-field illustration framed as a card so it
-          sits cleanly on both themes. Purely decorative, hence the empty alt. */}
-      <Image
-        src="/illustrations/self-custody.webp"
-        alt=""
-        width={2752}
-        height={1536}
-        priority={false}
-                sizes="(min-width: 1024px) 832px, 100vw"
-        className="w-full rounded-2xl border border-slate-200 dark:border-slate-800"
-      />
 
       {/* On this page */}
       <nav
