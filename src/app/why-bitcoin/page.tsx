@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { Users, Network, Cpu, BadgeDollarSign, AlertTriangle, ArrowRight, KeyRound, Scale, HelpCircle, ShieldQuestion, BookOpen } from 'lucide-react';
 
 /** Date the factual claims on this page were last checked against their sources. */
@@ -262,6 +263,17 @@ export default function WhyBitcoinPage() {
                     {' '}&middot; Last reviewed {LAST_REVIEWED}
                 </p>
             </section>
+
+                {/* Decorative header art — dark-field illustration framed as a card so it
+                    sits cleanly on both themes. Purely decorative, hence the empty alt. */}
+                <Image
+                    src="/illustrations/why-bitcoin.webp"
+                    alt=""
+                    width={1376}
+                    height={768}
+                    priority={false}
+                    className="w-full rounded-2xl border border-slate-200 dark:border-slate-800"
+                />
 
             {/* Section 1: How it works */}
             <section className="space-y-4">
