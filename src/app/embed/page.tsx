@@ -189,7 +189,7 @@ function Brand({ href }: { href: string }) {
             rel="noopener"
             className="group flex min-w-0 items-center gap-2"
         >
-            {/* The Sat Ladder, same as every other surface. This was the last
+            {/* The Ð monogram, same as every other surface. This was the last
                 ₿-in-a-disc left in the codebase, and it was on the one component
                 that renders on OTHER people's sites — so the most brand-visible
                 surface was the only one still showing the retired mark. */}

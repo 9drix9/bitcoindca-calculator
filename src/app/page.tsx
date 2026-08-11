@@ -249,7 +249,7 @@ export default function Home() {
 
         {/* Hero Section */}
         {/* No hero-glow: the radial wash was a 1.04:1 tint that read as gradient
-            banding rather than depth. The amber Sat Ladder in the nav carries the
+            banding rather than depth. The amber Ð monogram in the nav carries the
             brand; the H1's job is to be read. */}
         <section className="text-center max-w-3xl mx-auto space-y-3 sm:space-y-4 pt-2 sm:pt-6">
           {/* Flat, not bg-clip-text. Logo.tsx already documents why that technique

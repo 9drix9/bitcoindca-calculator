@@ -1,5 +1,5 @@
 import { ImageResponse } from 'next/og';
-import { SAT_LADDER_OG_PATH } from '@/components/brand/Logo';
+import { BRAND_OG_PATH } from '@/components/brand/Logo';
 
 export const runtime = 'edge';
 export const alt = 'Why Bitcoin Has Value';
@@ -28,7 +28,7 @@ export default function Image() {
                     fill="#f59e0b"
                     style={{ marginBottom: 24 }}
                 >
-                    <path d={SAT_LADDER_OG_PATH} />
+                    <path d={BRAND_OG_PATH} />
                 </svg>
                 <div
                     style={{

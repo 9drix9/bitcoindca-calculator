@@ -29,59 +29,31 @@ const TILE_BG = '#0f172a'; // slate-900 — tiles are full-bleed, so they need a
 
 // ── Geometry (mirrors src/components/brand/Logo.tsx) ─────────────────────────
 
-const bar = ({ x, y, w, h }, r) =>
-    [
-        `M${x + r} ${y}`,
-        `H${x + w - r}`,
-        `A${r} ${r} 0 0 1 ${x + w} ${y + r}`,
-        `V${y + h - r}`,
-        `A${r} ${r} 0 0 1 ${x + w - r} ${y + h}`,
-        `H${x + r}`,
-        `A${r} ${r} 0 0 1 ${x} ${y + h - r}`,
-        `V${y + r}`,
-        `A${r} ${r} 0 0 1 ${x + r} ${y}`,
-        'Z',
-    ].join(' ');
-
-const slot = ({ x, y, w, h }) => `M${x} ${y} H${x + w} V${y + h} H${x} Z`;
-
-const COLUMNS = [
-    { x: 1, y: 17, w: 4, h: 6 },
-    { x: 7, y: 12, w: 4, h: 11 },
-    { x: 13, y: 6, w: 4, h: 17 },
-    { x: 19, y: 1, w: 4, h: 22 },
-];
-
-const SLOTS = [
-    { x: 13, y: 9, w: 4, h: 2 },
-    { x: 19, y: 9, w: 4, h: 2 },
-    { x: 7, y: 15, w: 4, h: 2 },
-    { x: 13, y: 15, w: 4, h: 2 },
-    { x: 19, y: 15, w: 4, h: 2 },
-];
-
-const PATH_FULL = [...COLUMNS.map((c) => bar(c, 1.6)), ...SLOTS.map(slot)].join(' ');
-
 /**
- * Favicon-only geometry on a 16-unit integer lattice: 3-wide columns with 1-unit
- * gaps landing on whole pixels at 16px. Downsampling the 24-unit mark instead put
- * every edge on a half pixel and turned the tab icon into grey smear.
+ * The Ð monogram — a heavy geometric D (for DCA) with the ₿'s crown-and-tail
+ * stubs. Single path, DEFAULT (nonzero) winding: the counter subpath winds
+ * opposite to the outer, so no fill-rule attribute is needed and the same
+ * geometry rasterises identically in sharp, browsers, and OG images.
+ * Keep in sync with src/components/brand/Logo.tsx.
  */
-const PATH_ICON16 = [
-    { x: 0, y: 11, w: 3, h: 5 },
-    { x: 4, y: 8, w: 3, h: 8 },
-    { x: 8, y: 4, w: 3, h: 12 },
-    { x: 12, y: 0, w: 3, h: 16 },
-]
-    .map((c) => bar(c, 0.75))
-    .join(' ');
+const PATH_FULL = [
+    'M4 3.5 A1.5 1.5 0 0 1 5.5 2 H11 A10 10 0 0 1 11 22 H5.5 A1.5 1.5 0 0 1 4 20.5 Z',
+    'M8.6 6.6 V17.4 H11 A5.4 5.4 0 0 0 11 6.6 Z',
+    'M9.2 0 H11.7 V2 H9.2 Z',
+    'M9.2 22 H11.7 V24 H9.2 Z',
+].join(' ');
+
+// The monogram scales cleanly; the 16px favicon uses the same geometry rendered
+// at high density rather than a hand-snapped lattice.
+const PATH_ICON16 = PATH_FULL;
+const ICON16_BOX = 24;
 
 // ── SVG builders ─────────────────────────────────────────────────────────────
 
 /** Bare mark on transparent — browser chrome, where the surface is unknown. */
 const markSvg = (d, box, color = AMBER) =>
     Buffer.from(
-        `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${box} ${box}" width="${box}" height="${box}" fill="${color}" fill-rule="evenodd"><path d="${d}"/></svg>`,
+        `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${box} ${box}" width="${box}" height="${box}" fill="${color}"><path d="${d}"/></svg>`,
     );
 
 /**
@@ -95,7 +67,7 @@ const tileSvg = (size, radius) => {
     return Buffer.from(
         `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">` +
             `<rect width="${size}" height="${size}" rx="${radius}" fill="${TILE_BG}"/>` +
-            `<g transform="translate(${inset} ${inset}) scale(${scale})" fill="${AMBER}" fill-rule="evenodd">` +
+            `<g transform="translate(${inset} ${inset}) scale(${scale})" fill="${AMBER}">` +
             `<path d="${PATH_FULL}"/></g></svg>`,
     );
 };
@@ -138,7 +110,7 @@ async function main() {
     // for the rails, so they carry the full mark.
     const frames = await Promise.all(
         [
-            { size: 16, svg: markSvg(PATH_ICON16, 16) },
+            { size: 16, svg: markSvg(PATH_ICON16, ICON16_BOX) },
             { size: 32, svg: markSvg(PATH_FULL, 24) },
             { size: 48, svg: markSvg(PATH_FULL, 24) },
         ].map(async ({ size, svg }) => ({
@@ -184,7 +156,7 @@ async function main() {
         Buffer.from(
             `<svg xmlns="http://www.w3.org/2000/svg" width="${MASKABLE}" height="${MASKABLE}" viewBox="0 0 ${MASKABLE} ${MASKABLE}">` +
                 `<rect width="${MASKABLE}" height="${MASKABLE}" fill="${TILE_BG}"/>` +
-                `<g transform="translate(${maskInset} ${maskInset}) scale(${maskScale})" fill="${AMBER}" fill-rule="evenodd">` +
+                `<g transform="translate(${maskInset} ${maskInset}) scale(${maskScale})" fill="${AMBER}">` +
                 `<path d="${PATH_FULL}"/></g></svg>`,
         ),
         { density: 1200 },

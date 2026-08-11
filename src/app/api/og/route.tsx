@@ -1,5 +1,5 @@
 import { ImageResponse } from 'next/og';
-import { SAT_LADDER_OG_PATH } from '@/components/brand/Logo';
+import { BRAND_OG_PATH } from '@/components/brand/Logo';
 import {
     computeShareCard,
     resolveShareParams,
@@ -26,7 +26,7 @@ function Header() {
                 }}
             >
                 <svg width={64} height={64} viewBox="0 0 24 24" fill="#f59e0b">
-                    <path d={SAT_LADDER_OG_PATH} />
+                    <path d={BRAND_OG_PATH} />
                 </svg>
             </div>
             <div style={{ display: 'flex', fontSize: 30, fontWeight: 700, color: '#f8fafc', letterSpacing: -0.5 }}>
@@ -134,7 +134,7 @@ function GenericCard() {
                 }}
             >
                 <svg width={108} height={108} viewBox="0 0 24 24" fill="#f59e0b">
-                    <path d={SAT_LADDER_OG_PATH} />
+                    <path d={BRAND_OG_PATH} />
                 </svg>
             </div>
             <div

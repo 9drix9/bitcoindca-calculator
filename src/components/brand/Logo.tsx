@@ -1,87 +1,39 @@
 import clsx from 'clsx';
 
 /**
- * The Sat Ladder — the site's single brand mark.
+ * The Ð — the site's single brand mark.
  *
- * Four rounded columns on a shared baseline, ascending left to right, with two
- * horizontal rails knocked through the tall ones. The columns are the repeated
- * fixed buy, the rising heights are accumulation, and the two rails give it the
- * ₿'s double-bar silhouette without borrowing the currency's logo outright.
+ * A heavy geometric D (for DCA) wearing the ₿'s crown-and-tail stubs: the
+ * monogram initials the product while the stubs carry the Bitcoin association
+ * without borrowing the currency glyph itself.
  *
- * Three deliberate constraints:
+ * Three deliberate constraints, carried over from the previous mark:
  *
- * 1. It is DRAWN, never typed. The old mark was a "₿" text node, and U+20BF is
- *    outside the Inter latin subset the site loads, so it silently fell back to
- *    a system font on every surface — different shape per OS, missing glyph on
- *    some Android builds.
- * 2. It is ONE `fill-rule="evenodd"` path, not a <mask>. Masks need an id, and
- *    this renders twice per page (nav + footer); a single path also survives
- *    rasterisation to .ico/.png without a masking step.
+ * 1. It is DRAWN, never typed. A "Ð" text node would fall outside the Inter
+ *    latin subset on some platforms and silently swap fonts per OS.
+ * 2. It is one path using DEFAULT (nonzero) winding — the counter subpath winds
+ *    opposite to the outer, so the hole needs no `fill-rule="evenodd"`. That
+ *    matters because Satori (next/og) has patchy evenodd support; this geometry
+ *    renders identically in browsers, sharp rasterisation, and OG images.
  * 3. It is containerless — bare geometry on transparent, coloured by
  *    `currentColor`. An amber disc is what every token logo on CoinGecko looks
  *    like and is indistinguishable in a tab strip.
  */
 
-type Rect = { x: number; y: number; w: number; h: number };
-
-/** Rounded-rect subpath. */
-function bar({ x, y, w, h }: Rect, r: number): string {
-    return [
-        `M${x + r} ${y}`,
-        `H${x + w - r}`,
-        `A${r} ${r} 0 0 1 ${x + w} ${y + r}`,
-        `V${y + h - r}`,
-        `A${r} ${r} 0 0 1 ${x + w - r} ${y + h}`,
-        `H${x + r}`,
-        `A${r} ${r} 0 0 1 ${x} ${y + h - r}`,
-        `V${y + r}`,
-        `A${r} ${r} 0 0 1 ${x + r} ${y}`,
-        'Z',
-    ].join(' ');
-}
-
-/** Square subpath — punched out of the bars by the evenodd fill rule. */
-const slot = ({ x, y, w, h }: Rect): string =>
-    `M${x} ${y} H${x + w} V${y + h} H${x} Z`;
-
-// Baseline y=23, 1 unit of margin inside a 24x24 box. Column tops are chosen so
-// no rail ever clips a column at a grazing angle and leaves a sub-pixel sliver.
-const COLUMNS: Rect[] = [
-    { x: 1, y: 17, w: 4, h: 6 },
-    { x: 7, y: 12, w: 4, h: 11 },
-    { x: 13, y: 6, w: 4, h: 17 },
-    { x: 19, y: 1, w: 4, h: 22 },
-];
-
-// Rails are cut only where a column actually stands, so the gaps between
-// columns stay empty and the mark never reads as a grid.
-const SLOTS: Rect[] = [
-    { x: 13, y: 9, w: 4, h: 2 },
-    { x: 19, y: 9, w: 4, h: 2 },
-    { x: 7, y: 15, w: 4, h: 2 },
-    { x: 13, y: 15, w: 4, h: 2 },
-    { x: 19, y: 15, w: 4, h: 2 },
-];
-
-const RADIUS = 1.6;
-
-/** Full mark: columns with the ₿ rails knocked through. */
-const PATH_FULL = [...COLUMNS.map((c) => bar(c, RADIUS)), ...SLOTS.map(slot)].join(' ');
+// Outer D: clockwise. Counter: counter-clockwise (punches the hole under the
+// nonzero rule). Stubs: the ₿ crown (top) and tail (bottom).
+const PATH_D = [
+    'M4 3.5 A1.5 1.5 0 0 1 5.5 2 H11 A10 10 0 0 1 11 22 H5.5 A1.5 1.5 0 0 1 4 20.5 Z',
+    'M8.6 6.6 V17.4 H11 A5.4 5.4 0 0 0 11 6.6 Z',
+    'M9.2 0 H11.7 V2 H9.2 Z',
+    'M9.2 22 H11.7 V24 H9.2 Z',
+].join(' ');
 
 /**
- * Small-size mark: rails dropped. At 16-32px a 2-unit rail renders around one
- * physical pixel and aliases into grey mush, taking the whole silhouette with
- * it. Four clean columns still read unmistakably as a rising stack.
+ * OG-image path. Same geometry — the mark deliberately needs no evenodd, so
+ * the one path serves every renderer.
  */
-const PATH_COMPACT = COLUMNS.map((c) => bar(c, RADIUS)).join(' ');
-
-/**
- * Rail-free mark for OG image generation. Satori (next/og) has patchy
- * `fill-rule="evenodd"` support, and a silently-ignored evenodd would fill the
- * knocked-out rails and ship a solid blob to every social unfurl. The compact
- * geometry needs no fill rule at all, so it renders identically everywhere.
- */
-export const SAT_LADDER_OG_PATH = PATH_COMPACT;
+export const BRAND_OG_PATH = PATH_D;
 
 export function Logo({
     className,
@@ -89,23 +41,23 @@ export function Logo({
     title,
 }: {
     className?: string;
-    /** Drop the rails. Use at 32px and below. */
+    /** Kept for call-site compatibility — the monogram scales without variants. */
     compact?: boolean;
     /** Accessible name. Omit when a sibling wordmark already names the link. */
     title?: string;
 }) {
+    void compact;
     return (
         <svg
             viewBox="0 0 24 24"
             fill="currentColor"
-            fillRule="evenodd"
             className={className}
             role={title ? 'img' : undefined}
             aria-hidden={title ? undefined : true}
             focusable="false"
         >
             {title && <title>{title}</title>}
-            <path d={compact ? PATH_COMPACT : PATH_FULL} />
+            <path d={PATH_D} />
         </svg>
     );
 }

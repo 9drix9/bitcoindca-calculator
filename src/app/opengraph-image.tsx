@@ -1,5 +1,5 @@
 import { ImageResponse } from 'next/og';
-import { SAT_LADDER_OG_PATH } from '@/components/brand/Logo';
+import { BRAND_OG_PATH } from '@/components/brand/Logo';
 
 export const runtime = 'edge';
 export const alt = 'Bitcoin DCA Calculator';
@@ -22,7 +22,7 @@ export default function Image() {
                     padding: 80,
                 }}
             >
-                {/* Sat Ladder mark */}
+                {/* Ð monogram mark */}
                 <div
                     style={{
                         width: 120,
@@ -34,7 +34,7 @@ export default function Image() {
                     }}
                 >
                     <svg width={108} height={108} viewBox="0 0 24 24" fill="#f59e0b">
-                        <path d={SAT_LADDER_OG_PATH} />
+                        <path d={BRAND_OG_PATH} />
                     </svg>
                 </div>
 
