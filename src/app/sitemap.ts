@@ -15,8 +15,10 @@ const PAGE_DATES = {
     // (why-bitcoin, self-custody, mining) — conflicting freshness signals teach
     // Google to distrust lastmod for the whole domain.
     whyBitcoin: new Date('2026-08-10'),
-    selfCustody: new Date('2026-08-10'),
+    selfCustody: new Date('2026-08-11'),
     mining: new Date('2026-08-10'),
+    // Must match dateModified in the coldcard page's Article JSON-LD.
+    coldcard: new Date('2026-08-11'),
     about: new Date('2026-08-10'),
     methodology: new Date('2026-08-08'),
     embedGuide: new Date('2026-07-25'),
@@ -27,7 +29,8 @@ const PAGE_DATES = {
     dcaIndex: new Date('2026-07-24'),
     calculators: new Date('2026-08-10'),
     author: new Date('2026-08-08'),
-    contact: new Date('2026-08-10'),
+    // Must match dateModified in the contact page's JSON-LD.
+    contact: new Date('2026-08-08'),
     dcaTax: new Date('2026-08-08'),
 } as const;
 
@@ -122,6 +125,14 @@ export default function sitemap(): MetadataRoute.Sitemap {
             lastModified: PAGE_DATES.selfCustody,
             changeFrequency: 'monthly',
             priority: 0.8,
+        },
+        {
+            // Incident write-up for an exploit that was still active when
+            // published, hence 'weekly' — drop to 'monthly' once it settles.
+            url: `${baseUrl}/coldcard`,
+            lastModified: PAGE_DATES.coldcard,
+            changeFrequency: 'weekly',
+            priority: 0.7,
         },
         {
             url: `${baseUrl}/mining`,

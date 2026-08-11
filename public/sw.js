@@ -4,7 +4,7 @@
 // its chunks. The new worker deliberately does NOT skipWaiting/claim: it only
 // activates (and purges old caches) once every tab from the previous deploy has
 // closed, so open tabs never lose the hashed chunks they are still lazy-loading.
-const CACHE_VERSION = 'btc-dca-v6';
+const CACHE_VERSION = 'btc-dca-v7';
 const OFFLINE_URL = '/offline';
 
 const PRECACHE = `${CACHE_VERSION}-precache`;

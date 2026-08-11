@@ -20,7 +20,7 @@ import {
 import { WalletImage } from '@/components/WalletImage';
 
 /** Date the factual claims on this page were last checked against their sources. */
-const LAST_REVIEWED = '10 August 2026';
+const LAST_REVIEWED = '11 August 2026';
 
 /** A single external reference. `label` is what the reader sees inline. */
 type Source = { label: string; url: string };
@@ -58,7 +58,9 @@ const SRC = {
   jadeRepo: { label: 'Blockstream Jade firmware', url: 'https://github.com/Blockstream/Jade' },
   jadeOracle: { label: 'Blockstream blind PIN server', url: 'https://github.com/Blockstream/blind_pin_server' },
   bitbox: { label: 'BitBox02 firmware (dual-chip design)', url: 'https://github.com/BitBoxSwiss/bitbox02-firmware' },
-  coldcardLicence: { label: 'Coldcard license (MIT + Commons Clause)', url: 'https://github.com/Coldcard/firmware/blob/master/COPYING-CC' },
+  coldcardAdvisory: { label: 'Coinkite, Coldcard security advisory (30 July 2026)', url: 'https://blog.coinkite.com/coldcard-mk3-seed-generation-warning/' },
+  coldcardThn: { label: 'The Hacker News, Coldcard seed flaw and thefts (Aug 2026)', url: 'https://thehackernews.com/2026/08/coldcard-hardware-wallet-flaw-linked-to.html' },
+  coldcardTrm: { label: 'TRM Labs, inside the $116M Coldcard hack (5 Aug 2026)', url: 'https://www.trmlabs.com/resources/blog/the-largest-hardware-wallet-exploit-of-2026-inside-the-usd-116-million-coldcard-hack' },
   seedsigner: { label: 'SeedSigner project', url: 'https://github.com/SeedSigner/seedsigner' },
   cypherock: { label: 'Cypherock X1 firmware', url: 'https://github.com/Cypherock/x1_wallet_firmware' },
 } as const satisfies Record<string, Source>;
@@ -192,7 +194,7 @@ const THREATS: { rank: string; title: string; detail: string; fix: string; sourc
   },
 ];
 
-type WalletColor = 'violet' | 'amber' | 'green' | 'blue' | 'cyan' | 'emerald' | 'slate';
+type WalletColor = 'violet' | 'amber' | 'green' | 'cyan' | 'emerald' | 'slate';
 
 interface Wallet {
   name: string;
@@ -296,25 +298,6 @@ const WALLETS: Wallet[] = [
     sources: [SRC.bitbox],
   },
   {
-    name: 'Coldcard',
-    slug: 'coldcard',
-    tagline: 'Bitcoin-only, air-gapped, expert-grade',
-    description: 'Coinkite\'s Coldcard is the device most long-term Bitcoiners eventually graduate to. It runs fully air-gapped, meaning it never has to touch a computer: you move transactions across on a microSD card, or by QR code on the Q. Two secure elements from different vendors must both agree before anything gets signed.',
-    features: ['Bitcoin-only, always has been', 'Fully air-gapped via microSD (Q adds QR + keyboard)', 'Two independent secure elements', 'Firmware source published with reproducible builds', 'Multisig, BIP-85, seed XOR, duress and brick-me PINs'],
-    price: 'Mk4 ~$178, Q ~$249',
-    lineup: 'Current models are the Mk4 (around $178) and the Q (around $249), the premium option with a camera and keyboard.',
-    caveat: 'Two honest notes. The firmware ships under an MIT grant with a "Commons Clause" condition attached, which withholds the right to sell the software. That makes it source-available rather than open-source in the strict sense. Anyone can still read the code and reproduce the build. The advanced features also cut both ways. Duress PINs, seed XOR, and BIP-85 will destroy your access as efficiently as they protect it if you turn them on without understanding them. This is not a first device.',
-    href: 'https://coldcard.com/',
-    color: 'blue',
-    image: '/wallets/coldcard.png',
-    bestFor: 'Best for: larger balances, multisig setups, and people who want an air gap',
-    openSource: 'Source-available (Commons Clause)',
-    secureElement: 'Yes (two, different vendors)',
-    airGap: 'Yes (microSD; QR on the Q)',
-    affiliate: false,
-    sources: [SRC.coldcardLicence],
-  },
-  {
     name: 'Cypherock X1',
     slug: 'cypherock-x1',
     tagline: 'Nothing to write down, five things to protect',
@@ -322,7 +305,7 @@ const WALLETS: Wallet[] = [
     features: ['No written seed phrase required', 'Shamir 2-of-5 across the vault and four cards', 'EAL6+ secure elements', 'Source-available firmware (MIT + Commons Clause)', 'BIP-39 export available as an escape hatch'],
     price: '~$159-$199',
     lineup: 'Usually around $199 list, frequently discounted to about $159. Replacement cards and cases are sold separately.',
-    caveat: 'The threshold cuts both ways. Any two of the five shares reconstruct your keys, so two cards found together are as good as the whole wallet to a thief. That means the cards have to be geographically separated, which is more work than most people expect from a "no seed phrase" product. The scheme is also newer and less battle-tested than a plain BIP-39 backup. Like Coldcard, the firmware is MIT with a Commons Clause attached, so it is source-available rather than open-source in the strict sense. The mitigating factor: you can export a standard BIP-39 phrase at any time and walk away to another vendor.',
+    caveat: 'The threshold cuts both ways. Any two of the five shares reconstruct your keys, so two cards found together are as good as the whole wallet to a thief. That means the cards have to be geographically separated, which is more work than most people expect from a "no seed phrase" product. The scheme is also newer and less battle-tested than a plain BIP-39 backup. The firmware ships under an MIT grant with a Commons Clause attached, which withholds the right to sell the software, so it is source-available rather than open-source in the strict sense. The mitigating factor: you can export a standard BIP-39 phrase at any time and walk away to another vendor.',
     href: 'https://cypherock.com/store/?ref=BTCDOLLARCOSTAVERAGE',
     color: 'violet',
     image: '/wallets/cypherock.png',
@@ -473,14 +456,6 @@ const walletColorClasses: Record<WalletColor, {
     accent: 'text-green-700 dark:text-green-400',
     check: 'text-green-600 dark:text-green-500',
   },
-  blue: {
-    bg: 'bg-blue-50 dark:bg-blue-950/20',
-    border: 'border-blue-200 dark:border-blue-800/50',
-    badge: 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-400',
-    button: 'bg-blue-600 hover:bg-blue-700',
-    accent: 'text-blue-600 dark:text-blue-400',
-    check: 'text-blue-600 dark:text-blue-500',
-  },
   cyan: {
     bg: 'bg-cyan-50 dark:bg-cyan-950/20',
     border: 'border-cyan-200 dark:border-cyan-800/50',
@@ -510,7 +485,6 @@ const walletColorClasses: Record<WalletColor, {
 const walletFallbackEmoji: Record<WalletColor, string> = {
   violet: '\u{1F510}',
   amber: '\u{1F512}',
-  blue: '\u{2744}️',
   cyan: '\u{1F331}',
   emerald: '\u{1F9F0}',
   slate: '\u{1F4E6}',
@@ -572,7 +546,7 @@ const articleJsonLd = {
   },
   "datePublished": "2025-01-01",
   // Static date. Update when the content changes, and keep it in sync with sitemap.ts.
-  "dateModified": "2026-08-10",
+  "dateModified": "2026-08-11",
 };
 
 const howToJsonLd = {
@@ -842,7 +816,11 @@ export default function SelfCustodyPage() {
           <p>
             Notice the shape of that list. The exotic threats (chip-level attacks, quantum computers, protocol bugs)
             sit at the bottom, or do not appear at all. What empties wallets is mundane: a backup nobody tested, a link
-            that looked official, an address nobody checked on the device screen.
+            that looked official, an address nobody checked on the device screen. There is now one large counterexample,
+            and honesty requires naming it: in July 2026 a five-year-old firmware bug in Coldcard&apos;s seed generation
+            let attackers drain wallets at scale — the reason that device{' '}
+            <Link href="/coldcard" className={citeLink}>no longer appears in the comparison below</Link>. Vendor bugs
+            are real. They are also still far rarer than everything above this paragraph.
           </p>
         </div>
       </section>
@@ -1252,6 +1230,30 @@ export default function SelfCustodyPage() {
           </p>
         </div>
 
+        <div className="bg-white dark:bg-slate-800 border-l-4 border-red-500 border-y border-r border-slate-200 dark:border-slate-700 p-4 sm:p-5 rounded-r-xl">
+          <div className="flex items-start gap-3">
+            <ShieldAlert className="w-5 h-5 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
+            <div>
+              <p className="text-[10px] sm:text-xs font-semibold uppercase tracking-wider text-red-600 dark:text-red-400 mb-1">
+                Removed from this list &middot; August 2026
+              </p>
+              <p className="text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
+                <strong className="text-slate-800 dark:text-slate-200">Coldcard.</strong> Until 11 August 2026 this page
+                recommended Coinkite&apos;s Coldcard. On 30 July 2026 Coinkite disclosed that a firmware flaw introduced
+                in March 2021 had weakened seed generation on its devices, and attackers spent the following week
+                draining affected wallets — roughly $116 million by 5 August, by Galaxy Research&apos;s tally. Patched
+                firmware exists, but it cannot repair an existing seed: anyone whose seed was generated on affected
+                firmware must create a new wallet and move everything. We removed the recommendation while the exploit
+                is active and Coinkite&apos;s post-mortem is pending. If you own a Coldcard, read{' '}
+                <Link href="/coldcard" className="font-semibold text-red-700 dark:text-red-400 underline hover:no-underline">
+                  our full write-up: what happened, which seeds are affected, and what to do now
+                </Link>.
+              </p>
+              <Cite items={[SRC.coldcardAdvisory, SRC.coldcardTrm, SRC.coldcardThn]} />
+            </div>
+          </div>
+        </div>
+
         <div className="bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800/50 p-4 sm:p-5 rounded-xl flex items-start gap-3">
           <AlertTriangle className="w-5 h-5 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
           <p className="text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
@@ -1379,9 +1381,10 @@ export default function SelfCustodyPage() {
 
         <p className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 text-center italic">
           Affiliate disclosure: the Trezor, Blockstream Jade, Ledger, BitBox02, and Cypherock links are affiliate links.
-          We may earn a commission at no extra cost to you, and it helps keep this calculator free. The Coldcard and
-          SeedSigner links are not affiliate links. Affiliate status did not decide what appears here or what is said
-          about it. Note that the caveats above are attached to the affiliate products too.
+          We may earn a commission at no extra cost to you, and it helps keep this calculator free. The SeedSigner link
+          is not an affiliate link. Affiliate status did not decide what appears here or what is said about it — the
+          Coldcard, removed above, was never an affiliate link either. Note that the caveats above are attached to the
+          affiliate products too.
         </p>
       </section>
 
