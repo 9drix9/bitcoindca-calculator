@@ -334,7 +334,7 @@ function SummaryCard({
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-export const PlanComparison: React.FC<{ basePlan: BasePlan }> = ({ basePlan }) => {
+export const PlanComparison: React.FC<{ basePlan: BasePlan; simplifiedBase?: boolean }> = ({ basePlan, simplifiedBase }) => {
     const { currencyConfig, formatCurrency, convertFromUsd } = useCurrency();
     const isDark = useIsDark();
 
@@ -562,7 +562,13 @@ export const PlanComparison: React.FC<{ basePlan: BasePlan }> = ({ basePlan }) =
             <CardHeader
                 icon={<GitCompare className="h-4 w-4" />}
                 title="Compare Plans"
-                subtitle="What a different amount, schedule, or start date would have done."
+                subtitle={simplifiedBase
+                    // Plan rows can only express amount/schedule/date, so when the
+                    // main plan carries a starting stack or yearly increases the
+                    // "Your plan" row here is the simplified version — say so
+                    // rather than let two panels disagree in silence.
+                    ? 'What a different amount, schedule, or start date would have done. Plans here use your year-one amount only — starting stack and yearly increases are left out.'
+                    : 'What a different amount, schedule, or start date would have done.'}
             />
 
             {altPlans.length === 0 ? (

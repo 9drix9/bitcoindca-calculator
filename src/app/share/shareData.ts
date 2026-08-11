@@ -38,6 +38,9 @@ export interface ResolvedShareParams {
     provider: 'kraken' | 'coinbase';
     manualPrice: number; // USD
     currency: UrlCurrency;
+    startingBtc: number;
+    startingAvgCost: number; // in the share currency's units, per BTC
+    annualEscalationPct: number;
 }
 
 export interface ShareCardData {
@@ -65,6 +68,9 @@ export function toCalculatorParams(raw: Record<string, string | string[] | undef
         provider: pick(raw.provider),
         manualPrice: pick(raw.manualPrice),
         currency: pick(raw.currency),
+        startingBtc: pick(raw.startingBtc),
+        startingCost: pick(raw.startingCost),
+        esc: pick(raw.esc),
     };
 }
 
@@ -92,6 +98,9 @@ export function resolveShareParams(sp: CalculatorSearchParams): ResolvedSharePar
         provider: decoded.provider ?? 'kraken',
         manualPrice: decoded.manualPrice ?? 0,
         currency: decoded.currency ?? 'USD',
+        startingBtc: decoded.startingBtc ?? 0,
+        startingAvgCost: decoded.startingAvgCost ?? 0,
+        annualEscalationPct: decoded.annualEscalationPct ?? 0,
     };
 }
 
@@ -107,6 +116,9 @@ export function encodeShareQuery(p: ResolvedShareParams): string {
         provider: p.provider,
         manualPrice: p.manualPrice,
         currency: p.currency,
+        startingBtc: p.startingBtc,
+        startingAvgCost: p.startingAvgCost,
+        annualEscalationPct: p.annualEscalationPct,
     });
 }
 
@@ -168,6 +180,9 @@ export async function computeShareCard(p: ResolvedShareParams): Promise<ShareCar
                 feePercentage: p.feePercentage,
                 priceMode: p.priceMode,
                 manualPrice: p.manualPrice,
+                startingBtc: p.startingBtc > 0 ? p.startingBtc : undefined,
+                startingAvgCost: p.startingAvgCost > 0 ? p.startingAvgCost / cfg.rate : undefined,
+                annualEscalationPct: p.annualEscalationPct,
             },
             priceData,
             p.priceMode === 'api' ? currentPrice : undefined,

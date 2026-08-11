@@ -30,6 +30,19 @@ export const utcIsoYearsAgo = (years: number): string => {
         .slice(0, 10);
 };
 
+/** Completed 12-month anniversaries between two UTC instants (0 for the first year). */
+export const utcFullYearsBetween = (fromTs: number, toTs: number): number => {
+    if (toTs <= fromTs) return 0;
+    const from = new Date(fromTs);
+    let years = new Date(toTs).getUTCFullYear() - from.getUTCFullYear();
+    // Feb 29 anniversaries resolve to Mar 1 in non-leap years — a one-day drift
+    // that only ever delays the step, never double-counts it.
+    while (years > 0 && Date.UTC(from.getUTCFullYear() + years, from.getUTCMonth(), from.getUTCDate()) > toTs) {
+        years--;
+    }
+    return Math.max(0, years);
+};
+
 export const utcIsoMonthsAgo = (months: number): string => {
     const now = new Date();
     return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - months, now.getUTCDate()))

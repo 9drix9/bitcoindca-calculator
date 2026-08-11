@@ -1009,6 +1009,97 @@ export async function getProfitableWindows(
     }
 }
 
+// ── Cost-basis percentile ──────────────────────────────────────────────────────
+// "Average cost beats N% of all possible start dates for this schedule" — the
+// same fee-free $1-per-purchase window walk as getProfitableWindows (windows
+// stepped weekly over the full price history), but ranking a given average cost
+// against every window's average cost — the harmonic mean of its buy prices —
+// instead of counting profitable endings.
+
+let costBasisCache: Map<string, { timestamp: number; costs: number[] }> | null = null;
+
+export async function getCostBasisPercentile(
+    frequency: 'daily' | 'weekly' | 'biweekly' | 'monthly',
+    durationDays: number,
+    averageCostUsd: number,
+): Promise<{ percentile: number; windowCount: number } | null> {
+    try {
+        // Public endpoint — validate everything, like getProfitableWindows.
+        // averageCostUsd is only ever compared, never a cache key, so it cannot
+        // mint entries; the keyspace stays 4 × ~190 duration buckets.
+        if (!ALLOWED_FREQUENCIES.has(frequency)) return null;
+        if (!Number.isFinite(durationDays) || durationDays < 90) return null;
+        if (!Number.isFinite(averageCostUsd) || averageCostUsd <= 0) return null;
+
+        // Same duration bucketing as getProfitableWindows: small cache, stable results
+        const bucketed = Math.max(90, Math.round(durationDays / 30) * 30);
+        const cacheKey = `${frequency}_${bucketed}`;
+        if (!costBasisCache) costBasisCache = new Map();
+        const cached = costBasisCache.get(cacheKey);
+        let costs = cached && Date.now() - cached.timestamp < 60 * 60 * 1000 ? cached.costs : null;
+
+        if (!costs) {
+            const history = await getBitcoinPriceHistory(0, Date.now(), 'kraken');
+            if (!history || history.length < 400) return null;
+
+            // Daily series indexed by UTC day for O(1) lookups
+            const firstDay = Math.floor(history[0][0] / DAY_MS);
+            const lastDay = Math.floor(history[history.length - 1][0] / DAY_MS);
+            const prices = new Float64Array(lastDay - firstDay + 1);
+            // Every empty day is seeded from this value and every window divides
+            // by it — a zero/non-finite first price would poison every cost.
+            if (!Number.isFinite(history[0][1]) || history[0][1] <= 0) return null;
+            let lastPrice = history[0][1];
+            for (const [ts, price] of history) {
+                const idx = Math.floor(ts / DAY_MS) - firstDay;
+                if (idx >= 0 && idx < prices.length) prices[idx] = price;
+            }
+            for (let i = 0; i < prices.length; i++) {
+                if (prices[i] > 0) lastPrice = prices[i];
+                else prices[i] = lastPrice;
+            }
+
+            const stepDays = frequency === 'daily' ? 1 : frequency === 'weekly' ? 7 : frequency === 'biweekly' ? 14 : 30;
+            const totalDays = prices.length;
+            if (bucketed >= totalDays) return null;
+
+            // Window start advances weekly; $1 per purchase, so a window's
+            // average cost is n / Σ(1/pᵢ).
+            costs = [];
+            for (let start = 0; start + bucketed < totalDays; start += 7) {
+                let invSum = 0;
+                let n = 0;
+                for (let d = start; d <= start + bucketed; d += stepDays) {
+                    invSum += 1 / prices[d];
+                    n++;
+                }
+                if (invSum > 0) costs.push(n / invSum);
+            }
+
+            // Defense-in-depth size cap, matching windowsCache.
+            if (costBasisCache.size >= 800) {
+                const oldest = costBasisCache.keys().next().value;
+                if (oldest !== undefined) costBasisCache.delete(oldest);
+            }
+            costBasisCache.set(cacheKey, { timestamp: Date.now(), costs });
+        }
+
+        const windowCount = costs.length;
+        if (windowCount < 30) return null;
+
+        let higher = 0;
+        for (const cost of costs) {
+            if (cost > averageCostUsd) higher++;
+        }
+        const percentile = (higher / windowCount) * 100;
+        if (!Number.isFinite(percentile)) return null;
+        return { percentile, windowCount };
+    } catch (error) {
+        console.error('[getCostBasisPercentile] failed:', error);
+        return null;
+    }
+}
+
 // ── Hero headline stat ─────────────────────────────────────────────────────────
 // The live number behind the hero: what $50/week for the last 5 years is worth today.
 

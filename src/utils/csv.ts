@@ -18,7 +18,7 @@ export function generateCsvContent(
     currency: { code: string; rate: number } = { code: 'USD', rate: 1 },
 ): string {
     const c = currency.code;
-    const headers = ['Date', `BTC Price (${c})`, `Amount Invested (${c})`, 'BTC Bought', `Cumulative Invested (${c})`, 'Cumulative BTC', `Portfolio Value (${c})`];
+    const headers = ['Date', `BTC Price (${c})`, `Amount Invested (${c})`, 'BTC Bought', `Cumulative Invested (${c})`, 'Cumulative BTC', `Portfolio Value (${c})`, 'Type'];
     const rows = breakdown.map(item => [
         escapeCsvField(formatUtc(item.date, 'isoDay')),
         escapeCsvField((item.price * currency.rate).toFixed(2)),
@@ -27,6 +27,9 @@ export function generateCsvContent(
         escapeCsvField((item.totalInvested * currency.rate).toFixed(2)),
         escapeCsvField(item.totalAccumulated.toFixed(8)),
         escapeCsvField((item.portfolioValue * currency.rate).toFixed(2)),
+        // A starting stack is a position carried in, not a market buy — leaving
+        // it unlabeled made it indistinguishable from a purchase in exports.
+        escapeCsvField(item.isStartingStack ? 'starting stack' : 'buy'),
     ].join(','));
 
     return [headers.join(','), ...rows].join('\n');

@@ -101,6 +101,11 @@ export default function MethodologyPage() {
                                 </tbody>
                             </table>
                         </div>
+                        <p className="text-sm sm:text-base text-slate-600 dark:text-slate-400 leading-relaxed">
+                            The same cleaned daily series and the backtest engine behind every number here are
+                            available as a <Link href="/developers" className="text-amber-700 dark:text-amber-400 hover:underline">free, keyless JSON/CSV API</Link> —
+                            check our work, or build on it.
+                        </p>
                     </div>
                 </section>
 

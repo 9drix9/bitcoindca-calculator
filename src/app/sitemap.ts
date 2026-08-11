@@ -1,5 +1,5 @@
 import type { MetadataRoute } from 'next';
-import { SCENARIOS } from './dca/scenarios';
+import { CURATED_SCENARIOS, SCENARIOS } from './dca/scenarios';
 
 // The sitemap is a static route, so without this it would be generated once at
 // build time and every `new Date()` below would be frozen at the build date —
@@ -20,6 +20,8 @@ const PAGE_DATES = {
     about: new Date('2026-08-10'),
     methodology: new Date('2026-08-08'),
     embedGuide: new Date('2026-07-25'),
+    developers: new Date('2026-08-11'),
+    alternatives: new Date('2026-08-11'),
     privacy: new Date('2026-08-10'),
     terms: new Date('2026-08-10'),
     dcaIndex: new Date('2026-07-24'),
@@ -90,6 +92,13 @@ export default function sitemap(): MetadataRoute.Sitemap {
             changeFrequency: 'daily',
             priority: 0.6,
         })),
+        // Curated story scenarios — the shareable ones, so slightly higher priority.
+        ...CURATED_SCENARIOS.map((s): MetadataRoute.Sitemap[number] => ({
+            url: `${baseUrl}/dca/${s.slug}`,
+            lastModified: now,
+            changeFrequency: 'daily',
+            priority: 0.7,
+        })),
         {
             url: `${baseUrl}/bitcoin-dca-tax`,
             lastModified: PAGE_DATES.dcaTax,
@@ -153,6 +162,24 @@ export default function sitemap(): MetadataRoute.Sitemap {
             lastModified: PAGE_DATES.embedGuide,
             changeFrequency: 'monthly',
             priority: 0.5,
+        },
+        {
+            url: `${baseUrl}/developers`,
+            lastModified: PAGE_DATES.developers,
+            changeFrequency: 'monthly',
+            priority: 0.5,
+        },
+        {
+            url: `${baseUrl}/alternatives`,
+            lastModified: PAGE_DATES.alternatives,
+            changeFrequency: 'monthly',
+            priority: 0.7,
+        },
+        {
+            url: `${baseUrl}/alternatives/dcabtc`,
+            lastModified: PAGE_DATES.alternatives,
+            changeFrequency: 'monthly',
+            priority: 0.6,
         },
         {
             url: `${baseUrl}/privacy`,

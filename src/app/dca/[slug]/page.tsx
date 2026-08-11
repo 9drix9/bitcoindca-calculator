@@ -10,17 +10,19 @@ import { calculateDca } from '@/utils/dca';
 import { DAY_MS, formatUtc } from '@/utils/dates';
 import type { DcaBreakdownItem, DcaResult } from '@/types';
 import {
+    CURATED_SCENARIOS,
     SCENARIO_AMOUNTS,
     SCENARIO_YEARS,
     SCENARIOS,
     findScenario,
+    getCuratedScenario,
     getScenario,
     type Scenario,
 } from '../scenarios';
 
-// Prerender all 104 scenarios and recompute against fresh prices once a day.
+// Prerender all matrix + curated scenarios and recompute against fresh prices once a day.
 export const revalidate = 86400;
-// Anything outside the fixed matrix is a 404: never compute arbitrary slugs.
+// Anything outside the fixed lists is a 404: never compute arbitrary slugs.
 export const dynamicParams = false;
 
 const BASE_URL = 'https://btcdollarcostaverage.com';
@@ -28,7 +30,75 @@ const BASE_URL = 'https://btcdollarcostaverage.com';
 type PageProps = { params: Promise<{ slug: string }> };
 
 export function generateStaticParams(): { slug: string }[] {
-    return SCENARIOS.map(({ slug }) => ({ slug }));
+    return [...SCENARIOS.map(({ slug }) => ({ slug })), ...CURATED_SCENARIOS.map(({ slug }) => ({ slug }))];
+}
+
+// ── View model ─────────────────────────────────────────────────────────────────
+// One shape for both scenario kinds, so the template can never state a curated
+// plan's dates or cadence wrong: every date below comes from the entry itself.
+
+const FREQ_NOUN = { daily: 'day', weekly: 'week', biweekly: '2 weeks', monthly: 'month' } as const;
+
+const LONG_DATE = new Intl.DateTimeFormat('en-US', { timeZone: 'UTC', month: 'long', day: 'numeric', year: 'numeric' });
+
+interface ScenarioView {
+    slug: string;
+    amount: number;
+    frequency: 'daily' | 'weekly' | 'biweekly' | 'monthly';
+    /** "week", "month", "day", "2 weeks" — reads as "every {noun}" */
+    freqNoun: string;
+    startTs: number;
+    startDateIso: string;
+    /** "January 1, 2015" / "November 10, 2021" */
+    startLong: string;
+    /** Set only for fixed-window curated scenarios. */
+    endTs?: number;
+    endDateIso?: string;
+    endLong?: string;
+    heading: string;
+    metaTitle: string;
+    /** Curated entries carry their own hook; matrix pages build one from numbers. */
+    curatedDescription?: string;
+    shortLabel: string;
+    /** Present only for matrix entries — drives the related-scenarios grid. */
+    matrix?: Scenario;
+}
+
+function buildView(slug: string): ScenarioView | null {
+    const matrix = getScenario(slug);
+    if (matrix) {
+        return {
+            slug,
+            amount: matrix.amount,
+            frequency: matrix.frequency,
+            freqNoun: matrix.freqSlug,
+            startTs: matrix.startTs,
+            startDateIso: matrix.startDateIso,
+            startLong: LONG_DATE.format(matrix.startTs),
+            heading: `$${matrix.amount} per ${matrix.freqSlug} in Bitcoin since ${matrix.year}`,
+            metaTitle: `$${matrix.amount}/${matrix.freqSlug === 'week' ? 'Week' : 'Month'} in Bitcoin Since ${matrix.year}: What It's Worth Today`,
+            shortLabel: matrix.shortLabel,
+            matrix,
+        };
+    }
+    const curated = getCuratedScenario(slug);
+    if (!curated) return null;
+    return {
+        slug,
+        amount: curated.amount,
+        frequency: curated.frequency,
+        freqNoun: FREQ_NOUN[curated.frequency],
+        startTs: curated.startTs,
+        startDateIso: curated.startDateIso,
+        startLong: LONG_DATE.format(curated.startTs),
+        endTs: curated.endTs,
+        endDateIso: curated.endDateIso,
+        endLong: curated.endTs !== undefined ? LONG_DATE.format(curated.endTs) : undefined,
+        heading: curated.title,
+        metaTitle: curated.title,
+        curatedDescription: curated.description,
+        shortLabel: curated.shortLabel,
+    };
 }
 
 // ── Formatting (server-rendered SEO pages are USD-only by design) ──────────────
@@ -65,20 +135,23 @@ const fmtSats = (btc: number): string => `${Math.floor(btc * 1e8).toLocaleString
 
 // ── Computation ────────────────────────────────────────────────────────────────
 
-async function computeScenario(scenario: Scenario): Promise<DcaResult | null> {
+async function computeScenario(view: ScenarioView): Promise<DcaResult | null> {
     try {
         const now = Date.now();
+        // A fixed-window scenario stops BUYING at its end date; the stack is
+        // still valued at today's price, same as every result on the site.
+        const buyEnd = view.endTs ?? now;
         const [history, currentPrice] = await Promise.all([
-            getBitcoinPriceHistory(scenario.startTs, now + DAY_MS, 'kraken', DAILY_PRICE_REVALIDATE),
+            getBitcoinPriceHistory(view.startTs, now + DAY_MS, 'kraken', DAILY_PRICE_REVALIDATE),
             getCurrentBitcoinPrice('kraken', DAILY_PRICE_REVALIDATE).catch(() => null),
         ]);
         if (!history || history.length === 0) return null;
         const result = calculateDca(
             {
-                amount: scenario.amount,
-                frequency: scenario.frequency,
-                startDate: new Date(scenario.startTs),
-                endDate: new Date(now),
+                amount: view.amount,
+                frequency: view.frequency,
+                startDate: new Date(view.startTs),
+                endDate: new Date(buyEnd),
                 feePercentage: 0,
                 priceMode: 'api',
                 manualPrice: 0,
@@ -90,7 +163,7 @@ async function computeScenario(scenario: Scenario): Promise<DcaResult | null> {
         return result;
     } catch (error) {
         // Never build-fail: the page renders an "unavailable" state instead.
-        console.error(`[dca/${scenario.slug}] scenario computation failed:`, error);
+        console.error(`[dca/${view.slug}] scenario computation failed:`, error);
         return null;
     }
 }
@@ -150,31 +223,35 @@ function relatedScenarios(scenario: Scenario): Scenario[] {
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
     const { slug } = await params;
-    const scenario = getScenario(slug);
-    if (!scenario) return {};
-    const { amount, freqSlug, frequency, year, startDateIso } = scenario;
+    const view = buildView(slug);
+    if (!view) return {};
 
     // Root layout template appends "| Bitcoin DCA Calculator", so no suffix here.
-    const title = `$${amount}/${freqSlug === 'week' ? 'Week' : 'Month'} in Bitcoin Since ${year}: What It's Worth Today`;
+    const title = view.metaTitle;
 
-    let description = `See what buying $${amount} of Bitcoin every ${freqSlug} since January ${year} would be worth today: total invested, BTC accumulated, and year-by-year returns from real historical prices.`;
+    let description = view.curatedDescription
+        ?? `See what buying $${view.amount} of Bitcoin every ${view.freqNoun} since ${view.startLong} would be worth today: total invested, BTC accumulated, and year-by-year returns from real historical prices.`;
     try {
         // Hits the same warm cache as the page render, so this is cheap.
-        const result = await computeScenario(scenario);
+        const result = await computeScenario(view);
         if (result) {
-            description = `Buying $${amount} of Bitcoin every ${freqSlug} since January ${year} adds up to ${fmtUsd(result.totalInvested)} invested, worth ${fmtUsd(result.currentValue)} today (${fmtPct(result.roi, true)}), with ${fmtBtc(result.btcAccumulated)} accumulated.`;
+            const window = view.endLong
+                ? `from ${view.startLong} to ${view.endLong}`
+                : `since ${view.startLong}`;
+            description = `Buying $${view.amount} of Bitcoin every ${view.freqNoun} ${window} adds up to ${fmtUsd(result.totalInvested)} invested, worth ${fmtUsd(result.currentValue)} today (${fmtPct(result.roi, true)}), with ${fmtBtc(result.btcAccumulated)} accumulated.`;
         }
     } catch {
         // Keep the generic description.
     }
 
     // The /api/og result-card renderer accepts the same query params as /share.
-    // fee=0 matches this page's computation, and omitting endDate makes the
-    // card default to "today" at image render time — matching the title.
+    // fee=0 matches this page's computation; endDate is included only for
+    // fixed-window scenarios — omitted, the card defaults to "today".
     const ogImage = `/api/og?${new URLSearchParams({
-        amount: String(amount),
-        frequency,
-        startDate: startDateIso,
+        amount: String(view.amount),
+        frequency: view.frequency,
+        startDate: view.startDateIso,
+        ...(view.endDateIso ? { endDate: view.endDateIso } : {}),
         fee: '0',
     })}`;
 
@@ -228,15 +305,24 @@ function StatCard({
 
 export default async function DcaScenarioPage({ params }: PageProps) {
     const { slug } = await params;
-    const scenario = getScenario(slug);
-    if (!scenario) notFound();
+    const view = buildView(slug);
+    if (!view) notFound();
 
-    const { amount, freqSlug, frequency, year, startDateIso } = scenario;
-    const result = await computeScenario(scenario);
-    const related = relatedScenarios(scenario);
+    const { amount, freqNoun } = view;
+    const result = await computeScenario(view);
+    const related = view.matrix
+        ? relatedScenarios(view.matrix)
+        : [];
+    // Curated pages relate to their curated siblings — same story family.
+    const relatedCurated = view.matrix
+        ? []
+        : CURATED_SCENARIOS.filter((c) => c.slug !== view.slug).slice(0, 4);
 
-    const heading = `$${amount} per ${freqSlug} in Bitcoin since ${year}`;
-    const ctaHref = `/?amount=${amount}&frequency=${frequency}&startDate=${startDateIso}&fee=0`;
+    const heading = view.heading;
+    const windowText = view.endLong
+        ? `from ${view.startLong} to ${view.endLong}`
+        : `from ${view.startLong}`;
+    const ctaHref = `/?amount=${amount}&frequency=${view.frequency}&startDate=${view.startDateIso}${view.endDateIso ? `&endDate=${view.endDateIso}` : ''}&fee=0`;
     const pageUrl = `${BASE_URL}/dca/${slug}`;
 
     const stats = result?.stats;
@@ -262,18 +348,18 @@ export default async function DcaScenarioPage({ params }: PageProps) {
     const faqs: { q: string; a: string }[] = result
         ? [
             {
-                q: `How much would $${amount} per ${freqSlug} in Bitcoin since ${year} be worth today?`,
-                a: `Investing $${amount} every ${freqSlug} from January 1, ${year} totals ${fmtUsd(result.totalInvested)} across ${result.breakdown.length} purchases. At today's price that stack would be worth ${fmtUsd(result.currentValue)}, a return of ${fmtPct(result.roi, true)}.`,
+                q: `How much would $${amount} per ${freqNoun} in Bitcoin ${view.endLong ? `${windowText}` : `since ${view.startLong}`} be worth today?`,
+                a: `Investing $${amount} every ${freqNoun} ${windowText} totals ${fmtUsd(result.totalInvested)} across ${result.breakdown.length} purchases. At today's price that stack would be worth ${fmtUsd(result.currentValue)}, a return of ${fmtPct(result.roi, true)}.`,
             },
             {
-                q: `How much BTC would $${amount} per ${freqSlug} since ${year} accumulate?`,
+                q: `How much BTC would $${amount} per ${freqNoun} ${view.endLong ? windowText : `since ${view.startLong}`} accumulate?`,
                 a: `About ${fmtBtc(result.btcAccumulated)} (${fmtSats(result.btcAccumulated)}), at an average cost of ${fmtUsd(result.averageCost)} per BTC.`,
             },
             {
                 q: 'What is the annualized return of this DCA schedule?',
                 a: stats?.xirrPercent != null && stats.maxDrawdownPercent != null
                     ? `The money-weighted annualized return (XIRR) is ${fmtPct(stats.xirrPercent, true)} per year, with a maximum portfolio drawdown of ${fmtPct(stats.maxDrawdownPercent)} along the way.`
-                    : `The total return since ${year} is ${fmtPct(result.roi, true)}. The period is too short for a meaningful annualized figure.`,
+                    : `The total return of this schedule is ${fmtPct(result.roi, true)}. The period is too short for a meaningful annualized figure.`,
             },
         ]
         : [];
@@ -311,7 +397,7 @@ export default async function DcaScenarioPage({ params }: PageProps) {
                         <li aria-hidden="true">/</li>
                         <li><Link href="/dca" className="hover:text-amber-700 dark:hover:text-amber-400 transition-colors">DCA Scenarios</Link></li>
                         <li aria-hidden="true">/</li>
-                        <li aria-current="page" className="text-slate-700 dark:text-slate-300">{scenario.shortLabel}</li>
+                        <li aria-current="page" className="text-slate-700 dark:text-slate-300">{view.shortLabel}</li>
                     </ol>
                 </nav>
 
@@ -323,7 +409,7 @@ export default async function DcaScenarioPage({ params }: PageProps) {
                     {result && (
                         <p className="text-base sm:text-lg text-slate-600 dark:text-slate-300 leading-relaxed">
                             Buying <strong className="font-semibold text-slate-900 dark:text-white">${amount}</strong> of
-                            Bitcoin every {freqSlug} from January 1, {year} works out
+                            Bitcoin every {freqNoun} {windowText} works out
                             to <strong className="font-semibold text-slate-900 dark:text-white">{fmtUsd(result.totalInvested)}</strong> put
                             in across {result.breakdown.length} purchases. Those buys total <strong className="font-semibold text-slate-900 dark:text-white">{fmtBtc(result.btcAccumulated)}</strong>,
                             worth <strong className="font-semibold text-slate-900 dark:text-white">{fmtUsd(result.currentValue)}</strong> at
@@ -468,7 +554,7 @@ export default async function DcaScenarioPage({ params }: PageProps) {
                         Run your own numbers
                     </h2>
                     <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300 mb-5 max-w-xl mx-auto">
-                        This page assumes ${amount} every {freqSlug} and zero fees. Change any of it in the live
+                        This page assumes ${amount} every {freqNoun} and zero fees. Change any of it in the live
                         calculator: amount, cadence, dates, fees, all backtested against the same historical data.
                     </p>
                     <Link
@@ -514,7 +600,7 @@ export default async function DcaScenarioPage({ params }: PageProps) {
                         Related scenarios
                     </h2>
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">
-                        {related.map((s) => (
+                        {[...related, ...relatedCurated].map((s) => (
                             <Link
                                 key={s.slug}
                                 href={`/dca/${s.slug}`}

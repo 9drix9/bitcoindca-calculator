@@ -12,6 +12,7 @@ import {
     formatUtc,
     parseUtcDate,
     utcDayStart,
+    utcFullYearsBetween,
     DAY_MS,
     EARLIEST_PRICE_DATE,
     DEFAULT_YEARS_BACK,
@@ -268,6 +269,14 @@ export const DcaCalculator = ({ initialPriceData, initialLivePrice }: DcaCalcula
     const [amount, setAmount] = useState<number>(50);
     const deferredAmount = useDeferredValue(amount);
     const [frequency, setFrequency] = useState<Frequency>('weekly');
+    // Advanced plan shape: coins already held, and income-style annual raises.
+    const [startingBtc, setStartingBtc] = useState<number>(0);
+    const deferredStartingBtc = useDeferredValue(startingBtc);
+    const [startingAvgCost, setStartingAvgCost] = useState<number>(0);
+    const deferredStartingAvgCost = useDeferredValue(startingAvgCost);
+    const [annualEscalationPct, setAnnualEscalationPct] = useState<number>(0);
+    const deferredEscalation = useDeferredValue(annualEscalationPct);
+    const [showMoreOptions, setShowMoreOptions] = useState(false);
     // Seeded from UTC, not local time. This component now server-renders (it is no
     // longer ssr:false), and a locally-derived default put a different date in the
     // server HTML than the browser produced, tripping a hydration mismatch for
@@ -321,6 +330,11 @@ export const DcaCalculator = ({ initialPriceData, initialLivePrice }: DcaCalcula
             setStartDate(utcIsoMonthsAgo(preset.monthsBack));
         }
         setPriceMode('api');
+        // A preset is a complete, reproducible scenario — clear the advanced
+        // fields or two people clicking the same chip see different numbers.
+        setStartingBtc(0);
+        setStartingAvgCost(0);
+        setAnnualEscalationPct(0);
     }, []);
 
     // Preset amounts are entered into the display-currency amount field, so the
@@ -331,6 +345,9 @@ export const DcaCalculator = ({ initialPriceData, initialLivePrice }: DcaCalcula
             {
                 title: 'Quick scenarios',
                 presets: [
+                    // The starter chip exists for people who have never DCA'd:
+                    // a number small enough to feel safe, a window short enough to grasp.
+                    { label: `Start small: ${s}10/week for 1 year`, amount: 10, frequency: 'weekly', yearsBack: 1 },
                     { label: `${s}50/week for 5 years`, amount: 50, frequency: 'weekly', yearsBack: 5 },
                     { label: `${s}100/week for 3 years`, amount: 100, frequency: 'weekly', yearsBack: 3 },
                     { label: `${s}200/month for 1 year`, amount: 200, frequency: 'monthly', yearsBack: 1 },
@@ -363,6 +380,15 @@ export const DcaCalculator = ({ initialPriceData, initialLivePrice }: DcaCalcula
             if (params.priceMode) setPriceMode(params.priceMode);
             if (params.provider) setProvider(params.provider);
             if (params.manualPrice !== undefined) setManualPrice(params.manualPrice);
+            if (params.startingBtc !== undefined) {
+                setStartingBtc(params.startingBtc);
+                setShowMoreOptions(true);
+            }
+            if (params.startingAvgCost !== undefined) setStartingAvgCost(params.startingAvgCost);
+            if (params.annualEscalationPct !== undefined) {
+                setAnnualEscalationPct(params.annualEscalationPct);
+                setShowMoreOptions(true);
+            }
             // A shared link is a single programmatic change, not typing — skip
             // the fetch debounce so the recipient isn't parked on a skeleton.
             if (params.startDate || params.endDate) urlAppliedRef.current = true;
@@ -373,6 +399,8 @@ export const DcaCalculator = ({ initialPriceData, initialLivePrice }: DcaCalcula
     const activePresetLabel = useMemo(() => {
         const todayIso = utcIsoToday();
         if (endDate !== todayIso) return null;
+        // Advanced fields change the numbers, so a chip must not claim the match.
+        if (startingBtc > 0 || annualEscalationPct > 0) return null;
         for (const group of presetGroups) {
             for (const preset of group.presets) {
                 if (preset.amount !== amount || preset.frequency !== frequency) continue;
@@ -387,7 +415,7 @@ export const DcaCalculator = ({ initialPriceData, initialLivePrice }: DcaCalcula
             }
         }
         return null;
-    }, [presetGroups, amount, frequency, startDate, endDate]);
+    }, [presetGroups, amount, frequency, startDate, endDate, startingBtc, annualEscalationPct]);
 
     const dateError = useMemo(() => {
         if (!startDate || !endDate) return 'Pick a start date and an end date';
@@ -512,12 +540,18 @@ export const DcaCalculator = ({ initialPriceData, initialLivePrice }: DcaCalcula
 
     const isFutureEndDate = parseUtcDate(endDate) > todayUtcTs;
 
+    // Starting-stack cost is entered per-BTC in the display currency.
+    const startingAvgCostUsd = useMemo(
+        () => (deferredStartingAvgCost > 0 ? deferredStartingAvgCost / currencyConfig.rate : undefined),
+        [deferredStartingAvgCost, currencyConfig.rate],
+    );
+
     const results = useMemo(() => {
         if (dateError) {
             return { totalInvested: 0, btcAccumulated: 0, averageCost: 0, currentValue: 0, profit: 0, roi: 0, breakdown: [] };
         }
-        return calculateDca({ amount: amountUsd, frequency, startDate: new Date(startDate), endDate: new Date(endDate), feePercentage: deferredFee, priceMode, manualPrice: deferredManualPrice }, priceData, priceMode === 'api' ? livePrice : undefined);
-    }, [amountUsd, frequency, startDate, endDate, deferredFee, priceMode, deferredManualPrice, priceData, livePrice, dateError]);
+        return calculateDca({ amount: amountUsd, frequency, startDate: new Date(startDate), endDate: new Date(endDate), feePercentage: deferredFee, priceMode, manualPrice: deferredManualPrice, startingBtc: deferredStartingBtc, startingAvgCost: startingAvgCostUsd, annualEscalationPct: deferredEscalation }, priceData, priceMode === 'api' ? livePrice : undefined);
+    }, [amountUsd, frequency, startDate, endDate, deferredFee, priceMode, deferredManualPrice, deferredStartingBtc, startingAvgCostUsd, deferredEscalation, priceData, livePrice, dateError]);
 
     // Past-only run (end date capped at today). calculateDca already includes the
     // future leg at the last known price when the end date is in the future, so
@@ -526,26 +560,47 @@ export const DcaCalculator = ({ initialPriceData, initialLivePrice }: DcaCalcula
     const pastResults = useMemo(() => {
         if (dateError || !isFutureEndDate) return results;
         return calculateDca(
-            { amount: amountUsd, frequency, startDate: new Date(startDate), endDate: new Date(todayUtcTs), feePercentage: deferredFee, priceMode, manualPrice: deferredManualPrice },
+            { amount: amountUsd, frequency, startDate: new Date(startDate), endDate: new Date(todayUtcTs), feePercentage: deferredFee, priceMode, manualPrice: deferredManualPrice, startingBtc: deferredStartingBtc, startingAvgCost: startingAvgCostUsd, annualEscalationPct: deferredEscalation },
             priceData,
             priceMode === 'api' ? livePrice : undefined
         );
-    }, [results, dateError, isFutureEndDate, amountUsd, frequency, startDate, todayUtcTs, deferredFee, priceMode, deferredManualPrice, priceData, livePrice]);
+    }, [results, dateError, isFutureEndDate, amountUsd, frequency, startDate, todayUtcTs, deferredFee, priceMode, deferredManualPrice, deferredStartingBtc, startingAvgCostUsd, deferredEscalation, priceData, livePrice]);
+
+    // Schedule-only view of the result, for panels whose comparison has no
+    // "coins already held" analogue (savings, lump sum, exchange fees).
+    // Stack value separates exactly: it owns startingBtc/totalBtc of the coins.
+    const stackCost = results.stats?.startingStackCost ?? 0;
+    const stackShare = deferredStartingBtc > 0 && results.btcAccumulated > 0
+        ? Math.min(1, deferredStartingBtc / results.btcAccumulated)
+        : 0;
+    const scheduledOnly = useMemo(() => {
+        const invested = Math.max(0, results.totalInvested - stackCost);
+        const value = results.currentValue * (1 - stackShare);
+        return {
+            invested,
+            value,
+            roi: invested > 0 ? ((value - invested) / invested) * 100 : 0,
+            profit: value - invested,
+        };
+    }, [results.totalInvested, results.currentValue, stackCost, stackShare]);
 
     const lumpSumResult = useMemo(() => {
         if (priceMode !== 'api' || !priceData.length || !livePrice || dateError) return null;
-        return calculateLumpSum(results.totalInvested, new Date(startDate), priceData, livePrice, deferredFee);
-    }, [priceMode, priceData, livePrice, results.totalInvested, startDate, dateError, deferredFee]);
+        // Schedule money only: lump-summing the stack's cost at the WINDOW-START
+        // price against stack coins bought years earlier hands the DCA side all
+        // the pre-window appreciation and decides the panel by the stack.
+        return calculateLumpSum(scheduledOnly.invested, new Date(startDate), priceData, livePrice, deferredFee);
+    }, [priceMode, priceData, livePrice, scheduledOnly.invested, startDate, dateError, deferredFee]);
 
     const sp500Result: AssetDcaResult | null = useMemo(() => {
         if (!sp500Data) return null;
-        return calculateAssetDca(amountUsd, frequency, new Date(startDate), new Date(endDate), deferredFee, sp500Data, '^SP500TR', 'S&P 500 (total return)');
-    }, [sp500Data, amountUsd, frequency, startDate, endDate, deferredFee]);
+        return calculateAssetDca(amountUsd, frequency, new Date(startDate), new Date(endDate), deferredFee, sp500Data, '^SP500TR', 'S&P 500 (total return)', deferredEscalation);
+    }, [sp500Data, amountUsd, frequency, startDate, endDate, deferredFee, deferredEscalation]);
 
     const goldResult: AssetDcaResult | null = useMemo(() => {
         if (!goldData) return null;
-        return calculateAssetDca(amountUsd, frequency, new Date(startDate), new Date(endDate), deferredFee, goldData, 'GC=F', 'Gold');
-    }, [goldData, amountUsd, frequency, startDate, endDate, deferredFee]);
+        return calculateAssetDca(amountUsd, frequency, new Date(startDate), new Date(endDate), deferredFee, goldData, 'GC=F', 'Gold', deferredEscalation);
+    }, [goldData, amountUsd, frequency, startDate, endDate, deferredFee, deferredEscalation]);
 
     // The comparison panel's BTC row is valued at the BTC window series' own
     // last bar — the same semantics calculateAssetDca gives S&P/gold. Reusing
@@ -553,10 +608,14 @@ export const DcaCalculator = ({ initialPriceData, initialLivePrice }: DcaCalcula
     // frozen at the window-end close, so a 2017→2019 backtest was "won" by
     // years of post-window appreciation only one side received.
     const btcAssetResult: AssetDcaResult = useMemo(() => {
+        // Schedule only — no starting stack. The comparators have no analogue of
+        // "coins already held", so including it would decide the panel by the
+        // stack, not the plan. Escalation IS passed: all three assets get the
+        // same deposit stream.
         const windowResult = dateError
             ? results
             : calculateDca(
-                { amount: amountUsd, frequency, startDate: new Date(startDate), endDate: new Date(endDate), feePercentage: deferredFee, priceMode, manualPrice: deferredManualPrice },
+                { amount: amountUsd, frequency, startDate: new Date(startDate), endDate: new Date(endDate), feePercentage: deferredFee, priceMode, manualPrice: deferredManualPrice, annualEscalationPct: deferredEscalation },
                 priceData,
                 undefined,
             );
@@ -565,9 +624,23 @@ export const DcaCalculator = ({ initialPriceData, initialLivePrice }: DcaCalcula
             profit: windowResult.profit, roi: windowResult.roi,
             breakdown: windowResult.breakdown.map(b => ({ date: b.date, portfolioValue: b.portfolioValue })),
         };
-    }, [results, dateError, amountUsd, frequency, startDate, endDate, deferredFee, priceMode, deferredManualPrice, priceData]);
+    }, [results, dateError, amountUsd, frequency, startDate, endDate, deferredFee, priceMode, deferredManualPrice, deferredEscalation, priceData]);
 
-    const purchaseCount = results.breakdown.length;
+    // Scheduled market buys only. The starting stack's breakdown row is a
+    // position, not a purchase — counting it made every "N purchases" surface,
+    // the fee panel's per-buy math, and the share receipt over-count by one.
+    const purchaseCount = results.breakdown.length > 0 && results.breakdown[0].isStartingStack
+        ? results.breakdown.length - 1
+        : results.breakdown.length;
+
+    // With escalation, "keep buying" projections must start from what the plan
+    // pays TODAY, not the year-one amount.
+    const currentAmountUsd = useMemo(() => {
+        if (deferredEscalation <= 0) return amountUsd;
+        const startTs = parseUtcDate(startDate);
+        if (!Number.isFinite(startTs) || startTs >= todayUtcTs) return amountUsd;
+        return amountUsd * Math.pow(1 + deferredEscalation / 100, utcFullYearsBetween(startTs, todayUtcTs));
+    }, [amountUsd, deferredEscalation, startDate, todayUtcTs]);
 
     const durationText = useMemo(() => {
         if (results.breakdown.length < 2) return null;
@@ -603,7 +676,7 @@ export const DcaCalculator = ({ initialPriceData, initialLivePrice }: DcaCalcula
     }, [results.breakdown, startDate, endDate, currencyConfig.code, currencyConfig.rate]);
 
     const handleShare = useCallback(async () => {
-        const paramStr = encodeParams({ amount, frequency, startDate, endDate, feePercentage, priceMode, provider, manualPrice, currency: currencyConfig.code });
+        const paramStr = encodeParams({ amount, frequency, startDate, endDate, feePercentage, priceMode, provider, manualPrice, currency: currencyConfig.code, startingBtc, startingAvgCost, annualEscalationPct });
         // /share serves a result-specific OG card to link unfurlers, then forwards
         // humans to the calculator with the same params.
         const url = `${window.location.origin}/share?${paramStr}`;
@@ -624,7 +697,7 @@ export const DcaCalculator = ({ initialPriceData, initialLivePrice }: DcaCalcula
             setShareMessage("Couldn't copy the link");
         }
         shareTimerRef.current = setTimeout(() => setShareMessage(null), 2000);
-    }, [amount, frequency, startDate, endDate, feePercentage, priceMode, provider, manualPrice, currencyConfig.code]);
+    }, [amount, frequency, startDate, endDate, feePercentage, priceMode, provider, manualPrice, currencyConfig.code, startingBtc, startingAvgCost, annualEscalationPct]);
 
     /**
      * Mirror the current settings into the address bar.
@@ -641,17 +714,21 @@ export const DcaCalculator = ({ initialPriceData, initialLivePrice }: DcaCalcula
                 amount, frequency, startDate, endDate,
                 feePercentage, priceMode, provider, manualPrice,
                 currency: currencyConfig.code,
+                startingBtc, startingAvgCost, annualEscalationPct,
             });
             window.history.replaceState(null, '', `${window.location.pathname}?${params}`);
         }, 400);
         return () => clearTimeout(timer);
-    }, [amount, frequency, startDate, endDate, feePercentage, priceMode, provider, manualPrice, currencyConfig.code, dateError]);
+    }, [amount, frequency, startDate, endDate, feePercentage, priceMode, provider, manualPrice, currencyConfig.code, startingBtc, startingAvgCost, annualEscalationPct, dateError]);
 
     const handleRetry = useCallback(() => setRetryToken(t => t + 1), []);
 
     const amountField = useNumericInput(amount, setAmount, (n) => Math.min(1e9, Math.max(0, n)));
     const feeField = useNumericInput(feePercentage, setFeePercentage, (n) => Math.min(50, Math.max(0, n)));
     const manualPriceField = useNumericInput(manualPrice, setManualPrice, (n) => Math.min(1e9, Math.max(1, n)));
+    const startingBtcField = useNumericInput(startingBtc, setStartingBtc, (n) => Math.min(21_000_000, Math.max(0, n)));
+    const startingCostField = useNumericInput(startingAvgCost, setStartingAvgCost, (n) => Math.min(1e9, Math.max(0, n)));
+    const escalationField = useNumericInput(annualEscalationPct, setAnnualEscalationPct, (n) => Math.min(200, Math.max(0, n)));
 
     // In API mode with no data, results would be silently priced at the manual
     // default — never show those phantom numbers. A range that EXTENDS beyond
@@ -906,6 +983,62 @@ export const DcaCalculator = ({ initialPriceData, initialLivePrice }: DcaCalcula
                             />
                         </div>
                     )}
+
+                    {/* Advanced plan shape, collapsed by default: most visitors never
+                        need it, and three extra fields would push the results further
+                        down every phone screen. */}
+                    <div className="col-span-2 lg:col-span-3">
+                        <button
+                            type="button"
+                            onClick={() => setShowMoreOptions(v => !v)}
+                            aria-expanded={showMoreOptions}
+                            aria-controls="dca-more-options"
+                            className="flex min-h-11 items-center gap-1.5 text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-amber-700 dark:hover:text-amber-400 transition-colors"
+                        >
+                            <span aria-hidden="true" className={clsx('inline-block transition-transform text-[10px]', showMoreOptions && 'rotate-90')}>▶</span>
+                            More options
+                            <span className="font-normal text-slate-500 dark:text-slate-400">— starting stack, yearly increase</span>
+                        </button>
+                        {showMoreOptions && (
+                            <div id="dca-more-options" className="mt-2 grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-5 fade-in">
+                                <div className="space-y-1.5">
+                                    <label htmlFor="dca-starting-btc" className="text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300">Starting stack (BTC)</label>
+                                    <input
+                                        id="dca-starting-btc"
+                                        type="number"
+                                        inputMode="decimal"
+                                        step="0.01"
+                                        {...startingBtcField}
+                                        className="w-full px-3 py-2 text-base sm:text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500 outline-none transition-colors"
+                                    />
+                                    <p className="text-[11px] text-slate-500 dark:text-slate-400">Coins you already hold</p>
+                                </div>
+                                <div className="space-y-1.5">
+                                    <label htmlFor="dca-starting-cost" className="text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300">Its avg. cost ({currencyConfig.code})</label>
+                                    <input
+                                        id="dca-starting-cost"
+                                        type="number"
+                                        inputMode="decimal"
+                                        {...startingCostField}
+                                        className="w-full px-3 py-2 text-base sm:text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500 outline-none transition-colors"
+                                    />
+                                    <p className="text-[11px] text-slate-500 dark:text-slate-400">Per BTC. Blank = priced at your start date</p>
+                                </div>
+                                <div className="space-y-1.5">
+                                    <label htmlFor="dca-escalation" className="text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300">Yearly increase (%)</label>
+                                    <input
+                                        id="dca-escalation"
+                                        type="number"
+                                        inputMode="decimal"
+                                        step="1"
+                                        {...escalationField}
+                                        className="w-full px-3 py-2 text-base sm:text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500 outline-none transition-colors"
+                                    />
+                                    <p className="text-[11px] text-slate-500 dark:text-slate-400">Buy amount grows each year, like a raise</p>
+                                </div>
+                            </div>
+                        )}
+                    </div>
                 </div>
 
                 {/* Footer bar */}
@@ -1221,13 +1354,14 @@ export const DcaCalculator = ({ initialPriceData, initialLivePrice }: DcaCalcula
                             <div className="grid grid-cols-2 gap-3 sm:gap-6">
                                 <div className="p-3 sm:p-4 rounded-lg bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/50">
                                     <div className="text-xs sm:text-sm font-medium text-amber-700 dark:text-amber-400 mb-1">DCA Strategy</div>
+                                    {/* Schedule only, matching the lump-sum leg — see lumpSumResult. */}
                                     <div className="text-lg sm:text-2xl font-bold text-slate-900 dark:text-white truncate">
-                                        <span className="sm:hidden">{formatCompact(results.currentValue)}</span>
-                                        <span className="hidden sm:inline">{formatCurrency(results.currentValue)}</span>
+                                        <span className="sm:hidden">{formatCompact(scheduledOnly.value)}</span>
+                                        <span className="hidden sm:inline">{formatCurrency(scheduledOnly.value)}</span>
                                     </div>
-                                    <div className={clsx("text-xs sm:text-sm mt-1 truncate tabular-nums", results.profit >= 0 ? "text-gain" : "text-loss")}>
-                                        <span className="sm:hidden">{results.profit >= 0 ? '+' : '-'}{formatCompact(Math.abs(results.profit))} ({results.roi.toFixed(1)}%)</span>
-                                        <span className="hidden sm:inline">{results.profit >= 0 ? '+' : '-'}{formatCurrency(Math.abs(results.profit))} ({results.roi.toFixed(1)}%)</span>
+                                    <div className={clsx("text-xs sm:text-sm mt-1 truncate tabular-nums", scheduledOnly.profit >= 0 ? "text-gain" : "text-loss")}>
+                                        <span className="sm:hidden">{scheduledOnly.profit >= 0 ? '+' : '-'}{formatCompact(Math.abs(scheduledOnly.profit))} ({scheduledOnly.roi.toFixed(1)}%)</span>
+                                        <span className="hidden sm:inline">{scheduledOnly.profit >= 0 ? '+' : '-'}{formatCurrency(Math.abs(scheduledOnly.profit))} ({scheduledOnly.roi.toFixed(1)}%)</span>
                                     </div>
                                 </div>
                                 <div className="p-3 sm:p-4 rounded-lg bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800/50">
@@ -1247,21 +1381,24 @@ export const DcaCalculator = ({ initialPriceData, initialLivePrice }: DcaCalcula
 
                     {/* Asset Comparison */}
                     {priceMode === 'api' && (
-                        <AssetComparison btcResult={btcAssetResult} sp500Result={sp500Result} goldResult={goldResult} loading={comparisonLoading} />
+                        <AssetComparison btcResult={btcAssetResult} sp500Result={sp500Result} goldResult={goldResult} loading={comparisonLoading} excludesStartingStack={deferredStartingBtc > 0} />
                     )}
 
-                    {/* Exchange Fee Comparison */}
-                    <ExchangeFeeComparison totalInvested={results.totalInvested} purchaseCount={purchaseCount} />
+                    {/* Exchange Fee Comparison — schedule only: exchanges never
+                        charged a fee on coins the user already held. */}
+                    <ExchangeFeeComparison totalInvested={scheduledOnly.invested} purchaseCount={purchaseCount} />
 
-                    {/* Savings Account Comparison */}
+                    {/* Savings Account Comparison — schedule only: a savings account
+                        has no analogue of coins already held. */}
                     <SavingsComparison
-                        totalInvested={results.totalInvested}
-                        btcCurrentValue={results.currentValue}
-                        btcRoi={results.roi}
+                        totalInvested={scheduledOnly.invested}
+                        btcCurrentValue={scheduledOnly.value}
+                        btcRoi={scheduledOnly.roi}
                         amount={amountUsd}
                         frequency={frequency}
                         startDate={startDate}
                         endDate={endDate}
+                        annualEscalationPct={deferredEscalation}
                     />
 
                     {/* Opportunity Cost Calculator */}
@@ -1272,6 +1409,7 @@ export const DcaCalculator = ({ initialPriceData, initialLivePrice }: DcaCalcula
                     {/* Plan-vs-plan comparison */}
                     {priceMode === 'api' && !dateError && (
                         <PlanComparison
+                            simplifiedBase={deferredStartingBtc > 0 || deferredEscalation > 0}
                             basePlan={{
                                 amountUsd,
                                 frequency,
@@ -1291,6 +1429,7 @@ export const DcaCalculator = ({ initialPriceData, initialLivePrice }: DcaCalcula
                     {livePrice && (
                         <FutureProjection
                             amount={amountUsd}
+                            annualEscalationPct={deferredEscalation}
                             frequency={frequency}
                             startDate={startDate}
                             endDate={endDate}
@@ -1313,7 +1452,7 @@ export const DcaCalculator = ({ initialPriceData, initialLivePrice }: DcaCalcula
                         purchaseCount={purchaseCount}
                         startDate={startDate}
                         endDate={endDate}
-                        amount={amountUsd}
+                        amount={currentAmountUsd}
                         frequency={frequency}
                         unit={denomination}
                         /* Project future sats at today's price, not at the average
@@ -1326,7 +1465,7 @@ export const DcaCalculator = ({ initialPriceData, initialLivePrice }: DcaCalcula
                         btcAccumulated={results.btcAccumulated}
                         totalInvested={results.totalInvested}
                         livePrice={livePrice}
-                        amount={amountUsd}
+                        amount={currentAmountUsd}
                         frequency={frequency}
                     />
 
@@ -1355,21 +1494,31 @@ export const DcaCalculator = ({ initialPriceData, initialLivePrice }: DcaCalcula
                     {/* Unit Bias Calculator */}
                     <UnitBiasCalculator btcAccumulated={results.btcAccumulated} />
 
-                    {/* Share My Stack */}
+                    {/* Share My Stack — past-only figures: a share card claiming
+                        "stacked" coins the plan hasn't bought yet would be a lie,
+                        and the percentile would rank a future-polluted average
+                        cost against purely historical windows. */}
                     <ShareMyStack
-                        totalInvested={results.totalInvested}
-                        currentValue={results.currentValue}
-                        roi={results.roi}
-                        btcAccumulated={results.btcAccumulated}
+                        totalInvested={pastResults.totalInvested}
+                        currentValue={pastResults.currentValue}
+                        roi={pastResults.roi}
+                        btcAccumulated={pastResults.btcAccumulated}
                         unit={denomination}
                         startDate={startDate}
-                        endDate={endDate}
+                        endDate={isFutureEndDate ? utcIsoToday() : endDate}
+                        planEndDate={endDate}
                         amount={amount}
                         frequency={frequency}
                         feePercentage={feePercentage}
                         priceMode={priceMode}
                         provider={provider}
                         manualPrice={manualPrice}
+                        startingBtc={startingBtc}
+                        startingAvgCost={startingAvgCost}
+                        annualEscalationPct={annualEscalationPct}
+                        purchaseCount={purchaseCount}
+                        bestBuy={pastResults.stats?.bestBuy}
+                        maxDrawdownPercent={pastResults.stats?.maxDrawdownPercent}
                     />
                             </>
                         }

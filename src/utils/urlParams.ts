@@ -31,6 +31,9 @@ export function encodeParams(params: {
     provider: string;
     manualPrice: number;
     currency?: string;
+    startingBtc?: number;
+    startingAvgCost?: number;
+    annualEscalationPct?: number;
 }): string {
     const sp = new URLSearchParams();
     sp.set('amount', String(params.amount));
@@ -42,6 +45,16 @@ export function encodeParams(params: {
     sp.set('provider', params.provider);
     if (params.priceMode === 'manual') {
         sp.set('manualPrice', String(params.manualPrice));
+    }
+    // Only when set — the defaults keep every pre-existing link byte-identical.
+    if (params.startingBtc && params.startingBtc > 0) {
+        sp.set('startingBtc', String(params.startingBtc));
+        if (params.startingAvgCost && params.startingAvgCost > 0) {
+            sp.set('startingCost', String(params.startingAvgCost));
+        }
+    }
+    if (params.annualEscalationPct && params.annualEscalationPct > 0) {
+        sp.set('esc', String(params.annualEscalationPct));
     }
     // Amounts are entered in the sharer's currency — without it the recipient
     // would silently reinterpret them in their own.
@@ -61,6 +74,9 @@ export function decodeParams(searchParams: CalculatorSearchParams): {
     provider?: 'kraken' | 'coinbase';
     manualPrice?: number;
     currency?: UrlCurrency;
+    startingBtc?: number;
+    startingAvgCost?: number;
+    annualEscalationPct?: number;
 } | null {
     if (!searchParams || Object.keys(searchParams).length === 0) return null;
 
@@ -102,6 +118,24 @@ export function decodeParams(searchParams: CalculatorSearchParams): {
     }
     if (searchParams.currency && (VALID_CURRENCIES as readonly string[]).includes(searchParams.currency)) {
         result.currency = searchParams.currency as UrlCurrency;
+    }
+    // Zero is ACCEPTED for the three plan-shape params (it means "none", and the
+    // engine no-ops on it) — API callers legitimately serialize explicit zeros,
+    // and rejecting a documented default as garbage is worse than a no-op.
+    if (searchParams.startingBtc) {
+        const n = Number(searchParams.startingBtc);
+        // 21M BTC is the hard supply cap — anything above is a crafted URL.
+        if (!isNaN(n) && n >= 0) result.startingBtc = Math.min(n, 21_000_000);
+    }
+    if (searchParams.startingCost) {
+        const n = Number(searchParams.startingCost);
+        if (!isNaN(n) && n >= 0) result.startingAvgCost = Math.min(n, MAX_URL_AMOUNT);
+    }
+    if (searchParams.esc) {
+        const n = Number(searchParams.esc);
+        // 200%/yr escalation is already implausible; beyond it the compounding
+        // explodes into meaningless numbers within a decade.
+        if (!isNaN(n) && n >= 0) result.annualEscalationPct = Math.min(n, 200);
     }
 
     return Object.keys(result).length > 0 ? result : null;

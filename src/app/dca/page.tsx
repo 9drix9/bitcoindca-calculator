@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
-import { SCENARIO_AMOUNTS, SCENARIO_FREQ_SLUGS, SCENARIOS } from './scenarios';
+import { CURATED_SCENARIOS, SCENARIO_AMOUNTS, SCENARIO_FREQ_SLUGS, SCENARIOS } from './scenarios';
 
 export const revalidate = 86400;
 
@@ -62,6 +62,30 @@ export default function DcaScenariosIndexPage() {
                         against real historical prices and refresh the results daily. Pick a plan to see the total
                         invested, what it&apos;s worth today, and the year-by-year breakdown.
                     </p>
+                </section>
+
+                {/* Curated story scenarios — the ones with a hook worth sharing */}
+                <section className="space-y-4">
+                    <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">
+                        The interesting ones
+                    </h2>
+                    <p className="text-sm sm:text-base text-slate-600 dark:text-slate-400 leading-relaxed max-w-3xl">
+                        Hand-picked schedules with a story: buying the exact top, a daily coffee&apos;s worth,
+                        a plan that started at the worst possible moment. Real dates, real prices, no cherry-picking
+                        beyond what the title says.
+                    </p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
+                        {CURATED_SCENARIOS.map((s) => (
+                            <Link
+                                key={s.slug}
+                                href={`/dca/${s.slug}`}
+                                className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 px-4 py-3 hover:border-amber-500/50 transition-colors"
+                            >
+                                <span className="block text-sm font-semibold text-slate-800 dark:text-slate-200">{s.title}</span>
+                                <span className="mt-0.5 block text-xs text-slate-500 dark:text-slate-400">{s.shortLabel}</span>
+                            </Link>
+                        ))}
+                    </div>
                 </section>
 
                 {/* Scenario grid, grouped by amount */}

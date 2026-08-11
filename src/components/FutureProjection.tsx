@@ -3,7 +3,7 @@
 import { useState, useMemo, useEffect, useRef, useId } from 'react';
 import { Frequency } from '@/types';
 import { useCurrency } from '@/context/CurrencyContext';
-import { parseUtcDate, DAY_MS, addUtcMonths, formatUtc } from '@/utils/dates';
+import { parseUtcDate, DAY_MS, addUtcMonths, formatUtc, utcFullYearsBetween } from '@/utils/dates';
 import { calculateXirr } from '@/utils/dca';
 import { Calendar, Sparkles, AlertTriangle } from 'lucide-react';
 import clsx from 'clsx';
@@ -21,6 +21,9 @@ interface FutureProjectionProps {
     currentBtc: number;
     /** Amount invested up to TODAY only, in USD. */
     currentInvested: number;
+    /** Yearly purchase increase %, stepping on start-date anniversaries — must
+     *  mirror the engine or this card contradicts the hero on the same page. */
+    annualEscalationPct?: number;
 }
 
 /**
@@ -60,6 +63,7 @@ export const FutureProjection = ({
     currentPrice,
     currentBtc,
     currentInvested,
+    annualEscalationPct = 0,
 }: FutureProjectionProps) => {
     const { currencyConfig, formatCurrency, formatCompact, formatBtc } = useCurrency();
     const [mode, setMode] = useState<'price' | 'growth'>('growth');
@@ -90,7 +94,7 @@ export const FutureProjection = ({
     // past leg can be replayed as a cash-flow series for the realized-return figure.
     const schedule = useMemo(() => {
         if (!Number.isFinite(startTs) || !Number.isFinite(endTs) || startTs > endTs) {
-            return { futureCount: 0, pastPurchases: [] as { ts: number; amount: number }[] };
+            return { futureAmounts: [] as number[], pastPurchases: [] as { ts: number; amount: number }[] };
         }
         const anchorDay = new Date(startTs).getUTCDate();
         const purchaseTs = (i: number): number => {
@@ -101,18 +105,24 @@ export const FutureProjection = ({
                 case 'monthly': return addUtcMonths(startTs, i, anchorDay);
             }
         };
-        let futureCount = 0;
+        // Per-purchase amounts step up on anniversaries exactly like the engine;
+        // a flat amount here made this card contradict the hero's totals by the
+        // escalation the future leg would actually receive.
+        const escalation = Math.max(0, annualEscalationPct) / 100;
+        const amountAt = (ts: number): number =>
+            escalation > 0 ? amount * Math.pow(1 + escalation, utcFullYearsBetween(startTs, ts)) : amount;
+        const futureAmounts: number[] = [];
         const pastPurchases: { ts: number; amount: number }[] = [];
         for (let i = 0; i <= 40_000; i++) {
             const ts = purchaseTs(i);
             if (ts > endTs) break;
-            if (ts > todayTs) futureCount++;
-            else pastPurchases.push({ ts, amount });
+            if (ts > todayTs) futureAmounts.push(amountAt(ts));
+            else pastPurchases.push({ ts, amount: amountAt(ts) });
         }
-        return { futureCount, pastPurchases };
-    }, [startTs, endTs, todayTs, frequency, amount]);
+        return { futureAmounts, pastPurchases };
+    }, [startTs, endTs, todayTs, frequency, amount, annualEscalationPct]);
 
-    const futurePurchases = schedule.futureCount;
+    const futurePurchases = schedule.futureAmounts.length;
 
     /**
      * What this exact plan actually returned, money-weighted, from its first purchase
@@ -125,7 +135,7 @@ export const FutureProjection = ({
         if (past.length === 0 || currentPrice <= 0 || currentBtc <= 0) return null;
         // The engine skips scheduled dates it has no price for, so only trust the
         // replayed cash flows when they reconcile with what the engine actually spent.
-        const replayed = past.length * amount;
+        const replayed = past.reduce((sum, p) => sum + p.amount, 0);
         if (!(currentInvested > 0) || Math.abs(replayed - currentInvested) > amount * 0.5) return null;
         const xirr = calculateXirr(past, currentBtc * currentPrice, todayTs);
         return xirr === null || !Number.isFinite(xirr) ? null : xirr * 100;
@@ -138,7 +148,7 @@ export const FutureProjection = ({
 
     const daysIntoFuture = Math.round((endTs - todayTs) / DAY_MS);
     const yearsIntoFuture = daysIntoFuture / 365;
-    const futureInvestment = futurePurchases * amount;
+    const futureInvestment = schedule.futureAmounts.reduce((sum, a) => sum + a, 0);
     const totalProjectedInvestment = currentInvested + futureInvestment;
 
     // For growth mode, calculate projected price at end date
@@ -149,11 +159,11 @@ export const FutureProjection = ({
     // pricing DCA actually achieves — an arithmetic midpoint understates BTC bought.
     const calculateFutureBtc = (endPrice: number) => {
         if (futurePurchases <= 0 || endPrice <= 0) return 0;
-        const netPerPurchase = amount * (1 - feePercentage / 100);
+        const feeKeep = 1 - feePercentage / 100;
         let btc = 0;
         for (let i = 1; i <= futurePurchases; i++) {
             const price = currentPrice + (endPrice - currentPrice) * (i / futurePurchases);
-            if (price > 0) btc += netPerPurchase / price;
+            if (price > 0) btc += (schedule.futureAmounts[i - 1] * feeKeep) / price;
         }
         return btc;
     };

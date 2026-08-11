@@ -10,6 +10,13 @@ export interface DcaParams {
     feePercentage: number;
     priceMode: PriceMode;
     manualPrice: number; // Used if mode is manual or API fails
+    /** BTC already held before the first scheduled buy. Costed at startingAvgCost
+     *  when given, else at the start date's market price. No fee applied. */
+    startingBtc?: number;
+    /** Average USD cost per BTC of the starting stack. */
+    startingAvgCost?: number;
+    /** Raise the per-purchase amount by this % on each 12-month anniversary of the start date. */
+    annualEscalationPct?: number;
 }
 
 export interface DcaStats {
@@ -20,8 +27,11 @@ export interface DcaStats {
     maxDrawdownPercent: number | null;
     bestBuy: { date: string; price: number } | null;
     worstBuy: { date: string; price: number } | null;
-    /** Total exchange fees paid in USD */
+    /** Total exchange fees paid in USD — scheduled buys only, never the starting stack */
     feesPaid: number;
+    /** USD cost assigned to the starting stack (0 when none). Lets callers
+     *  separate "the schedule" from "the whole stack" for fair comparisons. */
+    startingStackCost: number;
 }
 
 export interface DcaResult {
@@ -44,6 +54,9 @@ export interface DcaBreakdownItem {
     accumulated: number;
     totalAccumulated: number;
     portfolioValue: number;
+    /** True on the synthetic first row a starting stack adds — it is a position,
+     *  not a market buy, and every "N purchases" count must exclude it. */
+    isStartingStack?: boolean;
 }
 
 export interface ResultCardProps {
@@ -85,6 +98,9 @@ export interface CalculatorSearchParams {
     provider?: string;
     manualPrice?: string;
     currency?: string;
+    startingBtc?: string;
+    startingCost?: string;
+    esc?: string;
 }
 
 export interface CostBasisPosition {

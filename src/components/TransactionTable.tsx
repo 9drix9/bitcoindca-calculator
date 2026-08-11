@@ -41,12 +41,16 @@ export const TransactionTable = memo(function TransactionTable({ breakdown, unit
 
     const { bestIdx, worstIdx } = useMemo(() => {
         if (!breakdown || breakdown.length < 2) return { bestIdx: -1, worstIdx: -1 };
-        let minIdx = 0,
-            maxIdx = 0;
-        for (let i = 1; i < breakdown.length; i++) {
-            if (breakdown[i].price < breakdown[minIdx].price) minIdx = i;
-            if (breakdown[i].price > breakdown[maxIdx].price) maxIdx = i;
+        // Best/worst describe scheduled buys — a starting stack's avg cost is
+        // a position carried in, not a buy this schedule made.
+        let minIdx = -1,
+            maxIdx = -1;
+        for (let i = 0; i < breakdown.length; i++) {
+            if (breakdown[i].isStartingStack) continue;
+            if (minIdx === -1 || breakdown[i].price < breakdown[minIdx].price) minIdx = i;
+            if (maxIdx === -1 || breakdown[i].price > breakdown[maxIdx].price) maxIdx = i;
         }
+        if (minIdx === -1 || maxIdx === -1) return { bestIdx: -1, worstIdx: -1 };
         if (minIdx === maxIdx) return { bestIdx: -1, worstIdx: -1 };
         return { bestIdx: minIdx, worstIdx: maxIdx };
     }, [breakdown]);
@@ -119,6 +123,11 @@ export const TransactionTable = memo(function TransactionTable({ breakdown, unit
                                         <td className="whitespace-nowrap px-3 py-2 text-slate-700 dark:text-slate-300 sm:px-4">
                                             <span className="flex items-center gap-1.5">
                                                 {formatUtc(item.date, 'full')}
+                                                {item.isStartingStack && (
+                                                    <span className="rounded bg-slate-100 px-1 py-0.5 text-[10px] font-medium leading-none text-slate-600 dark:bg-slate-800 dark:text-slate-400">
+                                                        Starting stack
+                                                    </span>
+                                                )}
                                                 {i === bestIdx && (
                                                     <span className="rounded bg-emerald-100 px-1 py-0.5 text-[10px] font-medium leading-none text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400">
                                                         Best

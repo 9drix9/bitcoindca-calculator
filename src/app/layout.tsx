@@ -233,6 +233,8 @@ export default function RootLayout({
                       { href: '/best-day-to-buy-bitcoin', label: 'Best Day to Buy' },
                       { href: '/dca/start-date-heatmap', label: 'Start-Date Heatmap' },
                       { href: '/embed-guide', label: 'Embed the Widget' },
+                      { href: '/developers', label: 'Free API & Data' },
+                      { href: '/alternatives', label: 'Compare Calculators' },
                     ].map(({ href, label }) => (
                       <Link key={href} href={href} className={footerLink}>{label}</Link>
                     ))}

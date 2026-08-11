@@ -348,6 +348,91 @@ describe('result aggregates', () => {
     });
 });
 
+// ── Starting stack & escalation ───────────────────────────────────────────────
+
+describe('starting stack', () => {
+    const start = Date.UTC(2021, 0, 1);
+
+    it('adds the held coins, costed at the start-date price when no cost is given', () => {
+        const prices = flat(start, 30, 10_000);
+        const result = calculateDca(
+            params({ startDate: new Date(start), endDate: new Date(start + 14 * DAY_MS), startingBtc: 0.5 }),
+            prices,
+            10_000,
+        );
+        // 0.5 BTC costed at $10k = $5,000, plus 3 weekly $100 buys.
+        expect(result.totalInvested).toBeCloseTo(5_300, 6);
+        expect(result.btcAccumulated).toBeCloseTo(0.5 + 300 / 10_000, 12);
+        expect(result.stats!.startingStackCost).toBeCloseTo(5_000, 6);
+    });
+
+    it('uses the stated average cost when given, and never charges fees on the stack', () => {
+        const prices = flat(start, 30, 10_000);
+        const result = calculateDca(
+            params({
+                startDate: new Date(start),
+                endDate: new Date(start + 14 * DAY_MS),
+                startingBtc: 1,
+                startingAvgCost: 2_000,
+                feePercentage: 1,
+            }),
+            prices,
+            10_000,
+        );
+        expect(result.stats!.startingStackCost).toBeCloseTo(2_000, 6);
+        // Fees apply to the 3 × $100 scheduled buys only.
+        expect(result.stats!.feesPaid).toBeCloseTo(3, 6);
+        expect(result.totalInvested).toBeCloseTo(2_300, 6);
+    });
+
+    it('keeps best/worst buy about the schedule, not the stack', () => {
+        const prices = series(start, 30, (i) => (i < 7 ? 10_000 : 20_000));
+        const result = calculateDca(
+            params({
+                startDate: new Date(start),
+                endDate: new Date(start + 14 * DAY_MS),
+                startingBtc: 1,
+                startingAvgCost: 50, // far below any scheduled price
+            }),
+            prices,
+            20_000,
+        );
+        expect(result.stats!.bestBuy!.price).toBe(10_000);
+    });
+});
+
+describe('annual escalation', () => {
+    it('steps the purchase amount up on each 12-month anniversary', () => {
+        const start = Date.UTC(2020, 0, 15);
+        const prices = flat(start, 800, 10_000);
+        const result = calculateDca(
+            params({
+                startDate: new Date(start),
+                endDate: new Date(Date.UTC(2021, 0, 20)),
+                frequency: 'monthly',
+                annualEscalationPct: 10,
+            }),
+            prices,
+            10_000,
+        );
+        // 12 buys in year one at $100, the 13th (Jan 15 2021, the anniversary) at $110.
+        expect(result.breakdown.length).toBe(13);
+        expect(result.breakdown[0].invested).toBeCloseTo(100, 6);
+        expect(result.breakdown[11].invested).toBeCloseTo(100, 6);
+        expect(result.breakdown[12].invested).toBeCloseTo(110, 6);
+        expect(result.totalInvested).toBeCloseTo(12 * 100 + 110, 6);
+    });
+
+    it('is a no-op at 0%', () => {
+        const start = Date.UTC(2020, 0, 1);
+        const prices = flat(start, 800, 10_000);
+        const a = calculateDca(params({ startDate: new Date(start), endDate: new Date(start + 700 * DAY_MS) }), prices, 10_000);
+        const b = calculateDca(params({ startDate: new Date(start), endDate: new Date(start + 700 * DAY_MS), annualEscalationPct: 0 }), prices, 10_000);
+        expect(a.totalInvested).toBe(b.totalInvested);
+        expect(a.btcAccumulated).toBe(b.btcAccumulated);
+    });
+});
+
 // ── Lump sum ──────────────────────────────────────────────────────────────────
 
 describe('calculateLumpSum', () => {

@@ -23,6 +23,8 @@ interface AssetComparisonProps {
     sp500Result: AssetDcaResult | null;
     goldResult: AssetDcaResult | null;
     loading: boolean;
+    /** True when the user set a starting stack the BTC row deliberately omits. */
+    excludesStartingStack?: boolean;
 }
 
 type SeriesKey = 'btc' | 'sp500' | 'gold';
@@ -152,7 +154,7 @@ function GrowthTooltip({
     );
 }
 
-export const AssetComparison = ({ btcResult, sp500Result, goldResult, loading }: AssetComparisonProps) => {
+export const AssetComparison = ({ btcResult, sp500Result, goldResult, loading, excludesStartingStack }: AssetComparisonProps) => {
     const { formatCurrency, formatCompact, convertFromUsd, currencyConfig } = useCurrency();
     const isDark = useIsDark();
 
@@ -225,6 +227,7 @@ export const AssetComparison = ({ btcResult, sp500Result, goldResult, loading }:
                 mixing the two let post-window appreciation decide the comparison. */}
             <p className="mb-3 sm:mb-4 text-xs text-slate-500 dark:text-slate-400">
                 Same plan, same dates, each asset valued at its last price in the range.
+                {excludesStartingStack ? ' Your starting stack is left out — this compares the buying schedule only.' : ''}
             </p>
             <div className="grid grid-cols-3 gap-2 sm:gap-4">
                 <AssetCard result={btcResult} style={cardStyles.btc} formatCurrency={formatCurrency} formatCompact={formatCompact} />

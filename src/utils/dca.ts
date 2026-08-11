@@ -1,5 +1,5 @@
 import { DcaParams, DcaResult, DcaBreakdownItem, DcaStats, LumpSumResult, AssetDcaResult, Frequency } from '@/types';
-import { DAY_MS, utcDayIndex, utcDayStart, addUtcMonths } from '@/utils/dates';
+import { DAY_MS, utcDayIndex, utcDayStart, addUtcMonths, utcFullYearsBetween } from '@/utils/dates';
 
 // All schedule iteration and price lookups are bucketed by UTC calendar day.
 // Exchange candles are UTC-aligned; using local-time day boundaries shifted every
@@ -134,7 +134,10 @@ function computeMaxDrawdown(
 }
 
 export function calculateDca(params: DcaParams, priceData?: [number, number][], currentPrice?: number | null): DcaResult {
-    const { amount, frequency, startDate, endDate, feePercentage, priceMode, manualPrice } = params;
+    const {
+        amount, frequency, startDate, endDate, feePercentage, priceMode, manualPrice,
+        startingBtc = 0, startingAvgCost, annualEscalationPct = 0,
+    } = params;
 
     const startTs = utcDayStart(startDate.getTime());
     const endTs = utcDayStart(endDate.getTime());
@@ -142,11 +145,15 @@ export function calculateDca(params: DcaParams, priceData?: [number, number][], 
 
     let totalInvested = 0;
     let totalBtc = 0;
+    // Fees apply to scheduled buys only, so their base is tracked separately
+    // from totalInvested once a starting stack contributes cost.
+    let scheduledInvested = 0;
     const breakdown: DcaBreakdownItem[] = [];
 
     const priceAt = priceData && priceData.length > 0 ? createPriceLookup(priceData) : null;
 
     const clampedFee = Math.min(100, Math.max(0, feePercentage));
+    const escalation = Math.max(0, annualEscalationPct) / 100;
     const purchases: { ts: number; amount: number }[] = [];
 
     // Holdings timeline for the drawdown walk below: one entry per purchase day.
@@ -154,11 +161,46 @@ export function calculateDca(params: DcaParams, priceData?: [number, number][], 
     let bestBuy: { date: string; price: number } | null = null;
     let worstBuy: { date: string; price: number } | null = null;
 
+    // Starting stack: coins held before the first scheduled buy. Costed at the
+    // user's stated average, else at the start date's market price — never free,
+    // or ROI would be fiction. Excluded from best/worst buy (those describe the
+    // schedule) and from fees (the coins are already held).
+    let startingStackCost = 0;
+    if (startingBtc > 0) {
+        const startPrice = priceMode === 'api'
+            ? (priceAt ? (priceAt(utcDayIndex(startTs)) ?? 0) : 0)
+            : manualPrice;
+        const costPerBtc = startingAvgCost && startingAvgCost > 0 ? startingAvgCost : startPrice;
+        if (costPerBtc > 0) {
+            startingStackCost = startingBtc * costPerBtc;
+            totalInvested += startingStackCost;
+            totalBtc += startingBtc;
+            purchases.push({ ts: startTs, amount: startingStackCost });
+            holdings.push({ day: utcDayIndex(startTs), totalBtc });
+            breakdown.push({
+                date: new Date(startTs).toISOString(),
+                price: costPerBtc,
+                invested: startingStackCost,
+                totalInvested,
+                accumulated: startingBtc,
+                totalAccumulated: totalBtc,
+                portfolioValue: totalBtc * (startPrice > 0 ? startPrice : costPerBtc),
+                isStartingStack: true,
+            });
+        }
+    }
+
     for (let i = 0; ; i++) {
         const ts = nextPurchaseTs(startTs, i, frequency, anchorDay);
         if (ts > endTs) break;
         // Hard stop safeguard: > 100 years of daily purchases is out of scope
         if (i > 40_000) break;
+
+        // The per-purchase amount steps up on each 12-month anniversary, the way
+        // real plans grow with income — not continuously, which nobody does.
+        const scheduledAmount = escalation > 0
+            ? amount * Math.pow(1 + escalation, utcFullYearsBetween(startTs, ts))
+            : amount;
 
         let purchasePrice = manualPrice;
         if (priceMode === 'api') {
@@ -166,12 +208,13 @@ export function calculateDca(params: DcaParams, priceData?: [number, number][], 
         }
 
         if (purchasePrice > 0) {
-            const netInvestment = amount * (1 - clampedFee / 100);
+            const netInvestment = scheduledAmount * (1 - clampedFee / 100);
             const btcBought = netInvestment / purchasePrice;
 
-            totalInvested += amount;
+            totalInvested += scheduledAmount;
+            scheduledInvested += scheduledAmount;
             totalBtc += btcBought;
-            purchases.push({ ts, amount });
+            purchases.push({ ts, amount: scheduledAmount });
 
             const dateIso = new Date(ts).toISOString();
             if (!bestBuy || purchasePrice < bestBuy.price) bestBuy = { date: dateIso, price: purchasePrice };
@@ -183,7 +226,7 @@ export function calculateDca(params: DcaParams, priceData?: [number, number][], 
             breakdown.push({
                 date: dateIso,
                 price: purchasePrice,
-                invested: amount,
+                invested: scheduledAmount,
                 totalInvested,
                 accumulated: btcBought,
                 totalAccumulated: totalBtc,
@@ -229,7 +272,8 @@ export function calculateDca(params: DcaParams, priceData?: [number, number][], 
         maxDrawdownPercent: maxDrawdown !== null ? maxDrawdown * 100 : null,
         bestBuy,
         worstBuy,
-        feesPaid: totalInvested * (clampedFee / 100),
+        feesPaid: scheduledInvested * (clampedFee / 100),
+        startingStackCost,
     };
 
     return {
@@ -252,7 +296,8 @@ export function calculateAssetDca(
     feePercentage: number,
     priceData: [number, number][],
     asset: string,
-    label: string
+    label: string,
+    annualEscalationPct: number = 0,
 ): AssetDcaResult {
     const priceAt = priceData.length > 0 ? createPriceLookup(priceData) : null;
 
@@ -263,6 +308,9 @@ export function calculateAssetDca(
     let totalInvested = 0;
     let totalUnits = 0;
     const clampedFee = Math.min(100, Math.max(0, feePercentage));
+    // Mirrors calculateDca's anniversary step — the comparison is only fair if
+    // every asset receives the same deposit stream.
+    const escalation = Math.max(0, annualEscalationPct) / 100;
 
     const breakdown: { date: string; portfolioValue: number }[] = [];
 
@@ -271,12 +319,16 @@ export function calculateAssetDca(
         if (ts > endTs) break;
         if (i > 40_000) break;
 
+        const scheduledAmount = escalation > 0
+            ? amount * Math.pow(1 + escalation, utcFullYearsBetween(startTs, ts))
+            : amount;
+
         const purchasePrice = priceAt ? (priceAt(utcDayIndex(ts)) ?? 0) : 0;
 
         if (purchasePrice > 0) {
-            const netInvestment = amount * (1 - clampedFee / 100);
+            const netInvestment = scheduledAmount * (1 - clampedFee / 100);
             totalUnits += netInvestment / purchasePrice;
-            totalInvested += amount;
+            totalInvested += scheduledAmount;
 
             breakdown.push({
                 date: new Date(ts).toISOString(),

@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useId } from 'react';
 import { Frequency } from '@/types';
-import { DAY_MS, parseUtcDate, addUtcMonths, utcDayStart, formatUtc } from '@/utils/dates';
+import { DAY_MS, parseUtcDate, addUtcMonths, utcDayStart, utcFullYearsBetween, formatUtc } from '@/utils/dates';
 import { useCurrency } from '@/context/CurrencyContext';
 import { Card } from '@/components/ui/Card';
 import clsx from 'clsx';
@@ -27,6 +27,8 @@ interface SavingsComparisonProps {
      * eight free years of compounding. Defaults to today, which matches the engine.
      */
     valuationDate?: string;
+    /** Mirror of the DCA plan's anniversary raise — the deposit streams must match. */
+    annualEscalationPct?: number;
 }
 
 /** Parse a user-typed number. Returns null for empty / partial / non-finite input. */
@@ -51,6 +53,7 @@ export const SavingsComparison = ({
     startDate,
     endDate,
     valuationDate,
+    annualEscalationPct = 0,
 }: SavingsComparisonProps) => {
     const { formatCurrency, formatCompact } = useCurrency();
     // APY is a rate, not a money amount — no currency conversion needed.
@@ -87,13 +90,18 @@ export const SavingsComparison = ({
         let totalDeposited = 0;
         let lastDepositTs = -1;
 
-        // Deposits run on the same schedule as the DCA purchases and stop at the end date.
+        // Deposits run on the same schedule as the DCA purchases and stop at the
+        // end date, stepping up on the same anniversaries when the plan escalates.
+        const escalation = Math.max(0, annualEscalationPct) / 100;
         for (let i = 0; ; i++) {
             const ts = depositTs(i);
             if (ts > endTs || i > 40_000) break;
+            const deposit = escalation > 0
+                ? amount * Math.pow(1 + escalation, utcFullYearsBetween(startTs, ts))
+                : amount;
             if (lastDepositTs >= 0) balance *= grow(lastDepositTs, ts);
-            balance += amount;
-            totalDeposited += amount;
+            balance += deposit;
+            totalDeposited += deposit;
             lastDepositTs = ts;
         }
 
@@ -125,7 +133,7 @@ export const SavingsComparison = ({
             // must say so instead of claiming a same-day valuation.
             endsInFuture: lastDepositTs > markTs,
         };
-    }, [apy, amount, frequency, startDate, endDate, totalInvested, valuationDate]);
+    }, [apy, amount, frequency, startDate, endDate, totalInvested, valuationDate, annualEscalationPct]);
 
     if (!savingsResult || totalInvested <= 0) return null;
 
