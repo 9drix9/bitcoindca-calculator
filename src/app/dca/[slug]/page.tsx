@@ -295,7 +295,7 @@ function StatCard({
     return (
         <Card celebrated={celebrated} className="p-4 sm:p-5">
             <p className="text-xs font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">{label}</p>
-            <p className={clsx('mt-1 text-2xl sm:text-3xl font-bold', valueClassName ?? 'text-slate-900 dark:text-white')}>
+            <p className={clsx('mt-1 text-2xl sm:text-3xl font-bold break-words', valueClassName ?? 'text-slate-900 dark:text-white')}>
                 {value}
             </p>
             {sub && <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{sub}</p>}
@@ -441,7 +441,10 @@ export default async function DcaScenarioPage({ params }: PageProps) {
                             />
                             <StatCard
                                 label="BTC stacked"
-                                value={fmtBtc(result.btcAccumulated)}
+                                /* 4 decimals at headline size: the full-precision
+                                   figure lives in the sats line below and the lead
+                                   paragraph — 8 decimals here overflowed the card. */
+                                value={`${result.btcAccumulated.toFixed(result.btcAccumulated >= 1 ? 2 : 4)} BTC`}
                                 sub={fmtSats(result.btcAccumulated)}
                             />
                         </section>
