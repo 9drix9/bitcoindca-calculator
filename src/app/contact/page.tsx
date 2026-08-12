@@ -77,7 +77,7 @@ const contactPageJsonLd = {
         founder: {
             '@type': 'Person',
             '@id': `${BASE_URL}/author#person`,
-            name: 'Ricky Thach',
+            name: 'drix',
             url: `${BASE_URL}/author`,
         },
         contactPoint: [
@@ -177,7 +177,7 @@ export default function ContactPage() {
                     <p className="text-base sm:text-lg text-slate-600 dark:text-slate-300 max-w-2xl mx-auto leading-relaxed">
                         This site is built and maintained by one person,{' '}
                         <Link href="/author" className="text-amber-700 dark:text-amber-400 hover:underline font-medium">
-                            Ricky Thach
+                            drix
                         </Link>. There&apos;s no support desk and no ticket queue. Just two channels that reach
                         me directly.
                     </p>

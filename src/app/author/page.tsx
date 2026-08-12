@@ -19,11 +19,11 @@ const ISSUES_URL = `${REPO_URL}/issues`;
 
 export const metadata: Metadata = {
     // Root layout appends "| Bitcoin DCA Calculator" — do not repeat it here.
-    title: 'Ricky Thach — Who Builds and Maintains This Site',
+    title: 'drix — Who Builds and Maintains This Site',
     description:
-        'Ricky Thach builds and maintains the Bitcoin DCA Calculator. What he works on, what the tool does and does not claim, how it is funded, and the corrections policy for fixing errors.',
+        'drix builds and maintains the Bitcoin DCA Calculator. What he works on, what the tool does and does not claim, how it is funded, and the corrections policy for fixing errors.',
     keywords: [
-        'ricky thach',
+        'drix',
         '9drix9',
         'bitcoin dca calculator author',
         'who made bitcoin dca calculator',
@@ -34,7 +34,7 @@ export const metadata: Metadata = {
     },
     openGraph: {
         images: [{ url: '/opengraph-image', width: 1200, height: 630 }],
-        title: 'Ricky Thach — Who Builds and Maintains This Site',
+        title: 'drix — Who Builds and Maintains This Site',
         description:
             'The person behind the Bitcoin DCA Calculator: what he works on, how the site is funded, and how errors get reported and fixed.',
         url: '/author',
@@ -45,7 +45,7 @@ export const metadata: Metadata = {
     twitter: {
         images: ['/opengraph-image'],
         card: 'summary_large_image',
-        title: 'Ricky Thach — Who Builds and Maintains This Site',
+        title: 'drix — Who Builds and Maintains This Site',
         description:
             'The person behind the Bitcoin DCA Calculator: what he works on, how the site is funded, and how errors get reported and fixed.',
         creator: '@9drix9',
@@ -61,7 +61,7 @@ const personJsonLd = {
     '@context': 'https://schema.org',
     '@type': 'Person',
     '@id': PERSON_ID,
-    name: 'Ricky Thach',
+    name: 'drix',
     alternateName: '9drix9',
     url: `${BASE_URL}/author`,
     description:
@@ -92,9 +92,9 @@ const profilePageJsonLd = {
     '@type': 'ProfilePage',
     '@id': `${BASE_URL}/author`,
     url: `${BASE_URL}/author`,
-    name: 'Ricky Thach — Who Builds and Maintains This Site',
+    name: 'drix — Who Builds and Maintains This Site',
     description:
-        'Author and editorial policy page for the Bitcoin DCA Calculator, maintained by Ricky Thach.',
+        'Author and editorial policy page for the Bitcoin DCA Calculator, maintained by drix.',
     mainEntity: { '@id': PERSON_ID },
     isPartOf: {
         '@type': 'WebSite',
@@ -173,7 +173,7 @@ export default function AuthorPage() {
                 {/* Hero */}
                 <header className="text-center max-w-3xl mx-auto space-y-3 sm:space-y-4">
                     <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-slate-900 dark:text-white text-balance">
-                        Ricky <span className="text-amber-700 dark:text-amber-400">Thach</span>
+                        <span className="text-amber-700 dark:text-amber-400">drix</span>
                     </h1>
                     <p className="text-base sm:text-lg text-slate-600 dark:text-slate-300 max-w-2xl mx-auto leading-relaxed">
                         I built the Bitcoin DCA Calculator and I maintain it. One person, no company,
@@ -211,7 +211,7 @@ export default function AuthorPage() {
                     </SectionHeading>
                     <div className="space-y-3 text-sm sm:text-base text-slate-600 dark:text-slate-400 leading-relaxed">
                         <p>
-                            I&apos;m Ricky Thach, an independent developer. I write the code, the copy, and the
+                            I&apos;m drix, an independent developer. I write the code, the copy, and the
                             methodology on this site. There is no editorial team behind me and no company
                             paying for the output, so when something here is wrong, it&apos;s mine to fix.
                         </p>

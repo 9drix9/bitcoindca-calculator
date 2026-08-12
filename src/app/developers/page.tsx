@@ -52,7 +52,7 @@ const webPageJsonLd = {
     "author": {
         "@type": "Person",
         "@id": "https://btcdollarcostaverage.com/author#person",
-        "name": "Ricky Thach",
+        "name": "drix",
         "url": "https://btcdollarcostaverage.com/author",
     },
     "datePublished": "2026-08-11",

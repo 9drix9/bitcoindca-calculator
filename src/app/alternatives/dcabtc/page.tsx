@@ -252,7 +252,7 @@ export default function DcaBtcAlternativePage() {
                     <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
                         By{' '}
                         <Link href="/author" className="text-amber-700 dark:text-amber-400 hover:underline font-medium">
-                            Ricky Thach
+                            drix
                         </Link>
                         {' '}&middot; Last checked {LAST_CHECKED}
                     </p>

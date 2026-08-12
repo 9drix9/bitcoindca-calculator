@@ -167,7 +167,8 @@ export default function RootLayout({
                 {
                   "@type": "Person",
                   "@id": "https://btcdollarcostaverage.com/author#person",
-                  "name": "Ricky Thach",
+                  "name": "drix",
+                  "alternateName": "9drix9",
                   "url": "https://btcdollarcostaverage.com/author",
                   "sameAs": [
                     "https://x.com/9drix9",
@@ -213,7 +214,7 @@ export default function RootLayout({
                   <p className="text-sm text-slate-500 dark:text-slate-400">
                     Built by{' '}
                     <Link href="/author" className="text-amber-700 dark:text-amber-400 hover:underline">
-                      Ricky Thach
+                      drix
                     </Link>{' '}
                     <a href="https://x.com/9drix9" target="_blank" rel="noopener noreferrer" className="text-slate-500 dark:text-slate-400 hover:underline">
                       (@9drix9)

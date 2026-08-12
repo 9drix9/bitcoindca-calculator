@@ -43,7 +43,7 @@ const articleJsonLd = {
     "author": {
         "@type": "Person",
         "@id": "https://btcdollarcostaverage.com/author#person",
-        "name": "Ricky Thach",
+        "name": "drix",
         "url": "https://btcdollarcostaverage.com/author"
     },
     "publisher": {
@@ -270,7 +270,7 @@ export default function AboutPage() {
                     </div>
                     <div className="space-y-3 text-sm sm:text-base text-slate-600 dark:text-slate-400 leading-relaxed">
                         <p>
-                            <strong className="text-slate-800 dark:text-slate-200">Ricky Thach</strong>, an independent
+                            <strong className="text-slate-800 dark:text-slate-200">drix</strong>, an independent
                             Bitcoiner. No company, no VC funding, no team of marketers. Just someone who got tired of
                             scattered, ad-ridden Bitcoin tools and decided to build something better.
                         </p>

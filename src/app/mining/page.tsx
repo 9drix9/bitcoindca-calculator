@@ -89,7 +89,7 @@ const articleJsonLd = {
     "author": {
         "@type": "Person",
         "@id": "https://btcdollarcostaverage.com/author#person",
-        "name": "Ricky Thach",
+        "name": "drix",
         "url": "https://btcdollarcostaverage.com/author"
     },
     "publisher": {
@@ -372,7 +372,7 @@ export default async function MiningPage() {
                     </p>
                     <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 max-w-2xl mx-auto">
                         By{' '}
-                        <Link href="/author" className={`${linkClass} font-medium`}>Ricky Thach</Link>
+                        <Link href="/author" className={`${linkClass} font-medium`}>drix</Link>
                         {' '}&middot; Last reviewed {LAST_REVIEWED}
                     </p>
                 </section>
