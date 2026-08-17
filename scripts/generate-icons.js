@@ -11,6 +11,7 @@
  *
  * Emits:
  *   src/app/favicon.ico     16/32/48 multi-frame ICO  (App Router serves this one)
+ *   src/app/icon.svg        vector favicon (App Router emits the <link> for it)
  *   public/icon-192.png     PWA icon
  *   public/icon-512.png     PWA icon
  *   public/apple-touch-icon.png
@@ -121,6 +122,16 @@ async function main() {
 
     fs.writeFileSync(path.join(APP_DIR, 'favicon.ico'), buildIco(frames));
     console.log('Generated: src/app/favicon.ico (16/32/48)');
+
+    // src/app/icon.svg — the App Router emits
+    //   <link rel="icon" href="/icon.svg?<hash>" type="image/svg+xml" sizes="any">
+    // for it, alongside the favicon.ico link. Same bare mark as the ICO frames,
+    // but vector: crisp at any DPI, and Chrome/Firefox prefer it over the .ico.
+    // Its hashed URL is also distinct from favicon.ico's, which matters because
+    // Chrome pins favicons in a cache that survives normal reloads — a browser
+    // that had the pre-rebrand mark stuck in a tab fetches this fresh.
+    fs.writeFileSync(path.join(APP_DIR, 'icon.svg'), markSvg(PATH_FULL, 24).toString());
+    console.log('Generated: src/app/icon.svg');
 
     // public/favicon.ico was a PNG wearing an .ico extension, and it shadowed
     // nothing because the App Router serves src/app/favicon.ico. Remove it so
