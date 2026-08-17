@@ -100,6 +100,11 @@ export const EducationalContent = () => {
                         <strong>Read the results:</strong> The cards and the chart show where portfolio value pulled away from what you put in.
                     </li>
                     <li>
+                        <strong>Set a target:</strong> If you think in bitcoin rather than dollars, the{' '}
+                        <Link href="/calculators/stack-sats-goal" className="text-amber-700 dark:text-amber-400 hover:underline font-medium">stack sats calculator</Link>{' '}
+                        shows how long 0.01, 0.1 or a whole coin takes at your contribution rate.
+                    </li>
+                    <li>
                         <strong>Withdraw &amp; secure:</strong> Stacking is half the job. Once the balance matters to you, move it to your own keys. Our{' '}
                         <Link href="/self-custody" className="text-amber-700 dark:text-amber-400 hover:underline font-medium">self-custody guide</Link>{' '}
                         covers how.

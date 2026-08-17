@@ -63,11 +63,14 @@ const FeatureCard = ({
     title,
     description,
     color = 'amber',
+    link,
 }: {
     icon: React.ElementType;
     title: string;
     description: string;
     color?: 'amber' | 'blue' | 'green' | 'purple' | 'red' | 'cyan';
+    /** Optional pointer to the standalone page for this feature. */
+    link?: { href: string; label: string };
 }) => {
     const colorClasses = {
         amber: 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400',
@@ -85,6 +88,13 @@ const FeatureCard = ({
             </div>
             <h3 className="font-semibold text-slate-800 dark:text-white mb-2">{title}</h3>
             <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">{description}</p>
+            {link && (
+                <p className="mt-3 text-sm">
+                    <Link href={link.href} className="text-amber-700 dark:text-amber-400 hover:underline font-medium">
+                        {link.label} &rarr;
+                    </Link>
+                </p>
+            )}
         </div>
     );
 };
@@ -326,6 +336,7 @@ export default function FeaturesPage() {
                         title="Stacking Goal Tracker"
                         description="Pick a target: 0.1 BTC, a whole coin, whatever you're after. The tracker shows how far along you are and how long the rest takes at your current pace."
                         color="amber"
+                        link={{ href: '/calculators/stack-sats-goal', label: 'Open the stack sats calculator' }}
                     />
                     <FeatureCard
                         icon={TrendingUp}

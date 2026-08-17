@@ -16,10 +16,42 @@ const securityHeaders = [
     },
 ];
 
+// stackmysats.com is a second domain on the same Vercel project. It exists to be
+// said aloud and retyped; btcdollarcostaverage.com stays the only host that serves
+// pages, holds the index, the JSON-LD entity @ids, the embed src and the API docs
+// (see docs/brand.md). Both the apex and www resolve to this deployment, so the
+// host must be matched as a regex — Next anchors it (^…$) and lower-cases it.
+const SECOND_DOMAIN_HOST = '(www\\.)?stackmysats\\.com';
+const PRIMARY_ORIGIN = 'https://btcdollarcostaverage.com';
+
 const nextConfig: NextConfig = {
     devIndicators: false,
     experimental: {
         optimizePackageImports: ['lucide-react', 'date-fns', 'recharts'],
+    },
+    async redirects() {
+        return [
+            {
+                // Every path on stackmysats.com — including /sw.js, /manifest.json,
+                // /_next/* and /api/* — 301s to the same path on the primary, so
+                // nothing is ever served (or installed as a PWA) on that origin.
+                //
+                // Done here rather than with the Vercel dashboard "Redirect to"
+                // setting so the hop can be tagged: Vercel Web Analytics never
+                // fires on a 3xx and runtime logs keep about a day, so without the
+                // utm_source the question "does anyone actually type this name?"
+                // could never be answered. Both Next (prepare-destination) and
+                // Vercel's edge merge the request's own query string into a
+                // destination that already carries one, so share links survive.
+                //
+                // 301 rather than permanent:true (308): the site is GET-only and
+                // 301 is understood by every client, including old link checkers.
+                source: '/:path*',
+                has: [{ type: 'host', value: SECOND_DOMAIN_HOST }],
+                destination: `${PRIMARY_ORIGIN}/:path*?utm_source=stackmysats`,
+                statusCode: 301,
+            },
+        ];
     },
     async headers() {
         return [
@@ -58,6 +90,22 @@ const nextConfig: NextConfig = {
                     { key: 'Cache-Control', value: 'no-cache, no-store, must-revalidate' },
                     { key: 'Service-Worker-Allowed', value: '/' },
                 ],
+            },
+            {
+                // Last on purpose: later rules override earlier ones per header key, and
+                // the /embed rule above re-spreads the full security set.
+                //
+                // Next exempts /_next/* from user redirects (the compiled source regex
+                // starts with `(?!/_next)`), so static chunks ARE served on the second
+                // host, and the site-wide rule above would stamp them with the primary's
+                // HSTS `preload` directive. Preload is a two-year, effectively
+                // irreversible promise about every subdomain of the registrable
+                // domain; a host that only ever redirects should not make it. Verified
+                // with `next start`: the 301s themselves carry no header rules, and a
+                // /_next chunk on the second host gets max-age only.
+                source: '/(.*)',
+                has: [{ type: 'host', value: SECOND_DOMAIN_HOST }],
+                headers: [{ key: 'Strict-Transport-Security', value: 'max-age=63072000' }],
             },
         ];
     },

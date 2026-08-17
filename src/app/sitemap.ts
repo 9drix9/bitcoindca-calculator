@@ -10,7 +10,7 @@ export const revalidate = 86400;
 // actually changes — do NOT use new Date() (fake freshness trains Google
 // to ignore lastmod for the whole domain).
 const PAGE_DATES = {
-    features: new Date('2026-08-10'),
+    features: new Date('2026-08-17'),
     // These three must match the dateModified in each page's Article JSON-LD
     // (why-bitcoin, self-custody, mining) — conflicting freshness signals teach
     // Google to distrust lastmod for the whole domain.

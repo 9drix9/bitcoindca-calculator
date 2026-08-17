@@ -15,9 +15,9 @@ const BASE_URL = 'https://btcdollarcostaverage.com';
 const PAGE_PATH = '/calculators/stack-sats-goal';
 
 export const metadata: Metadata = {
-    title: 'How Long to Stack 1 Bitcoin — Sats Goal Calculator',
+    title: 'How Long to Stack 1 Bitcoin — Stack Sats Calculator',
     description:
-        'Work out how long it takes to stack 0.01, 0.1 or 1 whole bitcoin at your contribution rate, projected at today’s price rather than an assumed future one. Includes a live milestone tracker and a plain explanation of sats.',
+        'A stack sats calculator: how long it takes to stack 0.01, 0.1 or 1 whole bitcoin at your contribution rate, projected at today’s price rather than an assumed future one. Includes a live milestone tracker and a plain explanation of sats.',
     keywords: [
         'how long to stack 1 bitcoin',
         'stack sats calculator',
@@ -29,7 +29,7 @@ export const metadata: Metadata = {
     alternates: { canonical: PAGE_PATH },
     openGraph: {
         images: [{ url: '/opengraph-image', width: 1200, height: 630 }],
-        title: 'How Long to Stack 1 Bitcoin — Sats Goal Calculator',
+        title: 'How Long to Stack 1 Bitcoin — Stack Sats Calculator',
         description:
             'How long 0.01, 0.1 and 1 BTC take at your contribution rate, projected honestly at today’s price.',
         url: PAGE_PATH,
@@ -40,7 +40,7 @@ export const metadata: Metadata = {
     twitter: {
         images: ['/opengraph-image'],
         card: 'summary_large_image',
-        title: 'How Long to Stack 1 Bitcoin — Sats Goal Calculator',
+        title: 'How Long to Stack 1 Bitcoin — Stack Sats Calculator',
         description:
             'How long 0.01, 0.1 and 1 BTC take at your contribution rate, projected honestly at today’s price.',
         creator: '@9drix9',
@@ -189,6 +189,10 @@ export default async function StackSatsGoalPage() {
             answer: price
                 ? `A satoshi, or sat, is one hundred-millionth of a bitcoin: 1 BTC = 100,000,000 sats. It is the smallest unit the Bitcoin protocol can record, which is why you never need to buy a whole coin. At ${fmtUsd(price)}, $100 buys about ${fmtInt(satsPer100)} sats.`
                 : 'A satoshi, or sat, is one hundred-millionth of a bitcoin: 1 BTC = 100,000,000 sats. It is the smallest unit the Bitcoin protocol can record, which is why you never need to buy a whole coin.',
+        },
+        {
+            question: 'What does “stack sats” mean?',
+            answer: 'Stacking sats means buying or earning small amounts of bitcoin on a regular basis and holding them. A sat is one hundred-millionth of a bitcoin, so the phrase just describes accumulating bitcoin a little at a time rather than in one purchase. Dollar-cost averaging, a fixed buy on a fixed schedule, is the most common way to do it. This stack sats calculator turns that rate into a timeline: how long 0.01, 0.1 and 1 BTC take at today’s price.',
         },
         {
             question: 'Do I need to buy a whole bitcoin?',
