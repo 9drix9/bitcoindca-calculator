@@ -1,7 +1,6 @@
 import { ImageResponse } from 'next/og';
 import { BRAND_OG_PATH } from '@/components/brand/Logo';
 
-export const runtime = 'edge';
 export const alt = 'The Coldcard Seed Flaw: What Happened and What to Do';
 export const size = { width: 1200, height: 630 };
 export const contentType = 'image/png';

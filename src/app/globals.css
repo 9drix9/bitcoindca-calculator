@@ -1,6 +1,16 @@
 @import "tailwindcss";
 
-@custom-variant dark (&:where(.dark, .dark *));
+/* The dark theme is for screens. On paper a browser leaves backgrounds out by
+   default, so dark-theme text would print pale on white: every `dark:` utility
+   is therefore out of play in print, and so is the token block at the foot of
+   this file. */
+@custom-variant dark {
+  @media not print {
+    &:where(.dark, .dark *) {
+      @slot;
+    }
+  }
+}
 
 /* ── Design tokens ──────────────────────────────────────────────────────────
    Governing rule: the accent is ink, fill, or edge — never a wash. Amber is a
@@ -12,7 +22,12 @@
    Every colour here carries its computed WCAG ratio against #ffffff (light
    page surface) and #020617 (dark page surface). Do not substitute a value
    without recomputing — several pairs below are theme-flipped BECAUSE the
-   light-mode value fails on dark and vice versa. */
+   light-mode value fails on dark and vice versa.
+
+   Those two surfaces are not the only ones text sits on. Muted text also lands
+   on slate-100 panels and on rose-50 / violet-50 tints, where the same colour
+   measures lower than it does on white — see the slate-500 note further down,
+   which is checked by a test (src/hooks/shellStyles.test.ts). */
 
 @theme {
   /* Names for the two off-scale sizes already hand-written 126 times. */
@@ -190,19 +205,45 @@
 
 /* Anchor targets must clear the sticky header, and on mobile the fixed bottom
    nav as well. Without this, jumping to #main-content or any in-page heading
-   parks it underneath the header where it looks like nothing happened. */
+   parks it underneath the header where it looks like nothing happened.
+
+   The bottom edge also has to clear whatever is fixed there. --bottom-overlay-h
+   is the measured height of the cookie banner or the install prompt while one
+   is showing (set by useBottomOverlayHeight, absent otherwise). Without it a
+   field focused in the strip behind the banner counts as "in view", is not
+   scrolled, and gets typed into unseen. At 768px and up the banner sits on the
+   bottom edge itself, hence the rule outside the media query. */
 html {
   scroll-padding-top: 5rem;
+  scroll-padding-bottom: var(--bottom-overlay-h, 0px);
 }
 @media (max-width: 767px) {
   html {
-    scroll-padding-bottom: calc(var(--bottom-nav-h) + 1rem);
+    scroll-padding-bottom: calc(var(--bottom-nav-h) + var(--bottom-overlay-h, 0px) + 1rem);
+  }
+}
+
+/* The on-screen keyboard and a bottom overlay cannot share a short screen.
+   With `interactive-widget=resizes-content` the keyboard shrinks the layout
+   viewport to roughly 360x440, and a 76px tab bar plus a 127px banner leave
+   the field being typed into a letterbox. So while a text field has focus AND
+   the viewport is this short, the overlay steps aside; it is back the moment
+   the field loses focus or the keyboard closes, and no answer is assumed in
+   the meantime. On a full-height screen the banner stays put, and the
+   scroll-padding above keeps the field clear of it instead. */
+@media (max-height: 520px) {
+  html:has(:is(input:not([type='checkbox'], [type='radio'], [type='range'], [type='button'], [type='submit'], [type='reset']), textarea):focus) [data-bottom-overlay] {
+    display: none;
   }
 }
 
 /* A POLICY, not a list. This previously named three animations explicitly, so
    any keyframe added later silently escaped it — which is how a reduced-motion
-   guarantee rots. Blanket rule: nothing animates. */
+   guarantee rots. Blanket rule: nothing animates.
+   It reaches CSS only. Recharts animates in JavaScript, so each chart has to
+   switch that off itself (isAnimationActive={false}). The scroll cue further
+   down follows the scroll position rather than a clock, so the duration set
+   here does not apply to it. */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -247,26 +288,89 @@ html {
   background: #475569;
 }
 
+/* "There is more to the right." A box that scrolls sideways fades out at its
+   right edge while there is more to scroll to, and stops at the end. On a
+   phone nothing else says so: scrollbars are not drawn at rest, and where the
+   hidden columns of a table start on a column boundary the visible part looks
+   complete.
+
+   A mask on a scroll timeline, not the usual background gradients: those paint
+   under the content and need a cover in the colour of the surface behind, and
+   these boxes sit on cards, tinted panels and dark code blocks, some with
+   opaque cells. The keyframes set every mask property and the rule sets none,
+   so a box whose content fits (an inactive timeline) has no mask at all.
+
+   The mask holds until the last stretch, then widens until its faded end is
+   past the edge of the box: the last column is not left faded when the scroll
+   stops a fraction short.
+
+   In @layer base, so an `animate-*` utility on the same element wins. */
+@keyframes scrollFade {
+  from,
+  90% {
+    mask-image: linear-gradient(to left, transparent, #000 2.5rem);
+    mask-repeat: no-repeat;
+    mask-size: 100% 100%;
+  }
+  to {
+    mask-image: linear-gradient(to left, transparent, #000 2.5rem);
+    mask-repeat: no-repeat;
+    mask-size: calc(100% + 2.5rem) 100%;
+  }
+}
+
+@layer base {
+  @supports (animation-timeline: scroll()) {
+    .overflow-x-auto {
+      animation: scrollFade linear both;
+      animation-timeline: scroll(self x);
+    }
+  }
+}
+
+/* Browsers make a scrolling box with nothing focusable inside it a tab stop,
+   so the keyboard can scroll it. Drawn outside the box, its focus ring is cut
+   off by the card around it; inside, it is not. */
+.overflow-x-auto:focus-visible {
+  outline-offset: -2px;
+}
+
 /* Prevent number input spinners on mobile */
 input[type="number"]::-webkit-inner-spin-button,
 input[type="number"]::-webkit-outer-spin-button {
   opacity: 1;
 }
 
-/* Better touch targets for small buttons on mobile.
-   These live in @layer base so a Tailwind `min-h-*` utility can override them.
-   Previously they were unlayered, which made them outrank every utility in
-   @layer utilities: `min-h-[44px]` on a <button> silently lost to the 36px
-   floor, and the workaround was to reach for `h-11`/`w-11` instead. Now the
-   utility wins, so the floor is a default rather than a trap. */
+/* 44px touch targets wherever a finger does the pointing: on a narrow screen,
+   and on any coarse pointer above that, which is how a tablet and a phone held
+   sideways get them without a mouse user paying for the height. Components
+   follow the same pair (`max-sm:` plus `pointer-coarse:`).
+   In @layer base so a Tailwind `min-h-*` utility can override it: unlayered it
+   would outrank every utility, and the floor would be a trap rather than a
+   default. */
 @layer base {
-  @media (max-width: 640px) {
+  @media (max-width: 640px), (pointer: coarse) {
     button {
       min-height: 44px;
     }
     details > summary {
       min-height: 48px;
     }
+  }
+}
+
+/* A link in a sentence that underlines only on hover has, on a phone, no cue
+   but its colour: touch never hovers, and amber against slate text is about
+   1.5:1. So the underline is there at rest.
+   Keyed on the `hover:underline` class, which only text links carry, so
+   buttons, cards, chips and the main navigation are untouched. A link laid out
+   as its own row (`flex`, `inline-flex`: contents lists, source lists, "Open
+   the calculator" links) is marked by its position and keeps the hover
+   underline. In @layer base so a `no-underline` utility still wins. */
+@layer base {
+  a[class~='hover:underline']:not([class~='flex'], [class~='inline-flex']) {
+    text-decoration-line: underline;
+    text-underline-offset: 2px;
   }
 }
 
@@ -296,8 +400,22 @@ input[type="number"]::-webkit-outer-spin-button {
    sticky sidebar inside still resolve against the viewport, and `position:fixed`
    descendants (the mobile tab bar) are unaffected because overflow clipping does
    not apply to elements whose containing block is the viewport.
-   The `hidden` line is the fallback for browsers without `clip`. */
+   The `hidden` line is the fallback for browsers without `clip`.
+
+   `position: relative` is what makes this cover absolutely positioned elements
+   as well. A box only clips descendants that have it in their containing-block
+   chain, and an absolute element with no positioned ancestor skips every box
+   on the way up to the page — which is what Tailwind's `sr-only` is. One such
+   label inside a wide table that scrolls in its own wrapper is clipped by
+   neither the wrapper nor an unpositioned shell, and widens the document. A
+   phone browser then stretches the layout viewport to fit and lays
+   `position: fixed` out against that: the cookie banner and the tab bar end up
+   below the bottom of the screen, and the taller layout viewport reads as an
+   open keyboard, which unmounts the tab bar. The shell starts at the page's
+   top-left corner and is as wide as the viewport, so making it the containing
+   block moves nothing that is placed against the page. */
 .app-shell {
+  position: relative;
   overflow-x: hidden;
   overflow-x: clip;
 }
@@ -317,6 +435,20 @@ input[type="number"]::-webkit-outer-spin-button {
    page and let the whole document slide sideways on iOS. */
 .overflow-x-auto {
   overscroll-behavior-x: contain;
+}
+
+/* A link that carries a plan arrives on HTML that was prerendered for the
+   default plan. The script from hooks/planLinkBootstrap marks <html> before
+   first paint when the address asks for a different plan, and the calculator
+   takes the mark off once that plan is on screen. In between, whatever states
+   the default plan's figures is hidden with its space kept, so one plan's
+   numbers are never shown under another plan's address; an element marked
+   data-plan-pending is the placeholder shown in that time and no other. */
+html[data-plan-link] [data-plan-figure] {
+  visibility: hidden;
+}
+html:not([data-plan-link]) [data-plan-pending] {
+  display: none;
 }
 
 /* ── Mobile bottom nav safe-area ── */
@@ -355,27 +487,53 @@ input[type="number"]::-webkit-outer-spin-button {
 /* Clearance for the fixed bottom nav. It belongs on the LAST element in the page
    flow, which is the footer, not #main-content: padding under <main> only pushes
    the footer down, leaving dead space while the footer itself still runs under
-   the nav. First line is the fallback for browsers without max()/env(). */
+   the nav. First line is the fallback for browsers without max()/env().
+
+   --bottom-overlay-h (see scroll-padding above) is added at every width, so
+   the copyright line and "Not financial advice." can be scrolled clear of the
+   cookie banner while it is up. */
+#site-footer {
+  padding-bottom: var(--bottom-overlay-h, 0px);
+}
 @media (max-width: 767px) {
   #site-footer {
     padding-bottom: 76px;
-    padding-bottom: calc(var(--bottom-nav-h) + max(env(safe-area-inset-bottom), 12px));
+    padding-bottom: calc(var(--bottom-nav-h) + max(env(safe-area-inset-bottom), 12px) + var(--bottom-overlay-h, 0px));
   }
+}
+
+/* Shown only where the tab bar is hidden, by the block below. Unlayered, so it
+   outranks whatever display utility the element also carries. */
+.nav-hidden-only {
+  display: none;
 }
 
 /* Landscape on a phone leaves ~350px of height. A 56px sticky header plus a
    64px fixed tab bar would eat a third of it, so the tab bar steps aside and
-   the header stops sticking — the "More" menu is still reachable from the
-   footer links, and rotating back restores both. */
+   the header stops sticking. A desktop window zoomed to 200% is the same shape
+   and lands here too, with no way to "rotate back". So the header's Menu
+   button takes over from the tab bar (.nav-hidden-only), and the drawer it
+   opens lists the four tabs first. */
 @media (max-width: 926px) and (max-height: 450px) and (orientation: landscape) {
   nav[aria-label='Main navigation'].fixed {
     display: none;
   }
+  .nav-hidden-only {
+    display: block;
+  }
   #site-footer {
-    padding-bottom: 1.5rem;
+    padding-bottom: calc(1.5rem + var(--bottom-overlay-h, 0px));
   }
   header.sticky {
     position: static;
+  }
+  /* With both of them out of the way nothing is fixed to the top, and only an
+     overlay can be fixed to the bottom, so the scroll clearance they needed
+     goes as well. Left in, it would hold back 160px of a 320px-high screen for
+     chrome that is not there. */
+  html {
+    scroll-padding-top: 1rem;
+    scroll-padding-bottom: var(--bottom-overlay-h, 0px);
   }
 }
 
@@ -407,24 +565,118 @@ input[type="number"]::-webkit-outer-spin-button {
   --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
 }
 
-.dark {
-  color-scheme: dark;
+/* Muted text on tinted panels.
 
-  --color-gain: #34d399; /* 10.49:1 on #020617 — the light value is 3.68:1 here, so this flip is mandatory */
-  --color-loss: #fb7185; /* 7.50:1 on #020617 — the light value is 3.21:1 here */
-  --color-info: #60a5fa; /* 7.93:1 on #020617 */
+   slate-500 is the site's muted-text colour. On about 175 text nodes (the
+   guides' tables and captions, mostly at 11-12px) it sits on a slate-100 panel
+   rather than on the page, and Tailwind's stock value #62748e measures 4.35:1
+   there — under the 4.5:1 AA floor. It is 4.34:1 on rose-50 and violet-50. On
+   #ffffff (4.76) and the slate-50 page (4.55) it passes.
 
-  --hairline: rgb(255 255 255 / 0.09);
-  --hairline-strong: rgb(255 255 255 / 0.145);
+   Fixed at the token, not per element: same hue and chroma, OKLCH lightness
+   55.4% -> 53.8%. That is 5/255 per channel — a before/after screenshot of one
+   of those panels cannot be told apart by eye — and it lifts every surface at
+   once:
 
-  /* Dark mode gets a REAL shadow. The previous `dark:shadow-none` left a card
-     at 1.13:1 against the page with only a 1.22:1 border, which is why ten
-     stacked widgets read as one undifferentiated wireframe column. */
-  --elev-1: 0 1px 2px rgb(0 0 0 / 0.4);
-  --elev-2: 0 2px 4px rgb(0 0 0 / 0.5), 0 12px 24px -8px rgb(0 0 0 / 0.45);
+     on slate-100 #f1f5f9   4.35 -> 4.67
+     on rose-50   #fff1f2   4.34 -> 4.66
+     on violet-50 #f5f3ff   4.34 -> 4.67
+     on slate-50  #f8fafc   4.55 -> 4.89
+     on #ffffff             4.76 -> 5.12
 
-  --accent-rule: inset 0 3px 0 0 #f59e0b; /* 8.31:1 on #0f172a */
+   That does not make slate-500 safe on every light surface. On slate-200
+   #e2e8f0 the new value is still 4.15:1, on blue-100 and red-100 it is 4.20:1
+   and on rose-100 4.27:1. Muted text on a surface like those is slate-600
+   (#45556c): 6.92:1 on slate-100, 6.15:1 on slate-200.
 
-  --text-strong: #e6edf7; /* 17.12:1 on #020617 — ~12% less glare than pure white on a 60px numeral */
-  --flash: rgb(245 158 11 / 0.16);
+   Not a rule scoped to the panel (`.bg-slate-100 .text-slate-500 { ... }`):
+   an unlayered rule here outranks every utility, so it would also beat
+   `dark:text-slate-400` on the same element and darken the caption in the
+   theme where it has to be lighter.
+
+   Light theme only. In dark mode the same token is used as-is on slate-900 and
+   slate-950, where darker is worse, so `.dark` keeps Tailwind's value: an
+   unlayered :root rule outranks the theme layer, and :not(.dark) leaves dark
+   alone without restating Tailwind's number here. */
+:root:not(.dark) {
+  --color-slate-500: #5d6f89;
+}
+
+@media not print {
+  .dark {
+    color-scheme: dark;
+
+    --color-gain: #34d399; /* 10.49:1 on #020617 — the light value is 3.68:1 here, so this flip is mandatory */
+    --color-loss: #fb7185; /* 7.50:1 on #020617 — the light value is 3.21:1 here */
+    --color-info: #60a5fa; /* 7.93:1 on #020617 */
+
+    --hairline: rgb(255 255 255 / 0.09);
+    --hairline-strong: rgb(255 255 255 / 0.145);
+
+    /* Dark mode gets a REAL shadow. The previous `dark:shadow-none` left a card
+       at 1.13:1 against the page with only a 1.22:1 border, which is why ten
+       stacked widgets read as one undifferentiated wireframe column. */
+    --elev-1: 0 1px 2px rgb(0 0 0 / 0.4);
+    --elev-2: 0 2px 4px rgb(0 0 0 / 0.5), 0 12px 24px -8px rgb(0 0 0 / 0.45);
+
+    --accent-rule: inset 0 3px 0 0 #f59e0b; /* 8.31:1 on #0f172a */
+
+    --text-strong: #e6edf7; /* 17.12:1 on #020617 — ~12% less glare than pure white on a 60px numeral */
+    --flash: rgb(245 158 11 / 0.16);
+  }
+}
+
+/* ── Print ──────────────────────────────────────────────────────────────────
+   Paper has no navigation, no fixed chrome and no ads. Anything position:fixed
+   repeats on every sheet (the cookie banner, the tab bar and the docked result
+   would each cover the same strip of every page), so all of it goes; a sheet
+   at the browser's default margins is narrower than 768px, which is why the
+   phone chrome is in play at all. The footer keeps its last line: a printed
+   result should still say whose it is and that it is not advice. */
+@media print {
+  .app-shell > header,
+  .app-shell > footer nav,
+  .app-shell .fixed,
+  [data-site-overlay],
+  iframe[data-aa] {
+    display: none !important;
+  }
+  /* The ad's "Sponsored" label and the space held for it. Behind @supports so
+     that a minifier cannot fold it into the list above: a browser that does
+     not know :has() would then drop that whole rule. */
+  @supports selector(:has(*)) {
+    div:has(> div > iframe[data-aa]) {
+      display: none !important;
+    }
+  }
+
+  /* Recharts gives its wrapper the pixel width it measured on screen and is
+     not told about the sheet, so a chart would run off the right edge of the
+     paper and lose its last years. The SVG has a viewBox and scales by itself
+     once the two boxes around it stop pinning it. */
+  .recharts-responsive-container > div,
+  .recharts-wrapper {
+    width: 100% !important;
+    height: 100% !important;
+  }
+  .recharts-legend-wrapper {
+    width: 100% !important;
+  }
+  /* Chart colours are chosen in JS for the theme on screen. The dark theme's
+     grid is near-black, which on white paper rules heavy lines across the plot. */
+  .recharts-cartesian-grid line {
+    stroke: #e2e8f0 !important;
+  }
+
+  /* Keep a card, a table row and a heading with its first lines on one sheet
+     where they fit. */
+  .rounded-2xl,
+  tr {
+    break-inside: avoid;
+  }
+  h1,
+  h2,
+  h3 {
+    break-after: avoid;
+  }
 }

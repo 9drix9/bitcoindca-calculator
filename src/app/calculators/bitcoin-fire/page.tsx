@@ -1,12 +1,18 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { AlertTriangle, ArrowRight } from 'lucide-react';
+import { AlertTriangle, ArrowDown, ArrowRight } from 'lucide-react';
 import clsx from 'clsx';
 import { Card } from '@/components/ui/Card';
 import { FireCalculator } from '@/components/FireCalculator';
-import { getBitcoinPriceHistory, getCurrentBitcoinPrice } from '@/app/actions';
-import { calculateDca } from '@/utils/dca';
-import { DAY_MS, EARLIEST_PRICE_TS, formatUtc } from '@/utils/dates';
+import { getBitcoinPriceHistoryWithMeta, getBitcoinSpot } from '@/app/actions';
+import { calculateDca, priceSeriesCovers } from '@/utils/dca';
+import { DAY_MS, EARLIEST_PRICE_TS, formatUtc, utcFullYearsBetween } from '@/utils/dates';
+import { FIRST_EXCHANGE_CLOSE_DATE, priceStaleNotice, type PriceProvider } from '@/data/priceSources';
+import {
+    BASELINE_MONTHLY_SPEND_USD,
+    WITHDRAWAL_RATE,
+    contributionsPerYear,
+} from '@/app/calculators/bitcoin-fire/projection';
 import type { Frequency } from '@/types';
 
 const BASE_URL = 'https://btcdollarcostaverage.com';
@@ -20,8 +26,11 @@ type PageProps = {
     searchParams: Promise<Record<string, string | string[] | undefined>>;
 };
 
-const WITHDRAWAL_RATE = 0.04; // the 4% rule, matching the widget below
-const BASELINE_MONTHLY_SPEND = 4000; // USD, matching the widget's default
+// The 4% rate and the $4,000 baseline come from ./projection, the same module
+// the widget below reads, so the prose and the tool cannot quote different
+// numbers. The widget opens on that baseline converted to the visitor's
+// display currency; this server-rendered page states it in USD.
+const BASELINE_MONTHLY_SPEND = BASELINE_MONTHLY_SPEND_USD;
 
 // ── Formatting (server-rendered SEO pages are USD-only by design) ──────────────
 
@@ -45,13 +54,11 @@ function fmtPct(value: number, signed = false): string {
 }
 
 function fmtBtc(value: number): string {
-    const decimals = value >= 1 ? 4 : 8;
-    const text = value
-        .toFixed(decimals)
-        .replace(/(\.\d*?)0+$/, '$1')
-        .replace(/\.$/, '');
-    return `${text} BTC`;
+    return `${value.toLocaleString('en-US', { maximumFractionDigits: value >= 1 ? 4 : 8 })} BTC`;
 }
+
+/** A plan amount for a heading or a sentence: "1,000", "15.49". */
+const fmtAmount = (value: number): string => value.toLocaleString('en-US', { maximumFractionDigits: 2 });
 
 // ── Plan parsing (everything sanitised, nothing trusted) ───────────────────────
 
@@ -62,19 +69,30 @@ const FREQUENCY_LABEL: Record<Frequency, string> = {
     biweekly: 'every two weeks',
     monthly: 'every month',
 };
-const BUYS_PER_YEAR: Record<Frequency, number> = {
-    daily: 365,
-    weekly: 52,
-    biweekly: 26,
-    monthly: 12,
-};
+
+/**
+ * Whole years of price history this site has, counted from the first day of
+ * its series. Derived, so the prose cannot go stale the way a hard-coded
+ * "roughly fifteen years" did.
+ */
+const priceHistoryYears = (now: number = Date.now()): number => utcFullYearsBetween(EARLIEST_PRICE_TS, now);
 
 const FIRST_YEAR = 2013;
-const CURRENT_YEAR = new Date().getUTCFullYear();
-const YEARS: number[] = Array.from(
-    { length: Math.max(1, CURRENT_YEAR - FIRST_YEAR + 1) },
-    (_, i) => FIRST_YEAR + i,
-);
+/**
+ * Start years on offer, up to the current UTC year. Worked out per request:
+ * as a module constant it was fixed when the server process started, so a
+ * process that lived through New Year kept offering last year's list.
+ */
+const planYears = (now: number = Date.now()): number[] =>
+    Array.from(
+        { length: Math.max(1, new Date(now).getUTCFullYear() - FIRST_YEAR + 1) },
+        (_, i) => FIRST_YEAR + i,
+    );
+
+/** The amounts the plan form accepts, in USD. */
+const MIN_AMOUNT = 0.01;
+const MAX_AMOUNT = 100_000;
+const DEFAULT_AMOUNT = 100;
 
 interface Plan {
     amount: number;
@@ -88,9 +106,10 @@ const firstParam = (v: string | string[] | undefined): string | undefined =>
 
 function parsePlan(params: Record<string, string | string[] | undefined>): Plan {
     const rawAmount = Number((firstParam(params.amount) ?? '').replace(/[,\s$]/g, ''));
-    const amount = Number.isFinite(rawAmount) && rawAmount > 0
-        ? Math.round(Math.min(rawAmount, 100_000) * 100) / 100
-        : 100;
+    // To the cent. An amount that rounds to nothing is no plan, so it gets the
+    // default like any other unusable value.
+    const rounded = Number.isFinite(rawAmount) ? Math.round(Math.min(rawAmount, MAX_AMOUNT) * 100) / 100 : 0;
+    const amount = rounded >= MIN_AMOUNT ? rounded : DEFAULT_AMOUNT;
 
     const rawFreq = firstParam(params.frequency);
     const frequency: Frequency = FREQUENCIES.includes(rawFreq as Frequency)
@@ -98,7 +117,7 @@ function parsePlan(params: Record<string, string | string[] | undefined>): Plan 
         : 'weekly';
 
     const rawYear = Number(firstParam(params.start));
-    const year = Number.isInteger(rawYear) && YEARS.includes(rawYear) ? rawYear : 2020;
+    const year = Number.isInteger(rawYear) && planYears().includes(rawYear) ? rawYear : 2020;
 
     return {
         amount,
@@ -119,6 +138,13 @@ interface Cagr {
 
 interface PageData {
     currentPrice: number;
+    /**
+     * The daily series the backtest ran on, as it was actually served. Coinbase
+     * is asked for; when it cannot be reached the price action answers with
+     * Kraken's weekly series, and the page then says so in place of its usual
+     * description of the data.
+     */
+    series: { provider: PriceProvider; stale: boolean; fetchedAt: number };
     totalInvested: number;
     btcAccumulated: number;
     currentValue: number;
@@ -146,17 +172,23 @@ function priceAtOrBefore(series: [number, number][], ts: number): number | null 
 async function loadData(plan: Plan): Promise<PageData | null> {
     try {
         const now = Date.now();
-        // Coinbase daily candles, matching the heatmap/drawdown/lump-sum pages: the
-        // kraken history is weekly closes interpolated to daily, which this page's
-        // "backtested against real historical prices" claim cannot stand on. Spot
-        // price is a live ticker, unaffected by interpolation, so kraken is fine there.
-        const [history, livePrice] = await Promise.all([
-            getBitcoinPriceHistory(EARLIEST_PRICE_TS, now + DAY_MS, 'coinbase'),
-            getCurrentBitcoinPrice('kraken').catch(() => null),
+        // Coinbase daily closes, matching the heatmap/drawdown/lump-sum pages.
+        // Kraken's history is weekly closes with straight-line fills, and the
+        // action falls back to it when Coinbase is down, so which series
+        // answered is read off the result and carried to the copy.
+        const [meta, spot] = await Promise.all([
+            getBitcoinPriceHistoryWithMeta(EARLIEST_PRICE_TS, now + DAY_MS, 'coinbase'),
+            getBitcoinSpot('coinbase'),
         ]);
-        if (!history || history.length < 100) return null;
+        const history = meta.data;
+        // The engine carries the last bar forward without limit, so a series
+        // that stops short of today is not used at all.
+        if (history.length < 100 || !priceSeriesCovers(history, plan.startTs, now)) return null;
 
-        const currentPrice = livePrice ?? history[history.length - 1][1];
+        const lastRow = history[history.length - 1];
+        const currentPrice = spot ? spot.price : lastRow[1];
+        // The instant the stack is valued at, which dates the annualized return.
+        const priceAsOf = spot ? spot.asOf : lastRow[0];
         if (!Number.isFinite(currentPrice) || currentPrice <= 0) return null;
 
         const result = calculateDca(
@@ -171,6 +203,7 @@ async function loadData(plan: Plan): Promise<PageData | null> {
             },
             history,
             currentPrice,
+            priceAsOf,
         );
         if (result.totalInvested <= 0 || result.btcAccumulated <= 0 || !Number.isFinite(result.currentValue)) {
             return null;
@@ -193,6 +226,7 @@ async function loadData(plan: Plan): Promise<PageData | null> {
 
         return {
             currentPrice,
+            series: { provider: meta.servedProvider, stale: meta.stale, fetchedAt: meta.fetchedAt },
             totalInvested: result.totalInvested,
             btcAccumulated: result.btcAccumulated,
             currentValue: result.currentValue,
@@ -200,7 +234,7 @@ async function loadData(plan: Plan): Promise<PageData | null> {
             xirrPercent: result.stats?.xirrPercent ?? null,
             maxDrawdownPercent: result.stats?.maxDrawdownPercent ?? 0,
             purchases: result.breakdown.length,
-            annualContribution: plan.amount * BUYS_PER_YEAR[plan.frequency],
+            annualContribution: contributionsPerYear(plan.amount, plan.frequency),
             fireNumber,
             progressPercent: fireNumber > 0 ? (result.currentValue / fireNumber) * 100 : 0,
             btcNeeded: fireNumber / currentPrice,
@@ -226,7 +260,7 @@ export async function generateMetadata({ searchParams }: PageProps): Promise<Met
         const data = await loadData(plan);
         if (data) {
             description =
-                `Buying $${plan.amount} of Bitcoin ${FREQUENCY_LABEL[plan.frequency]} since ${plan.year} totals ` +
+                `Buying $${fmtAmount(plan.amount)} of Bitcoin ${FREQUENCY_LABEL[plan.frequency]} since ${plan.year} totals ` +
                 `${fmtUsd(data.totalInvested)} invested and ${fmtBtc(data.btcAccumulated)}, worth ${fmtUsd(data.currentValue)} today. ` +
                 `See how that compares to a ${fmtUsd(data.fireNumber)} FIRE number on the 4% rule, and why that rule is contested for Bitcoin.`;
         }
@@ -283,7 +317,10 @@ function StatCard({
     return (
         <Card celebrated={celebrated} className="p-4 sm:p-5">
             <p className="text-xs font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">{label}</p>
-            <p className={clsx('mt-1 text-2xl sm:text-3xl font-bold', valueClassName ?? 'text-slate-900 dark:text-white')}>
+            {/* text-xl under 640px: two cards share a phone's width, and an
+                eight-figure stack does not fit one at text-2xl. A figure still
+                too long for one line wraps instead of being cut off. */}
+            <p className={clsx('mt-1 text-xl sm:text-3xl font-bold break-words', valueClassName ?? 'text-slate-900 dark:text-white')}>
                 {value}
             </p>
             {sub && <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{sub}</p>}
@@ -292,10 +329,18 @@ function StatCard({
 }
 
 const proseLink = 'text-amber-700 dark:text-amber-400 hover:underline font-medium';
+// A breadcrumb link is one or two short words, about 15px tall as text on a
+// phone. The padding makes it a 44px touch target, and the negative margins
+// hand the same space back so the row sits exactly where it did.
+const crumbLink =
+    'inline-flex min-h-11 items-center -my-3.5 px-1.5 -mx-1.5 hover:text-amber-700 dark:hover:text-amber-400 transition-colors';
+// 44px and 16px text on a touch screen: under 640px, and on a coarse pointer at
+// any width (a tablet, a phone held sideways). A mouse keeps the denser 40px row.
 const selectClass =
-    'h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-base tabular-nums text-slate-800 outline-none ' +
+    'h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm tabular-nums text-slate-800 outline-none ' +
+    'max-sm:h-11 max-sm:text-base pointer-coarse:h-11 pointer-coarse:text-base ' +
     'transition-shadow focus:border-amber-500 focus:ring-2 focus:ring-amber-500/40 ' +
-    'dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 sm:text-sm';
+    'dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100';
 const fieldLabelClass = 'mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400';
 
 // ── Page ──────────────────────────────────────────────────────────────────────
@@ -306,7 +351,11 @@ export default async function BitcoinFirePage({ searchParams }: PageProps) {
     const data = await loadData(plan);
 
     const pageUrl = `${BASE_URL}${PATH}`;
-    const planLabel = `$${plan.amount} ${FREQUENCY_LABEL[plan.frequency]} since ${plan.year}`;
+    const planLabel = `$${fmtAmount(plan.amount)} ${FREQUENCY_LABEL[plan.frequency]} since ${plan.year}`;
+    const years = planYears();
+    const historyYears = priceHistoryYears();
+    // Which series answered is read off the result, not assumed.
+    const onFallbackSeries = data !== null && data.series.provider !== 'coinbase';
 
     const breadcrumbJsonLd = {
         '@context': 'https://schema.org',
@@ -334,7 +383,7 @@ export default async function BitcoinFirePage({ searchParams }: PageProps) {
             a:
                 'There is no evidence that it does, and good reason to think it does not transfer. The rule was calibrated on a diversified portfolio whose worst ' +
                 'drawdown, meaning its worst fall from a previous high, was roughly half. It still failed in stress tests outside the US. Bitcoin is a single asset ' +
-                'with no cash flows, roughly fifteen years of price history, and repeated declines of 70% or more. Withdrawal-rate research depends on having enough ' +
+                `with no cash flows, about ${historyYears} years of price history, and repeated declines of 70% or more. Withdrawal-rate research depends on having enough ` +
                 'independent historical windows to say anything about failure probability, and Bitcoin does not have them. This calculator uses 4% because it is the ' +
                 'yardstick everyone recognizes, not because it has been validated for a volatile single asset. Many people planning around Bitcoin use a materially ' +
                 'lower rate, or hold several years of spending in something that is not Bitcoin.',
@@ -406,9 +455,9 @@ export default async function BitcoinFirePage({ searchParams }: PageProps) {
                 {/* Breadcrumb */}
                 <nav aria-label="Breadcrumb" className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
                     <ol className="flex flex-wrap items-center gap-1.5">
-                        <li><Link href="/" className="hover:text-amber-700 dark:hover:text-amber-400 transition-colors">Home</Link></li>
+                        <li><Link href="/" className={crumbLink}>Home</Link></li>
                         <li aria-hidden="true">/</li>
-                        <li><Link href="/calculators" className="hover:text-amber-700 dark:hover:text-amber-400 transition-colors">Calculators</Link></li>
+                        <li><Link href="/calculators" className={crumbLink}>Calculators</Link></li>
                         <li aria-hidden="true">/</li>
                         <li aria-current="page" className="text-slate-700 dark:text-slate-300">Bitcoin FIRE</li>
                     </ol>
@@ -426,11 +475,25 @@ export default async function BitcoinFirePage({ searchParams }: PageProps) {
                         accumulated at historical prices, then projects how far it is from covering your spending. It
                         also explains why that projection deserves more skepticism than most retirement math.
                     </p>
+                    {/* The projection tool is several screens down. No target when prices
+                        failed to load, so no link then. */}
+                    {data && (
+                        <p>
+                            <a
+                                href="#projection"
+                                className="inline-flex min-h-11 items-center gap-1.5 text-sm font-semibold text-amber-700 dark:text-amber-400 hover:underline"
+                            >
+                                Skip to the projection
+                                <ArrowDown className="w-3.5 h-3.5" aria-hidden="true" />
+                            </a>
+                        </p>
+                    )}
                 </header>
 
-                {/* Plan picker */}
+                {/* Plan picker. The fragment brings the reloaded page to the result,
+                    which on a phone is below the form and off the first screen. */}
                 <Card className="p-4 sm:p-5">
-                    <form method="get" action={PATH} className="space-y-3">
+                    <form method="get" action={`${PATH}#plan-result`} className="space-y-3">
                         <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">
                             Start from a real DCA plan
                         </p>
@@ -442,9 +505,11 @@ export default async function BitcoinFirePage({ searchParams }: PageProps) {
                                     name="amount"
                                     type="number"
                                     inputMode="decimal"
-                                    min={1}
-                                    max={100000}
-                                    step={1}
+                                    // Cents are a plan too, and a link can carry them:
+                                    // with step 1 the browser refuses to resubmit 15.49.
+                                    min={MIN_AMOUNT}
+                                    max={MAX_AMOUNT}
+                                    step="any"
                                     defaultValue={plan.amount}
                                     className={selectClass}
                                 />
@@ -462,7 +527,7 @@ export default async function BitcoinFirePage({ searchParams }: PageProps) {
                             <div>
                                 <label htmlFor="fire-start" className={fieldLabelClass}>Started buying in</label>
                                 <select id="fire-start" name="start" defaultValue={plan.year} className={selectClass}>
-                                    {YEARS.map((y) => (
+                                    {years.map((y) => (
                                         <option key={y} value={y}>January {y}</option>
                                     ))}
                                 </select>
@@ -470,21 +535,40 @@ export default async function BitcoinFirePage({ searchParams }: PageProps) {
                         </div>
                         <button
                             type="submit"
-                            className="h-10 rounded-lg bg-amber-600 px-4 text-sm font-semibold text-slate-950 transition-colors hover:bg-amber-700"
+                            className="h-10 max-sm:h-11 pointer-coarse:h-11 rounded-lg bg-amber-600 px-4 text-sm font-semibold text-slate-950 transition-colors hover:bg-amber-700"
                         >
                             Recalculate the plan
                         </button>
                         <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-                            The stack below is backtested against real historical prices from January 1 of the year you pick
-                            through today, with no fees applied. Nothing here is a made-up starting balance.
+                            The stack below is backtested on historical prices from January 1 of the year you pick
+                            through today, with no fees applied:{' '}
+                            {onFallbackSeries
+                                ? `Kraken's weekly closing prices from ${formatUtc(FIRST_EXCHANGE_CLOSE_DATE, 'full')}, with the days in between filled in along a straight line`
+                                : `Coinbase's daily closing prices from ${formatUtc(FIRST_EXCHANGE_CLOSE_DATE, 'full')}`}
+                            , and blockchain.info&apos;s daily average market price before that. Nothing here is a
+                            made-up starting balance.
                         </p>
+                        {onFallbackSeries && (
+                            <p className="text-xs text-amber-800 dark:text-amber-300 leading-relaxed">
+                                Coinbase&apos;s daily prices could not be reached just now, so this run is on Kraken&apos;s
+                                weekly series. Most buys are priced on a straight-line estimate between two weekly
+                                closes, and the worst-drawdown figure can read shallower than daily closes would show,
+                                because a straight line through a week cannot fall as far as the week did. Reload in a
+                                few minutes for the daily series.
+                            </p>
+                        )}
+                        {data?.series.stale && (
+                            <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                                {priceStaleNotice(data.series.provider, data.series.fetchedAt)}
+                            </p>
+                        )}
                     </form>
                 </Card>
 
                 {data ? (
                     <>
                         {/* Where the plan stands */}
-                        <section className="space-y-4">
+                        <section id="plan-result" className="space-y-4">
                             <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">
                                 What {planLabel} built
                             </h2>
@@ -492,7 +576,7 @@ export default async function BitcoinFirePage({ searchParams }: PageProps) {
                                 <StatCard
                                     label="Total invested"
                                     value={fmtUsd(data.totalInvested)}
-                                    sub={`${data.purchases} purchases`}
+                                    sub={`${data.purchases.toLocaleString('en-US')} ${data.purchases === 1 ? 'purchase' : 'purchases'}`}
                                 />
                                 <StatCard
                                     label="Stack today"
@@ -573,9 +657,9 @@ export default async function BitcoinFirePage({ searchParams }: PageProps) {
                             <div className="space-y-3 text-sm sm:text-base text-slate-600 dark:text-slate-300 leading-relaxed">
                                 <p>
                                     Withdrawal-rate research works by counting failures across many independent historical
-                                    windows. That requires a long record. Bitcoin has traded for roughly fifteen years, which
-                                    does not contain a single complete 30-year retirement, let alone enough of them to
-                                    estimate a failure rate. Any confidence interval you have seen attached to a Bitcoin
+                                    windows. That requires a long record. Bitcoin has about {historyYears} years of price
+                                    history, which does not contain a single complete 30-year retirement, let alone enough of
+                                    them to estimate a failure rate. Any confidence interval you have seen attached to a Bitcoin
                                     withdrawal rate was produced by a model, not by history.
                                 </p>
                                 <p>
@@ -624,13 +708,13 @@ export default async function BitcoinFirePage({ searchParams }: PageProps) {
                                     sequence. That is the single biggest reason to treat its answer as a best case rather than
                                     an expectation. If you want to see the same problem from the spending side, the{' '}
                                     <Link href="/calculators/bitcoin-drawdown" className={proseLink}>stack drawdown planner</Link>{' '}
-                                    shows how quickly a withdrawal schedule eats a stack under bear assumptions.
+                                    shows how quickly a withdrawal schedule eats a stack under whatever price path you set.
                                 </p>
                             </div>
                         </section>
 
                         {/* The tool */}
-                        <section className="space-y-4">
+                        <section id="projection" className="space-y-4">
                             <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">
                                 Project the years to financial independence
                             </h2>
@@ -759,8 +843,8 @@ export default async function BitcoinFirePage({ searchParams }: PageProps) {
                                 <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
                                     We could not load Bitcoin prices to backtest this plan right now, and this page will not
                                     show a projection built on an invented starting balance. Try the{' '}
-                                    <Link href="/" className={proseLink}>main calculator</Link>, which falls back across
-                                    several providers, or reload in a minute.
+                                    <Link href="/" className={proseLink}>main calculator</Link>, though it reads the same
+                                    two exchanges and may be affected as well, or reload in a minute.
                                 </p>
                             </div>
                         </div>
@@ -792,7 +876,9 @@ export default async function BitcoinFirePage({ searchParams }: PageProps) {
                         the same FIRE projection alongside the rest of the results.
                     </p>
                     <Link
-                        href={`/?amount=${plan.amount}&frequency=${plan.frequency}&startDate=${plan.year}-01-01&fee=0`}
+                        // provider: so the calculator opens on the series this page ran on
+                        // and shows the same stack.
+                        href={`/?amount=${plan.amount}&frequency=${plan.frequency}&startDate=${plan.year}-01-01&fee=0&provider=${data?.series.provider ?? 'coinbase'}`}
                         className="inline-flex items-center gap-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-semibold px-6 py-3 rounded-xl transition-colors text-sm sm:text-base"
                     >
                         Open the calculator with this plan
@@ -807,22 +893,22 @@ export default async function BitcoinFirePage({ searchParams }: PageProps) {
                     </h2>
                     <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 text-sm">
                         <li>
-                            <Link href="/calculators" className="block rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-2.5 font-medium text-slate-700 dark:text-slate-300 hover:border-amber-500/50 hover:text-amber-700 dark:hover:text-amber-400 transition-colors">
+                            <Link href="/calculators" className="block rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-3 font-medium text-slate-700 dark:text-slate-300 hover:border-amber-500/50 hover:text-amber-700 dark:hover:text-amber-400 transition-colors">
                                 All Bitcoin calculators
                             </Link>
                         </li>
                         <li>
-                            <Link href="/calculators/bitcoin-drawdown" className="block rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-2.5 font-medium text-slate-700 dark:text-slate-300 hover:border-amber-500/50 hover:text-amber-700 dark:hover:text-amber-400 transition-colors">
+                            <Link href="/calculators/bitcoin-drawdown" className="block rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-3 font-medium text-slate-700 dark:text-slate-300 hover:border-amber-500/50 hover:text-amber-700 dark:hover:text-amber-400 transition-colors">
                                 Bitcoin drawdown calculator
                             </Link>
                         </li>
                         <li>
-                            <Link href="/dca" className="block rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-2.5 font-medium text-slate-700 dark:text-slate-300 hover:border-amber-500/50 hover:text-amber-700 dark:hover:text-amber-400 transition-colors">
+                            <Link href="/dca" className="block rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-3 font-medium text-slate-700 dark:text-slate-300 hover:border-amber-500/50 hover:text-amber-700 dark:hover:text-amber-400 transition-colors">
                                 Historical DCA scenarios
                             </Link>
                         </li>
                         <li>
-                            <Link href="/methodology" className="block rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-2.5 font-medium text-slate-700 dark:text-slate-300 hover:border-amber-500/50 hover:text-amber-700 dark:hover:text-amber-400 transition-colors">
+                            <Link href="/methodology" className="block rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-3 font-medium text-slate-700 dark:text-slate-300 hover:border-amber-500/50 hover:text-amber-700 dark:hover:text-amber-400 transition-colors">
                                 Methodology &amp; data sources
                             </Link>
                         </li>

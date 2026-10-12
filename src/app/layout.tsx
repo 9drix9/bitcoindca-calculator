@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Inter } from 'next/font/google';
 import Link from 'next/link';
 import './globals.css';
@@ -12,6 +12,9 @@ import { Providers } from '@/components/Providers';
 import { ResponsiveNav } from '@/components/nav/ResponsiveNav';
 import { PwaInstallPrompt } from '@/components/PwaInstallPrompt';
 import { Logo } from '@/components/brand/Logo';
+import { ScrollBoxTabStops } from '@/components/ui/ScrollBoxTabStops';
+import { PLAN_LINK_BOOTSTRAP_SCRIPT } from '@/hooks/planLinkBootstrap';
+import { THEME_BOOTSTRAP_SCRIPT } from '@/hooks/themeBootstrap';
 import clsx from 'clsx';
 
 const inter = Inter({ subsets: ['latin'], display: 'swap' });
@@ -26,7 +29,7 @@ export const metadata: Metadata = {
   keywords: ['bitcoin dca calculator', 'dollar cost averaging bitcoin', 'btc dca', 'bitcoin investment calculator', 'bitcoin returns calculator', 'bitcoin savings calculator', 'crypto dca', 'bitcoin halving countdown', 'stack sats calculator', 'bitcoin portfolio tracker'],
   openGraph: {
     title: 'Bitcoin DCA Calculator | See What $50/Week in BTC Would Be Worth',
-    description: 'Free Bitcoin DCA calculator with real historical data from Kraken & Coinbase. Compare BTC vs S&P 500, Gold, and savings. Track halving, hashrate, lightning stats.',
+    description: 'Free Bitcoin DCA calculator with real historical price data. Compare BTC vs S&P 500, Gold, and savings. Track halving, hashrate, lightning stats.',
     type: 'website',
     siteName: 'Bitcoin DCA Calculator',
     locale: 'en_US',
@@ -53,36 +56,25 @@ export const metadata: Metadata = {
   },
 };
 
-export const viewport = {
+export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
-  viewportFit: 'cover' as const,
+  viewportFit: 'cover',
   // `interactive-widget=resizes-content` makes the on-screen keyboard shrink the
   // LAYOUT viewport, not just the visual one. Chrome Android's default
   // (resizes-visual) leaves `position:fixed; bottom:0` pinned to the pre-keyboard
   // bottom, so the tab bar appeared to float halfway up the screen with a gap
   // beneath it whenever a number or date field was focused.
-  interactiveWidget: 'resizes-content' as const,
-  themeColor: [
-    { media: '(prefers-color-scheme: dark)', color: '#020617' },
-    { media: '(prefers-color-scheme: light)', color: '#f8fafc' },
-  ],
+  interactiveWidget: 'resizes-content',
+  // No themeColor on purpose. Next can only emit it as media-queried metas that
+  // follow the OS, not the in-app theme toggle; the theme script below owns the
+  // one <meta name="theme-color"> instead (see src/hooks/themeBootstrap.ts).
 };
 
-const themeScript = `
-(function(){
-  try {
-    var t = localStorage.getItem('theme-preference');
-    if (t === 'dark' || (!t && window.matchMedia('(prefers-color-scheme: dark)').matches) || (t === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-      document.documentElement.classList.add('dark');
-    }
-  } catch(e) {}
-})();
-`;
-
 // Skips /embed: that route runs inside third-party pages, and /embed-guide
-// promises publishers it "collects nothing from your readers" — quietly
-// installing a service worker on their visitors would contradict that.
+// promises publishers it "loads no third-party scripts, sets no cookies and
+// runs no analytics" — quietly installing a service worker on their visitors
+// would not sit well beside that.
 const swRegisterScript = `
 var p = location.pathname;
 if('serviceWorker' in navigator && p !== '/embed' && p.indexOf('/embed/') !== 0){
@@ -92,10 +84,23 @@ if('serviceWorker' in navigator && p !== '/embed' && p.indexOf('/embed/') !== 0)
 }
 `;
 
+// 44px rows wherever a finger does the pointing: below 640px and on any
+// coarse-pointer device above it, the same two cases as the button floor in
+// globals.css. At their natural size these are 20px links on a 26px pitch, and
+// a tap meant for Privacy opens Terms.
+const touchRow = 'max-sm:min-h-11 pointer-coarse:min-h-11';
+
 // amber-700 rather than amber-600: amber-600 on white measures 3.1:1, under the
 // 4.5:1 AA floor for body text.
 const footerLink =
-  'text-sm text-slate-500 dark:text-slate-400 hover:text-amber-700 dark:hover:text-amber-400 transition-colors';
+  `flex items-center ${touchRow} text-sm text-slate-500 dark:text-slate-400 hover:text-amber-700 dark:hover:text-amber-400 transition-colors`;
+
+// The rows carry their own height on touch, so the gap between them goes.
+const footerList = 'flex flex-col gap-1.5 max-sm:gap-0 pointer-coarse:gap-0';
+
+// h2, not h4: nothing above these in the footer is an h3, so an h4 would skip
+// two levels of the outline on every page whose body ends at an h2.
+const footerHeading = 'text-xs font-semibold text-slate-800 dark:text-white uppercase tracking-wider';
 
 export default function RootLayout({
   children,
@@ -105,7 +110,8 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+        <script dangerouslySetInnerHTML={{ __html: THEME_BOOTSTRAP_SCRIPT }} />
+        <script dangerouslySetInnerHTML={{ __html: PLAN_LINK_BOOTSTRAP_SCRIPT }} />
         <script dangerouslySetInnerHTML={{ __html: `
           window.dataLayer = window.dataLayer || [];
           function gtag(){dataLayer.push(arguments);}
@@ -121,9 +127,9 @@ export default function RootLayout({
         <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
         {/* No manual favicon <link>: src/app/favicon.ico is an App Router metadata
             file, so Next emits the tag itself. Declaring it here as sizes="32x32"
-            also mislabelled what is really a 16/32/48 multi-frame ICO. */}
-        {/* No preconnect hints: all market-data fetches happen server-side via actions,
-            so the browser never contacts those origins directly. */}
+            would also mislabel what is really a 16/32/48 multi-frame ICO. */}
+        {/* No preconnect hints: all market-data fetches happen on the server, so
+            the browser never contacts those origins directly. */}
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
@@ -210,13 +216,21 @@ export default function RootLayout({
                     <span className="font-semibold text-slate-800 dark:text-white text-sm">Bitcoin DCA Calculator</span>
                   </div>
                   {/* Internal link to the author entity from every page — that is
-                      what associates a named person with the site for E-E-A-T. */}
-                  <p className="text-sm text-slate-500 dark:text-slate-400">
-                    Built by{' '}
-                    <Link href="/author" className="text-amber-700 dark:text-amber-400 hover:underline">
-                      drix
+                      what associates a named person with the site for E-E-A-T.
+
+                      Two links, each a full-height target on touch; the author
+                      link takes in "Built by" so that it is wide enough to hit.
+                      gap-x-1 spaces the row on screen. The literal spaces are
+                      for whatever reads the text without the layout (a crawler,
+                      a reader view): a flex row drops them from the rendering
+                      but not from the HTML. Both names are underlined because
+                      nothing else marks them as links. */}
+                  <p className="flex flex-wrap items-center gap-x-1 text-sm text-slate-500 dark:text-slate-400">
+                    <Link href="/author" className={`inline-flex items-center gap-x-1 ${touchRow}`}>
+                      Built by{' '}
+                      <span className="text-amber-700 dark:text-amber-400 underline underline-offset-2">drix</span>
                     </Link>{' '}
-                    <a href="https://x.com/9drix9" target="_blank" rel="noopener noreferrer" className="text-slate-500 dark:text-slate-400 hover:underline">
+                    <a href="https://x.com/9drix9" target="_blank" rel="noopener noreferrer" className={`inline-flex items-center ${touchRow} underline underline-offset-2`}>
                       (@9drix9)
                     </a>
                   </p>
@@ -225,8 +239,8 @@ export default function RootLayout({
                 {/* Tools — the entry point into the calculator and scenario clusters,
                     which previously had no link path from anywhere on the site. */}
                 <div className="space-y-2">
-                  <h4 className="text-xs font-semibold text-slate-800 dark:text-white uppercase tracking-wider">Tools</h4>
-                  <div className="flex flex-col gap-1.5">
+                  <h2 className={footerHeading}>Tools</h2>
+                  <ul className={footerList}>
                     {[
                       { href: '/calculators', label: 'All Calculators' },
                       { href: '/dca', label: 'DCA Scenarios' },
@@ -237,15 +251,15 @@ export default function RootLayout({
                       { href: '/developers', label: 'Free API & Data' },
                       { href: '/alternatives', label: 'Compare Calculators' },
                     ].map(({ href, label }) => (
-                      <Link key={href} href={href} className={footerLink}>{label}</Link>
+                      <li key={href}><Link href={href} className={footerLink}>{label}</Link></li>
                     ))}
-                  </div>
+                  </ul>
                 </div>
 
                 {/* Learn */}
                 <div className="space-y-2">
-                  <h4 className="text-xs font-semibold text-slate-800 dark:text-white uppercase tracking-wider">Learn</h4>
-                  <div className="flex flex-col gap-1.5">
+                  <h2 className={footerHeading}>Learn</h2>
+                  <ul className={footerList}>
                     {[
                       { href: '/why-bitcoin', label: 'Why Bitcoin' },
                       { href: '/self-custody', label: 'Self-Custody' },
@@ -254,16 +268,16 @@ export default function RootLayout({
                       { href: '/features', label: 'Features Guide' },
                       { href: '/methodology', label: 'Methodology & Data' },
                     ].map(({ href, label }) => (
-                      <Link key={href} href={href} className={footerLink}>{label}</Link>
+                      <li key={href}><Link href={href} className={footerLink}>{label}</Link></li>
                     ))}
-                  </div>
+                  </ul>
                 </div>
 
                 {/* Site — authorship and contact are the E-E-A-T signals Google
                     looks for on financial content, so they get top billing here. */}
                 <div className="space-y-2">
-                  <h4 className="text-xs font-semibold text-slate-800 dark:text-white uppercase tracking-wider">Site</h4>
-                  <div className="flex flex-col gap-1.5">
+                  <h2 className={footerHeading}>Site</h2>
+                  <ul className={footerList}>
                     {[
                       { href: '/about', label: 'About' },
                       { href: '/author', label: 'Who Built This' },
@@ -272,23 +286,26 @@ export default function RootLayout({
                       { href: '/terms', label: 'Terms of Service' },
                       { href: '/about#affiliate-disclosure', label: 'Ads & Disclosure' },
                     ].map(({ href, label }) => (
-                      <Link key={href} href={href} className={footerLink}>{label}</Link>
+                      <li key={href}><Link href={href} className={footerLink}>{label}</Link></li>
                     ))}
                     {/* Withdrawing consent has to be as easy as giving it. */}
-                    <CookiePreferencesButton className={`${footerLink} text-left`} />
-                  </div>
+                    <li><CookiePreferencesButton className={`${footerLink} w-full text-left`} /></li>
+                  </ul>
                 </div>
 
                 {/* Donation */}
                 <div className="space-y-2">
-                  <h4 className="text-xs font-semibold text-slate-800 dark:text-white uppercase tracking-wider">Support</h4>
+                  <h2 className={footerHeading}>Support</h2>
                   <p className="text-xs text-slate-500 dark:text-slate-400">Donate BTC</p>
                   <BtcDonationButton />
                 </div>
               </nav>
 
               <div className="border-t border-slate-100 dark:border-slate-800 pt-6 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-500 dark:text-slate-400">
-                <p suppressHydrationWarning>&copy; {new Date().getFullYear()} Bitcoin DCA Calculator. Market data from public exchange APIs.</p>
+                {/* UTC year, like every other date on the site. This is a Server
+                    Component, so the year is fixed when the page is rendered and
+                    the browser never recomputes it. */}
+                <p>&copy; {new Date().getUTCFullYear()} Bitcoin DCA Calculator. Market data from public exchange APIs.</p>
                 <p className="text-slate-500 dark:text-slate-400">Not financial advice.</p>
               </div>
             </div>
@@ -296,6 +313,7 @@ export default function RootLayout({
 
           <PwaInstallPrompt />
           <CookieConsent />
+          <ScrollBoxTabStops />
         </div>
         </Providers>
         <LazyAnalytics />

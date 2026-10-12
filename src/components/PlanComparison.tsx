@@ -13,13 +13,17 @@ import {
 } from 'recharts';
 import { GitCompare, Plus, X } from 'lucide-react';
 import clsx from 'clsx';
-import { getBitcoinPriceHistory } from '@/app/actions';
+import { getBitcoinPriceHistoryWithMeta } from '@/app/actions';
 import { Card, CardHeader, EmptyState } from '@/components/ui/Card';
 import { useCurrency } from '@/context/CurrencyContext';
 import { useIsDark } from '@/hooks/useIsDark';
+import { DEFAULT_PLAN } from '@/data/planDefaults';
+import { priceFallbackNotice, priceStaleNotice, type PriceProvider } from '@/data/priceSources';
 import { DcaResult, Frequency } from '@/types';
 import { calculateDca } from '@/utils/dca';
 import { DAY_MS, EARLIEST_PRICE_DATE, EARLIEST_PRICE_TS, formatUtc, parseUtcDate, utcDayStart } from '@/utils/dates';
+import { limitMessage, readNumericText } from '@/utils/numericInput';
+import { URL_PARAM_LIMITS } from '@/utils/urlParams';
 
 // ── Props contract (wired into DcaCalculator by the orchestrator) ─────────────
 
@@ -27,9 +31,21 @@ export interface BasePlan {
     amountUsd: number; // per-purchase amount in USD
     frequency: 'daily' | 'weekly' | 'biweekly' | 'monthly';
     startDate: string; // 'yyyy-MM-dd'
-    endDate: string; // 'yyyy-MM-dd'
+    /**
+     * 'yyyy-MM-dd'. Every plan here runs to this day. The calculator passes
+     * today for a plan whose own end date is in the future: these cards say
+     * what a plan "would have done", and buys that have not happened yet would
+     * only be the last known price repeated.
+     */
+    endDate: string;
     feePercentage: number;
-    provider: 'kraken' | 'coinbase';
+    /**
+     * Flat fee per buy in USD. It is charged to every plan compared here, on
+     * top of that plan's own percentage: a fixed charge per order is exactly
+     * what makes a weekly schedule cost more than a monthly one.
+     */
+    flatFeeUsd?: number;
+    provider: PriceProvider;
     /**
      * Live spot price. Without it every plan here was valued at the last historical
      * bar while the headline result cards used the live price, so the same schedule
@@ -64,14 +80,76 @@ interface PlanSpec {
 
 interface SpecPayload {
     endTs: number | null;
-    provider: 'kraken' | 'coinbase';
+    provider: PriceProvider;
+    flatFeeUsd: number;
     specs: PlanSpec[];
 }
 
 interface ComputedPlan {
     key: PlanKey;
     result: DcaResult | null; // null = data unavailable for this plan
+    /**
+     * Set when the prices this plan ran on are not the ones asked for: the
+     * other exchange's, or a copy fetched earlier. The main result says so
+     * for its own series, and this panel fetches its own.
+     */
+    sourceNotice: string | null;
 }
+
+/**
+ * An alternative plan's fields as the comparison will use them, with a
+ * sentence for each one that is not being used as typed. The fields are free
+ * text, so "1,000", a fee of 75 and a start date after the end all arrive
+ * here, and a plan that cannot be run is a different thing from prices that
+ * are missing.
+ */
+interface CheckedPlan {
+    amountUsd: number | null;
+    amountNote: string | null;
+    feePercentage: number;
+    feeNote: string | null;
+    startTs: number | null;
+    dateNote: string | null;
+}
+
+/** The same ceilings as the main form's amount and fee fields. */
+const AMOUNT_LIMITS = { min: 0, max: URL_PARAM_LIMITS.maxAmount };
+const FEE_LIMITS = { min: 0, max: URL_PARAM_LIMITS.maxFeePct };
+
+const checkPlan = (plan: AltPlanState, rate: number, symbol: string, endTs: number): CheckedPlan => {
+    const amount = readNumericText(plan.amountInput, AMOUNT_LIMITS);
+    const amountOk = amount.value !== null && amount.value > 0;
+    const fee = readNumericText(plan.feeInput, FEE_LIMITS);
+    const typedStart = parseUtcDate(plan.startDate);
+    // `min` on the input is not enforced for typed values in every browser, so
+    // a start before the first priced day is moved up to it: left alone, it
+    // would price purchases at nothing. The note below says that it happened.
+    const startTs = Number.isFinite(typedStart) ? Math.max(typedStart, EARLIEST_PRICE_TS) : null;
+    const dateOk = startTs !== null && Number.isFinite(endTs) && startTs <= endTs;
+    return {
+        // Display-currency input → USD for all internal math (spec §3)
+        amountUsd: amountOk && amount.value !== null ? amount.value / rate : null,
+        amountNote: !amountOk
+            ? 'Enter an amount above 0, in digits only: 1000, or 12.50.'
+            : amount.hit
+                ? limitMessage('The amount', amount.hit, (n) => `${symbol}${n.toLocaleString('en-US')}`)
+                : null,
+        feePercentage: fee.value ?? 0,
+        feeNote: fee.hit
+            ? limitMessage('The fee', fee.hit, (n) => `${n}%`)
+            : fee.value === null && plan.feeInput.trim() !== ''
+                ? 'Enter the fee as a number, like 0.5. No fee is charged until then.'
+                : null,
+        startTs: dateOk ? startTs : null,
+        dateNote: !dateOk
+            ? Number.isFinite(endTs)
+                ? `Pick a start date on or before ${formatUtc(endTs, 'full')}.`
+                : 'Pick a start date.'
+            : typedStart < EARLIEST_PRICE_TS
+                ? 'Bitcoin price data starts on 18 August 2010, so this plan starts then.'
+                : null,
+    };
+};
 
 interface ChartRow {
     ts: number;
@@ -113,12 +191,16 @@ const planColor = (key: PlanKey, isDark: boolean): string => {
 
 const finiteOrNull = (v: number): number | null => (Number.isFinite(v) ? v : null);
 
+// 44px tall on a narrow screen or a coarse pointer: a field is a touch target
+// too, and the 44px floor in globals.css only covers buttons.
 const inputClass =
-    'h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-base text-slate-800 outline-none ' +
+    'h-11 sm:h-10 pointer-coarse:h-11 w-full rounded-lg border border-slate-200 bg-white px-3 text-base text-slate-800 outline-none ' +
     'transition-shadow focus:border-amber-500 focus:ring-2 focus:ring-amber-500/40 ' +
-    'dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 sm:text-sm';
+    'dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 sm:text-sm pointer-coarse:text-base';
 
 const labelClass = 'mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400';
+
+const noteClass = 'mt-1 text-[11px] leading-snug text-slate-600 dark:text-slate-300';
 
 const addButtonClass =
     'flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-slate-300 ' +
@@ -178,6 +260,7 @@ function ComparisonTooltip({
 
 function PlanRow({
     plan,
+    checked,
     name,
     color,
     maxDate,
@@ -185,6 +268,8 @@ function PlanRow({
     onRemove,
 }: {
     plan: AltPlanState;
+    /** What the comparison makes of the fields, and what it had to change. */
+    checked: CheckedPlan;
     name: string;
     color: string;
     maxDate: string;
@@ -205,9 +290,9 @@ function PlanRow({
                     type="button"
                     onClick={onRemove}
                     aria-label={`Remove ${name}`}
-                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-slate-200/60 hover:text-slate-600 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-300"
+                    className="flex h-11 w-11 sm:h-9 sm:w-9 pointer-coarse:h-11 pointer-coarse:w-11 shrink-0 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-slate-200/60 hover:text-slate-600 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-300"
                 >
-                    <X className="h-4 w-4" />
+                    <X className="h-4 w-4" aria-hidden="true" />
                 </button>
             </div>
             {/* Stacked below sm: a native date field cannot shrink into a ~147px column at
@@ -224,8 +309,11 @@ function PlanRow({
                         autoComplete="off"
                         value={plan.amountInput}
                         onChange={(e) => onChange({ amountInput: e.target.value })}
+                        aria-invalid={checked.amountUsd === null}
+                        aria-describedby={checked.amountNote ? `${uid}-amount-note` : undefined}
                         className={inputClass}
                     />
+                    {checked.amountNote && <p id={`${uid}-amount-note`} className={noteClass}>{checked.amountNote}</p>}
                 </div>
                 <div className="min-w-0">
                     <label htmlFor={`${uid}-frequency`} className={labelClass}>
@@ -255,8 +343,11 @@ function PlanRow({
                         max={maxDate}
                         value={plan.startDate}
                         onChange={(e) => onChange({ startDate: e.target.value })}
+                        aria-invalid={checked.startTs === null}
+                        aria-describedby={checked.dateNote ? `${uid}-start-note` : undefined}
                         className={clsx(inputClass, 'min-w-0')}
                     />
+                    {checked.dateNote && <p id={`${uid}-start-note`} className={noteClass}>{checked.dateNote}</p>}
                 </div>
                 <div className="min-w-0">
                     <label htmlFor={`${uid}-fee`} className={labelClass}>
@@ -269,8 +360,10 @@ function PlanRow({
                         autoComplete="off"
                         value={plan.feeInput}
                         onChange={(e) => onChange({ feeInput: e.target.value })}
+                        aria-describedby={checked.feeNote ? `${uid}-fee-note` : undefined}
                         className={inputClass}
                     />
+                    {checked.feeNote && <p id={`${uid}-fee-note`} className={noteClass}>{checked.feeNote}</p>}
                 </div>
             </div>
         </div>
@@ -293,13 +386,16 @@ function SummaryCard({
     color,
     descriptor,
     result,
+    problem,
 }: {
     name: string;
     color: string;
     descriptor: string | null;
     result: DcaResult | null;
+    /** Why this plan cannot be run as typed, when that is the reason there is no result. */
+    problem?: string | null;
 }) {
-    const { formatCurrency, formatBtc } = useCurrency();
+    const { formatCurrency, formatBtcAmount } = useCurrency();
 
     return (
         <div className="rounded-xl bg-slate-50 p-3 dark:bg-slate-800/50">
@@ -323,10 +419,14 @@ function SummaryCard({
                                 : 'text-loss'
                         }
                     />
-                    <SummaryStat label="BTC" value={formatBtc(result.btcAccumulated)} />
+                    {/* "Stack", not "BTC": the figure follows the Units switch. */}
+                    <SummaryStat label="Stack" value={formatBtcAmount(result.btcAccumulated)} />
                 </dl>
+            ) : problem ? (
+                // The prices are fine; the plan's own fields are not.
+                <EmptyState hint={problem} className="mt-2">Nothing to show yet</EmptyState>
             ) : (
-                <EmptyState />
+                <EmptyState className="mt-2" />
             )}
         </div>
     );
@@ -334,9 +434,17 @@ function SummaryCard({
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-export const PlanComparison: React.FC<{ basePlan: BasePlan; simplifiedBase?: boolean }> = ({ basePlan, simplifiedBase }) => {
+export const PlanComparison: React.FC<{
+    basePlan: BasePlan;
+    simplifiedBase?: boolean;
+    /** True when the plan's own end date is after `basePlan.endDate` (today). */
+    stopsAtToday?: boolean;
+}> = ({ basePlan, simplifiedBase, stopsAtToday }) => {
     const { currencyConfig, formatCurrency, convertFromUsd } = useCurrency();
     const isDark = useIsDark();
+    const flatFeeUsd = basePlan.flatFeeUsd !== undefined && basePlan.flatFeeUsd > 0 ? basePlan.flatFeeUsd : 0;
+    // formatCurrency trims trailing zeros ("$2.5"); a fee is read as money.
+    const flatFeeText = formatCurrency(flatFeeUsd, 2).replace(/\.\d$/, (cents) => `${cents}0`);
 
     const [altPlans, setAltPlans] = useState<AltPlanState[]>([]);
     const [computed, setComputed] = useState<ComputedPlan[] | null>(null);
@@ -351,7 +459,10 @@ export const PlanComparison: React.FC<{ basePlan: BasePlan; simplifiedBase?: boo
             if (prev.length >= 2) return prev;
             const slot: AltSlot = prev.some((p) => p.slot === 'b') ? 'c' : 'b';
             // Sensible defaults: B doubles the amount, C switches the schedule.
-            const defaultUsd = slot === 'b' ? basePlan.amountUsd * 2 : basePlan.amountUsd;
+            // From the default amount when the main plan buys nothing, so the
+            // new row does not open on an error for a value nobody typed.
+            const baseUsd = basePlan.amountUsd > 0 ? basePlan.amountUsd : DEFAULT_PLAN.amount;
+            const defaultUsd = slot === 'b' ? baseUsd * 2 : baseUsd;
             const frequency: Frequency =
                 slot === 'b'
                     ? basePlan.frequency
@@ -394,12 +505,17 @@ export const PlanComparison: React.FC<{ basePlan: BasePlan; simplifiedBase?: boo
     // (a plain string dep means identical inputs never refetch, and any input
     // change restarts the 500ms debounce; the cancelled flag drops stale runs)
 
+    const baseEndTs = parseUtcDate(basePlan.endDate);
+    // One entry per plan in `sortedAlts`, in the same order.
+    const checkedAlts = sortedAlts.map((plan) => checkPlan(plan, currencyConfig.rate, currencyConfig.symbol, baseEndTs));
+
     const specsJson =
         altPlans.length === 0
             ? null
             : JSON.stringify({
-                  endTs: finiteOrNull(parseUtcDate(basePlan.endDate)),
+                  endTs: finiteOrNull(baseEndTs),
                   provider: basePlan.provider,
+                  flatFeeUsd,
                   specs: [
                       {
                           key: 'a',
@@ -408,21 +524,13 @@ export const PlanComparison: React.FC<{ basePlan: BasePlan; simplifiedBase?: boo
                           startTs: finiteOrNull(parseUtcDate(basePlan.startDate)),
                           feePercentage: basePlan.feePercentage,
                       },
-                      ...sortedAlts.map((p): PlanSpec => {
-                          const fee = parseFloat(p.feeInput);
-                          const startTs = finiteOrNull(parseUtcDate(p.startDate));
-                          return {
-                              key: p.slot,
-                              // Display-currency input → USD for all internal math (spec §3)
-                              amountUsd: finiteOrNull(parseFloat(p.amountInput) / currencyConfig.rate),
-                              frequency: p.frequency,
-                              // `min` on the input is not enforced for typed values in
-                              // every browser; clamp like the main calculator does so a
-                              // pre-2010 date can't silently price purchases at nothing.
-                              startTs: startTs !== null ? Math.max(startTs, EARLIEST_PRICE_TS) : null,
-                              feePercentage: Number.isFinite(fee) ? fee : 0,
-                          };
-                      }),
+                      ...sortedAlts.map((p, i): PlanSpec => ({
+                          key: p.slot,
+                          amountUsd: checkedAlts[i].amountUsd,
+                          frequency: p.frequency,
+                          startTs: checkedAlts[i].startTs,
+                          feePercentage: checkedAlts[i].feePercentage,
+                      })),
                   ],
               } satisfies SpecPayload);
 
@@ -435,18 +543,22 @@ export const PlanComparison: React.FC<{ basePlan: BasePlan; simplifiedBase?: boo
 
     useEffect(() => {
         if (specsJson === null) return; // collapsed — removeAltPlan already cleared results
-        const { endTs, provider, specs } = JSON.parse(specsJson) as SpecPayload;
+        const { endTs, provider, flatFeeUsd: flatFee, specs } = JSON.parse(specsJson) as SpecPayload;
         let cancelled = false;
         const timer = setTimeout(async () => {
             setLoading(true);
             const results = await Promise.all(
                 specs.map(async (spec): Promise<ComputedPlan> => {
                     if (endTs === null || spec.startTs === null || spec.amountUsd === null || spec.amountUsd <= 0) {
-                        return { key: spec.key, result: null };
+                        return { key: spec.key, result: null, sourceNotice: null };
                     }
                     try {
-                        const history = await getBitcoinPriceHistory(spec.startTs, endTs + DAY_MS, provider);
-                        if (cancelled || history.length === 0) return { key: spec.key, result: null };
+                        const history = await getBitcoinPriceHistoryWithMeta(spec.startTs, endTs + DAY_MS, provider);
+                        if (cancelled || history.data.length === 0) return { key: spec.key, result: null, sourceNotice: null };
+                        const sourceNotice = [
+                            priceFallbackNotice(history.requestedProvider, history.servedProvider),
+                            history.stale ? priceStaleNotice(history.servedProvider, history.fetchedAt) : null,
+                        ].filter(Boolean).join(' ') || null;
                         const result = calculateDca(
                             {
                                 amount: spec.amountUsd,
@@ -454,15 +566,16 @@ export const PlanComparison: React.FC<{ basePlan: BasePlan; simplifiedBase?: boo
                                 startDate: new Date(spec.startTs),
                                 endDate: new Date(endTs),
                                 feePercentage: spec.feePercentage,
+                                flatFee,
                                 priceMode: 'api',
                                 manualPrice: 0,
                             },
-                            history,
+                            history.data,
                             livePriceRef.current,
                         );
-                        return { key: spec.key, result: result.breakdown.length > 0 ? result : null };
+                        return { key: spec.key, result: result.breakdown.length > 0 ? result : null, sourceNotice };
                     } catch {
-                        return { key: spec.key, result: null }; // quiet failure: card says "Data unavailable"
+                        return { key: spec.key, result: null, sourceNotice: null }; // quiet failure: card says "Data unavailable"
                     }
                 }),
             );
@@ -507,6 +620,7 @@ export const PlanComparison: React.FC<{ basePlan: BasePlan; simplifiedBase?: boo
     // `computed` for the debounce window) and produced a result.
     const liveKeys = new Set<PlanKey>(['a', ...sortedAlts.map((p) => p.slot)]);
     const activePlans = computed?.filter((p) => p.result !== null && liveKeys.has(p.key)) ?? [];
+    const sourceNotices = [...new Set(activePlans.map((p) => p.sourceNotice).filter((notice) => notice !== null))];
 
     // Compact currency Y ticks — always converted from USD before formatting (spec §3).
     const formatAxisTick = useCallback(
@@ -515,15 +629,27 @@ export const PlanComparison: React.FC<{ basePlan: BasePlan; simplifiedBase?: boo
             const sym = currencyConfig.symbol;
             const sign = v < 0 ? '-' : '';
             const abs = Math.abs(v);
-            if (abs >= 1_000_000_000) return `${sign}${sym}${(abs / 1_000_000_000).toFixed(1)}B`;
-            if (abs >= 1_000_000) return `${sign}${sym}${(abs / 1_000_000).toFixed(1)}M`;
+            // One decimal below 100: "$100.0M" is wider than the axis.
+            const short = (n: number): string => n.toFixed(n >= 100 ? 0 : 1);
+            if (abs >= 1_000_000_000) return `${sign}${sym}${short(abs / 1_000_000_000)}B`;
+            if (abs >= 1_000_000) return `${sign}${sym}${short(abs / 1_000_000)}M`;
             if (abs >= 10_000) return `${sign}${sym}${(abs / 1_000).toFixed(0)}k`;
             if (abs >= 1_000) return `${sign}${sym}${(abs / 1_000).toFixed(1)}k`;
             if (abs >= 1) return `${sign}${sym}${abs.toFixed(0)}`;
+            // "$0.00" beside "$20k" reads as a different unit; zero is just $0.
+            if (abs === 0) return `${sym}0`;
             return `${sign}${sym}${abs.toFixed(2)}`;
         },
         [convertFromUsd, currencyConfig.symbol],
     );
+
+    // Day labels up to about a year and a half, month and year beyond, as on
+    // the main chart: on a short span "Jul 26" (July 2026) repeats and reads
+    // as the 26th.
+    const xTickStyle =
+        chartData.length > 1 && (chartData[chartData.length - 1].ts - chartData[0].ts) / DAY_MS <= 550
+            ? 'monthDay'
+            : 'shortMonthYear';
 
     // ── Display metadata ──────────────────────────────────────────────────────
 
@@ -532,12 +658,23 @@ export const PlanComparison: React.FC<{ basePlan: BasePlan; simplifiedBase?: boo
             ? `${formatCurrency(amountUsd)} / ${FREQUENCY_NOUN[frequency]}`
             : null;
 
-    const displayPlans: { key: PlanKey; descriptor: string | null }[] = [
-        { key: 'a', descriptor: describe(finiteOrNull(basePlan.amountUsd), basePlan.frequency) },
-        ...sortedAlts.map((p) => ({
-            key: p.slot,
-            descriptor: describe(finiteOrNull(parseFloat(p.amountInput) / currencyConfig.rate), p.frequency),
-        })),
+    const displayPlans: { key: PlanKey; descriptor: string | null; problem: string | null }[] = [
+        {
+            key: 'a',
+            descriptor: describe(finiteOrNull(basePlan.amountUsd), basePlan.frequency),
+            problem: basePlan.amountUsd > 0
+                ? null
+                : 'Your plan buys nothing on its schedule. Enter an amount above 0 in the calculator to compare it.',
+        },
+        ...sortedAlts.map((p, i) => {
+            const checked = checkedAlts[i];
+            return {
+                key: p.slot,
+                descriptor: describe(checked.amountUsd, p.frequency),
+                // Only what stops the plan from running: a capped fee still gives a result.
+                problem: checked.amountUsd === null ? checked.amountNote : checked.startTs === null ? checked.dateNote : null,
+            };
+        }),
     ];
 
     const baseStartTs = parseUtcDate(basePlan.startDate);
@@ -545,6 +682,7 @@ export const PlanComparison: React.FC<{ basePlan: BasePlan; simplifiedBase?: boo
         describe(finiteOrNull(basePlan.amountUsd), basePlan.frequency),
         Number.isFinite(baseStartTs) ? `from ${formatUtc(baseStartTs, 'full')}` : null,
         basePlan.feePercentage > 0 ? `${basePlan.feePercentage}% fee` : null,
+        flatFeeUsd > 0 ? `${flatFeeText} flat fee per buy` : null,
     ]
         .filter(Boolean)
         .join(' · ');
@@ -562,13 +700,16 @@ export const PlanComparison: React.FC<{ basePlan: BasePlan; simplifiedBase?: boo
             <CardHeader
                 icon={<GitCompare className="h-4 w-4" />}
                 title="Compare Plans"
-                subtitle={simplifiedBase
+                subtitle={[
+                    'What a different amount, schedule, or start date would have done.',
                     // Plan rows can only express amount/schedule/date, so when the
                     // main plan carries a starting stack or yearly increases the
                     // "Your plan" row here is the simplified version — say so
                     // rather than let two panels disagree in silence.
-                    ? 'What a different amount, schedule, or start date would have done. Plans here use your year-one amount only — starting stack and yearly increases are left out.'
-                    : 'What a different amount, schedule, or start date would have done.'}
+                    simplifiedBase && 'Plans here use your year-one amount only — starting stack and yearly increases are left out.',
+                    flatFeeUsd > 0 && `Every plan pays your ${flatFeeText} flat fee on each buy, on top of its own percentage.`,
+                    stopsAtToday && 'Your plan runs past today, so every plan here stops at today.',
+                ].filter(Boolean).join(' ')}
             />
 
             {altPlans.length === 0 ? (
@@ -594,10 +735,11 @@ export const PlanComparison: React.FC<{ basePlan: BasePlan; simplifiedBase?: boo
 
                     {/* Alternative plan editors */}
                     <div className="space-y-3">
-                        {sortedAlts.map((p) => (
+                        {sortedAlts.map((p, i) => (
                             <PlanRow
                                 key={p.slot}
                                 plan={p}
+                                checked={checkedAlts[i]}
                                 name={PLAN_NAMES[p.slot]}
                                 color={planColor(p.slot, isDark)}
                                 maxDate={basePlan.endDate}
@@ -618,8 +760,13 @@ export const PlanComparison: React.FC<{ basePlan: BasePlan; simplifiedBase?: boo
                     {computed === null ? (
                         <div className="h-[260px] animate-pulse rounded-xl bg-slate-100 dark:bg-slate-800" aria-hidden="true" />
                     ) : chartData.length > 0 ? (
+                        // The legend text is coloured here: a formatter that returns an
+                        // element ends up in the icon's label as "[object Object]".
                         <div
-                            className={clsx('h-[260px] tabular-nums transition-opacity', loading && 'opacity-60')}
+                            className={clsx(
+                                'h-[260px] tabular-nums transition-opacity [&_.recharts-legend-item-text]:text-slate-500! dark:[&_.recharts-legend-item-text]:text-slate-400!',
+                                loading && 'opacity-60',
+                            )}
                             role="img"
                             aria-label={chartAriaLabel}
                         >
@@ -636,7 +783,7 @@ export const PlanComparison: React.FC<{ basePlan: BasePlan; simplifiedBase?: boo
                                         type="number"
                                         scale="time"
                                         domain={['dataMin', 'dataMax']}
-                                        tickFormatter={(ts: number) => formatUtc(ts, 'shortMonthYear')}
+                                        tickFormatter={(ts: number) => formatUtc(ts, xTickStyle)}
                                         minTickGap={40}
                                         tick={{ fontSize: 11, fill: axisColor(isDark) }}
                                         tickLine={false}
@@ -655,13 +802,7 @@ export const PlanComparison: React.FC<{ basePlan: BasePlan; simplifiedBase?: boo
                                         cursor={{ stroke: cursorColor, strokeWidth: 1 }}
                                     />
                                     {activePlans.length >= 2 && (
-                                        <Legend
-                                            verticalAlign="top"
-                                            height={24}
-                                            iconSize={8}
-                                            wrapperStyle={{ fontSize: 11 }}
-                                            formatter={(value) => <span style={{ color: axisColor(isDark) }}>{value}</span>}
-                                        />
+                                        <Legend verticalAlign="top" height={24} iconSize={8} wrapperStyle={{ fontSize: 11 }} />
                                     )}
                                     {activePlans.map((p) => (
                                         <Line
@@ -682,9 +823,14 @@ export const PlanComparison: React.FC<{ basePlan: BasePlan; simplifiedBase?: boo
                         </div>
                     ) : (
                         <div className="flex h-[260px] items-center justify-center rounded-xl bg-slate-50 text-sm text-slate-500 dark:bg-slate-800/50 dark:text-slate-400">
-                            Chart data unavailable
+                            {/* A plan that cannot run is not missing data. */}
+                            {displayPlans.some((p) => p.problem) ? 'Nothing to chart yet' : 'Chart data unavailable'}
                         </div>
                     )}
+
+                    {sourceNotices.map((notice) => (
+                        <p key={notice} className="text-[11px] leading-snug text-slate-600 dark:text-slate-300">{notice}</p>
+                    ))}
 
                     {/* Per-plan summary cards */}
                     {computed !== null && (
@@ -701,6 +847,7 @@ export const PlanComparison: React.FC<{ basePlan: BasePlan; simplifiedBase?: boo
                                     color={planColor(p.key, isDark)}
                                     descriptor={p.descriptor}
                                     result={computed.find((c) => c.key === p.key)?.result ?? null}
+                                    problem={p.problem}
                                 />
                             ))}
                         </div>

@@ -17,8 +17,15 @@ import { useSyncExternalStore } from 'react';
  */
 const KEYBOARD_MIN_PX = 150;
 
-const isOpen = (): boolean => {
-    const vv = window.visualViewport;
+/** The sizes the answer is read from. `viewport` is `window.visualViewport`. */
+export interface ViewportReading {
+    innerWidth: number;
+    innerHeight: number;
+    viewport: { width: number; height: number; scale: number } | null | undefined;
+}
+
+/** The decision itself, with no `window` in it, so it can be tested with numbers measured on a real page. */
+export function keyboardLooksOpen({ innerWidth, innerHeight, viewport: vv }: ViewportReading): boolean {
     if (!vv) return false;
 
     // Pinch-zoom is NOT a keyboard. On Chromium `innerHeight` tracks the layout
@@ -28,10 +35,26 @@ const isOpen = (): boolean => {
     // with it. Bail out whenever the user is zoomed.
     if (vv.scale > 1.05) return false;
 
+    // Neither is a page that is wider than the screen. A keyboard takes height
+    // and leaves width alone; when the layout viewport is also WIDER than the
+    // visual one, a mobile browser has stretched it to fit some overflowing
+    // element, and `innerHeight` is stretched by the same factor. A 390x844
+    // phone on a page 623px across reports innerHeight 1347: a 503px
+    // "keyboard" on every load, and no tab bar. Taking the factor back out
+    // leaves the real difference. On a page that fits, the factor is exactly 1.
+    const stretch = vv.width > 0 ? Math.max(1, innerWidth / vv.width) : 1;
+
     // On iOS the visual viewport also shrinks as the toolbar expands, which is
     // only ~60-80px — well under this threshold.
-    return window.innerHeight - vv.height > KEYBOARD_MIN_PX;
-};
+    return innerHeight / stretch - vv.height > KEYBOARD_MIN_PX;
+}
+
+const isOpen = (): boolean =>
+    keyboardLooksOpen({
+        innerWidth: window.innerWidth,
+        innerHeight: window.innerHeight,
+        viewport: window.visualViewport,
+    });
 
 const subscribe = (onChange: () => void) => {
     const vv = window.visualViewport;

@@ -1,6 +1,6 @@
 'use client';
 
-import { Children, useState, useSyncExternalStore, type ReactNode } from 'react';
+import { Children, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { ChevronDown } from 'lucide-react';
 import clsx from 'clsx';
 
@@ -27,9 +27,11 @@ const getServerIsLg = () => true;
  * half further away for anyone scrolling to the end.
  *
  * On phones the collapsed children are unmounted, not just `hidden`: they are
- * live widgets whose polling intervals would otherwise keep burning battery,
- * data, and server invocations behind a card the user never opened. Expanding
- * remounts them with their SSR props, and each widget's own poll takes over.
+ * live widgets, and a card the user never opened would otherwise keep the
+ * poll running at its own rate. Expanding remounts them. Each then shows the
+ * newer of the figure the page was rendered with and what the cards' shared
+ * poll has fetched since, and asks again when that is due (see
+ * components/live/liveSidebar).
  * The `hidden lg:block` class still matters for the one render where the
  * matchMedia snapshot is not yet known (hydration).
  */
@@ -47,13 +49,30 @@ export function MobileCollapse({
     const items = Children.toArray(children);
     const hiddenCount = Math.max(0, items.length - previewCount);
 
+    // The toggle sits AFTER the items it reveals, so a keyboard or screen-reader
+    // user who opens it is left on a button with the new content behind them,
+    // and nothing says it has appeared. Focus moves to the first revealed item;
+    // preventScroll, because a sighted reader's page should stay where it is.
+    const firstRevealedRef = useRef<HTMLDivElement>(null);
+    const justExpandedRef = useRef(false);
+    useEffect(() => {
+        if (!expanded || !justExpandedRef.current) return;
+        justExpandedRef.current = false;
+        firstRevealedRef.current?.focus({ preventScroll: true });
+    }, [expanded]);
+
     return (
         <>
             {items.map((child, i) => {
                 const collapsed = i >= previewCount && !expanded;
                 if (collapsed && !isDesktop) return null;
                 return (
-                    <div key={i} className={clsx(collapsed && 'hidden lg:block')}>
+                    <div
+                        key={i}
+                        ref={i === previewCount ? firstRevealedRef : undefined}
+                        tabIndex={i === previewCount ? -1 : undefined}
+                        className={clsx(collapsed && 'hidden lg:block')}
+                    >
                         {child}
                     </div>
                 );
@@ -62,7 +81,10 @@ export function MobileCollapse({
             {hiddenCount > 0 && (
                 <button
                     type="button"
-                    onClick={() => setExpanded((v) => !v)}
+                    onClick={() => {
+                        justExpandedRef.current = !expanded;
+                        setExpanded((v) => !v);
+                    }}
                     aria-expanded={expanded}
                     className="lg:hidden w-full flex items-center justify-center gap-1.5 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
                 >

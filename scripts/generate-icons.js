@@ -10,13 +10,12 @@
  * change both and re-run this script.
  *
  * Emits:
- *   src/app/favicon.ico     16/32/48 multi-frame ICO  (App Router serves this one)
- *   src/app/icon.svg        vector favicon (App Router emits the <link> for it)
- *   public/icon-192.png     PWA icon
- *   public/icon-512.png     PWA icon
+ *   src/app/favicon.ico            16/32/48 multi-frame ICO  (App Router serves this one)
+ *   src/app/icon.svg               vector favicon (App Router emits the <link> for it)
+ *   public/icon-192.png            PWA icon
+ *   public/icon-512.png            PWA icon
+ *   public/icon-maskable-512.png   PWA icon, Android maskable
  *   public/apple-touch-icon.png
- *   public/icon-192.svg     vector fallbacks referenced by manifest.json
- *   public/icon-512.svg
  */
 const sharp = require('sharp');
 const fs = require('fs');
@@ -177,13 +176,8 @@ async function main() {
         .toFile(path.join(PUBLIC_DIR, 'icon-maskable-512.png'));
     console.log('Generated: public/icon-maskable-512.png (512x512, maskable safe zone)');
 
-    for (const size of [192, 512]) {
-        fs.writeFileSync(
-            path.join(PUBLIC_DIR, `icon-${size}.svg`),
-            tileSvg(size, Math.round(size * 0.21)).toString(),
-        );
-        console.log(`Generated: public/icon-${size}.svg`);
-    }
+    // No public/icon-*.svg any more: manifest.json lists only the PNGs above,
+    // and nothing links a vector tile.
 
     console.log('\nIcon generation complete.');
     console.log('REMINDER: bump CACHE_VERSION in public/sw.js so cached icons are evicted.');

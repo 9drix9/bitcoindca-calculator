@@ -75,14 +75,13 @@ export function CardHeader({
  * The rule now: SOLID amber means selected. Everything else is a neutral
  * outline. No tinted middle ground.
  */
-// min-h is sm-only: every chip consumer is a <button>, and below 640px the
-// @layer base `button { min-height: 44px }` floor in globals.css should govern.
-// An unconditional min-h-[28px] overrode that floor and left the most-tapped
-// calculator controls at 28px on phones. px-3 below sm so the taller chips
-// don't look stringy.
+// 28px is the mouse size only. Every chip consumer is a <button>, so below
+// 640px the `button { min-height: 44px }` floor in globals.css governs; from
+// 640px up the sm: height would beat that floor, so a coarse pointer restates
+// it. px-3 wherever the chip is 44px tall, so it does not look stringy.
 export const chipBase =
-    'inline-flex items-center justify-center gap-1.5 rounded-full border px-3 sm:px-2.5 py-1 ' +
-    'text-2xs font-medium transition-colors sm:min-h-[28px] whitespace-nowrap';
+    'inline-flex items-center justify-center gap-1.5 rounded-full border px-3 sm:px-2.5 pointer-coarse:px-3 py-1 ' +
+    'text-2xs font-medium transition-colors sm:min-h-[28px] pointer-coarse:min-h-11 whitespace-nowrap';
 
 export const chipRest =
     'bg-white text-slate-700 border-[var(--hairline-strong)] hover:bg-slate-50 ' +

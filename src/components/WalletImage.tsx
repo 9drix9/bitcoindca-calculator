@@ -22,7 +22,8 @@ export const WalletImage = ({ src, alt, fallbackEmoji }: WalletImageProps) => {
 
     return (
         // Plain <img> is intentional: the onError fallback pattern is simpler and
-        // more reliable than next/image for these small static PNGs.
+        // more reliable than next/image for these small static images. They are
+        // WebP files in public/wallets, at most 440px on a side for a 220px slot.
         // eslint-disable-next-line @next/next/no-img-element
         <img
             src={src}

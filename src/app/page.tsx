@@ -16,44 +16,41 @@ import { LivePriceTicker } from '@/components/LivePriceTicker';
 import { AdSlot } from '@/components/AdSlot';
 import { SkeletonCard } from '@/components/Skeleton';
 import { MobileCollapse } from '@/components/MobileCollapse';
-import { LazyDcaCalculator, DcaCalculatorSkeleton } from '@/components/LazyDcaCalculator';
+import { DcaCalculatorSkeleton } from '@/components/LazyDcaCalculator';
+import { DcaCalculator, type DcaCalculatorProps } from '@/components/DcaCalculator';
 import dynamic from 'next/dynamic';
 import {
-  getMempoolFees,
-  getFearGreedIndex,
-  getBlockHeight,
-  getHashRateDifficulty,
-  getCirculatingSupply,
-  getLightningStats,
-  getBitcoinDominance,
-  getPurchasingPowerData,
-  getRecentBlocks,
+  getLiveSidebar,
+  getLiveTicker,
   getHeroStat,
-  getCurrentBitcoinPriceWithChange,
-  getBitcoinPriceHistory,
-  getCurrentBitcoinPrice,
+  getBitcoinPriceHistoryWithMeta,
+  getBitcoinSpot,
+  getOutcomeRange,
 } from '@/app/actions';
-import {
-  DAY_MS,
-  DEFAULT_YEARS_BACK,
-  parseUtcDate,
-  utcIsoToday,
-  utcIsoYearsAgo,
-} from '@/utils/dates';
-
-const usd = (n: number) =>
-  `$${n.toLocaleString('en-US', { maximumFractionDigits: 0 })}`;
+import { HeroProofLine } from '@/components/HeroProofLine';
+import { DEFAULT_PLAN } from '@/data/planDefaults';
+import { DAILY_VS_WEEKLY_GAP } from '@/app/calculators/stack-sats-goal/frequencyGap';
+import { packDailyPrices } from '@/app/calculators/bitcoin-cost-basis/priceSeed';
+import { withPriceKinds } from '@/utils/dca';
+import { DAY_MS, defaultPlanWindow } from '@/utils/dates';
 
 // Recharts-backed. `ssr: false` cannot be set from a Server Component, so the
 // opt-out lives in the client wrapper — see LazyBitcoinAdoption.
 const BitcoinAdoption = dynamic(() => import('@/components/LazyBitcoinAdoption').then(m => m.LazyBitcoinAdoption), {
-  loading: () => <div className="h-[400px] bg-slate-100 dark:bg-slate-800/50 rounded-xl animate-pulse" />,
+  // The shape LazyBitcoinAdoption renders before its card loads: the heading's
+  // line, then the card's height.
+  loading: () => (
+    <div className="space-y-6" aria-hidden="true">
+      <div className="h-7 sm:h-8 w-48 bg-slate-100 dark:bg-slate-800/50 rounded animate-pulse" />
+      <div className="h-[840px] sm:h-[750px] bg-slate-100 dark:bg-slate-800/50 rounded-xl animate-pulse" />
+    </div>
+  ),
 });
 
 const faqItems = [
   {
     question: "Is this calculator accurate?",
-    answer: "Prices come from Kraken and Coinbase. In Coinbase mode you get real daily candles (one recorded price per day) going back to 2015. In Kraken mode you get weekly closing prices, interpolated to daily: the days in between are filled in along a straight line between two real weekly prices. For August 2010 through mid-2015 we use a static snapshot of real daily market prices from blockchain.info. No prices are fabricated. Those earliest years were quoted in whole cents, so figures from that era are coarse. If a date has no price at all, the last known price carries forward. The Methodology page documents exactly how every number is computed. Intended for estimation and education."
+    answer: "By default each day is priced at Coinbase's daily close from July 20, 2015, and before that at blockchain.info's daily market price, back to August 18, 2010. That older series is in whole cents, which is coarse for the months to April 2011 when a bitcoin cost under a dollar. Today's price is the latest trade, because the day has not closed. Switch the price source to Kraken and you get weekly closes, with the days in between filled in along a straight line. Every price that is an estimate is marked 'est.' in the purchase table and 'estimated' in the CSV export. If Coinbase cannot be reached, the calculator uses the Kraken series and says so next to the result. The Methodology page documents how every number is computed. The results are for estimation and education."
   },
   {
     question: "What do annualized return (XIRR) and max drawdown mean?",
@@ -61,15 +58,15 @@ const faqItems = [
   },
   {
     question: "Does this include transaction fees?",
-    answer: "Yes. Set the 'Fee %' input to whatever your exchange charges. Most major exchanges charge between 0.1% and 1.5% per purchase, and over a few hundred buys that adds up to real money."
+    answer: `Yes. The calculator starts with a ${DEFAULT_PLAN.feePercentage}% fee on every buy. You can change it, add a flat fee per buy, or tap a platform's name to use the figure that platform publishes, which for some is a fee and for others a spread. The fee comes out of each purchase before any bitcoin is bought, and the full amount still counts as money invested. Withdrawal fees and taxes are not modeled, and nothing is added for spread beyond the percentage you set.`
   },
   {
     question: "What is the best frequency for DCA?",
-    answer: "Historically, the difference between Daily and Weekly DCA is negligible over multi-year periods. People who buy by hand tend to pick Weekly, because it means fewer fees and less record-keeping. Daily is great for automated setups."
+    answer: `On Coinbase's daily closes since ${DAILY_VS_WEEKLY_GAP.seriesFrom}, the same money spent daily or weekly over any ${DAILY_VS_WEEKLY_GAP.windowYears}-year stretch ended within ${DAILY_VS_WEEKLY_GAP.withinPercent}% of each other (measured ${DAILY_VS_WEEKLY_GAP.measuredOn}). A percentage fee costs the same in total however often you buy. A flat fee per order costs more the more orders you place.`
   },
   {
     question: "Can I export my data?",
-    answer: "Yes. Once you have results, use the CSV button below them, or the download icon next to the total invested. Either one exports your full transaction history. It includes every purchase date, BTC price, amount invested, BTC bought, and portfolio value, converted to your selected currency."
+    answer: "Yes. Once your plan has made a purchase, use the CSV button in the result card, or the download icon at the foot of the form. Either one exports your full transaction history. It includes every purchase date, BTC price, amount invested, BTC bought, and portfolio value, converted to your selected currency at one exchange rate, which a file in any currency but US dollars states in a column of its own. When the prices come from an exchange, a Price Kind column says whether each one was observed or estimated. A plan that runs past today exports the purchases made so far, not the ones still to come."
   }
 ];
 
@@ -101,29 +98,28 @@ const faqJsonLd = {
   }))
 };
 
+/**
+ * The line under the title when there are no figures to state: while the hero
+ * streams in, when the default plan could not be computed, and whenever the
+ * calculator holds a plan other than the default one (see HeroProofLine).
+ */
+const HERO_LINE_WITHOUT_FIGURES =
+  'See what steady weekly buys of Bitcoin would be worth today, using real market history rather than vibes.';
+
 // Streams in via Suspense: the live proof line + price ticker seeded with SSR data
 async function HeroLive() {
-  const [stat, ticker] = await Promise.all([
-    getHeroStat(),
-    getCurrentBitcoinPriceWithChange().catch(() => null),
-  ]);
+  const [stat, ticker] = await Promise.all([getHeroStat(), getLiveTicker()]);
 
   return (
     <>
       {stat ? (
-        <p className="text-base sm:text-lg text-slate-600 dark:text-slate-300 max-w-2xl mx-auto text-balance">
-          $50 of Bitcoin every week for the last 5 years comes to{' '}
-          {usd(stat.invested)} invested, worth{' '}
-          <strong className="font-bold text-slate-900 dark:text-white">{usd(stat.value)}</strong> today
-          {Number.isFinite(stat.roi) && (
-            <span className={stat.roi >= 0 ? 'text-gain' : 'text-loss'}>
-              {' '}({stat.roi >= 0 ? '+' : ''}{stat.roi.toFixed(0)}%)
-            </span>
-          )}.
-        </p>
+        // A client component: the calculator below re-quotes the price when
+        // this cached page is old, and the sentence has to follow it or the
+        // two disagree about the same plan. See HeroProofLine.
+        <HeroProofLine stat={stat} otherPlanLine={HERO_LINE_WITHOUT_FIGURES} />
       ) : (
         <p className="text-base sm:text-lg text-slate-600 dark:text-slate-300 max-w-xl mx-auto">
-          See what steady weekly buys of Bitcoin would be worth today, using real market history rather than vibes.
+          {HERO_LINE_WITHOUT_FIGURES}
         </p>
       )}
       <LivePriceTicker initialData={ticker} />
@@ -135,7 +131,7 @@ function HeroLiveSkeleton() {
   return (
     <>
       <p className="text-base sm:text-lg text-slate-600 dark:text-slate-300 max-w-xl mx-auto">
-        See what steady weekly buys of Bitcoin would be worth today, using real market history rather than vibes.
+        {HERO_LINE_WITHOUT_FIGURES}
       </p>
       <div className="inline-flex items-center gap-2 mt-3 px-4 py-2 rounded-full bg-slate-100 dark:bg-slate-800/60 animate-pulse">
         <span className="w-2 h-2 rounded-full bg-slate-300 dark:bg-slate-600" />
@@ -150,32 +146,72 @@ function HeroLiveSkeleton() {
  * calculator, so a first-time visitor (and Googlebot) sees a completed backtest
  * in the initial HTML rather than a loading state that resolves a second later.
  *
- * The date range MUST be derived the same way the client derives it — both call
- * the UTC helpers in utils/dates — or the seed covers the wrong window and the
- * client refetches anyway.
+ * `seededAt` is the one clock read. This page is a cached prerender: the HTML
+ * can be served hours after it was built, and to the first visitor of a new
+ * UTC day it is yesterday's. The calculator therefore takes its default window
+ * and its "today" from `seededAt` for the render that hydrates this markup,
+ * never from the visitor's clock, and only then catches up with the real date.
+ * With each side reading its own clock, that first render disagrees with the
+ * HTML (React error #418), the server's DOM is thrown away and the ad iframes
+ * inside it load twice.
+ *
+ * Same window, same series, same spot quote and the same cents rounding as
+ * getHeroStat, so the headline sentence and the result card below it agree.
  */
-async function SeededCalculator() {
-  const startDate = utcIsoYearsAgo(DEFAULT_YEARS_BACK);
-  const endDate = utcIsoToday();
+async function loadCalculatorSeed(): Promise<DcaCalculatorProps> {
+  const seededAt = Date.now();
+  const window = defaultPlanWindow(seededAt);
 
   // Providers down: seed nothing and let the client-fetching calculator use its
   // own retry and manual-price escape hatch.
-  const seed = await Promise.all([
-    getBitcoinPriceHistory(parseUtcDate(startDate), parseUtcDate(endDate) + DAY_MS, 'kraken'),
-    getCurrentBitcoinPrice('kraken').catch(() => null),
-  ]).catch(() => null);
+  const [history, spot, outcomeRange] = await Promise.all([
+    getBitcoinPriceHistoryWithMeta(window.startTs, window.endTs + DAY_MS).catch(() => null),
+    getBitcoinSpot().catch(() => null),
+    // The "same plan, every start date" card for the default plan, so it is in
+    // the first paint too and costs a first-time visitor no extra request.
+    getOutcomeRange(
+      DEFAULT_PLAN.frequency,
+      Math.round((window.endTs - window.startTs) / DAY_MS),
+      DEFAULT_PLAN.feePercentage,
+    ).catch(() => null),
+  ]);
+  // Two decimals is more than a percentile rank needs, and the 101 quantiles
+  // ride in the page payload.
+  const initialOutcomeRange = outcomeRange && {
+    ...outcomeRange,
+    quantiles: outcomeRange.quantiles.map((q) => Math.round(q * 100) / 100),
+  };
+  if (history === null) return { seededAt, initialOutcomeRange };
 
-  // The series ships inside the RSC payload, so trim it to cents. Full float
-  // precision cost ~8 KB gzipped per page load to express sub-cent resolution on
-  // a five-figure asset.
-  const trimmed = seed?.[0]?.map(([ts, price]): [number, number] => [ts, Math.round(price * 100) / 100]);
+  // The series ships inside the RSC payload, on this page and in every other
+  // page's prefetch of it. So it is trimmed to cents (full float precision
+  // cost ~8 KB gzipped to express sub-cent resolution on a five-figure asset)
+  // and packed: with one row per UTC day, the first date and the prices say
+  // everything a timestamp on each row did, for 8 KB gzipped less again.
+  const initialPrices = packDailyPrices(withPriceKinds(
+    history.data.map(([ts, price]): [number, number] => [ts, Math.round(price * 100) / 100]),
+    history.kinds,
+  ));
+  if (initialPrices === null) return { seededAt, initialOutcomeRange };
 
-  return (
-    <LazyDcaCalculator
-      initialPriceData={trimmed}
-      initialLivePrice={seed?.[1] ?? null}
-    />
-  );
+  return {
+    seededAt,
+    initialPrices,
+    initialPriceSource: {
+      requestedProvider: history.requestedProvider,
+      servedProvider: history.servedProvider,
+      fallback: history.fallback,
+      stale: history.stale,
+      fetchedAt: history.fetchedAt,
+    },
+    initialLivePrice: spot?.price ?? null,
+    initialLivePriceAsOf: spot?.asOf,
+    initialOutcomeRange,
+  };
+}
+
+async function SeededCalculator() {
+  return <DcaCalculator {...await loadCalculatorSeed()} />;
 }
 
 function SidebarSkeleton() {
@@ -196,17 +232,11 @@ function SidebarSkeleton() {
 }
 
 async function Sidebar() {
-  const [mempoolFees, fearGreed, blockHeight, hashRateData, circulatingSupply, lightningData, dominanceData, purchasingPowerData, recentBlocks] = await Promise.all([
-    getMempoolFees(),
-    getFearGreedIndex(),
-    getBlockHeight(),
-    getHashRateDifficulty(),
-    getCirculatingSupply(),
-    getLightningStats(),
-    getBitcoinDominance(),
-    getPurchasingPowerData(),
-    getRecentBlocks(),
-  ]);
+  // Each figure comes with the time it was fetched from its provider. This
+  // page is served from a cache, so a card is handed that time as well: it is
+  // how the card knows when its figure is due a refresh, and when the figure
+  // in old HTML is too old to show as current.
+  const live = await getLiveSidebar();
 
   return (
     // A labelled landmark: ten stat cards with no grouping made this an
@@ -214,17 +244,25 @@ async function Sidebar() {
     <aside aria-label="Live Bitcoin network stats" className="space-y-4 lg:sticky lg:top-20">
       {/* Collapsed to three cards on phones — see MobileCollapse. */}
       <MobileCollapse previewCount={3} label="network stats">
-        <HalvingCountdownWidget initialHeight={blockHeight} />
-        <LiveBlocksWidget initialData={recentBlocks} />
-        <FearGreedWidget initialData={fearGreed} />
-        <MempoolFeeWidget initialData={mempoolFees} />
-        <HashRateWidget initialData={hashRateData} />
-        <SupplyScarcityWidget initialSupply={circulatingSupply} blockHeight={blockHeight} />
-        <PurchasingPowerWidget initialData={purchasingPowerData} />
-        <LightningWidget initialData={lightningData} />
-        <DominanceWidget initialData={dominanceData} />
+        <HalvingCountdownWidget initialHeight={live.blockHeight?.data ?? null} fetchedAt={live.blockHeight?.fetchedAt} />
+        <LiveBlocksWidget initialData={live.recentBlocks?.data ?? null} fetchedAt={live.recentBlocks?.fetchedAt} />
+        <FearGreedWidget initialData={live.fearGreed?.data ?? null} fetchedAt={live.fearGreed?.fetchedAt} />
+        <MempoolFeeWidget initialData={live.mempoolFees?.data ?? null} fetchedAt={live.mempoolFees?.fetchedAt} />
+        <HashRateWidget initialData={live.hashRate?.data ?? null} fetchedAt={live.hashRate?.fetchedAt} />
+        <SupplyScarcityWidget
+          initialSupply={live.supplySats?.data ?? null}
+          blockHeight={live.blockHeight?.data ?? null}
+          fetchedAt={live.supplySats?.fetchedAt}
+          blockHeightFetchedAt={live.blockHeight?.fetchedAt}
+        />
+        <PurchasingPowerWidget initialData={live.purchasingPower?.data ?? null} fetchedAt={live.purchasingPower?.fetchedAt} />
+        <LightningWidget initialData={live.lightning?.data ?? null} fetchedAt={live.lightning?.fetchedAt} />
+        <DominanceWidget initialData={live.dominance?.data ?? null} fetchedAt={live.dominance?.fetchedAt} />
         <SatConverterWidget />
       </MobileCollapse>
+      {/* One of the home page's three A-ADS slots (the other two are in
+          DcaCalculator). /alternatives and /author state that count in their
+          copy, so it has to change there if a slot is ever added or removed. */}
       <AdSlot />
     </aside>
   );
@@ -259,35 +297,60 @@ export default function Home() {
           <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-slate-900 dark:text-[var(--text-strong)] text-balance">
             Bitcoin DCA Calculator
           </h1>
-          <p className="text-sm sm:text-base text-slate-500 dark:text-slate-400 max-w-2xl mx-auto">
-            Dollar-cost averaging means buying a fixed amount on a set schedule, whatever the
-            price is that day. This tool runs that plan against real Bitcoin market history and
-            shows you what it would be worth.
+          {/* One line. The longer paragraph, the three "how it works" steps
+              and the mission line are below the calculator: above it, on a
+              390px phone, they put the first input 1,144px down the page, a
+              screen and a half of reading before the tool the visitor came for. */}
+          <p className="text-sm sm:text-base text-slate-500 dark:text-slate-400 max-w-2xl mx-auto text-balance">
+            Test a regular Bitcoin buy against real price history.
           </p>
           <Suspense fallback={<HeroLiveSkeleton />}>
             <HeroLive />
           </Suspense>
         </section>
 
-        {/* How It Works */}
-        <HowItWorks />
-
-        {/* Mission */}
-        <p className="text-center text-xs sm:text-sm text-slate-500 dark:text-slate-400">
-          A free, open-source calculator for long-term Bitcoin thinkers. No accounts, no email capture, no shitcoins.{' '}
-          <Link href="/about" className="text-amber-700 dark:text-amber-400 hover:underline">Learn more &rarr;</Link>
-        </p>
+        {/* Without JavaScript the form below cannot be changed and a link's
+            settings are never read, so the page says which plan its figures are
+            for. With it, a visit that opens on a link has the default plan's
+            figures hidden until the link's are in place (hooks/planLinkBootstrap). */}
+        <noscript>
+          <p className="mx-auto max-w-2xl rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-center text-sm text-slate-700 dark:border-amber-700/60 dark:bg-amber-950/25 dark:text-slate-300">
+            This calculator needs JavaScript. Without it, the figures on this page are for the
+            example plan the form below is set to. The plan in a shared link is not opened, and
+            changing the form changes nothing.
+          </p>
+        </noscript>
 
         {/* Main Calculator — streams in seeded with server-fetched prices, so the
             first paint shows a real backtest instead of a skeleton. */}
-        {/* The fallback must be a PLAIN component. It was <LazyDcaCalculator />,
-            which lazy-loads and therefore suspends — and a Suspense fallback that
-            itself suspends leaves the boundary stuck: the calculator rendered as a
-            permanent skeleton on the client even though the server had already
-            streamed the real markup into the page. */}
+        {/* The calculator is imported directly, not through next/dynamic. That
+            wrapper puts a second Suspense boundary inside this one, and React
+            leaves hydrating it until nothing else is pending: while any Server
+            Action is in flight the form would stay unhydrated and a link's plan
+            unapplied. Its code is preloaded with the page either way, since
+            the markup is server-rendered. */}
         <Suspense fallback={<DcaCalculatorSkeleton />}>
           <SeededCalculator />
         </Suspense>
+
+        {/* What the tool does, in words. Under the calculator, not over it
+            (see the note in the hero). */}
+        <div className="space-y-6 sm:space-y-8">
+          <p className="text-center text-sm sm:text-base text-slate-500 dark:text-slate-400 max-w-2xl mx-auto">
+            Dollar-cost averaging means buying a fixed amount on a set schedule, whatever the
+            price is that day. This tool runs that plan against real Bitcoin market history and
+            shows you what it would be worth.
+          </p>
+
+          {/* How It Works */}
+          <HowItWorks />
+
+          {/* Mission */}
+          <p className="text-center text-xs sm:text-sm text-slate-500 dark:text-slate-400">
+            A free, open-source calculator for long-term Bitcoin thinkers. No accounts, no email capture, no shitcoins.{' '}
+            <Link href="/about" className="text-amber-700 dark:text-amber-400 hover:underline">Learn more &rarr;</Link>
+          </p>
+        </div>
 
         {/* Content + Sidebar */}
         <div className="grid lg:grid-cols-3 gap-8 items-start">

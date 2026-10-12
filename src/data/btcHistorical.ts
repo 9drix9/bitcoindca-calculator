@@ -1,8 +1,31 @@
-// Real daily BTC market prices, 2010-08 through 2015-07-19, from blockchain.info
+// Daily BTC market prices, 2010-08-18 through 2015-07-19, from blockchain.info
 // (charts/market-price, fetched 2026-07-24; extended 2026-08-10 to meet
 // Coinbase's first BTC-USD daily candle on 2015-07-20 with no gap). Replaces the
 // old synthetic $0.05-anchor linear interpolation for the pre-exchange-data era.
 // Server-side only: imported by actions.ts, never shipped to the client bundle.
+//
+// What these numbers are, checked against the live source on 2026-10-12 (all
+// 1,797 rows identical to what blockchain.info serves today):
+//
+// - Not exchange closes. blockchain.info describes the series as the "Average
+//   USD market price across major bitcoin exchanges".
+// - Start-of-day prices. Each value is stamped 00:00 UTC, and it tracks the close
+//   of the day BEFORE its date: over the 4,101 later days where both exist,
+//   blockchain.info's value for a day sits a median 0.05% from Coinbase's close
+//   of the previous day and 1.5% from its close of the same day. The rows are
+//   kept under the dates the source gives them, so a purchase before 2015-07-20
+//   is priced about one day earlier in market time than one after it (the
+//   exchange rows that follow are closes of their own date). Re-dating them
+//   would move the first day of data and every result that touches 2010-2015.
+// - Whole cents. While the price was under $1 (230 of these days, the last of
+//   them in April 2011) that is coarse: at $0.06, the next cent up is a 17% move.
+// - Unedited, including the one place they look wrong: 2010-09-15 ($0.09) and
+//   2010-09-16 ($0.15) sit between days at $0.06. Coin Metrics' daily price
+//   (PriceUSD) has $0.0604 and $0.0619 for those two days. blockchain.info still
+//   publishes the values below, and a second index disagreeing does not prove
+//   a trade did not happen, so they stay; a $50 buy dated 2010-09-16 is priced
+//   at $0.15. datasets.test.ts pins both rows and checks they are the only
+//   such spike in the file.
 
 export const BTC_HISTORICAL_DAILY: [number, number][] = [
     [1282089600000,0.07],

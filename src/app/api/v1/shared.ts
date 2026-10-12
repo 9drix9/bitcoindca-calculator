@@ -1,18 +1,25 @@
 import { NextResponse } from 'next/server';
-import { getBitcoinPriceHistory, type Provider } from '@/app/actions';
-import { DAY_MS, EARLIEST_PRICE_DATE, parseUtcDate, formatUtc, utcDayIndex, utcDayStart } from '@/utils/dates';
+import { getBitcoinPriceHistoryWithMeta } from '@/app/actions';
+import { DEFAULT_PRICE_PROVIDER, PRICE_PROVIDERS, isPriceProvider, type PriceProvider } from '@/data/priceSources';
+import { DAY_MS, EARLIEST_PRICE_DATE, EARLIEST_PRICE_TS, formatUtc, utcDayStart, utcIsoToday } from '@/utils/dates';
+import { PRICE_KIND_CODE } from '@/utils/dca';
+import { countPriceKinds, sliceDailySeries } from '@/utils/priceSeries';
+import { EXPOSED_HEADERS } from './contract';
 
 // Shared plumbing for the public /api/v1 endpoints (documented at /developers).
 //
 // These routes are deliberately open: no API keys, no accounts, no rate-limit
-// code. The protection is the CDN — every success response carries a long
-// s-maxage, so repeated identical requests are absorbed at the edge and never
-// reach this server or the upstream exchanges.
+// code. Every success response carries a long s-maxage, so a repeat of the
+// exact same URL is absorbed at the CDN edge. That is a courtesy to repeat
+// callers, not a limit: a URL that differs in any way is its own cache entry
+// and runs here. What it cannot do is multiply calls to the exchanges, because
+// the price series is cached server-side whatever the URL (app/actions.ts).
 
 export const CORS_HEADERS = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'GET, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Expose-Headers': EXPOSED_HEADERS.join(', '),
 } as const;
 
 /** CORS preflight for browser callers. Shared by all /api/v1 routes. */
@@ -33,105 +40,148 @@ export function jsonError(status: number, message: string): NextResponse {
 }
 
 /**
- * Strict 'yyyy-MM-dd' parse to UTC midnight ms. Round-trips through the
- * formatter so 2023-02-30 is rejected rather than rolled over to March 2.
+ * Strict 'yyyy-MM-dd' parse to UTC midnight ms. The parts are read back, so
+ * 2023-02-30 is rejected rather than rolled over to March 2. setUTCFullYear,
+ * not Date.UTC, which maps years 0-99 to 1900-1999: any real date parses, and
+ * the range checks decide what to do with it.
  */
 export function parseIsoDayParam(value: string): number | null {
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
-    const ts = parseUtcDate(value);
-    if (Number.isNaN(ts) || formatUtc(ts, 'isoDay') !== value) return null;
-    return ts;
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+    if (!m) return null;
+    const [year, month, day] = [Number(m[1]), Number(m[2]), Number(m[3])];
+    const date = new Date(0);
+    date.setUTCFullYear(year, month - 1, day);
+    if (date.getUTCFullYear() !== year || date.getUTCMonth() + 1 !== month || date.getUTCDate() !== day) return null;
+    return date.getTime();
 }
 
 export interface PriceQuery {
     fromTs: number;
     toTs: number;
-    provider: Provider;
+    provider: PriceProvider;
 }
 
 /**
  * Validate and resolve ?from, ?to, ?provider for the two price endpoints.
  * Garbage 400s loudly; a missing param falls back to the documented default
- * (full history, kraken). Dates outside the priceable range are clamped, same
- * as the calculator: nothing before 2010-08-18 can be priced honestly, and the
- * future has no closes.
+ * (full history, the site's default provider). Dates outside the priceable
+ * range are clamped, same as the calculator: nothing before 2010-08-18 can be
+ * priced honestly, and the future has no prices.
+ *
+ * A range that lies wholly outside it cannot be clamped into anything, so it
+ * is refused with the reason, each case in its own words: a caller who asked
+ * for next year should not be told their dates are in the wrong order.
  */
-export function resolvePriceQuery(searchParams: URLSearchParams): PriceQuery | { error: string } {
+export function resolvePriceQuery(
+    searchParams: URLSearchParams,
+    now: number = Date.now(),
+): PriceQuery | { error: string } {
     const providerRaw = searchParams.get('provider');
-    if (providerRaw !== null && providerRaw !== 'kraken' && providerRaw !== 'coinbase') {
-        return { error: "Invalid 'provider'. Valid values: kraken, coinbase." };
+    if (providerRaw !== null && !isPriceProvider(providerRaw)) {
+        return { error: `Invalid 'provider'. Valid values: ${PRICE_PROVIDERS.join(', ')}.` };
     }
-    const provider: Provider = providerRaw === 'coinbase' ? 'coinbase' : 'kraken';
+    const provider: PriceProvider = providerRaw ?? DEFAULT_PRICE_PROVIDER;
 
-    const earliestTs = parseUtcDate(EARLIEST_PRICE_DATE);
-    const todayTs = utcDayStart(Date.now());
+    const todayTs = utcDayStart(now);
 
-    let fromTs = earliestTs;
     const fromRaw = searchParams.get('from');
-    if (fromRaw !== null) {
-        const ts = parseIsoDayParam(fromRaw);
-        if (ts === null) return { error: "Invalid 'from'. Expected an ISO date like 2017-01-31." };
-        fromTs = Math.max(ts, earliestTs);
+    const from = fromRaw === null ? null : parseIsoDayParam(fromRaw);
+    if (fromRaw !== null && from === null) {
+        return { error: "Invalid 'from'. Expected an ISO date like 2017-01-31." };
     }
 
-    let toTs = todayTs;
     const toRaw = searchParams.get('to');
-    if (toRaw !== null) {
-        const ts = parseIsoDayParam(toRaw);
-        if (ts === null) return { error: "Invalid 'to'. Expected an ISO date like 2024-12-31." };
-        toTs = Math.min(ts, todayTs);
+    const to = toRaw === null ? null : parseIsoDayParam(toRaw);
+    if (toRaw !== null && to === null) {
+        return { error: "Invalid 'to'. Expected an ISO date like 2024-12-31." };
     }
 
-    if (fromTs > toTs) {
-        return { error: `'from' must be on or before 'to' (and within the priceable range, ${EARLIEST_PRICE_DATE} to today).` };
+    if (from !== null && to !== null && from > to) {
+        return { error: `'from' (${fromRaw}) must be on or before 'to' (${toRaw}).` };
+    }
+    if (to !== null && to < EARLIEST_PRICE_TS) {
+        return { error: `'to' (${toRaw}) is before the price data begins (${EARLIEST_PRICE_DATE}).` };
+    }
+    if (from !== null && from > todayTs) {
+        return { error: `'from' (${fromRaw}) is after today (${utcIsoToday(now)}, UTC). There are no prices for future dates.` };
     }
 
-    return { fromTs, toTs, provider };
+    return {
+        fromTs: Math.max(from ?? EARLIEST_PRICE_TS, EARLIEST_PRICE_TS),
+        toTs: Math.min(to ?? todayTs, todayTs),
+        provider,
+    };
+}
+
+export interface ApiPriceSeries {
+    /** One [utcMidnightMs, usd] entry per UTC day over the requested range, oldest first. */
+    series: [number, number][];
+    /** One character per entry of `series`, same order: 'o' observed, 'e' straight-line estimate. */
+    kinds: string;
+    /** How many entries of `series` are estimates. */
+    estimatedCount: number;
+    /** The provider that was asked for. */
+    requested: PriceProvider;
+    /** The provider whose series this is. */
+    served: PriceProvider;
+    /** True when the requested provider could not be reached and the other one answered. */
+    fallback: boolean;
+    /** True when the provider could not be reached just now and this is a copy fetched earlier. */
+    stale: boolean;
+    /** ms epoch the series was fetched from the exchange. */
+    fetchedAt: number;
+    /** Last UTC day (midnight ms) the served series has a price for. */
+    seriesEndTs: number;
 }
 
 /**
- * One [utcMidnightMs, closeUsd] entry per UTC day over [fromTs, toTs], inclusive.
+ * The daily series over [fromTs, toTs], inclusive, with its provenance.
  *
- * getBitcoinPriceHistory keeps a 14-day lead-in before `from`, and Kraken's
- * still-open final candle can carry an intra-day timestamp — so the raw series
- * is re-bucketed by UTC day (last value per day wins) to make the public
- * contract exact: timestamps are always UTC midnights, one point per day.
+ * The action returns a 14-day lead-in before `from` (the calculator needs a
+ * last-known price for its first purchase); the public contract is the
+ * requested days and nothing else, so the lead-in is cut here, from the rows
+ * and from their markers together.
  */
-export async function getDailyCloseSeries(
+export async function getDailySeries(
     fromTs: number,
     toTs: number,
-    provider: Provider,
-): Promise<[number, number][]> {
-    const history = await getBitcoinPriceHistory(fromTs, toTs + DAY_MS - 1, provider);
-    const fromDay = utcDayIndex(fromTs);
-    const toDay = utcDayIndex(toTs);
-    const byDay = new Map<number, number>();
-    for (const [ts, close] of history) {
-        const day = utcDayIndex(ts);
-        if (day >= fromDay && day <= toDay) byDay.set(day, close);
-    }
-    return Array.from(byDay.entries())
-        .sort((a, b) => a[0] - b[0])
-        .map(([day, close]) => [day * DAY_MS, close]);
+    provider: PriceProvider,
+): Promise<ApiPriceSeries> {
+    const history = await getBitcoinPriceHistoryWithMeta(fromTs, toTs + DAY_MS - 1, provider);
+    // A marker on the wrong row would label a real close as an estimate, so a
+    // string that does not line up with the rows is reported as "unknown".
+    const allKinds = history.kinds.length === history.data.length
+        ? history.kinds
+        : PRICE_KIND_CODE.unknown.repeat(history.data.length);
+    const { data: series, kinds } = sliceDailySeries({ data: history.data, kinds: allKinds }, fromTs, toTs, 0);
+
+    return {
+        series,
+        kinds,
+        estimatedCount: countPriceKinds(kinds).estimated,
+        requested: history.requestedProvider,
+        served: history.servedProvider,
+        fallback: history.fallback,
+        stale: history.stale,
+        fetchedAt: history.fetchedAt,
+        seriesEndTs: history.seriesEnd,
+    };
 }
 
-/** Last day covered by the bundled blockchain.info snapshot (see data/btcHistorical.ts). */
-export const SNAPSHOT_END_DATE = '2015-07-19';
-
 /**
- * Honest provenance, stated in the payload itself so a downloaded series can
- * never be mistaken for something it is not. Mirrors /methodology.
+ * The 503 for a range the served series has no row in yet. Validation has
+ * already confined the range to 2010-08-18..today, so this only happens for
+ * the newest day or two: just after 00:00 UTC before the exchange has traded,
+ * or while an earlier copy of the series is being served. Unlike the 400s,
+ * asking again later does work.
  */
-export function provenanceNote(provider: Provider): string {
-    const shared =
-        `All prices are USD, one close per UTC day. ${EARLIEST_PRICE_DATE} through ${SNAPSHOT_END_DATE} ` +
-        'are real daily closes from a bundled blockchain.info snapshot.';
-    const providerPart = provider === 'coinbase'
-        ? ' Later dates are real Coinbase daily candles.'
-        : ' Later dates are Kraken weekly closes linearly interpolated to daily — intra-week moves are smoothed estimates, not real daily prices.'
-        + ' For real daily candles use provider=coinbase.';
-    const fallback =
-        ' If the requested exchange is unreachable, the server transparently serves the other exchange\'s series' +
-        ' (or an up-to-an-hour-stale cache) rather than failing.';
-    return shared + providerPart + fallback;
+export function noRowsYetError(fromTs: number, toTs: number, result: ApiPriceSeries): NextResponse {
+    const range = fromTs === toTs
+        ? formatUtc(fromTs, 'isoDay')
+        : `${formatUtc(fromTs, 'isoDay')} to ${formatUtc(toTs, 'isoDay')}`;
+    return jsonError(
+        503,
+        `No price for ${range} yet: the ${result.served} series currently ends ${formatUtc(result.seriesEndTs, 'isoDay')}. `
+        + 'Try again in a few minutes.',
+    );
 }

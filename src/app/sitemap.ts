@@ -1,47 +1,55 @@
 import type { MetadataRoute } from 'next';
 import { CURATED_SCENARIOS, SCENARIOS } from './dca/scenarios';
+import { DAY_MS, utcIsoToday } from '@/utils/dates';
+import { gridLastModified } from './dca/start-date-heatmap/grid';
 
-// The sitemap is a static route, so without this it would be generated once at
-// build time and every `new Date()` below would be frozen at the build date —
-// the "daily" pages would advertise a lastmod that never moved.
-export const revalidate = 86400;
+// Rendered on request, on purpose. Left alone this route is prerendered at build,
+// and a prerendered /sitemap.xml is deployed as a plain static file: Next's
+// deployment adapter recognises it by name, emits it as a static asset and
+// discards its `revalidate` (next/dist/build/adapter/build-complete.js, the
+// isStaticMetadataFile branch). So the `revalidate = 86400` that used to sit
+// here did nothing once deployed: the live file kept its build timestamp,
+// 2026-08-17T19:08Z, on 121 URLs for eight weeks.
+//
+// A route that is dynamic is the one kind the adapter leaves as a function.
+// This one does no I/O, so running it for each crawl costs next to nothing.
+export const dynamic = 'force-dynamic';
 
-// Honest per-page content dates. Update a page's entry when its content
-// actually changes — do NOT use new Date() (fake freshness trains Google
-// to ignore lastmod for the whole domain).
+// Honest per-page content dates, as UTC days. Update a page's entry when its
+// content actually changes — do NOT use today's date (fake freshness trains
+// Google to ignore lastmod for the whole domain).
 const PAGE_DATES = {
-    features: new Date('2026-08-17'),
+    features: '2026-10-12',
     // These three must match the dateModified in each page's Article JSON-LD
     // (why-bitcoin, self-custody, mining) — conflicting freshness signals teach
     // Google to distrust lastmod for the whole domain.
-    whyBitcoin: new Date('2026-08-10'),
-    selfCustody: new Date('2026-08-11'),
-    mining: new Date('2026-08-11'),
+    whyBitcoin: '2026-10-12',
+    selfCustody: '2026-10-12',
+    mining: '2026-10-12',
     // Must match dateModified in the coldcard page's Article JSON-LD.
-    coldcard: new Date('2026-08-11'),
-    about: new Date('2026-08-11'),
-    methodology: new Date('2026-08-08'),
-    embedGuide: new Date('2026-07-25'),
-    developers: new Date('2026-08-11'),
-    alternatives: new Date('2026-08-11'),
-    privacy: new Date('2026-08-10'),
-    terms: new Date('2026-08-10'),
-    dcaIndex: new Date('2026-07-24'),
-    calculators: new Date('2026-08-10'),
-    author: new Date('2026-08-08'),
+    coldcard: '2026-10-12',
+    about: '2026-10-12',
+    methodology: '2026-10-12',
+    embedGuide: '2026-10-12',
+    developers: '2026-10-12',
+    alternatives: '2026-10-12',
+    privacy: '2026-10-12',
+    terms: '2026-10-12',
+    dcaIndex: '2026-10-12',
+    calculators: '2026-10-12',
+    author: '2026-10-12',
     // Must match dateModified in the contact page's JSON-LD.
-    contact: new Date('2026-08-08'),
-    dcaTax: new Date('2026-08-08'),
-} as const;
+    contact: '2026-10-12',
+    dcaTax: '2026-10-12',
+} as const satisfies Record<string, `${number}-${number}-${number}`>;
 
 /** Pages whose numbers genuinely recompute against fresh prices every day. */
 const DAILY_DATA_PAGES = [
     '/best-day-to-buy-bitcoin',
     '/lump-sum-vs-dca',
-    '/dca/start-date-heatmap',
 ] as const;
 
-/** Interactive tools: the shell is static, the data is live. */
+/** Interactive tools: the copy is static, the figures are rendered from fresh prices. */
 const CALCULATOR_PAGES = [
     '/calculators/bitcoin-drawdown',
     '/calculators/bitcoin-fire',
@@ -50,15 +58,24 @@ const CALCULATOR_PAGES = [
     '/calculators/bitcoin-cost-basis',
 ] as const;
 
+/**
+ * lastmod for every page that is rebuilt from prices each day: the latest
+ * finished UTC day. That is the newest daily close such a page can hold, and it
+ * is the day the best-day and lump-sum pages give as their JSON-LD dateModified, so the
+ * two signals agree. A day and not a timestamp: a time of day would claim a
+ * precision nothing here has.
+ */
+const lastClosedUtcDay = (now: number = Date.now()): string => utcIsoToday(now - DAY_MS);
+
 export default function sitemap(): MetadataRoute.Sitemap {
     const baseUrl = (process.env.NEXT_PUBLIC_BASE_URL || 'https://btcdollarcostaverage.com').replace(/\/+$/, '');
-    const now = new Date();
+    const dataDay = lastClosedUtcDay();
 
     return [
         {
             url: baseUrl,
             // The homepage genuinely changes daily (live prices, widgets).
-            lastModified: now,
+            lastModified: dataDay,
             changeFrequency: 'daily',
             priority: 1,
         },
@@ -70,16 +87,25 @@ export default function sitemap(): MetadataRoute.Sitemap {
         },
         ...CALCULATOR_PAGES.map((path): MetadataRoute.Sitemap[number] => ({
             url: `${baseUrl}${path}`,
-            lastModified: now,
+            lastModified: dataDay,
             changeFrequency: 'weekly',
             priority: 0.8,
         })),
         ...DAILY_DATA_PAGES.map((path): MetadataRoute.Sitemap[number] => ({
             url: `${baseUrl}${path}`,
-            lastModified: now,
+            lastModified: dataDay,
             changeFrequency: 'daily',
             priority: 0.8,
         })),
+        {
+            // The heatmap's grid only gains a row when a calendar year closes,
+            // so it carries the day the grid last changed (the same day the
+            // page gives as its Dataset dateModified), not yesterday.
+            url: `${baseUrl}/dca/start-date-heatmap`,
+            lastModified: gridLastModified(Date.now() - DAY_MS),
+            changeFrequency: 'yearly',
+            priority: 0.8,
+        },
         {
             url: `${baseUrl}/dca`,
             lastModified: PAGE_DATES.dcaIndex,
@@ -87,18 +113,18 @@ export default function sitemap(): MetadataRoute.Sitemap {
             priority: 0.7,
         },
         // Scenario pages recompute against fresh prices every day (ISR, revalidate
-        // 86400), so a live lastModified is honest here — unlike the static
+        // 86400), so a moving lastModified is honest here — unlike the static
         // content pages below.
         ...SCENARIOS.map((s): MetadataRoute.Sitemap[number] => ({
             url: `${baseUrl}/dca/${s.slug}`,
-            lastModified: now,
+            lastModified: dataDay,
             changeFrequency: 'daily',
             priority: 0.6,
         })),
         // Curated story scenarios — the shareable ones, so slightly higher priority.
         ...CURATED_SCENARIOS.map((s): MetadataRoute.Sitemap[number] => ({
             url: `${baseUrl}/dca/${s.slug}`,
-            lastModified: now,
+            lastModified: dataDay,
             changeFrequency: 'daily',
             priority: 0.7,
         })),

@@ -1,60 +1,29 @@
 'use client';
 
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Timer } from 'lucide-react';
-import { getBlockHeight } from '@/app/actions';
 import { Card, CardHeader, StatRow, EmptyState } from '@/components/ui/Card';
+import { StaleNote } from '@/components/live/cardFooter';
+import { useLiveFigure } from '@/components/live/liveSidebar';
+import { formatUtc } from '@/utils/dates';
 
 const BLOCKS_PER_EPOCH = 210_000;
 const AVG_BLOCK_TIME_MINUTES = 10;
-const POLL_MS = 60_000;
 
 interface HalvingCountdownWidgetProps {
     initialHeight: number | null;
+    /** When the server fetched `initialHeight` (ms epoch). */
+    fetchedAt?: number | null;
 }
 
-export const HalvingCountdownWidget = ({ initialHeight }: HalvingCountdownWidgetProps) => {
-    const [height, setHeight] = useState<number | null>(initialHeight);
+export const HalvingCountdownWidget = ({ initialHeight, fetchedAt }: HalvingCountdownWidgetProps) => {
+    const { data: height, fetchedAt: since, old } = useLiveFigure('blockHeight', initialHeight, fetchedAt);
     const [now, setNow] = useState(0);
-    const hadInitialData = useRef(initialHeight !== null);
 
     useEffect(() => {
-        // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time client clock sync after hydration; SSR deterministically renders the date placeholder
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- client clock sync after hydration and with each new height; SSR deterministically renders the date placeholder
         setNow(Date.now());
-    }, []);
-
-    useEffect(() => {
-        let mounted = true;
-        // SSR data is seconds old at hydration; only fetch immediately when it is missing.
-        let lastFetched = hadInitialData.current ? Date.now() : 0;
-
-        const refresh = async () => {
-            lastFetched = Date.now();
-            try {
-                const fresh = await getBlockHeight();
-                if (mounted && fresh !== null) {
-                    setHeight(fresh);
-                    setNow(Date.now());
-                }
-            } catch { /* keep last known */ }
-        };
-
-        if (!hadInitialData.current) refresh();
-
-        const interval = setInterval(() => {
-            if (!document.hidden) refresh();
-        }, POLL_MS);
-        const onVisibilityChange = () => {
-            if (!document.hidden && Date.now() - lastFetched >= POLL_MS) refresh();
-        };
-        document.addEventListener('visibilitychange', onVisibilityChange);
-
-        return () => {
-            mounted = false;
-            clearInterval(interval);
-            document.removeEventListener('visibilitychange', onVisibilityChange);
-        };
-    }, []);
+    }, [height]);
 
     // Time-independent stats derive from block height alone, so the card can
     // render during SSR/hydration without a mismatch; the estimated date fills
@@ -80,17 +49,17 @@ export const HalvingCountdownWidget = ({ initialHeight }: HalvingCountdownWidget
 
             {stats && height !== null ? (
                 <div className="space-y-2.5">
-                    <StatRow label="Block Height" value={height.toLocaleString()} />
+                    {/* 'en-US' on every number: the server renders these, and a browser
+                        left to its own locale ("971.005") no longer matched that HTML. */}
+                    <StatRow label="Block Height" value={height.toLocaleString('en-US')} />
                     <StatRow
                         label="Blocks Remaining"
-                        value={stats.blocksRemaining.toLocaleString()}
+                        value={stats.blocksRemaining.toLocaleString('en-US')}
                         valueClassName="text-amber-700 dark:text-amber-400"
                     />
                     <StatRow
                         label="Est. Date"
-                        value={estimatedDate
-                            ? estimatedDate.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
-                            : '—'}
+                        value={estimatedDate ? formatUtc(estimatedDate.getTime(), 'full') : '—'}
                     />
 
                     <div className="pt-1">
@@ -116,6 +85,19 @@ export const HalvingCountdownWidget = ({ initialHeight }: HalvingCountdownWidget
             ) : (
                 <EmptyState />
             )}
+
+            <div className="mt-2 pt-2 border-t border-slate-100 dark:border-slate-800 text-[11px] sm:text-xs text-slate-500 dark:text-slate-400">
+                {old && <StaleNote since={since} />}
+                Est. date assumes 10-minute blocks.{' '}
+                <a
+                    href="https://mempool.space"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="hover:text-amber-700 dark:hover:text-amber-400 transition-colors"
+                >
+                    Data from mempool.space
+                </a>
+            </div>
         </Card>
     );
 };

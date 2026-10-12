@@ -100,7 +100,7 @@ const contactPageJsonLd = {
         ],
     },
     // Static dates: updated when the content changes, not on every build.
-    dateModified: '2026-08-08',
+    dateModified: '2026-10-12',
 };
 
 const breadcrumbJsonLd = {
@@ -111,6 +111,13 @@ const breadcrumbJsonLd = {
         { '@type': 'ListItem', position: 2, name: 'Contact', item: `${BASE_URL}/contact` },
     ],
 };
+
+// A breadcrumb link is one short word, about 15px tall as text on a phone. The
+// padding makes it a 44px touch target, and the negative margins hand the same
+// space back so the row sits exactly where it did. Same string as the study
+// pages use (lump-sum-vs-dca and its siblings).
+const crumbLink =
+    'inline-flex min-h-11 items-center -my-3.5 px-1.5 -mx-1.5 hover:text-amber-700 dark:hover:text-amber-400 transition-colors';
 
 function SectionHeading({ icon, children }: { icon: React.ReactNode; children: React.ReactNode }) {
     return (
@@ -160,7 +167,7 @@ export default function ContactPage() {
                 <nav aria-label="Breadcrumb" className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
                     <ol className="flex flex-wrap items-center gap-1.5">
                         <li>
-                            <Link href="/" className="hover:text-amber-700 dark:hover:text-amber-400 transition-colors">
+                            <Link href="/" className={crumbLink}>
                                 Home
                             </Link>
                         </li>
@@ -203,7 +210,7 @@ export default function ContactPage() {
                                 href={X_URL}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold bg-slate-800 dark:bg-slate-700 hover:bg-slate-900 dark:hover:bg-slate-600 text-white transition-colors"
+                                className="inline-flex min-h-11 items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold bg-slate-800 dark:bg-slate-700 hover:bg-slate-900 dark:hover:bg-slate-600 text-white transition-colors"
                             >
                                 <XMark />
                                 @9drix9
@@ -224,7 +231,7 @@ export default function ContactPage() {
                                 href={NEW_ISSUE_URL}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold bg-slate-800 dark:bg-slate-700 hover:bg-slate-900 dark:hover:bg-slate-600 text-white transition-colors"
+                                className="inline-flex min-h-11 items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold bg-slate-800 dark:bg-slate-700 hover:bg-slate-900 dark:hover:bg-slate-600 text-white transition-colors"
                             >
                                 <GithubMark />
                                 Open an issue
@@ -232,7 +239,7 @@ export default function ContactPage() {
                         </Card>
                     </div>
                     <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
-                        There is deliberately no contact form and no published email address. A form would mean
+                        This site deliberately has no contact form and lists no email address. A form would mean
                         collecting and storing your details on a server, and this site doesn&apos;t run one for
                         user data. See the{' '}
                         <Link href="/privacy" className="text-amber-700 dark:text-amber-400 hover:underline font-medium">
@@ -296,8 +303,9 @@ export default function ContactPage() {
                             Before reporting, it&apos;s worth checking the{' '}
                             <Link href="/methodology" className="text-amber-700 dark:text-amber-400 hover:underline font-medium">
                                 methodology page
-                            </Link>. Several common surprises there are documented and intentional. The default
-                            Kraken series is interpolated from weekly closes. Purchases are bucketed on UTC
+                            </Link>. Several common surprises there are documented and intentional. The Kraken
+                            series is weekly closes, with the days in between filled in along a straight line (the
+                            default Coinbase series has a close for every day). Purchases are bucketed on UTC
                             calendar days. Non-USD currencies convert at today&apos;s rate rather than historical
                             ones. Taxes and spreads are not modeled at all.
                         </p>
@@ -329,23 +337,33 @@ export default function ContactPage() {
                             </h3>
                             <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
                                 There are no user accounts, no email list, and no server-side database of user
-                                data. Your calculator inputs are processed in your browser and encoded in the URL.
-                                Preferences such as theme, currency, and saved positions live in your
-                                browser&apos;s localStorage. So there is usually nothing on my side to export or
-                                erase. You can remove everything yourself by clearing site data for this domain
-                                in your browser settings.
+                                data. The calculator does its arithmetic in your browser and keeps your settings
+                                in the page address. That address does reach my host, Vercel, with the page&apos;s
+                                requests, and Vercel&apos;s request logs keep addresses for a limited time (one
+                                hour to 30 days by its documentation, depending on the plan). Nothing in my code
+                                stores them. Preferences such as theme and currency live in your browser&apos;s
+                                localStorage. So do Cost Basis Tracker positions, which are never sent to my
+                                server. So there is usually nothing on my side to export or erase. You can
+                                remove what the site has stored on your device by clearing site data for this
+                                domain in your browser settings.
                             </p>
                             <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-                                Aggregate, cookieless analytics (Vercel Web Analytics and Speed Insights) do not
-                                identify individuals or build profiles. They can&apos;t be traced back to a single
-                                visitor on request.
+                                Vercel Web Analytics and Speed Insights run without cookies, and calculator
+                                settings are cut out of the page address before they send it. Vercel counts
+                                visitors with a hash of each request that it says it discards after 24 hours, and
+                                its documentation says the figures a site owner gets are aggregated. So I have no
+                                way to pull out one visitor&apos;s records on request.
                             </p>
                             <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-                                One more thing loads, but only with your permission. If you accept analytics in the
-                                cookie banner, Google Ads conversion tracking runs so I can measure whether my own
-                                advertising reaches anyone. Choose &quot;Essential Only&quot; and it never loads at
-                                all. Display ads themselves come from A-ADS, which is cookieless and does not
-                                profile you.
+                                One more thing loads, but only with your permission. If you press Accept All in
+                                the cookie banner, Google&apos;s ads tag runs so I can measure whether my own
+                                Google ads bring anyone here. It sets cookies on this site, sends Google the
+                                address of the pages you view, and lets Google use the visit for ad
+                                personalisation. Choose &quot;Essential Only&quot; and it never loads at all. The
+                                Cookie preferences link in the footer withdraws consent and deletes the cookies
+                                the tag set on this site. What Google holds on its own side is outside my
+                                reach, so that request has to go to Google. Display ads come from A-ADS in frames
+                                that load whatever you answer. The privacy policy says what those frames load.
                             </p>
                             <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
                                 The{' '}
@@ -387,7 +405,7 @@ export default function ContactPage() {
                         opening a public issue. Give me a reasonable window to ship a fix. The site holds no user
                         accounts or funds, but I&apos;d still rather not have a live problem discussed in public
                         before it&apos;s patched. Credit in the{' '}
-                        <Link href="/methodology" className="text-amber-700 dark:text-amber-400 hover:underline font-medium">
+                        <Link href="/methodology#changelog" className="text-amber-700 dark:text-amber-400 hover:underline font-medium">
                             changelog
                         </Link>{' '}
                         if you want it.

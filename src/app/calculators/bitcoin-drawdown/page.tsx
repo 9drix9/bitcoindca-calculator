@@ -1,12 +1,19 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { AlertTriangle, ArrowRight } from 'lucide-react';
+import { AlertTriangle, ArrowDown, ArrowRight } from 'lucide-react';
 import clsx from 'clsx';
 import { Card } from '@/components/ui/Card';
 import { DrawdownCalculator } from '@/components/DrawdownCalculator';
-import { getBitcoinPriceHistory, getCurrentBitcoinPrice } from '@/app/actions';
-import { calculateDca } from '@/utils/dca';
-import { DAY_MS, EARLIEST_PRICE_TS, formatUtc } from '@/utils/dates';
+import { getBitcoinPriceHistoryWithMeta, getBitcoinSpot } from '@/app/actions';
+import { calculateDca, priceSeriesCovers } from '@/utils/dca';
+import { DAY_MS, EARLIEST_PRICE_TS, formatUtc, utcFullYearsBetween, utcYearsBefore } from '@/utils/dates';
+import {
+    FIRST_EXCHANGE_CLOSE_DATE, PRICE_PROVIDER_LABELS, priceStaleNotice, type PriceProvider,
+} from '@/data/priceSources';
+import {
+    findDrawdowns, listedEpisodes, maxDrawdownPercent, median, type Episode,
+} from '@/app/calculators/bitcoin-drawdown/episodes';
+import { readTypedAmount } from '@/app/calculators/bitcoin-drawdown/typedAmount';
 
 const BASE_URL = 'https://btcdollarcostaverage.com';
 const PATH = '/calculators/bitcoin-drawdown';
@@ -49,115 +56,63 @@ function fmtBtc(value: number): string {
     return `${text} BTC`;
 }
 
-/** Human duration for a day count: "47 days", "8 months", "2.9 years". */
+/** Human duration for a day count: "1 day", "47 days", "8 months", "2.9 years". */
 function fmtDays(days: number): string {
-    if (days < 60) return `${Math.round(days)} days`;
+    if (days < 60) {
+        const whole = Math.round(days);
+        return `${whole} ${whole === 1 ? 'day' : 'days'}`;
+    }
     if (days < 730) return `${Math.round(days / 30.44)} months`;
     return `${(days / 365.25).toFixed(1)} years`;
-}
-
-// ── Drawdown detection ────────────────────────────────────────────────────────
-
-interface Episode {
-    peakTs: number;
-    peakPrice: number;
-    troughTs: number;
-    troughPrice: number;
-    /** Positive percentage, peak close to trough close */
-    depthPercent: number;
-    daysToTrough: number;
-    /** null while the previous peak has never been reclaimed */
-    recoveredTs: number | null;
-    daysToRecover: number | null;
-}
-
-/**
- * Walk a daily close series and record every completed peak-to-trough episode
- * deeper than `minDepth`. A new peak closes the running episode: the drawdown is
- * "over" the day the previous high is reclaimed, which is the standard definition.
- */
-function findDrawdowns(series: [number, number][], minDepth: number): Episode[] {
-    const episodes: Episode[] = [];
-    if (series.length < 2) return episodes;
-
-    let peakTs = series[0][0];
-    let peakPrice = series[0][1];
-    let troughTs = peakTs;
-    let troughPrice = peakPrice;
-    let inDrawdown = false;
-
-    const close = (recoveredTs: number | null) => {
-        const depth = peakPrice > 0 ? (peakPrice - troughPrice) / peakPrice : 0;
-        if (depth >= minDepth) {
-            episodes.push({
-                peakTs,
-                peakPrice,
-                troughTs,
-                troughPrice,
-                depthPercent: depth * 100,
-                daysToTrough: (troughTs - peakTs) / DAY_MS,
-                recoveredTs,
-                daysToRecover: recoveredTs === null ? null : (recoveredTs - peakTs) / DAY_MS,
-            });
-        }
-    };
-
-    for (let i = 1; i < series.length; i++) {
-        const [ts, price] = series[i];
-        if (!Number.isFinite(price) || price <= 0) continue;
-
-        if (price >= peakPrice) {
-            if (inDrawdown) {
-                close(ts);
-                inDrawdown = false;
-            }
-            peakTs = ts;
-            peakPrice = price;
-            troughTs = ts;
-            troughPrice = price;
-        } else {
-            if (!inDrawdown) {
-                inDrawdown = true;
-                troughTs = ts;
-                troughPrice = price;
-            } else if (price < troughPrice) {
-                troughTs = ts;
-                troughPrice = price;
-            }
-        }
-    }
-    if (inDrawdown) close(null);
-    return episodes;
-}
-
-/** Deepest peak-to-trough decline inside a series, as a positive percentage. */
-function maxDrawdownPercent(series: [number, number][]): number {
-    let peak = 0;
-    let worst = 0;
-    for (const [, price] of series) {
-        if (!Number.isFinite(price) || price <= 0) continue;
-        if (price > peak) peak = price;
-        else if (peak > 0) {
-            const dd = (peak - price) / peak;
-            if (dd > worst) worst = dd;
-        }
-    }
-    return worst * 100;
 }
 
 // ── Server data ───────────────────────────────────────────────────────────────
 
 const REFERENCE_AMOUNT = 100;
 const REFERENCE_YEARS = 5;
+/** Rows in the history table, unless more than this many falls reached DEEP_FALL_PERCENT. */
+const TABLE_ROWS = 8;
+/** Every fall at least this deep is listed, however many there are. */
+const DEEP_FALL_PERCENT = 70;
+/**
+ * The one day in the bundled 2010-2015 series where the price jumps and falls
+ * straight back: $0.06, $0.09, $0.15, $0.06 across 14 to 17 September 2010.
+ * data/btcHistorical.ts keeps those values because blockchain.info still
+ * publishes them, and datasets.test.ts pins them. Measured peak to trough they
+ * are a 60% fall in one day, deep enough to be a row of the table, so the
+ * table prints the four values that row rests on, and what the counts above
+ * it come to without the two days in the middle.
+ */
+const EARLY_SPIKE_PEAK_TS = Date.UTC(2010, 8, 16);
 
 interface PageData {
     currentPrice: number;
+    /** The exchange that quoted currentPrice and when; null when it is the newest row of the daily series. */
+    quote: { provider: PriceProvider; asOf: number } | null;
+    /**
+     * The daily series every depth on the page is measured on, as it was
+     * actually served. Coinbase is asked for; when it cannot be reached the
+     * price action answers with Kraken's weekly series, on which falls read
+     * shallower, and the page then says so instead of describing daily prices.
+     */
+    series: { provider: PriceProvider; stale: boolean; fetchedAt: number };
     athPrice: number;
     athTs: number;
     fromAthPercent: number;
     daysSinceAth: number;
     seriesStartTs: number;
+    /** The rows of the history table, in date order. */
     episodes: Episode[];
+    /** How many of those rows are there for their depth. One more than this means the fall still under way was added. */
+    deepestRows: number;
+    /** Set when EARLY_SPIKE_PEAK_TS heads a listed row. */
+    earlySpike: {
+        /** The daily values from two days before that day to the day after. */
+        days: { ts: number; price: number }[];
+        /** The counts with that day and the day before it left out of the series. */
+        countOver30: number;
+        countOver50: number;
+    } | null;
     countOver30: number;
     countOver50: number;
     countOver70: number;
@@ -176,15 +131,22 @@ interface PageData {
 async function loadData(): Promise<PageData | null> {
     try {
         const now = Date.now();
-        // Coinbase gives real daily candles from 2015 and the loader prepends real
-        // daily market prices for 2010-2015, so this series is not interpolated.
-        const [history, livePrice] = await Promise.all([
-            getBitcoinPriceHistory(EARLIEST_PRICE_TS, now + DAY_MS, 'coinbase'),
-            getCurrentBitcoinPrice('coinbase').catch(() => null),
+        // Coinbase gives a close for every day from 2015-07-20 and the loader
+        // prepends blockchain.info's daily prices for 2010-2015, so that series
+        // has no straight-line fills. The action falls back to Kraken's weekly
+        // series when Coinbase is down, so which one answered is read off the
+        // result and carried to the copy.
+        const [meta, spot] = await Promise.all([
+            getBitcoinPriceHistoryWithMeta(EARLIEST_PRICE_TS, now + DAY_MS, 'coinbase'),
+            getBitcoinSpot('coinbase'),
         ]);
-        if (!history || history.length < 500) return null;
+        const history = meta.data;
+        // A series that stops short of today would report a "current drawdown"
+        // against a stale last row.
+        if (history.length < 500 || !priceSeriesCovers(history, EARLIEST_PRICE_TS, now)) return null;
 
-        const currentPrice = livePrice ?? history[history.length - 1][1];
+        const lastRow = history[history.length - 1];
+        const currentPrice = spot ? spot.price : lastRow[1];
         if (!Number.isFinite(currentPrice) || currentPrice <= 0) return null;
 
         let athPrice = 0;
@@ -201,26 +163,39 @@ async function loadData(): Promise<PageData | null> {
         }
 
         const all = findDrawdowns(history, 0.3);
-        const episodes = [...all]
-            .sort((a, b) => b.depthPercent - a.depthPercent)
-            .slice(0, 8)
-            .sort((a, b) => a.peakTs - b.peakTs);
+        const countOver70 = all.filter((e) => e.depthPercent >= DEEP_FALL_PERCENT).length;
+        // The deepest TABLE_ROWS, and never fewer than every fall of 70% or more:
+        // the sentence above the table says all of those are in it, and other
+        // pages send readers here for exactly those rows. The fall still under
+        // way is listed too, wherever it ranks.
+        const episodes = listedEpisodes(all, TABLE_ROWS, DEEP_FALL_PERCENT);
+        const deepestRows = Math.min(all.length, Math.max(TABLE_ROWS, countOver70));
 
-        const recoveries = all
-            .filter((e) => e.daysToRecover !== null)
-            .map((e) => e.daysToRecover as number)
-            .sort((a, b) => a - b);
-        const medianRecoveryDays = recoveries.length > 0
-            ? recoveries[Math.floor(recoveries.length / 2)]
-            : null;
+        // Read from the series, not typed in, so the note cannot disagree with the row.
+        let earlySpike: PageData['earlySpike'] = null;
+        if (episodes.some((e) => e.peakTs === EARLY_SPIKE_PEAK_TS)) {
+            const days = [-2, -1, 0, 1].flatMap((offset) => {
+                const row = history.find(([ts]) => ts === EARLY_SPIKE_PEAK_TS + offset * DAY_MS);
+                return row ? [{ ts: row[0], price: row[1] }] : [];
+            });
+            if (days.length === 4) {
+                const without = findDrawdowns(
+                    history.filter(([ts]) => ts !== EARLY_SPIKE_PEAK_TS && ts !== EARLY_SPIKE_PEAK_TS - DAY_MS),
+                    0.3,
+                );
+                earlySpike = {
+                    days,
+                    countOver30: without.length,
+                    countOver50: without.filter((e) => e.depthPercent >= 50).length,
+                };
+            }
+        }
+
+        const medianRecoveryDays = median(all.flatMap((e) => (e.daysToRecover === null ? [] : [e.daysToRecover])));
 
         // A concrete DCA-vs-price comparison over the same window.
         let reference: PageData['reference'] = null;
-        const d = new Date(now);
-        const startTs = Math.max(
-            Date.UTC(d.getUTCFullYear() - REFERENCE_YEARS, d.getUTCMonth(), d.getUTCDate()),
-            EARLIEST_PRICE_TS,
-        );
+        const startTs = Math.max(utcYearsBefore(now, REFERENCE_YEARS), EARLIEST_PRICE_TS);
         const window = history.filter(([ts]) => ts >= startTs);
         if (window.length > 100) {
             const dca = calculateDca(
@@ -235,6 +210,7 @@ async function loadData(): Promise<PageData | null> {
                 },
                 history,
                 currentPrice,
+                spot ? spot.asOf : lastRow[0],
             );
             if (dca.btcAccumulated > 0 && Number.isFinite(dca.currentValue)) {
                 reference = {
@@ -250,15 +226,19 @@ async function loadData(): Promise<PageData | null> {
 
         return {
             currentPrice,
+            quote: spot ? { provider: spot.provider, asOf: spot.asOf } : null,
+            series: { provider: meta.servedProvider, stale: meta.stale, fetchedAt: meta.fetchedAt },
             athPrice,
             athTs,
             fromAthPercent: athPrice > 0 ? ((athPrice - currentPrice) / athPrice) * 100 : 0,
             daysSinceAth: (now - athTs) / DAY_MS,
             seriesStartTs: history[0][0],
             episodes,
+            deepestRows,
+            earlySpike,
             countOver30: all.filter((e) => e.depthPercent >= 30).length,
             countOver50: all.filter((e) => e.depthPercent >= 50).length,
-            countOver70: all.filter((e) => e.depthPercent >= 70).length,
+            countOver70,
             medianRecoveryDays,
             reference,
         };
@@ -274,11 +254,15 @@ async function loadData(): Promise<PageData | null> {
 const firstParam = (v: string | string[] | undefined): string | undefined =>
     Array.isArray(v) ? v[0] : v;
 
-/** Sanitised stack size, or null when the visitor did not supply a usable one. */
+/**
+ * Sanitised stack size, or null when the visitor did not supply a usable one.
+ * A comma is read as the decimal mark ("0,5" is half a bitcoin), and anything
+ * under one satoshi is not a stack.
+ */
 function parseStackBtc(raw: string | undefined): number | null {
     if (!raw) return null;
-    const n = Number(raw.replace(/[,\s]/g, ''));
-    if (!Number.isFinite(n) || n <= 0) return null;
+    const n = readTypedAmount(raw, 'decimal');
+    if (n === null || n < 1e-8) return null;
     return Math.min(n, 21_000_000);
 }
 
@@ -290,15 +274,18 @@ const trimBtc = (v: number): string =>
 export async function generateMetadata(): Promise<Metadata> {
     const title = 'Bitcoin Drawdown Calculator';
     let description =
-        'See every Bitcoin drawdown deeper than 30% since 2010, measured peak-to-trough on real daily prices, and plan how long a stack would last if you started spending it down.';
+        'See every Bitcoin drawdown deeper than 30% since 2010, measured peak-to-trough on daily prices, and plan how long a stack would last if you started spending it down.';
 
     try {
         const data = await loadData();
         if (data) {
+            // "on daily prices" only when the daily series is what answered: on the
+            // Kraken fallback the count below comes from weekly closes.
+            const basis = data.series.provider === 'coinbase' ? ' on daily prices' : '';
             description =
                 `Bitcoin is ${fmtPct(data.fromAthPercent)} below its ${fmtUsd(data.athPrice)} all-time high. ` +
-                `It has had ${data.countOver30} drawdowns deeper than 30% since 2010 on real daily prices. See the deepest ones peak-to-trough, ` +
-                `why a DCA portfolio's drawdown differs from the price drawdown, and how long a stack would last in retirement.`;
+                `It has had ${data.countOver30} drawdowns deeper than 30% since 2010${basis}. See the deepest ones peak-to-trough, ` +
+                `why a DCA portfolio's drawdown differs from the price drawdown, and how long a stack would last if you spent it down.`;
         }
     } catch {
         // Keep the generic description.
@@ -362,6 +349,21 @@ function StatCard({
 }
 
 const proseLink = 'text-amber-700 dark:text-amber-400 hover:underline font-medium';
+// First column of a table that scrolls sideways: it keeps its place, on the
+// card's own background so the columns passing under it do not show through.
+const stickyCell = 'sticky left-0 bg-white dark:bg-slate-900';
+// A breadcrumb link is one or two short words, about 15px tall as text on a
+// phone. The padding makes it a 44px touch target, and the negative margins
+// hand the same space back so the row sits exactly where it did.
+const crumbLink =
+    'inline-flex min-h-11 items-center -my-3.5 px-1.5 -mx-1.5 hover:text-amber-700 dark:hover:text-amber-400 transition-colors';
+
+/**
+ * Whole years of price history this site has, counted from the first day of
+ * its series. Derived, so the prose cannot go stale the way a hard-coded
+ * "roughly fifteen years" did.
+ */
+const priceHistoryYears = (now: number = Date.now()): number => utcFullYearsBetween(EARLIEST_PRICE_TS, now);
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
@@ -369,7 +371,12 @@ export default async function BitcoinDrawdownPage({ searchParams }: PageProps) {
     const params = await searchParams;
     const data = await loadData();
 
-    const requestedBtc = parseStackBtc(firstParam(params.btc));
+    const typedBtc = firstParam(params.btc)?.trim() ?? '';
+    const requestedBtc = parseStackBtc(typedBtc);
+    // Something was sent and could not be used (not a number, or under one
+    // satoshi): said in so many words, because the field goes back to showing
+    // the default.
+    const unusableNote = typedBtc !== '' && requestedBtc === null ? 'That amount could not be used. ' : '';
     const defaultBtc = data?.reference?.btcAccumulated ?? null;
     const stackBtc = requestedBtc ?? defaultBtc;
     const usingOwnStack = requestedBtc !== null;
@@ -390,6 +397,13 @@ export default async function BitcoinDrawdownPage({ searchParams }: PageProps) {
         ? data.episodes.reduce((a, b) => (b.depthPercent > a.depthPercent ? b : a))
         : null;
     const seriesStartLabel = data ? formatUtc(data.seriesStartTs, 'monthYear') : '';
+    const historyYears = priceHistoryYears();
+    // Which series answered is read off the result, not assumed.
+    const onFallbackSeries = data !== null && data.series.provider !== 'coinbase';
+    const firstExchangeDay = formatUtc(FIRST_EXCHANGE_CLOSE_DATE, 'full');
+    const seriesWords = onFallbackSeries
+        ? `Kraken's weekly closing prices from ${firstExchangeDay}, with the days in between filled in along a straight line, and blockchain.info's daily average market price before that`
+        : `one price per UTC day: Coinbase's daily close from ${firstExchangeDay}, and blockchain.info's daily average market price before that`;
 
     const faqs: { q: string; a: string }[] = [
         {
@@ -402,11 +416,11 @@ export default async function BitcoinDrawdownPage({ searchParams }: PageProps) {
         {
             q: 'What is the biggest Bitcoin drawdown ever recorded?',
             a: worst
-                ? `On daily closing prices since ${seriesStartLabel}, the deepest completed decline in this dataset ran from ` +
+                ? `In this page's price series, which starts in ${seriesStartLabel}, the deepest completed decline ran from ` +
                   `${formatUtc(worst.peakTs, 'full')} at ${fmtUsd(worst.peakPrice)} down to ${formatUtc(worst.troughTs, 'full')} at ${fmtUsd(worst.troughPrice)}, ` +
-                  `a fall of ${fmtPct(worst.depthPercent)}. Intraday lows were deeper than the closes shown here, and the earliest years traded on thin, ` +
+                  `a fall of ${fmtPct(worst.depthPercent)}. The series is ${seriesWords}. Intraday lows were deeper than the prices shown here, and the earliest years traded on thin, ` +
                   'unreliable venues, so treat the very early numbers as indicative rather than exact.'
-                : 'Bitcoin has repeatedly fallen more than 70% from a high on daily closing prices. Exact figures for each episode are shown in the table on this page when price data is available.',
+                : 'Bitcoin has repeatedly fallen more than 70% from a high on daily prices. Exact figures for each episode are shown in the table on this page when price data is available.',
         },
         {
             q: 'How is drawdown different from volatility?',
@@ -429,17 +443,17 @@ export default async function BitcoinDrawdownPage({ searchParams }: PageProps) {
             q: 'How long does Bitcoin take to recover from a drawdown?',
             a: data?.medianRecoveryDays != null
                 ? `Across the completed episodes in this dataset, the median time from the old peak back to the old peak was about ${fmtDays(data.medianRecoveryDays)}. ` +
-                  'That is a median over a small sample from a single asset with roughly fifteen years of history. It is a description of what happened, not a schedule ' +
+                  `That is a median over a small sample from a single asset with about ${historyYears} years of price history. It is a description of what happened, not a schedule ` +
                   'for what will happen, and nothing guarantees that a given drawdown ever recovers.'
-                : 'Historical recoveries have ranged from weeks to several years. A small sample from one asset with roughly fifteen years of history cannot tell you how ' +
+                : `Historical recoveries have ranged from weeks to several years. A small sample from one asset with about ${historyYears} years of price history cannot tell you how ` +
                   'long the next one takes, and nothing guarantees that a given drawdown recovers at all.',
         },
         {
             q: 'Could Bitcoin fall more than 80% again?',
             a:
                 'Yes. Nothing in the historical record puts a floor under future declines. The deepest past drawdown is a sample maximum, not a limit: it is the worst thing ' +
-                'that happened to survive into the data, and the next decline is free to be worse. Size a position on the assumption that a fall of that size is possible ' +
-                'and that it may take years to recover, if it recovers.',
+                'that happened to survive into the data, and the next decline is free to be worse. A fall of that size can take years to recover from, if it ' +
+                'recovers at all.',
         },
     ];
 
@@ -469,9 +483,9 @@ export default async function BitcoinDrawdownPage({ searchParams }: PageProps) {
                 {/* Breadcrumb */}
                 <nav aria-label="Breadcrumb" className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
                     <ol className="flex flex-wrap items-center gap-1.5">
-                        <li><Link href="/" className="hover:text-amber-700 dark:hover:text-amber-400 transition-colors">Home</Link></li>
+                        <li><Link href="/" className={crumbLink}>Home</Link></li>
                         <li aria-hidden="true">/</li>
-                        <li><Link href="/calculators" className="hover:text-amber-700 dark:hover:text-amber-400 transition-colors">Calculators</Link></li>
+                        <li><Link href="/calculators" className={crumbLink}>Calculators</Link></li>
                         <li aria-hidden="true">/</li>
                         <li aria-current="page" className="text-slate-700 dark:text-slate-300">Bitcoin Drawdown</li>
                     </ol>
@@ -486,12 +500,40 @@ export default async function BitcoinDrawdownPage({ searchParams }: PageProps) {
                         &ldquo;Drawdown&rdquo; means two different things to Bitcoin holders, and both matter. It is the
                         peak-to-trough fall that measures how far underwater you went, from a previous high down to the
                         low that followed. It is also the act of selling a stack down to live on. This page covers the
-                        first with real historical prices, then hands you a planner for the second.
+                        first with historical prices, then hands you a planner for the second.
+                    </p>
+                    {/* The planner is several screens down, below the whole history. */}
+                    <p>
+                        <a
+                            href="#planner"
+                            className="inline-flex min-h-11 items-center gap-1.5 text-sm font-semibold text-amber-700 dark:text-amber-400 hover:underline"
+                        >
+                            Skip to the spend-down planner
+                            <ArrowDown className="w-3.5 h-3.5" aria-hidden="true" />
+                        </a>
                     </p>
                 </header>
 
                 {data ? (
                     <>
+                        {/* Said at the top, not in a footnote: on the weekly series every
+                            depth below is a different, shallower number. */}
+                        {onFallbackSeries && (
+                            <Card className="p-4 sm:p-5 border-amber-500/40 dark:border-amber-500/30">
+                                <div className="flex items-start gap-3">
+                                    <AlertTriangle className="w-5 h-5 text-amber-700 dark:text-amber-400 shrink-0 mt-0.5" aria-hidden="true" />
+                                    <p className="text-sm text-slate-700 dark:text-slate-200 leading-relaxed">
+                                        Coinbase&apos;s daily prices could not be reached just now, so this page is
+                                        running on Kraken&apos;s weekly closing prices with the days in between filled
+                                        in along a straight line. A straight line through a week cannot fall as far as
+                                        the week did, so the falls measured below can read shallower than daily prices
+                                        show, and their dates can be off by several days. Reload in a few minutes for
+                                        the daily series.
+                                    </p>
+                                </div>
+                            </Card>
+                        )}
+
                         {/* Where things stand */}
                         <section className="space-y-4">
                             <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">
@@ -501,7 +543,11 @@ export default async function BitcoinDrawdownPage({ searchParams }: PageProps) {
                                 <StatCard
                                     label="Price"
                                     value={fmtUsd(data.currentPrice)}
-                                    sub="Latest market price"
+                                    sub={
+                                        data.quote
+                                            ? `${PRICE_PROVIDER_LABELS[data.quote.provider].name}, ${new Date(data.quote.asOf).toISOString().slice(11, 16)} UTC`
+                                            : 'Newest daily price'
+                                    }
                                     celebrated
                                 />
                                 <StatCard
@@ -526,9 +572,10 @@ export default async function BitcoinDrawdownPage({ searchParams }: PageProps) {
                                 />
                             </div>
                             <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
-                                Measured on daily closing prices from {formatUtc(data.seriesStartTs, 'monthYear')} onward.
-                                Intraday wicks went lower than any close shown here, so every depth on this page is a
+                                Measured from {formatUtc(data.seriesStartTs, 'monthYear')} onward on {seriesWords}.
+                                Intraday wicks went lower than any price shown here, so every depth on this page is a
                                 conservative reading of what a holder actually lived through.
+                                {data.series.stale ? ` ${priceStaleNotice(data.series.provider, data.series.fetchedAt)}` : ''}
                             </p>
                         </section>
 
@@ -552,7 +599,7 @@ export default async function BitcoinDrawdownPage({ searchParams }: PageProps) {
                                     is printed it becomes the reference for everything after it, so you are always measured
                                     against your best moment, not your entry. Second, the clock does not stop at the bottom.
                                     Picture a 75% fall that takes eight months to bottom and another two and a half years to
-                                    recover. That is three years of being worse off than you once were. The duration is
+                                    recover. That is more than three years of being worse off than you once were. The duration is
                                     usually what breaks people&apos;s conviction, not the percentage itself.
                                 </p>
                                 <p>
@@ -579,14 +626,31 @@ export default async function BitcoinDrawdownPage({ searchParams }: PageProps) {
                                     <strong className="font-semibold text-slate-900 dark:text-white">{data.countOver50}</strong>{' '}
                                     of 50% or more, and{' '}
                                     <strong className="font-semibold text-slate-900 dark:text-white">{data.countOver70}</strong>{' '}
-                                    of 70% or more. The {Math.min(8, data.episodes.length)} deepest are listed below in date order.
+                                    of {DEEP_FALL_PERCENT}% or more. The {data.deepestRows} deepest are listed below in
+                                    date order
+                                    {data.countOver70 > 0
+                                        ? `, ${data.countOver70 === 1 ? 'the one fall' : `all ${data.countOver70} falls`} of ${DEEP_FALL_PERCENT}% or more among them`
+                                        : ''}
+                                    {data.episodes.length > data.deepestRows ? ', along with the fall still under way' : ''}
+                                    .
+                                    {data.earlySpike && (
+                                        <>
+                                            {' '}
+                                            One of them, in {formatUtc(EARLY_SPIKE_PEAK_TS, 'monthYear')}, rests on two
+                                            days of prices that look wrong. The note under the table has the details.
+                                        </>
+                                    )}
                                 </p>
                                 <Card className="p-4 sm:p-6">
-                                    <div className="overflow-x-auto">
+                                    {/* Wider than a phone. Focusable and named, because Safari gives
+                                        a keyboard no other way to scroll it sideways, and the Peak
+                                        column stays put, because a row scrolled past it no longer
+                                        says which fall it is. */}
+                                    <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="Deepest drawdowns table">
                                         <table className="w-full text-xs sm:text-sm tabular-nums min-w-[560px]">
                                             <thead>
                                                 <tr className="text-left text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800">
-                                                    <th scope="col" className="py-2 pr-4 font-medium">Peak</th>
+                                                    <th scope="col" className={clsx(stickyCell, 'py-2 pr-4 font-medium')}>Peak</th>
                                                     <th scope="col" className="py-2 pr-4 font-medium">Trough</th>
                                                     <th scope="col" className="py-2 pr-4 font-medium text-right">Fall</th>
                                                     <th scope="col" className="py-2 pr-4 font-medium text-right">Time down</th>
@@ -599,7 +663,7 @@ export default async function BitcoinDrawdownPage({ searchParams }: PageProps) {
                                                         key={e.peakTs}
                                                         className="border-b border-slate-100 dark:border-slate-800/60 last:border-0 align-top"
                                                     >
-                                                        <td className="py-2 pr-4">
+                                                        <td className={clsx(stickyCell, 'py-2 pr-4')}>
                                                             <span className="font-medium text-slate-800 dark:text-slate-100">
                                                                 {formatUtc(e.peakTs, 'monthYear')}
                                                             </span>
@@ -627,9 +691,26 @@ export default async function BitcoinDrawdownPage({ searchParams }: PageProps) {
                                     </div>
                                     <p className="mt-3 text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
                                         &ldquo;Time down&rdquo; is peak to trough. &ldquo;Back to the peak&rdquo; is peak to the
-                                        first close at or above that peak, so it includes the fall as well as the recovery.
+                                        first day the price is back at or above that peak, so it includes the fall as well
+                                        as the recovery.
                                         Overlapping episodes are not double-counted: a new high closes the previous drawdown.
                                     </p>
+                                    {data.earlySpike && (
+                                        <p className="mt-2 text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                                            The {formatUtc(EARLY_SPIKE_PEAK_TS, 'monthYear')} row comes from two days of
+                                            blockchain.info&apos;s series, where the price jumped and fell straight back:{' '}
+                                            {data.earlySpike.days
+                                                .map((day) => `${fmtUsd(day.price)} on ${formatUtc(day.ts, 'monthDay')}`)
+                                                .join(', ')
+                                                .replace(/, ([^,]*)$/, ' and $1')}
+                                            . Those two days look wrong: Coin Metrics, a second source, shows no such
+                                            jump, and the{' '}
+                                            <Link href="/methodology" className={proseLink}>methodology page</Link> has
+                                            both sets of figures. The row is listed and counted here as blockchain.info
+                                            publishes it. Without those two days there are {data.earlySpike.countOver30}{' '}
+                                            declines of 30% or more and {data.earlySpike.countOver50} of 50% or more.
+                                        </p>
+                                    )}
                                 </Card>
                             </section>
                         )}
@@ -693,10 +774,11 @@ export default async function BitcoinDrawdownPage({ searchParams }: PageProps) {
                                     the more the history above describes your experience rather than the softened version.
                                 </p>
                                 <p>
-                                    Finally: none of these figures bound the future. Bitcoin is roughly fifteen years old and
-                                    has never been tested through a full global credit cycle as an institutional holding. The
+                                    Finally: none of these figures bound the future. Bitcoin has about {historyYears} years of
+                                    price history and has never been tested through a full global credit cycle as an
+                                    institutional holding. The
                                     deepest fall in the table is just the worst thing that has happened to it so far. A sample
-                                    maximum is not a limit. Plan for worse than the worst row.
+                                    maximum is not a limit.
                                 </p>
                             </div>
                         </section>
@@ -713,8 +795,8 @@ export default async function BitcoinDrawdownPage({ searchParams }: PageProps) {
                                     We could not load historical Bitcoin prices to compute the drawdown history right now.
                                     Nothing on this page is estimated when that happens, so the tables are hidden rather than
                                     filled with guesses. The{' '}
-                                    <Link href="/" className={proseLink}>main calculator</Link> pulls from several providers,
-                                    so it may still work.
+                                    <Link href="/" className={proseLink}>main calculator</Link> reads the same two exchanges,
+                                    so it may be affected as well. Try again in a few minutes.
                                 </p>
                             </div>
                         </div>
@@ -735,16 +817,21 @@ export default async function BitcoinDrawdownPage({ searchParams }: PageProps) {
                             participated in any later recovery.
                         </p>
                         <p>
-                            The planner below spends a stack down month by month. Set the monthly withdrawal, an assumed
-                            growth rate, how fast withdrawals rise with inflation, and a floor of coins you refuse to sell.
-                            It reports how long the stack lasts, the same answer under a bear and a bull path, and the
-                            largest monthly withdrawal that survives 30 years.
+                            The planner below spends a stack down month by month. Set the monthly withdrawal, a yearly
+                            price change, how fast withdrawals rise with inflation, and a floor of coins you refuse to
+                            sell. The price change opens at zero, a flat price, because any other starting number would
+                            be a forecast you never made. A negative number models a falling price. The planner reports
+                            how long the stack lasts, the same answer with the price change 20 points lower and 20 points
+                            higher, and the largest monthly withdrawal that lasts 30 years. Beside every non-zero rate it
+                            prints the bitcoin price that rate works out to, so the assumption is in plain sight.
                         </p>
                     </div>
 
-                    {/* Stack size: plain GET form, so it works without JavaScript */}
+                    {/* Stack size: plain GET form, so it works without JavaScript. The
+                        fragment brings the reloaded page back here, to the field and the
+                        planner under it, not to the top several screens above. */}
                     <Card className="p-4 sm:p-5">
-                        <form method="get" action={PATH} className="space-y-2">
+                        <form id="planner" method="get" action={`${PATH}#planner`} className="space-y-2">
                             <label
                                 htmlFor="btc-stack"
                                 className="block text-xs font-medium text-slate-500 dark:text-slate-400"
@@ -760,21 +847,23 @@ export default async function BitcoinDrawdownPage({ searchParams }: PageProps) {
                                     autoComplete="off"
                                     defaultValue={stackBtc !== null ? trimBtc(stackBtc) : ''}
                                     placeholder="0.5"
-                                    className="h-10 w-full sm:max-w-xs rounded-lg border border-slate-200 bg-white px-3 text-base tabular-nums text-slate-800 outline-none transition-shadow focus:border-amber-500 focus:ring-2 focus:ring-amber-500/40 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 sm:text-sm"
+                                    // 44px and 16px text on a touch screen: under 640px, and on a
+                                    // coarse pointer at any width. A mouse keeps the denser 40px row.
+                                    className="h-10 max-sm:h-11 pointer-coarse:h-11 w-full sm:max-w-xs rounded-lg border border-slate-200 bg-white px-3 text-sm max-sm:text-base pointer-coarse:text-base tabular-nums text-slate-800 outline-none transition-shadow focus:border-amber-500 focus:ring-2 focus:ring-amber-500/40 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
                                 />
                                 <button
                                     type="submit"
-                                    className="h-10 shrink-0 rounded-lg bg-amber-600 px-4 text-sm font-semibold text-slate-950 transition-colors hover:bg-amber-700"
+                                    className="h-10 max-sm:h-11 pointer-coarse:h-11 shrink-0 rounded-lg bg-amber-600 px-4 text-sm font-semibold text-slate-950 transition-colors hover:bg-amber-700"
                                 >
                                     Update the stack
                                 </button>
                             </div>
                             <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
                                 {usingOwnStack
-                                    ? 'Using the amount you entered. Everything below recalculates against the live price.'
+                                    ? 'Using the amount you entered. Everything below is worked out at the price shown at the top of this page.'
                                     : data?.reference
-                                        ? `Defaulting to ${fmtBtc(data.reference.btcAccumulated)}, the stack a $${REFERENCE_AMOUNT}-a-week schedule would have accumulated since ${formatUtc(data.reference.startTs, 'monthYear')} at real historical prices. Replace it with your own.`
-                                        : 'Enter the amount of BTC you want to model.'}
+                                        ? `${unusableNote}Defaulting to ${fmtBtc(data.reference.btcAccumulated)}, the stack a $${REFERENCE_AMOUNT}-a-week schedule would have accumulated since ${formatUtc(data.reference.startTs, 'monthYear')} at historical prices, with no fee. Replace it with your own.`
+                                        : `${unusableNote}Enter the amount of BTC you want to model.`}
                             </p>
                         </form>
                     </Card>
@@ -784,7 +873,7 @@ export default async function BitcoinDrawdownPage({ searchParams }: PageProps) {
                     ) : (
                         <Card className="p-6">
                             <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
-                                The planner needs a live Bitcoin price and a stack size to run. Enter an amount of BTC above,
+                                The planner needs a current Bitcoin price and a stack size to run. Enter an amount of BTC above,
                                 or open the{' '}
                                 <Link href="/" className={proseLink}>full calculator</Link> to derive one from a DCA schedule.
                             </p>
@@ -794,17 +883,17 @@ export default async function BitcoinDrawdownPage({ searchParams }: PageProps) {
                     <div className="space-y-3 text-sm sm:text-base text-slate-600 dark:text-slate-300 leading-relaxed">
                         <p>
                             <strong className="font-semibold text-slate-900 dark:text-white">How to read the result.</strong>{' '}
-                            The number it gives you is an upper bound, not a plan. The model compounds the price smoothly at
-                            whatever rate you type, which is the one thing Bitcoin has never done. A real path with the same
-                            average return but a deep decline in the first few years drains the stack far faster, because
-                            those early withdrawals sell many more coins. That is sequence-of-returns risk, and a
-                            constant-growth model has none of it by construction.
+                            The number it gives you is arithmetic on the rate you typed, not a plan. The model compounds
+                            the price smoothly at that rate, which is the one thing Bitcoin has never done. A real path
+                            with the same average return but a deep decline in the first few years drains the stack far
+                            faster, because those early withdrawals sell many more coins. That is sequence-of-returns
+                            risk, and a constant-growth model has none of it by construction.
                         </p>
                         <p>
                             <strong className="font-semibold text-slate-900 dark:text-white">What it leaves out.</strong>{' '}
                             No capital gains tax, no exchange or withdrawal fees, no spread, and no lump-sum expenses. It also
                             assumes you keep selling on schedule through a 70% decline, which is exactly the moment most
-                            people stop. Treat the bear column as the interesting one.
+                            people stop. Treat the card with the lowest rate as the interesting one.
                         </p>
                         <p>
                             The <Link href="/methodology" className={proseLink}>methodology page</Link> lists every data
@@ -834,8 +923,8 @@ export default async function BitcoinDrawdownPage({ searchParams }: PageProps) {
                         Run your own numbers
                     </h2>
                     <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300 mb-5 max-w-xl mx-auto">
-                        The full calculator backtests any DCA schedule you like. It reports max drawdown alongside ROI,
-                        XIRR, and a year-by-year breakdown, all from the same historical data used here. ROI is your
+                        The full calculator backtests any DCA schedule you like. It reports max drawdown alongside ROI
+                        and XIRR, and lists every purchase, all from the same historical data used here. ROI is your
                         total gain or loss. XIRR is the annual return rate, adjusted for money going in at different
                         times.
                     </p>
@@ -855,22 +944,22 @@ export default async function BitcoinDrawdownPage({ searchParams }: PageProps) {
                     </h2>
                     <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 text-sm">
                         <li>
-                            <Link href="/calculators" className="block rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-2.5 font-medium text-slate-700 dark:text-slate-300 hover:border-amber-500/50 hover:text-amber-700 dark:hover:text-amber-400 transition-colors">
+                            <Link href="/calculators" className="block rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-3 font-medium text-slate-700 dark:text-slate-300 hover:border-amber-500/50 hover:text-amber-700 dark:hover:text-amber-400 transition-colors">
                                 All Bitcoin calculators
                             </Link>
                         </li>
                         <li>
-                            <Link href="/calculators/bitcoin-fire" className="block rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-2.5 font-medium text-slate-700 dark:text-slate-300 hover:border-amber-500/50 hover:text-amber-700 dark:hover:text-amber-400 transition-colors">
+                            <Link href="/calculators/bitcoin-fire" className="block rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-3 font-medium text-slate-700 dark:text-slate-300 hover:border-amber-500/50 hover:text-amber-700 dark:hover:text-amber-400 transition-colors">
                                 Bitcoin FIRE calculator
                             </Link>
                         </li>
                         <li>
-                            <Link href="/dca" className="block rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-2.5 font-medium text-slate-700 dark:text-slate-300 hover:border-amber-500/50 hover:text-amber-700 dark:hover:text-amber-400 transition-colors">
+                            <Link href="/dca" className="block rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-3 font-medium text-slate-700 dark:text-slate-300 hover:border-amber-500/50 hover:text-amber-700 dark:hover:text-amber-400 transition-colors">
                                 Historical DCA scenarios
                             </Link>
                         </li>
                         <li>
-                            <Link href="/methodology" className="block rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-2.5 font-medium text-slate-700 dark:text-slate-300 hover:border-amber-500/50 hover:text-amber-700 dark:hover:text-amber-400 transition-colors">
+                            <Link href="/methodology" className="block rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-3 font-medium text-slate-700 dark:text-slate-300 hover:border-amber-500/50 hover:text-amber-700 dark:hover:text-amber-400 transition-colors">
                                 Methodology &amp; data sources
                             </Link>
                         </li>

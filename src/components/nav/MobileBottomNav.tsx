@@ -1,25 +1,17 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
 import { Calculator, LayoutGrid, TrendingUp, BookOpen, Menu } from 'lucide-react';
 import clsx from 'clsx';
 import { useKeyboardOpen } from '@/hooks/useKeyboardOpen';
+import { scrollToTopInstead } from './currentPageClick';
+import { useNavPathname } from './useNavPathname';
 
 /**
- * The site's single mobile navigation.
- *
- * Previously there were two competing systems: this bar (4 hardcoded content
- * pages) and a hamburger drawer in the top bar (10 different links). A visitor
- * had two menus that disagreed about what the site contained, and neither
- * listed the calculator hub or the scenario cluster.
- *
- * Now the bar is primary and its last item opens the drawer — the standard
- * iOS "More" tab / Android bottom-navigation overflow pattern. The top bar keeps
- * only the logo and theme toggle, which gives back a row of vertical space on
- * small screens and puts every primary destination in the thumb zone.
+ * The four destinations the tab bar holds. The drawer lists the same four
+ * while the bar is hidden (phone landscape), so they are defined once.
  */
-const tabs = [
+export const primaryTabs = [
     { href: '/', label: 'Calculate', icon: Calculator, match: (p: string) => p === '/' },
     { href: '/calculators', label: 'Tools', icon: LayoutGrid, match: (p: string) => p.startsWith('/calculators') },
     // Prefix match so /dca/100-per-week-since-2020 keeps the tab lit.
@@ -36,17 +28,28 @@ const tabs = [
     },
 ] as const;
 
+/**
+ * The site's single mobile navigation.
+ *
+ * Previously there were two competing systems: this bar (4 hardcoded content
+ * pages) and a hamburger drawer in the top bar (10 different links). A visitor
+ * had two menus that disagreed about what the site contained, and neither
+ * listed the calculator hub or the scenario cluster.
+ *
+ * Now the bar is primary and its last item opens the drawer — the standard
+ * iOS "More" tab / Android bottom-navigation overflow pattern. The top bar keeps
+ * only the logo and theme toggle, which gives back a row of vertical space on
+ * small screens and puts every primary destination in the thumb zone.
+ */
 export function MobileBottomNav({
     onOpenMenu,
     menuOpen,
-    triggerRef,
 }: {
-    onOpenMenu: () => void;
+    /** Receives the click, so the drawer knows which button to return focus to. */
+    onOpenMenu: (e: React.MouseEvent<HTMLButtonElement>) => void;
     menuOpen: boolean;
-    /** So the drawer can return focus here when it closes. */
-    triggerRef?: React.RefObject<HTMLButtonElement | null>;
 }) {
-    const pathname = usePathname() ?? '/';
+    const pathname = useNavPathname();
     const keyboardOpen = useKeyboardOpen();
 
     // While the keyboard is up the bar is useless and actively harmful: on
@@ -57,17 +60,21 @@ export function MobileBottomNav({
 
     return (
         <nav
+            // This label is also a selector: globals.css hides the bar by it in
+            // phone landscape, and DockedResult finds the bar by it to sit on
+            // top (and shares its md:hidden). Change them together.
             aria-label="Main navigation"
             className="bottom-nav-fill fixed bottom-0 left-0 right-0 z-50 md:hidden bg-white/90 dark:bg-slate-950/90 backdrop-blur-md border-t border-slate-200 dark:border-slate-800 pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] bottom-nav-safe-area"
         >
             {/* -mt-px lets each tab's 2px indicator overlay the nav's hairline border */}
             <div className="grid grid-cols-5 h-16 -mt-px">
-                {tabs.map(({ href, label, icon: Icon, match }) => {
+                {primaryTabs.map(({ href, label, icon: Icon, match }) => {
                     const isActive = !menuOpen && match(pathname);
                     return (
                         <Link
                             key={href}
                             href={href}
+                            onClick={pathname === href ? scrollToTopInstead : undefined}
                             aria-current={isActive ? 'page' : undefined}
                             className={clsx(
                                 'flex flex-col items-center justify-center gap-0.5 text-[10px] font-medium transition-colors border-t-2',
@@ -83,7 +90,6 @@ export function MobileBottomNav({
                 })}
 
                 <button
-                    ref={triggerRef}
                     type="button"
                     onClick={onOpenMenu}
                     aria-haspopup="dialog"

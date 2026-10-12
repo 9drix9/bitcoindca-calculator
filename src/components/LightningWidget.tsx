@@ -1,55 +1,31 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
 import { Zap } from 'lucide-react';
-import { getLightningStats } from '@/app/actions';
+import type { LightningStats } from '@/app/api/live/contract';
 import { Card, CardHeader, StatRow, EmptyState } from '@/components/ui/Card';
-
-interface LightningData {
-    nodeCount: number;
-    channelCount: number;
-    totalCapacityBtc: number;
-}
+import { LONE_LINK_HIT_AREA, StaleNote } from '@/components/live/cardFooter';
+import { useLiveFigure } from '@/components/live/liveSidebar';
+import { DAY_MS, formatUtc } from '@/utils/dates';
 
 interface LightningWidgetProps {
-    initialData: LightningData | null;
+    initialData: LightningStats | null;
+    /** When the server fetched `initialData` (ms epoch). */
+    fetchedAt?: number | null;
 }
 
-const POLL_MS = 5 * 60_000;
+// mempool.space publishes one row a day, dated 00:00 UTC, and some of its
+// servers answer with a row weeks old. A healthy row is under a day old, so
+// three days leaves room for a late one without passing off an old one.
+const ROW_STALE_MS = 3 * DAY_MS;
 
-export const LightningWidget = ({ initialData }: LightningWidgetProps) => {
-    const [data, setData] = useState<LightningData | null>(initialData);
-    const hadInitialData = useRef(initialData !== null);
-
-    useEffect(() => {
-        let mounted = true;
-        // SSR data is seconds old at hydration; only fetch immediately when it is missing.
-        let lastFetched = hadInitialData.current ? Date.now() : 0;
-
-        const refresh = async () => {
-            lastFetched = Date.now();
-            try {
-                const fresh = await getLightningStats();
-                if (mounted && fresh) setData(fresh);
-            } catch { /* keep last known */ }
-        };
-
-        if (!hadInitialData.current) refresh();
-
-        const interval = setInterval(() => {
-            if (!document.hidden) refresh();
-        }, POLL_MS);
-        const onVisibilityChange = () => {
-            if (!document.hidden && Date.now() - lastFetched >= POLL_MS) refresh();
-        };
-        document.addEventListener('visibilitychange', onVisibilityChange);
-
-        return () => {
-            mounted = false;
-            clearInterval(interval);
-            document.removeEventListener('visibilitychange', onVisibilityChange);
-        };
-    }, []);
+export const LightningWidget = ({ initialData, fetchedAt }: LightningWidgetProps) => {
+    const live = useLiveFigure('lightning', initialData, fetchedAt);
+    // A refresh can come from a server holding an earlier row than the page
+    // was built with. The newer day's counts stay.
+    const data = initialData && live.data && initialData.asOf > live.data.asOf ? initialData : live.data;
+    // Against the server's clock, and only once a refresh has finished: the
+    // server's HTML and the render that hydrates it never carry the note.
+    const rowIsOld = data !== null && live.checkedAt !== null && live.checkedAt - data.asOf > ROW_STALE_MS;
 
     return (
         <Card className="p-4">
@@ -57,11 +33,13 @@ export const LightningWidget = ({ initialData }: LightningWidgetProps) => {
 
             {data ? (
                 <div className="space-y-2">
-                    <StatRow label="Nodes" value={data.nodeCount.toLocaleString()} />
-                    <StatRow label="Channels" value={data.channelCount.toLocaleString()} />
+                    {/* 'en-US' throughout: these render on the server, and the browser's
+                        own locale ("16.017") would not match that HTML at hydration. */}
+                    <StatRow label="Nodes" value={data.nodeCount.toLocaleString('en-US')} />
+                    <StatRow label="Channels" value={data.channelCount.toLocaleString('en-US')} />
                     <StatRow
                         label="Capacity"
-                        value={`${data.totalCapacityBtc.toLocaleString(undefined, { maximumFractionDigits: 1 })} BTC`}
+                        value={`${data.totalCapacityBtc.toLocaleString('en-US', { maximumFractionDigits: 1 })} BTC`}
                         valueClassName="text-amber-700 dark:text-amber-400"
                     />
                 </div>
@@ -69,15 +47,23 @@ export const LightningWidget = ({ initialData }: LightningWidgetProps) => {
                 <EmptyState />
             )}
 
-            <div className="mt-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+            <div className="mt-2 pt-2 border-t border-slate-100 dark:border-slate-800 text-[11px] sm:text-xs text-slate-500 dark:text-slate-400">
+                {live.old && <StaleNote since={live.fetchedAt} />}
+                {data && rowIsOld && (
+                    <p>
+                        mempool.space last updated these figures on {formatUtc(data.asOf, 'full')}. They may be out of date.
+                    </p>
+                )}
                 <a
                     href="https://mempool.space/lightning"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 hover:text-amber-700 dark:hover:text-amber-400 transition-colors"
+                    className={`${LONE_LINK_HIT_AREA} hover:text-amber-700 dark:hover:text-amber-400 transition-colors`}
                 >
                     Data from mempool.space
                 </a>
+                {/* The row's own day, always: it can be weeks behind the day it was fetched. */}
+                {data && <>, as of {formatUtc(data.asOf, 'full')}</>}
             </div>
         </Card>
     );

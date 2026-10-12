@@ -4,7 +4,7 @@ import { Target, Eye, Link as LinkIcon, BarChart3, ShieldX, Code, User } from 'l
 
 export const metadata: Metadata = {
     title: 'About',
-    description: 'Who built this Bitcoin DCA calculator and why. Free, open-source, Bitcoin-only education, with full transparency on affiliate links and cookieless ads.',
+    description: 'Who built this Bitcoin DCA calculator and why. Free, open-source, Bitcoin-only education, with the affiliate links, ads and analytics spelled out.',
     keywords: ['bitcoin dca calculator about', 'bitcoin education', 'open source bitcoin', 'bitcoin dca tool'],
     alternates: {
         canonical: '/about',
@@ -55,10 +55,12 @@ const articleJsonLd = {
         "@type": "WebPage",
         "@id": "https://btcdollarcostaverage.com/about"
     },
-    "datePublished": "2025-01-01",
+    // The day this page first went live (its first commit, 3f78595). It does not
+    // move when the page is edited; dateModified does.
+    "datePublished": "2026-02-09",
     // Static date: update when the content itself changes (build-date freshness
     // is a spam-adjacent signal). Keep in sync with sitemap.ts.
-    "dateModified": "2026-08-11",
+    "dateModified": "2026-10-12",
 };
 
 export default function AboutPage() {
@@ -136,7 +138,7 @@ export default function AboutPage() {
                             </li>
                             <li className="flex items-start gap-2">
                                 <span className="text-amber-700 dark:text-amber-400 font-bold mt-0.5 shrink-0">&bull;</span>
-                                <span>The site runs cookieless display ads to cover ongoing costs. We keep them minimal and avoid misleading or low-quality placements.</span>
+                                <span>The site shows display ads from A-ADS to cover ongoing costs. We keep them minimal and avoid misleading or low-quality placements. What the ad frames load is listed <a href="#ads-and-analytics" className="text-amber-700 dark:text-amber-400 hover:underline font-medium">below</a>.</span>
                             </li>
                             <li className="flex items-start gap-2">
                                 <span className="text-amber-700 dark:text-amber-400 font-bold mt-0.5 shrink-0">&bull;</span>
@@ -169,7 +171,7 @@ export default function AboutPage() {
                             <li className="flex items-start gap-2">
                                 <span className="text-amber-700 dark:text-amber-400 font-bold mt-0.5 shrink-0">&bull;</span>
                                 <span>Affiliate links point to Bitcoin-aligned, non-custodial tools, with one exception: the mining page carries a{' '}
-                                <Link href="/mining#gomining" className="text-amber-700 dark:text-amber-400 hover:underline font-medium">clearly labeled affiliate placement for GoMining</Link>, a custodial, token-based hashrate product. That section leads with our own warnings rather than an endorsement, and we would rather you skip it than get hurt by it. No shitcoin products, ever.</span>
+                                <Link href="/mining#gomining" className="text-amber-700 dark:text-amber-400 hover:underline font-medium">clearly labeled affiliate placement for GoMining</Link>, a custodial, token-based hashrate product. That section leads with our own warnings rather than an endorsement, and we would rather you skip it than get hurt by it. GoMining also has its own exchange-traded token, GOMINING. It is the only token-based product among this site&apos;s affiliate links.</span>
                             </li>
                         </ul>
                     </div>
@@ -182,23 +184,23 @@ export default function AboutPage() {
                         <h2 className="text-xl sm:text-3xl font-bold text-slate-900 dark:text-white">Ads &amp; Analytics</h2>
                     </div>
                     <div className="space-y-3 text-sm sm:text-base text-slate-600 dark:text-slate-400 leading-relaxed">
-                        <p>Ads help cover hosting and development costs. Here is everything that runs:</p>
+                        <p>Ads help cover hosting and development costs. Here is what runs, and who it talks to:</p>
                         <ul className="space-y-2 ml-1">
                             <li className="flex items-start gap-2">
                                 <span className="text-amber-700 dark:text-amber-400 font-bold mt-0.5 shrink-0">&bull;</span>
-                                <span><strong className="text-slate-800 dark:text-slate-200">Display ads come from A-ADS,</strong> a Bitcoin-native network. They set no cookies, build no profile of you, and do not follow you to other sites. Each ad is picked by the page it sits on, not by your browsing history.</span>
+                                <span><strong className="text-slate-800 dark:text-slate-200">Display ads come from A-ADS,</strong> in frames loaded from its servers. They load whatever you answer in the cookie banner. When we checked on October 12, 2026 the frame set no cookies and ran no scripts. It does load a font from Google, so A-ADS and Google&apos;s font servers both receive your IP address. A-ADS chooses the ads, and its own privacy policy allows for cookies and tracking links.</span>
                             </li>
                             <li className="flex items-start gap-2">
                                 <span className="text-amber-700 dark:text-amber-400 font-bold mt-0.5 shrink-0">&bull;</span>
-                                <span>Google AdSense was removed in July 2026. Surveillance advertising contradicts what this site says about privacy, and the lower revenue was worth it.</span>
+                                <span>Google AdSense was removed in July 2026, and the site accepted the lower revenue. Google&apos;s ads tag, described below, is a separate thing: it shows no ads here and loads only if you accept it.</span>
                             </li>
                             <li className="flex items-start gap-2">
                                 <span className="text-amber-700 dark:text-amber-400 font-bold mt-0.5 shrink-0">&bull;</span>
-                                <span>Traffic stats come from Vercel Web Analytics and Speed Insights. Both are cookieless and aggregate, so they cannot identify you.</span>
+                                <span>Traffic and speed stats come from Vercel Web Analytics and Speed Insights. They set no cookies and load for every visitor. Calculator settings are cut out of the page address before it is sent. The page path, your approximate location and your browser type still go to Vercel.</span>
                             </li>
                             <li className="flex items-start gap-2">
                                 <span className="text-amber-700 dark:text-amber-400 font-bold mt-0.5 shrink-0">&bull;</span>
-                                <span>Accept analytics in the cookie banner and Google Ads conversion tracking loads. It tells us whether our own advertising reaches anyone. Decline and it never loads.</span>
+                                <span>Press Accept All in the cookie banner and Google&apos;s ads tag loads. It tells us whether our own Google ads bring anyone here. It also sets cookies on this site for 90 days, sends Google the address of each page you view, and lets Google use the visit for ad personalisation. Choose Essential Only and it never loads. It is the one place this site sends data to Google&apos;s advertising systems.</span>
                             </li>
                             <li className="flex items-start gap-2">
                                 <span className="text-amber-700 dark:text-amber-400 font-bold mt-0.5 shrink-0">&bull;</span>
@@ -227,9 +229,9 @@ export default function AboutPage() {
                             'Require KYC or identity verification',
                             'Create user accounts or profiles',
                             'Collect email addresses',
-                            'Promote altcoins or tokens',
+                            'Promote altcoins or tokens, apart from the one labeled GoMining affiliate placement disclosed above',
                             'Gate features behind paywalls',
-                            'Use hidden tracking or fingerprinting',
+                            'Run tracking it has not disclosed. What runs is listed above and in the privacy policy',
                             'Make misleading claims about future performance',
                         ].map((item) => (
                             <div key={item} className="flex items-start gap-2 text-sm sm:text-base text-slate-600 dark:text-slate-400">
@@ -254,7 +256,7 @@ export default function AboutPage() {
                             href="https://github.com/9drix9/bitcoindca-calculator"
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm sm:text-base font-semibold bg-slate-800 dark:bg-slate-700 hover:bg-slate-900 dark:hover:bg-slate-600 text-white transition-colors"
+                            className="inline-flex min-h-11 items-center gap-2 px-5 py-2.5 rounded-xl text-sm sm:text-base font-semibold bg-slate-800 dark:bg-slate-700 hover:bg-slate-900 dark:hover:bg-slate-600 text-white transition-colors"
                         >
                             <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z" /></svg>
                             View on GitHub

@@ -8,7 +8,12 @@ const securityHeaders = [
     { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
     { key: 'Content-Security-Policy', value: "frame-ancestors 'self'" },
     { key: 'X-DNS-Prefetch-Control', value: 'on' },
-    { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+    // Origin only, on same-site requests too. The calculator keeps its settings
+    // in the address, and every request a page makes carries that address as
+    // its referrer unless this says otherwise. /privacy, /about and /contact
+    // say the analytics reports do not carry it, and that the ad frames learn
+    // only which site sent them; both statements depend on this value.
+    { key: 'Referrer-Policy', value: 'strict-origin' },
     { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
     {
         key: 'Strict-Transport-Security',
@@ -26,8 +31,24 @@ const PRIMARY_ORIGIN = 'https://btcdollarcostaverage.com';
 
 const nextConfig: NextConfig = {
     devIndicators: false,
+    // Every client gets a page's metadata in <head>. Left to itself, Next sends
+    // the tags of a per-request page there only to the crawlers on its own
+    // list, and to everyone else appends them to <body> once generateMetadata
+    // has resolved. A link-preview fetcher that reads no further than </head>
+    // then finds no title, description or image, and /share exists to be
+    // unfurled. Setting the option replaces Next's list instead of adding to
+    // it, so the pattern has to match everything.
+    //
+    // The price is that such a page sends nothing until its metadata is ready.
+    // /share is the only one whose metadata waits on something its page does
+    // not (prices), and it caps that wait itself (CARD_WAIT_MS in
+    // src/app/share/page.tsx).
+    //
+    // One client is out of reach: Next never tests a request that carries no
+    // User-Agent header at all, so that one still gets the streamed form.
+    htmlLimitedBots: /.*/,
     experimental: {
-        optimizePackageImports: ['lucide-react', 'date-fns', 'recharts'],
+        optimizePackageImports: ['lucide-react', 'recharts'],
     },
     async redirects() {
         return [
@@ -36,19 +57,21 @@ const nextConfig: NextConfig = {
                 // /_next/* and /api/* — 301s to the same path on the primary, so
                 // nothing is ever served (or installed as a PWA) on that origin.
                 //
-                // Done here rather than with the Vercel dashboard "Redirect to"
-                // setting so the hop can be tagged: Vercel Web Analytics never
-                // fires on a 3xx and runtime logs keep about a day, so without the
-                // utm_source the question "does anyone actually type this name?"
-                // could never be answered. Both Next (prepare-destination) and
-                // Vercel's edge merge the request's own query string into a
-                // destination that already carries one, so share links survive.
+                // A plain redirect with nothing added: btcdollarcostaverage.com is
+                // the only name the site goes by, and analytics reports carry no
+                // query string, so a tag here would only sit in the address bar.
+                // Both Next (prepare-destination) and Vercel's edge pass the
+                // request's own query string through, so share links survive.
+                //
+                // It lives here, not in the Vercel dashboard "Redirect to"
+                // setting, because both domains are set to serve; never run
+                // both, the dashboard answers first and hides this rule.
                 //
                 // 301 rather than permanent:true (308): the site is GET-only and
                 // 301 is understood by every client, including old link checkers.
                 source: '/:path*',
                 has: [{ type: 'host', value: SECOND_DOMAIN_HOST }],
-                destination: `${PRIMARY_ORIGIN}/:path*?utm_source=stackmysats`,
+                destination: `${PRIMARY_ORIGIN}/:path*`,
                 statusCode: 301,
             },
         ];

@@ -1,13 +1,21 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { cache } from 'react';
 import { AlertTriangle, ArrowRight, ChevronDown } from 'lucide-react';
 import clsx from 'clsx';
 import { Card } from '@/components/ui/Card';
-import { getBitcoinPriceHistory } from '@/app/actions';
-import { DAILY_PRICE_REVALIDATE } from '@/utils/revalidate';
-import { calculateDca, calculateXirr } from '@/utils/dca';
-import { DAY_MS, EARLIEST_PRICE_TS } from '@/utils/dates';
-import { makeDayPriceLookup } from '@/utils/datasets';
+import { formatUtc } from '@/utils/dates';
+import { HEATMAP_MONTHLY_AMOUNT } from '@/utils/heatmap';
+import { FIRST_EXCHANGE_CLOSE_TS } from '@/data/priceSources';
+import { loadStudyCloses, studyUnavailable } from '@/app/best-day-to-buy-bitcoin/loadStudyCloses';
+import {
+    FIRST_START_YEAR,
+    HOLD_YEARS,
+    buildGrid,
+    gridLastModified,
+    type ColumnSummary,
+    type Grid,
+} from './grid';
 
 // Recompute against fresh prices once a day. Only the newest windows can change,
 // but the whole grid is cheap once the price history is warm in the server cache.
@@ -15,13 +23,7 @@ export const revalidate = 86400;
 
 const BASE_URL = 'https://btcdollarcostaverage.com';
 const PAGE_URL = `${BASE_URL}/dca/start-date-heatmap`;
-
-/** Every cell simulates the same schedule: $100 on the 1st of each month, no fees. */
-const MONTHLY_AMOUNT = 100;
-/** Column headers: holding period in whole years. */
-const HOLD_YEARS = [1, 2, 3, 5, 7, 10] as const;
-/** First row. 2011-01-01 is comfortably after EARLIEST_PRICE_TS (2010-08-18). */
-const FIRST_START_YEAR = 2011;
+const PAGE_TAG = 'dca/start-date-heatmap';
 
 // ── Formatting (server-rendered SEO pages are USD-only by design) ──────────────
 
@@ -37,178 +39,76 @@ function fmtUsd(value: number): string {
 
 function fmtPct(value: number, signed = false): string {
     const digits = Math.abs(value) >= 100 ? 0 : 1;
-    const text = value.toLocaleString('en-US', {
+    // Round first so a tiny negative prints as 0%, not -0%.
+    const rounded = Number(value.toFixed(digits)) || 0;
+    const text = rounded.toLocaleString('en-US', {
         minimumFractionDigits: 0,
         maximumFractionDigits: digits,
     });
-    return `${signed && value > 0 ? '+' : ''}${text}%`;
+    return `${signed && rounded > 0 ? '+' : ''}${text}%`;
 }
 
-// ── Price lookup ───────────────────────────────────────────────────────────────
+/** A gap between two annualized returns, in percentage points. */
+const fmtPoints = (value: number): string =>
+    `${value.toLocaleString('en-US', { maximumFractionDigits: Math.abs(value) >= 100 ? 0 : 1 })} points`;
 
-/**
- * "Latest price at or before this UTC day", by binary search.
- *
- * The grid needs an out-of-order lookup (each cell asks for its own window end),
- * so the pointer-walk lookup inside dca.ts — which assumes ascending queries —
- * is not reusable here.
- */
+const years = (n: number): string => `${n} year${n === 1 ? '' : 's'}`;
 
-// ── Cell computation ───────────────────────────────────────────────────────────
+/** "5-", "5- and 7-", "5-, 7- and 10-": hold lengths ahead of the word "year". */
+const joinHolds = (holds: number[]): string => {
+    const parts = holds.map((h) => `${h}-`);
+    return parts.length <= 1 ? parts.join('') : `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}`;
+};
 
-type Cell =
-    | { state: 'in-progress' }
-    | { state: 'unavailable' }
-    | {
-        state: 'done';
-        annualized: number;
-        totalReturn: number;
-        invested: number;
-        endValue: number;
-        purchases: number;
-    };
+// ── Sentences that state a result ──────────────────────────────────────────────
+//
+// Each one reads the finished grid. The earlier copy was written once, by
+// hand, about a grid that has since gained rows: "the range narrows the longer
+// you hold" while the 7-year column was spread wider than the 5-year one.
 
-interface Grid {
-    startYears: number[];
-    cells: Cell[][];
+/** How much separate history a column of overlapping windows amounts to. */
+const overlapSentence = (column: ColumnSummary): string =>
+    column.separate >= column.count
+        ? `The ${column.count} completed ${column.holdYears}-year windows share no years with each other.`
+        : `The ${column.count} completed ${column.holdYears}-year windows start a year apart and overlap: only ${column.separate} of that length ${column.separate === 1 ? 'fits' : 'fit'} in the data without sharing a year.`;
+
+/** Which columns contain a window that ended worth less than was paid in. */
+function belowZeroSentence(columns: ColumnSummary[]): string {
+    const some = columns.filter((column) => column.negative > 0);
+    const none = columns.filter((column) => column.negative === 0);
+    if (some.length === 0) return 'No completed window in the grid ended worth less than was paid in.';
+    const listed = some.map((column) => `${column.negative} of ${column.count} at ${years(column.holdYears)}`);
+    const head = `Windows that ended worth less than was paid in: ${listed.join(', ')}`;
+    return none.length === 0
+        ? `${head}.`
+        : `${head}, and none of the completed ${joinHolds(none.map((column) => column.holdYears))}year windows.`;
 }
 
-/**
- * One cell: a $100/month schedule starting Jan 1 of `startYear` and running for
- * `holdYears`, valued at the price on the window's END date.
- *
- * Two details matter for honesty here:
- *
- * 1. The stack is valued at the window-end price, not today's price. Marking a
- *    2013-2016 window to today's price would attribute a decade of subsequent
- *    price action to a three-year hold.
- * 2. XIRR is recomputed here rather than read from `result.stats`. calculateDca
- *    dates its terminal cash flow at *today* — correct when the stack is valued
- *    at today's price, wrong when it is valued at a past date. Same rule, applied
- *    consistently: value and date the terminal flow at the same moment.
- */
-function computeCell(
-    startYear: number,
-    holdYears: number,
-    history: [number, number][],
-    priceAt: (ts: number) => number | null,
-    nowTs: number,
-): Cell {
-    const startTs = Date.UTC(startYear, 0, 1);
-    const endTs = Date.UTC(startYear + holdYears, 0, 1);
-    if (startTs < EARLIEST_PRICE_TS) return { state: 'unavailable' };
-    if (endTs > nowTs) return { state: 'in-progress' };
-
-    const endPrice = priceAt(endTs);
-    if (endPrice === null || !(endPrice > 0)) return { state: 'unavailable' };
-
-    // endDate is the day BEFORE the window closes, so the schedule is exactly
-    // 12 x holdYears buys (Jan of the start year through Dec of the final year)
-    // and the window-end date itself is a valuation point, not a purchase.
-    const result = calculateDca(
-        {
-            amount: MONTHLY_AMOUNT,
-            frequency: 'monthly',
-            startDate: new Date(startTs),
-            endDate: new Date(endTs - DAY_MS),
-            feePercentage: 0,
-            priceMode: 'api',
-            manualPrice: 0,
-        },
-        history,
-        endPrice,
-    );
-
-    if (result.totalInvested <= 0 || !Number.isFinite(result.currentValue)) {
-        return { state: 'unavailable' };
-    }
-
-    const purchases = result.breakdown.map((item) => ({
-        ts: Date.parse(item.date),
-        amount: item.invested,
-    }));
-    const xirr = calculateXirr(purchases, result.currentValue, endTs);
-    if (xirr === null || !Number.isFinite(xirr)) return { state: 'unavailable' };
-
-    return {
-        state: 'done',
-        annualized: xirr * 100,
-        totalReturn: result.roi,
-        invested: result.totalInvested,
-        endValue: result.currentValue,
-        purchases: result.breakdown.length,
-    };
+/** How the best-to-worst spread changes from the shortest hold to the longest. */
+function spreadSentence(grid: Grid): string {
+    const shortest = grid.columns[0];
+    const longest = grid.columns[grid.columns.length - 1];
+    if (shortest === longest) return '';
+    const ends = `The gap between the best and worst start year was ${fmtPoints(shortest.spread)} for ${shortest.holdYears}-year windows and ${fmtPoints(longest.spread)} for ${longest.holdYears}-year windows.`;
+    if (grid.spreadWidensAt.length === 0) return `${ends} It was narrower at every longer hold.`;
+    return `${ends} It was not narrower at every step: the ${joinHolds(grid.spreadWidensAt)}year ${grid.spreadWidensAt.length === 1 ? 'column is' : 'columns are'} spread wider than the one before.`;
 }
 
-/** Latest start year whose SHORTEST window (1 year) has already completed. */
-function lastStartYear(nowTs: number): number {
-    const shortest = HOLD_YEARS[0];
-    let year = new Date(nowTs).getUTCFullYear();
-    while (year > FIRST_START_YEAR && Date.UTC(year + shortest, 0, 1) > nowTs) year--;
-    return year;
+// ── Data ───────────────────────────────────────────────────────────────────────
+
+interface Study {
+    grid: Grid;
+    /** Days Coinbase had no candle for, filled in along a straight line. */
+    estimatedDays: number;
 }
 
-async function buildGrid(): Promise<Grid | null> {
-    try {
-        const nowTs = Date.now();
-        // ONE fetch for the whole grid. It is server-cached, and every cell reuses
-        // this exact array — never fetch per cell.
-        // Coinbase, matching the sibling dataset pages. Kraken's series is
-        // interpolated from WEEKLY closes, and this page publishes its cells as
-        // real market prices in schema.org Dataset markup — on the interpolated
-        // series the 2017/1yr cell read +2,235% against +1,857% on real daily
-        // candles, a 378pp error asserted as machine-readable fact.
-        const history = await getBitcoinPriceHistory(EARLIEST_PRICE_TS, nowTs + DAY_MS, 'coinbase', DAILY_PRICE_REVALIDATE);
-        if (!history || history.length === 0) return null;
-
-        const priceAt = makeDayPriceLookup(history);
-        const last = lastStartYear(nowTs);
-        const startYears: number[] = [];
-        for (let y = FIRST_START_YEAR; y <= last; y++) startYears.push(y);
-
-        const cells = startYears.map((year) =>
-            HOLD_YEARS.map((hold) => computeCell(year, hold, history, priceAt, nowTs)),
-        );
-        return { startYears, cells };
-    } catch (error) {
-        // Never build-fail on a provider outage: the page renders an unavailable state.
-        console.error('[dca/start-date-heatmap] grid computation failed:', error);
-        return null;
-    }
-}
-
-// ── Column summary ─────────────────────────────────────────────────────────────
-
-interface ColumnSummary {
-    holdYears: number;
-    count: number;
-    best: number;
-    worst: number;
-    spread: number;
-    negative: number;
-}
-
-function summarizeColumns(grid: Grid): ColumnSummary[] {
-    return HOLD_YEARS.map((holdYears, col) => {
-        const values = grid.cells
-            .map((row) => row[col])
-            .filter((cell): cell is Extract<Cell, { state: 'done' }> => cell.state === 'done')
-            .map((cell) => cell.annualized);
-        if (values.length === 0) {
-            return { holdYears, count: 0, best: 0, worst: 0, spread: 0, negative: 0 };
-        }
-        const best = Math.max(...values);
-        const worst = Math.min(...values);
-        return {
-            holdYears,
-            count: values.length,
-            best,
-            worst,
-            spread: best - worst,
-            negative: values.filter((v) => v < 0).length,
-        };
-    }).filter((summary) => summary.count > 0);
-}
+const loadStudy = cache(async (): Promise<Study | null> => {
+    const study = await loadStudyCloses(PAGE_TAG);
+    if (!study) return null;
+    const grid = buildGrid(study.closes);
+    if (!grid) return studyUnavailable(PAGE_TAG, 'no window in the grid has completed');
+    return { grid, estimatedDays: study.estimatedDays };
+});
 
 // ── Colour scale ───────────────────────────────────────────────────────────────
 //
@@ -269,7 +169,7 @@ const bucketFor = (annualized: number): Bucket =>
 
 const TITLE = 'Bitcoin DCA Start Date Heatmap: Annualized Returns by Start Year and Holding Period';
 const DESCRIPTION =
-    'Annualized (XIRR) returns for a $100/month Bitcoin DCA, by the year you started and how long you held. Each window is valued at its own end date, not today.';
+    `Annualized (XIRR) returns for a $${HEATMAP_MONTHLY_AMOUNT}/month Bitcoin DCA, by the year you started and how long you held. Each window is valued at its own end date, not today.`;
 
 export const metadata: Metadata = {
     title: 'Bitcoin DCA Start Date Heatmap',
@@ -286,6 +186,7 @@ export const metadata: Metadata = {
         images: [{ url: '/opengraph-image', width: 1200, height: 630 }],
         title: TITLE,
         description: DESCRIPTION,
+        url: '/dca/start-date-heatmap',
         type: 'article',
         siteName: 'Bitcoin DCA Calculator',
         locale: 'en_US',
@@ -301,15 +202,46 @@ export const metadata: Metadata = {
 
 // ── Page ───────────────────────────────────────────────────────────────────────
 
+// A breadcrumb link is one or two short words, about 15px tall as text on a
+// phone. The padding makes it a 44px touch target, and the negative margins
+// hand the same space back so the row sits exactly where it did.
+const crumbLink =
+    'inline-flex min-h-11 items-center -my-3.5 px-1.5 -mx-1.5 hover:text-amber-700 dark:hover:text-amber-400 transition-colors';
+
+// The first column of a table that scrolls sideways. It stays at the left edge
+// and is painted in the card's own surface colour, so the columns pass under it.
+const stickyLabel = 'sticky left-0 bg-white dark:bg-slate-900';
+
+const strong = 'font-semibold text-slate-900 dark:text-white';
+const lead = 'font-semibold text-slate-800 dark:text-slate-100';
+
 export default async function StartDateHeatmapPage() {
-    const grid = await buildGrid();
-    const columns = grid ? summarizeColumns(grid) : [];
+    const study = await loadStudy();
+    const grid = study?.grid ?? null;
+    const estimatedDays = study?.estimatedDays ?? 0;
+    const columns = grid?.columns ?? [];
     const shortest = columns[0];
     const longest = columns[columns.length - 1];
+    const twoEnds = shortest !== undefined && longest !== undefined && shortest !== longest;
 
-    const coverageEnd = grid && grid.startYears.length > 0
-        ? `${grid.startYears[grid.startYears.length - 1] + HOLD_YEARS[0]}-01-01`
-        : `${FIRST_START_YEAR + HOLD_YEARS[0]}-01-01`;
+    const coverageEnd = grid ? formatUtc(grid.lastEndTs, 'isoDay') : `${FIRST_START_YEAR + HOLD_YEARS[0]}-01-01`;
+
+    // The price rise the whole grid sits inside, and how long it is. Both run
+    // to the newest window end, the last price any cell uses, and both ends are
+    // a January 1, so the span is a whole number of years.
+    const priceRise =
+        grid && grid.firstStartPrice !== null && grid.lastEndPrice !== null
+            ? `from ${fmtUsd(grid.firstStartPrice)} on ${formatUtc(Date.UTC(FIRST_START_YEAR, 0, 1), 'full')} to ${fmtUsd(grid.lastEndPrice)} on ${formatUtc(grid.lastEndTs, 'full')}`
+            : null;
+    const spanYears = grid ? new Date(grid.lastEndTs).getUTCFullYear() - FIRST_START_YEAR : null;
+
+    // The earliest window of the longest length that is still running: the
+    // example for "why does a cell say in progress". Read from the grid so it
+    // does not go on naming a window that has since finished.
+    const longestHold = HOLD_YEARS[HOLD_YEARS.length - 1];
+    const stillRunning = grid
+        ? grid.startYears.find((_, row) => grid.cells[row][HOLD_YEARS.length - 1].state === 'in-progress')
+        : undefined;
 
     const breadcrumbJsonLd = {
         '@context': 'https://schema.org',
@@ -326,12 +258,13 @@ export default async function StartDateHeatmapPage() {
         '@type': 'Dataset',
         name: 'Bitcoin DCA annualized return by start year and holding period',
         description:
-            'Money-weighted annualized return (XIRR) of a $100-per-month Bitcoin dollar-cost-averaging schedule, for start years from 2011 onward and holding periods of 1, 2, 3, 5, 7 and 10 years. Each window is valued at the Bitcoin price on that window\'s end date. Fees and taxes are excluded.',
+            `Money-weighted annualized return (XIRR) of a $${HEATMAP_MONTHLY_AMOUNT}-per-month Bitcoin dollar-cost-averaging schedule, for start years from ${FIRST_START_YEAR} onward and holding periods of ${HOLD_YEARS.slice(0, -1).join(', ')} and ${longestHold} years. Each window is valued at the Bitcoin price on that window's end date. Windows of the same length start one year apart and overlap. Prices are Coinbase daily closes from ${formatUtc(FIRST_EXCHANGE_CLOSE_TS, 'isoDay')} and blockchain.info's 00:00 UTC market price before that. Fees and taxes are excluded.`,
         url: PAGE_URL,
         isAccessibleForFree: true,
         temporalCoverage: `${FIRST_START_YEAR}-01-01/${coverageEnd}`,
+        ...(grid ? { dateModified: gridLastModified(grid.lastCloseTs) } : {}),
         measurementTechnique:
-            'Simulated monthly purchases on UTC calendar days against historical Bitcoin market prices; annualized return solved as XIRR over the dated cash flows.',
+            'Simulated monthly purchases on UTC calendar days against one historical price per day; annualized return solved as XIRR over the dated cash flows.',
         variableMeasured: [
             { '@type': 'PropertyValue', name: 'Start year', description: 'Calendar year in which the monthly schedule began (January 1, UTC).' },
             { '@type': 'PropertyValue', name: 'Holding period', description: 'Length of the window in whole years.', unitText: 'YEAR' },
@@ -348,21 +281,21 @@ export default async function StartDateHeatmapPage() {
     const faqs: { q: string; a: string }[] = [
         {
             q: 'Does the start date matter for Bitcoin DCA?',
-            a: shortest && longest && shortest.holdYears !== longest.holdYears
-                ? `Enormously over short windows, much less over long ones. Across the completed ${shortest.holdYears}-year windows in this grid, annualized returns ranged from ${fmtPct(shortest.worst, true)} to ${fmtPct(shortest.best, true)} per year, a spread of about ${fmtPct(shortest.spread)}. Across the completed ${longest.holdYears}-year windows the range narrows to ${fmtPct(longest.worst, true)} to ${fmtPct(longest.best, true)}, a spread of about ${fmtPct(longest.spread)}. This is a description of what happened, not a forecast.`
-                : 'Historically the start date dominated short holding windows and mattered progressively less as the holding period lengthened. The grid on this page shows the full range of outcomes measured from real prices.',
+            a: grid && twoEnds
+                ? `Across the completed ${shortest.holdYears}-year windows in this grid, annualized returns ranged from ${fmtPct(shortest.worst, true)} to ${fmtPct(shortest.best, true)} per year. Across the completed ${longest.holdYears}-year windows they ranged from ${fmtPct(longest.worst, true)} to ${fmtPct(longest.best, true)}. ${spreadSentence(grid)} ${overlapSentence(longest)} This is a description of what happened, not a forecast.`
+                : 'The grid on this page shows the range of outcomes by the year a plan started and by how long it ran, measured on historical prices.',
         },
         {
             q: 'How is the annualized return in each cell calculated?',
-            a: 'Each cell simulates $100 bought on the first of every month for the whole window. The resulting Bitcoin is then valued at the market price on the window\'s end date. The annualized figure is XIRR: the yearly rate at which every dated purchase, plus the closing value, nets out to zero. It exists because the money went in gradually rather than all on day one, which a plain "total return divided by years" would get wrong. Historical windows are never valued at today\'s price.',
+            a: `Each cell simulates $${HEATMAP_MONTHLY_AMOUNT} bought on the first of every month for the whole window. The resulting Bitcoin is then valued at the market price on the window's end date. The annualized figure is XIRR: the yearly rate at which every dated purchase, plus the closing value, nets out to zero. It exists because the money went in gradually rather than all on day one, which a plain "total return divided by years" would get wrong. Historical windows are never valued at today's price.`,
         },
         {
             q: 'Why do some cells say "in progress"?',
-            a: 'A cell is only filled in once its full holding period has elapsed. A 10-year window that started in 2020 has not finished, so showing a partial figure next to completed 10-year windows would be misleading. Those cells are marked in progress instead.',
+            a: `A cell is only filled in once its full holding period has elapsed and its end date has a daily closing price.${stillRunning !== undefined ? ` A ${longestHold}-year window that started in ${stillRunning} has not finished, so showing a partial figure next to completed ${longestHold}-year windows would be misleading.` : ''} Until then a cell is marked in progress.`,
         },
         {
             q: 'Do these historical returns predict future Bitcoin returns?',
-            a: 'No. This grid records what one mechanical schedule produced over one stretch of the past. Across that stretch Bitcoin went from a hobbyist experiment to a widely traded asset. Nothing here should be projected forward. Past performance does not guarantee future results, and you can lose money.',
+            a: `No. This grid records what one mechanical schedule produced over one stretch of the past${priceRise ? `, during which the price in our series went ${priceRise}` : ''}. Nothing here should be projected forward. Past performance does not guarantee future results, and you can lose money.`,
         },
     ];
 
@@ -392,9 +325,9 @@ export default async function StartDateHeatmapPage() {
                 {/* Breadcrumb */}
                 <nav aria-label="Breadcrumb" className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
                     <ol className="flex flex-wrap items-center gap-1.5">
-                        <li><Link href="/" className="hover:text-amber-700 dark:hover:text-amber-400 transition-colors">Home</Link></li>
+                        <li><Link href="/" className={crumbLink}>Home</Link></li>
                         <li aria-hidden="true">/</li>
-                        <li><Link href="/dca" className="hover:text-amber-700 dark:hover:text-amber-400 transition-colors">DCA Scenarios</Link></li>
+                        <li><Link href="/dca" className={crumbLink}>DCA Scenarios</Link></li>
                         <li aria-hidden="true">/</li>
                         <li aria-current="page" className="text-slate-700 dark:text-slate-300">Start Date Heatmap</li>
                     </ol>
@@ -406,21 +339,21 @@ export default async function StartDateHeatmapPage() {
                         Bitcoin DCA start date heatmap
                     </h1>
                     <p className="text-base sm:text-lg text-slate-600 dark:text-slate-300 leading-relaxed">
-                        Every cell below is the same plan: <strong className="font-semibold text-slate-900 dark:text-white">$100 on the first of every month</strong>,
+                        Every cell below is the same plan: <strong className={strong}>${HEATMAP_MONTHLY_AMOUNT} on the first of every month</strong>,
                         no fees, starting in January of the row&apos;s year and running for the column&apos;s number of
                         years. The number is the annualized return over that window, meaning the yearly rate of growth
                         that gets you from what went in to what came out. It is measured at the Bitcoin price on the day
                         the window ended, not today&apos;s price. The exact method is XIRR, which accounts for the money
                         going in a bit at a time instead of all on day one.
                     </p>
-                    {shortest && longest && shortest.holdYears !== longest.holdYears && (
+                    {grid && twoEnds && (
                         <p className="text-base sm:text-lg text-slate-600 dark:text-slate-300 leading-relaxed">
-                            Read down a column and you see how much your start date mattered. Completed{' '}
-                            {shortest.holdYears}-year windows landed anywhere from <strong className="font-semibold text-slate-900 dark:text-white">{fmtPct(shortest.worst, true)}</strong> to{' '}
-                            <strong className="font-semibold text-slate-900 dark:text-white">{fmtPct(shortest.best, true)}</strong> a year.
-                            Completed {longest.holdYears}-year windows sat between <strong className="font-semibold text-slate-900 dark:text-white">{fmtPct(longest.worst, true)}</strong> and{' '}
-                            <strong className="font-semibold text-slate-900 dark:text-white">{fmtPct(longest.best, true)}</strong>.
-                            The longer you held, the less your starting point decided the outcome.
+                            Read down a column and you see how much the start year mattered. Completed{' '}
+                            {shortest.holdYears}-year windows landed anywhere from <strong className={strong}>{fmtPct(shortest.worst, true)}</strong> to{' '}
+                            <strong className={strong}>{fmtPct(shortest.best, true)}</strong> a year.
+                            Completed {longest.holdYears}-year windows sat between <strong className={strong}>{fmtPct(longest.worst, true)}</strong> and{' '}
+                            <strong className={strong}>{fmtPct(longest.best, true)}</strong>.{' '}
+                            {overlapSentence(longest)}
                         </p>
                     )}
                 </header>
@@ -433,16 +366,20 @@ export default async function StartDateHeatmapPage() {
                                 Annualized return by start year and holding period
                             </h2>
 
-                            <div className="overflow-x-auto -mx-1 sm:mx-0">
+                            {/* Wider than a phone. The start year stays put while the columns
+                                scroll under it, and the box takes keyboard focus because Safari
+                                gives a keyboard no other way to scroll it sideways. */}
+                            <div className="overflow-x-auto -mx-1 sm:mx-0" tabIndex={0} role="region" aria-label="Start year by holding period table">
                                 <table className="w-full min-w-[560px] text-xs sm:text-sm tabular-nums border-separate border-spacing-1">
                                     <caption className="sr-only">
-                                        Annualized (XIRR) return of a $100 per month Bitcoin dollar-cost-averaging
-                                        schedule. Rows are the year the schedule started; columns are how many years it
-                                        ran. Cells whose holding period has not yet elapsed are marked &quot;in progress&quot;.
+                                        Annualized (XIRR) return of a ${HEATMAP_MONTHLY_AMOUNT} per month Bitcoin
+                                        dollar-cost-averaging schedule. Rows are the year the schedule started; columns are
+                                        how many years it ran. Cells whose holding period has not yet elapsed are marked
+                                        &quot;in progress&quot;.
                                     </caption>
                                     <thead>
                                         <tr>
-                                            <th scope="col" className="text-left font-medium text-slate-500 dark:text-slate-400 px-2 py-1.5">
+                                            <th scope="col" className={clsx(stickyLabel, 'text-left font-medium text-slate-500 dark:text-slate-400 px-2 py-1.5')}>
                                                 Started
                                             </th>
                                             {HOLD_YEARS.map((hold) => (
@@ -461,7 +398,7 @@ export default async function StartDateHeatmapPage() {
                                             <tr key={year}>
                                                 <th
                                                     scope="row"
-                                                    className="text-left font-semibold text-slate-800 dark:text-slate-100 px-2 py-1.5 whitespace-nowrap"
+                                                    className={clsx(stickyLabel, 'text-left font-semibold text-slate-800 dark:text-slate-100 px-2 py-1.5 whitespace-nowrap')}
                                                 >
                                                     {year}
                                                 </th>
@@ -544,18 +481,18 @@ export default async function StartDateHeatmapPage() {
                                 fires on touch and is unreliable for screen readers. This native disclosure
                                 is the same data reachable by tap and keyboard — no client JS on this page. */}
                             <details className="border-t border-slate-200 dark:border-slate-800 pt-4 group">
-                                <summary className="cursor-pointer list-none text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-amber-700 dark:hover:text-amber-400 flex items-center justify-between gap-3">
+                                <summary className="cursor-pointer list-none min-h-11 text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-amber-700 dark:hover:text-amber-400 flex items-center justify-between gap-3">
                                     Every completed window in dollars: invested, end value and total return
                                     <ChevronDown
                                         className="w-4 h-4 shrink-0 text-slate-500 dark:text-slate-400 transition-transform group-open:rotate-180"
                                         aria-hidden="true"
                                     />
                                 </summary>
-                                <div className="mt-3 overflow-x-auto">
+                                <div className="mt-3 overflow-x-auto" tabIndex={0} role="region" aria-label="Completed windows in dollars table">
                                     <table className="w-full min-w-[520px] text-xs sm:text-sm tabular-nums">
                                         <thead>
                                             <tr className="text-left text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800">
-                                                <th scope="col" className="py-1.5 pr-3 font-medium">Window</th>
+                                                <th scope="col" className={clsx(stickyLabel, 'py-1.5 pr-3 font-medium')}>Window</th>
                                                 <th scope="col" className="py-1.5 pr-3 font-medium text-right">Invested</th>
                                                 <th scope="col" className="py-1.5 pr-3 font-medium text-right">Buys</th>
                                                 <th scope="col" className="py-1.5 pr-3 font-medium text-right">End value</th>
@@ -570,7 +507,7 @@ export default async function StartDateHeatmapPage() {
                                                     const hold = HOLD_YEARS[colIndex];
                                                     return [(
                                                         <tr key={`${year}-${hold}`} className="border-b border-slate-100 dark:border-slate-800/60 last:border-0">
-                                                            <th scope="row" className="py-1.5 pr-3 text-left font-medium text-slate-800 dark:text-slate-100 whitespace-nowrap">
+                                                            <th scope="row" className={clsx(stickyLabel, 'py-1.5 pr-3 text-left font-medium text-slate-800 dark:text-slate-100 whitespace-nowrap')}>
                                                                 {year}&ndash;{year + hold}
                                                                 <span className="font-normal text-slate-500 dark:text-slate-400"> · {hold} yr{hold === 1 ? '' : 's'}</span>
                                                             </th>
@@ -597,73 +534,93 @@ export default async function StartDateHeatmapPage() {
                         </Card>
 
                         {/* Column summary */}
-                        {columns.length > 0 && (
-                            <Card className="p-4 sm:p-6 space-y-4">
-                                <h2 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white">
-                                    How much did the start date matter?
-                                </h2>
-                                <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300 leading-relaxed">
-                                    This is the same data read column by column. &quot;Spread&quot; is the gap between the
-                                    best and worst completed window of that length. It measures directly how much of the
-                                    outcome was decided by when you happened to start.
-                                </p>
-                                <div className="overflow-x-auto">
-                                    <table className="w-full min-w-[460px] text-xs sm:text-sm tabular-nums">
-                                        <thead>
-                                            <tr className="text-left text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800">
-                                                <th scope="col" className="py-2 pr-4 font-medium">Hold length</th>
-                                                <th scope="col" className="py-2 pr-4 font-medium text-right">Completed windows</th>
-                                                <th scope="col" className="py-2 pr-4 font-medium text-right">Worst</th>
-                                                <th scope="col" className="py-2 pr-4 font-medium text-right">Best</th>
-                                                <th scope="col" className="py-2 pr-4 font-medium text-right">Spread</th>
-                                                <th scope="col" className="py-2 font-medium text-right">Ended below zero</th>
+                        <Card className="p-4 sm:p-6 space-y-4">
+                            <h2 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white">
+                                How much did the start date matter?
+                            </h2>
+                            <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300 leading-relaxed">
+                                This is the same data read column by column. &quot;Spread&quot; is the gap between the
+                                best and worst completed window of that length, in percentage points of annualized
+                                return.
+                            </p>
+                            {/* Worst, best and spread answer the heading, so they come first and
+                                a phone shows them without scrolling. */}
+                            <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="Holding period summary table">
+                                <table className="w-full min-w-[480px] text-xs sm:text-sm tabular-nums">
+                                    <caption className="sr-only">
+                                        For each holding period: the worst and best annualized return and the spread
+                                        between them, the completed windows and how many of them share no years, and
+                                        how many windows ended below zero
+                                    </caption>
+                                    <thead>
+                                        <tr className="text-left text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800">
+                                            <th scope="col" className={clsx(stickyLabel, 'py-2 pr-4 font-medium')}>Hold length</th>
+                                            <th scope="col" className="py-2 pr-4 font-medium text-right">Worst</th>
+                                            <th scope="col" className="py-2 pr-4 font-medium text-right">Best</th>
+                                            <th scope="col" className="py-2 pr-4 font-medium text-right">Spread</th>
+                                            <th scope="col" className="py-2 pr-4 font-medium text-right">Completed windows</th>
+                                            <th scope="col" className="py-2 font-medium text-right">Ended below zero</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="text-slate-700 dark:text-slate-300">
+                                        {columns.map((col) => (
+                                            <tr key={col.holdYears} className="border-b border-slate-100 dark:border-slate-800/60 last:border-0">
+                                                <th scope="row" className={clsx(stickyLabel, 'py-2 pr-4 font-medium text-left text-slate-800 dark:text-slate-100 whitespace-nowrap')}>
+                                                    {years(col.holdYears)}
+                                                </th>
+                                                <td className={clsx(
+                                                    'py-2 pr-4 text-right font-medium',
+                                                    col.worst >= 0
+                                                        ? 'text-emerald-700 dark:text-emerald-400'
+                                                        : 'text-rose-700 dark:text-rose-400',
+                                                )}>
+                                                    {fmtPct(col.worst, true)}
+                                                    <span className="block text-[11px] font-normal text-slate-500 dark:text-slate-400">{col.worstStartYear}</span>
+                                                </td>
+                                                <td className={clsx(
+                                                    'py-2 pr-4 text-right font-medium',
+                                                    col.best >= 0
+                                                        ? 'text-emerald-700 dark:text-emerald-400'
+                                                        : 'text-rose-700 dark:text-rose-400',
+                                                )}>
+                                                    {fmtPct(col.best, true)}
+                                                    <span className="block text-[11px] font-normal text-slate-500 dark:text-slate-400">{col.bestStartYear}</span>
+                                                </td>
+                                                <td className="py-2 pr-4 text-right">{fmtPoints(col.spread)}</td>
+                                                <td className="py-2 pr-4 text-right">
+                                                    {col.count}
+                                                    <span className="block text-[11px] text-slate-500 dark:text-slate-400 whitespace-nowrap">
+                                                        {col.separate} {col.separate === 1 ? 'shares' : 'share'} no years
+                                                    </span>
+                                                </td>
+                                                <td className="py-2 text-right">{col.negative} of {col.count}</td>
                                             </tr>
-                                        </thead>
-                                        <tbody className="text-slate-700 dark:text-slate-300">
-                                            {columns.map((col) => (
-                                                <tr key={col.holdYears} className="border-b border-slate-100 dark:border-slate-800/60 last:border-0">
-                                                    <th scope="row" className="py-2 pr-4 font-medium text-left text-slate-800 dark:text-slate-100 whitespace-nowrap">
-                                                        {col.holdYears} year{col.holdYears === 1 ? '' : 's'}
-                                                    </th>
-                                                    <td className="py-2 pr-4 text-right">{col.count}</td>
-                                                    <td className={clsx(
-                                                        'py-2 pr-4 text-right font-medium',
-                                                        col.worst >= 0
-                                                            ? 'text-emerald-700 dark:text-emerald-400'
-                                                            : 'text-rose-700 dark:text-rose-400',
-                                                    )}>
-                                                        {fmtPct(col.worst, true)}
-                                                    </td>
-                                                    <td className="py-2 pr-4 text-right font-medium text-emerald-700 dark:text-emerald-400">
-                                                        {fmtPct(col.best, true)}
-                                                    </td>
-                                                    <td className="py-2 pr-4 text-right">{fmtPct(col.spread)}</td>
-                                                    <td className="py-2 text-right">{col.negative} of {col.count}</td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                </div>
-                                <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-                                    Sample sizes shrink as the hold length grows: there are simply fewer completed
-                                    10-year windows than 1-year ones, and the long windows overlap heavily with each
-                                    other. Treat the right-hand rows as illustrative, not statistical.
-                                </p>
-                            </Card>
-                        )}
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                            <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                                Windows in a column start one year apart, so the longer ones overlap, and the small figure
+                                under each count is how many windows of that length fit end to end in the data.{' '}
+                                {longest && overlapSentence(longest)} The year under each worst and best figure is the
+                                start year it belongs to. Read the bottom rows as a description of one stretch of history,
+                                not as a sample.
+                            </p>
+                        </Card>
                     </>
                 ) : (
                     <Card className="p-6 sm:p-8">
                         <div className="flex items-start gap-3">
-                            <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
+                            <AlertTriangle className="w-5 h-5 text-amber-700 dark:text-amber-400 shrink-0 mt-0.5" aria-hidden="true" />
                             <div className="space-y-2">
                                 <h2 className="text-lg font-bold text-slate-900 dark:text-white">
                                     Price data is temporarily unavailable
                                 </h2>
                                 <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
-                                    We couldn&apos;t load the historical Bitcoin price series needed to build this grid.
-                                    The live calculator pulls from several providers, so you can still backtest any
-                                    single window there.
+                                    Coinbase&apos;s daily closing prices could not be loaded when this page was built, and
+                                    it does not publish a grid computed on anything else. It tries again within a few
+                                    minutes. The calculator on the home page has a second price source to fall back on, so
+                                    any single window can still be backtested there.
                                 </p>
                             </div>
                         </div>
@@ -676,42 +633,51 @@ export default async function StartDateHeatmapPage() {
                         What the grid actually shows
                     </h2>
                     <div className="space-y-4 text-sm sm:text-base text-slate-600 dark:text-slate-300 leading-relaxed">
+                        {grid && (
+                            <>
+                                <p>
+                                    <strong className={lead}>Below zero, column by column.</strong>{' '}
+                                    {belowZeroSentence(columns)} Nothing about the plan changed between the best and worst
+                                    row of a column. Only the start year did.
+                                </p>
+                                {twoEnds && (
+                                    <p>
+                                        <strong className={lead}>The spread, shortest hold to longest.</strong>{' '}
+                                        {spreadSentence(grid)} Each extra year adds purchases at prices the earlier ones
+                                        never saw, so one entry price counts for less of the average cost. The long columns
+                                        also hold fewer windows, those windows overlap, and each had to start long enough
+                                        ago to have finished, so a narrow spread there is not a like-for-like comparison
+                                        with the shortest column.
+                                    </p>
+                                )}
+                                <p>
+                                    <strong className={lead}>Where the largest figures sit.</strong>{' '}
+                                    In every column the highest figure belongs to a start year of{' '}
+                                    {grid.latestBestStartYear} or earlier.
+                                    {grid.firstStartPrice !== null && (
+                                        <>
+                                            {' '}On {formatUtc(Date.UTC(FIRST_START_YEAR, 0, 1), 'full')} the price in our
+                                            series was {fmtUsd(grid.firstStartPrice)}. The top rows describe a starting
+                                            point at that price.
+                                        </>
+                                    )}{' '}
+                                    The later rows are nearer to recent prices, and they are history too, not a forecast.
+                                </p>
+                            </>
+                        )}
                         <p>
-                            <strong className="font-semibold text-slate-800 dark:text-slate-100">Short windows were a coin toss on timing.</strong>{' '}
-                            One-year windows hold the widest range of outcomes in the whole grid, and they are the only
-                            column with a meaningful count of negative results. A year is short enough that one leg of
-                            the cycle decides it. Start into a run-up and the number is spectacular. Start into a
-                            drawdown, meaning a long slide down from the last peak, and it is deeply red. Nothing about
-                            the plan changed between those two cases. Only the calendar did.
-                        </p>
-                        <p>
-                            <strong className="font-semibold text-slate-800 dark:text-slate-100">The range narrows the longer you hold.</strong>{' '}
-                            Move right across any row and the numbers converge. Each extra year adds purchases at prices
-                            the earlier buys never saw, so no single entry point keeps its grip on your average cost.
-                            That convergence is the real content of this page, not the size of any one number. It is
-                            also the strongest available argument for settling on a long horizon before you start,
-                            instead of trying to pick a moment.
-                        </p>
-                        <p>
-                            <strong className="font-semibold text-slate-800 dark:text-slate-100">Annualized returns fall as you go down the grid.</strong>{' '}
-                            The earliest rows cover a period when Bitcoin was tiny, hard to trade, and largely unknown.
-                            Those percentages describe a starting point that no longer exists. Reading the top-left of
-                            the grid as a baseline expectation would be a mistake. The later rows are the more relevant
-                            comparison, and even they are history, not a forecast.
-                        </p>
-                        <p>
-                            <strong className="font-semibold text-slate-800 dark:text-slate-100">Every window here ended in the past.</strong>{' '}
+                            <strong className={lead}>Every window here ended in the past.</strong>{' '}
                             A cell fills in only once its full holding period has run out, and it is valued at the price
                             on that end date. That matters more than it sounds. Valuing a completed 2013&ndash;2016
-                            window at today&apos;s price would quietly credit a three-year hold with everything that
-                            happened in the decade afterwards. Every historical window would look like a success. Cells
-                            whose window is still running say &quot;in progress&quot; instead.
+                            window at today&apos;s price would credit a three-year hold with everything that happened in
+                            the decade afterwards. Cells whose window is still running say &quot;in progress&quot;
+                            instead.
                         </p>
                         <p>
                             One thing this grid cannot tell you is what any future window will do. It covers a single
-                            asset over a single fifteen-year stretch. The long windows overlap each other heavily, and
-                            the conditions that produced these numbers were unusual by construction. It describes what
-                            happened. It does not predict.
+                            asset over a single{spanYears !== null ? ` ${spanYears}-year` : ''} stretch
+                            {priceRise ? `, in which the price in our series went ${priceRise}` : ''}. The long windows
+                            overlap each other heavily. It describes what happened. It does not predict.
                         </p>
                     </div>
                 </section>
@@ -724,7 +690,7 @@ export default async function StartDateHeatmapPage() {
                     <ul className="space-y-2 text-sm sm:text-base text-slate-600 dark:text-slate-300 leading-relaxed">
                         <li className="flex items-start gap-2">
                             <span className="text-amber-700 dark:text-amber-400 font-bold mt-0.5 shrink-0">&bull;</span>
-                            <span>$100 buys on the 1st of each month, on UTC calendar days, for the full window: 12 purchases per year of hold.</span>
+                            <span>${HEATMAP_MONTHLY_AMOUNT} buys on the 1st of each month, on UTC calendar days, for the full window: 12 purchases per year of hold.</span>
                         </li>
                         <li className="flex items-start gap-2">
                             <span className="text-amber-700 dark:text-amber-400 font-bold mt-0.5 shrink-0">&bull;</span>
@@ -736,11 +702,35 @@ export default async function StartDateHeatmapPage() {
                         </li>
                         <li className="flex items-start gap-2">
                             <span className="text-amber-700 dark:text-amber-400 font-bold mt-0.5 shrink-0">&bull;</span>
-                            <span>No fees, no taxes, and no spread (the gap between what an exchange sells at and what it buys at) are modeled. Real returns would be lower. This grid uses real daily closing prices: Coinbase from 2015, blockchain.info before that. It does not use the weekly series the calculator fills in by default. The <Link href="/methodology" className="text-amber-700 dark:text-amber-400 hover:underline">methodology page</Link> covers the price sources and their limits.</span>
+                            <span>No fees, no taxes, and no spread (the gap between what an exchange sells at and what it buys at) are modeled. Real returns would be lower.</span>
                         </li>
                         <li className="flex items-start gap-2">
                             <span className="text-amber-700 dark:text-amber-400 font-bold mt-0.5 shrink-0">&bull;</span>
-                            <span>The grid recomputes daily against fresh price data, so a window completes and fills in on its own anniversary.</span>
+                            <span>
+                                One price per UTC day. From {formatUtc(FIRST_EXCHANGE_CLOSE_TS, 'full')} that is
+                                Coinbase&apos;s daily candle close. Before it, it is blockchain.info&apos;s market price, an
+                                average across exchanges stamped at 00:00 UTC, which tracks the previous day&apos;s close, so
+                                purchases and window-end values in those years are priced about a day early.{' '}
+                                {estimatedDays > 0 && (
+                                    <>
+                                        Coinbase has no candle for {estimatedDays} {estimatedDays === 1 ? 'day' : 'days'} in
+                                        the series; those are filled in along a straight line between the days either
+                                        side.{' '}
+                                    </>
+                                )}
+                                If Coinbase&apos;s closes cannot be loaded the page keeps its last computed grid; it does
+                                not switch to another series. The{' '}
+                                <Link href="/methodology" className="text-amber-700 dark:text-amber-400 hover:underline">methodology page</Link>{' '}
+                                covers the price sources and their limits.
+                            </span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                            <span className="text-amber-700 dark:text-amber-400 font-bold mt-0.5 shrink-0">&bull;</span>
+                            <span>
+                                The grid recomputes daily. A window fills in once its end date has a daily closing price,
+                                which is the day after its anniversary.
+                                {grid && <> The data currently runs to {formatUtc(grid.lastCloseTs, 'full')}.</>}
+                            </span>
                         </li>
                     </ul>
                 </section>
@@ -751,16 +741,16 @@ export default async function StartDateHeatmapPage() {
                         Run your own numbers
                     </h2>
                     <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300 mb-5 max-w-xl mx-auto">
-                        This grid fixes the amount at $100 a month and the cadence at monthly. Change the amount, the
-                        cadence, the fee and both dates in the live calculator and it backtests against the same
-                        historical price data.
+                        This grid fixes the amount at ${HEATMAP_MONTHLY_AMOUNT} a month and the cadence at monthly. Change
+                        the amount, the cadence, the fee and both dates in the live calculator and it backtests against the
+                        same historical price data.
                     </p>
                     <Link
-                        href={`/?amount=${MONTHLY_AMOUNT}&frequency=monthly&fee=0`}
+                        href={`/?amount=${HEATMAP_MONTHLY_AMOUNT}&frequency=monthly&fee=0&provider=coinbase`}
                         className="inline-flex items-center gap-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-semibold px-6 py-3 rounded-xl transition-colors text-sm sm:text-base"
                     >
                         Open the calculator
-                        <ArrowRight className="w-4 h-4" />
+                        <ArrowRight className="w-4 h-4" aria-hidden="true" />
                     </Link>
                 </Card>
 
@@ -775,7 +765,7 @@ export default async function StartDateHeatmapPage() {
                                 key={q}
                                 className="group rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 px-4 py-3 sm:px-5 sm:py-4"
                             >
-                                <summary className="cursor-pointer list-none font-semibold text-sm sm:text-base text-slate-900 dark:text-white marker:hidden flex items-center justify-between gap-3">
+                                <summary className="cursor-pointer list-none min-h-11 font-semibold text-sm sm:text-base text-slate-900 dark:text-white marker:hidden flex items-center justify-between gap-3">
                                     {q}
                                     <ChevronDown
                                         className="w-4 h-4 shrink-0 text-slate-500 dark:text-slate-400 transition-transform group-open:rotate-180"
@@ -796,42 +786,24 @@ export default async function StartDateHeatmapPage() {
                         Keep reading
                     </h2>
                     <ul className="grid sm:grid-cols-2 gap-2 sm:gap-3">
-                        <li>
-                            <Link
-                                href="/dca"
-                                className="block rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 px-4 py-3 text-sm text-slate-700 dark:text-slate-300 hover:border-amber-500/50 hover:text-amber-700 dark:hover:text-amber-400 transition-colors"
-                            >
-                                <span className="font-medium">All DCA scenarios</span>
-                                <span className="block text-xs text-slate-500 dark:text-slate-400 mt-0.5">Fixed amounts and cadences, worked out year by year.</span>
-                            </Link>
-                        </li>
-                        <li>
-                            <Link
-                                href="/methodology"
-                                className="block rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 px-4 py-3 text-sm text-slate-700 dark:text-slate-300 hover:border-amber-500/50 hover:text-amber-700 dark:hover:text-amber-400 transition-colors"
-                            >
-                                <span className="font-medium">Methodology &amp; data sources</span>
-                                <span className="block text-xs text-slate-500 dark:text-slate-400 mt-0.5">Where the prices come from and where the model falls short.</span>
-                            </Link>
-                        </li>
-                        <li>
-                            <Link
-                                href="/bitcoin-dca-tax"
-                                className="block rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 px-4 py-3 text-sm text-slate-700 dark:text-slate-300 hover:border-amber-500/50 hover:text-amber-700 dark:hover:text-amber-400 transition-colors"
-                            >
-                                <span className="font-medium">DCA and tax lots</span>
-                                <span className="block text-xs text-slate-500 dark:text-slate-400 mt-0.5">Why buying regularly creates hundreds of separate cost bases.</span>
-                            </Link>
-                        </li>
-                        <li>
-                            <Link
-                                href="/why-bitcoin"
-                                className="block rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 px-4 py-3 text-sm text-slate-700 dark:text-slate-300 hover:border-amber-500/50 hover:text-amber-700 dark:hover:text-amber-400 transition-colors"
-                            >
-                                <span className="font-medium">Why Bitcoin</span>
-                                <span className="block text-xs text-slate-500 dark:text-slate-400 mt-0.5">The case, the counter-case, and the risks.</span>
-                            </Link>
-                        </li>
+                        {[
+                            { href: '/dca', label: 'All DCA scenarios', sub: 'Fixed amounts and cadences, worked out year by year.' },
+                            { href: '/lump-sum-vs-dca', label: 'Lump sum vs DCA', sub: 'Both strategies, every start month since 2010.' },
+                            { href: '/best-day-to-buy-bitcoin', label: 'Best day to buy Bitcoin', sub: 'Seven weekday schedules and a week-by-week test.' },
+                            { href: '/methodology', label: 'Methodology & data sources', sub: 'Where the prices come from and where the model falls short.' },
+                            { href: '/bitcoin-dca-tax', label: 'DCA and tax lots', sub: 'Why buying regularly creates hundreds of separate cost bases.' },
+                            { href: '/why-bitcoin', label: 'Why Bitcoin', sub: 'The case, the counter-case, and the risks.' },
+                        ].map((link) => (
+                            <li key={link.href}>
+                                <Link
+                                    href={link.href}
+                                    className="block rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 px-4 py-3 text-sm text-slate-700 dark:text-slate-300 hover:border-amber-500/50 hover:text-amber-700 dark:hover:text-amber-400 transition-colors"
+                                >
+                                    <span className="font-medium">{link.label}</span>
+                                    <span className="block text-xs text-slate-500 dark:text-slate-400 mt-0.5">{link.sub}</span>
+                                </Link>
+                            </li>
+                        ))}
                     </ul>
                 </section>
 

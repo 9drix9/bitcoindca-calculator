@@ -12,7 +12,9 @@ export const SkeletonCard = () => (
     <div className="p-3 sm:p-5 rounded-2xl border border-[var(--hairline)] bg-white dark:bg-slate-900 shadow-[var(--elev-1)] animate-pulse">
         <div className="h-3 w-20 bg-slate-200 dark:bg-slate-700 rounded mb-2 sm:mb-3" />
         <div className="h-6 sm:h-8 w-28 sm:w-36 bg-slate-200 dark:bg-slate-700 rounded mb-1.5 sm:mb-2" />
-        <div className="h-2.5 w-16 sm:w-20 bg-slate-100 dark:bg-slate-800 rounded" />
+        {/* h-3.5 below sm: with it the card is 90px there, the height of a
+            real result card with its note line. */}
+        <div className="h-3.5 sm:h-2.5 w-16 sm:w-20 bg-slate-100 dark:bg-slate-800 rounded" />
     </div>
 );
 
@@ -34,7 +36,8 @@ export const SkeletonPanel = () => (
 );
 
 export const SkeletonChart = () => (
-    // h-[340px] sm:h-[460px] mirrors DcaChart's Card exactly.
+    // h-[340px] sm:h-[460px] mirrors DcaChart's Card with no notes showing.
+    // Below sm the real card grows when it has notes to show.
     <div className="w-full h-[340px] sm:h-[460px] bg-white dark:bg-slate-900 rounded-2xl p-3 sm:p-4 shadow-[var(--elev-1)] border border-[var(--hairline)] animate-pulse">
         <div className="h-4 sm:h-5 w-32 sm:w-40 bg-slate-200 dark:bg-slate-700 rounded mb-4 sm:mb-6" />
         <div className="flex items-end gap-0.5 sm:gap-1 h-[calc(100%-3rem)]">
@@ -42,7 +45,11 @@ export const SkeletonChart = () => (
                 <div
                     key={i}
                     className="flex-1 bg-slate-100 dark:bg-slate-800 rounded-t"
-                    style={{ height: `${20 + Math.sin(i * 0.5) * 30 + 30}%` }}
+                    // Whole percentages. The unrounded value ("67.9541643231187%")
+                    // is not what the browser keeps for the server's markup
+                    // ("67.9542%"), so React reports a style mismatch on every
+                    // hydration of a page that server-renders this placeholder.
+                    style={{ height: `${Math.round(20 + Math.sin(i * 0.5) * 30 + 30)}%` }}
                 />
             ))}
         </div>

@@ -1,74 +1,52 @@
 'use client';
 
-import { useState, useEffect, useMemo, useCallback, useId } from 'react';
+import { useState, useMemo, useCallback, useId } from 'react';
 import { Bitcoin } from 'lucide-react';
-import { getCurrentBitcoinPrice } from '@/app/actions';
 import { useCurrency } from '@/context/CurrencyContext';
+import { PRICE_PROVIDER_LABELS } from '@/data/priceSources';
+import { SATS_PER_BTC } from '@/utils/units';
 import { Card, CardHeader } from '@/components/ui/Card';
+import { useLiveFigure } from '@/components/live/liveSidebar';
 
-const SATS_PER_BTC = 100_000_000;
-const POLL_MS = 60_000;
+// Two decimals is the smallest unit of most currencies, but a few sats are
+// worth less than that, and rounded to cents they read "0.00". Below one unit,
+// keep two significant digits instead.
+const formatFiat = (value: number): string => {
+    const abs = Math.abs(value);
+    if (abs === 0 || abs >= 1) return value.toFixed(2);
+    return value.toFixed(Math.min(8, 1 - Math.floor(Math.log10(abs))));
+};
 
 export const SatConverterWidget = () => {
-    const { currencyConfig, convertFromUsd } = useCurrency();
-    const [price, setPrice] = useState<number | null>(null);
-    const [failed, setFailed] = useState(false);
+    const { currencyConfig, convertFromUsd, rateNote } = useCurrency();
+    // Either exchange will do for a conversion; the footer names the one used.
+    // Nothing comes with the page: a price out of cached HTML could not be
+    // called live, so the card waits for the first one this page view fetches.
+    const { data: quote, old, failed } = useLiveFigure('spot', null);
     const [inputValue, setInputValue] = useState<string>('10000');
     const [inputMode, setInputMode] = useState<'sats' | 'fiat'>('sats');
     const satsId = useId();
     const fiatId = useId();
 
-    useEffect(() => {
-        let mounted = true;
-        let lastFetched = 0;
-
-        const refresh = async () => {
-            lastFetched = Date.now();
-            try {
-                const fresh = await getCurrentBitcoinPrice();
-                if (mounted && Number.isFinite(fresh) && fresh > 0) {
-                    setPrice(fresh);
-                    setFailed(false);
-                }
-            } catch {
-                if (mounted) setFailed(true); // keep last known price if we have one
-            }
-        };
-
-        // No SSR initial data for this widget, so fetch once on mount.
-        refresh();
-
-        const interval = setInterval(() => {
-            if (!document.hidden) refresh();
-        }, POLL_MS);
-        const onVisibilityChange = () => {
-            if (!document.hidden && Date.now() - lastFetched >= POLL_MS) refresh();
-        };
-        document.addEventListener('visibilitychange', onVisibilityChange);
-
-        return () => {
-            mounted = false;
-            clearInterval(interval);
-            document.removeEventListener('visibilitychange', onVisibilityChange);
-        };
-    }, []);
+    const price = quote?.price ?? null;
 
     const { satsDisplay, fiatDisplay } = useMemo(() => {
-        if (price === null) {
-            return {
-                satsDisplay: inputMode === 'sats' ? inputValue : '',
-                fiatDisplay: inputMode === 'fiat' ? inputValue : '',
-            };
-        }
+        // The field being typed in always shows exactly what was typed, so it
+        // can be emptied or left half-finished ("0.") without snapping back.
+        const typedOnly = {
+            satsDisplay: inputMode === 'sats' ? inputValue : '',
+            fiatDisplay: inputMode === 'fiat' ? inputValue : '',
+        };
+        if (price === null) return typedOnly;
+
         const satPriceFiat = convertFromUsd(price / SATS_PER_BTC);
         const num = parseFloat(inputValue);
-
-        if (isNaN(num)) return { satsDisplay: inputMode === 'sats' ? inputValue : '', fiatDisplay: inputMode === 'fiat' ? inputValue : '' };
+        if (!Number.isFinite(num) || num < 0 || !(satPriceFiat > 0)) return typedOnly;
 
         if (inputMode === 'sats') {
             return {
                 satsDisplay: inputValue,
-                fiatDisplay: (num * satPriceFiat).toFixed(2),
+                fiatDisplay: formatFiat(num * satPriceFiat),
             };
         } else {
             return {
@@ -88,9 +66,11 @@ export const SatConverterWidget = () => {
         setInputValue(e.target.value);
     }, []);
 
-    // text-base on mobile keeps iOS from zooming into the inputs
+    // On a phone or any touch screen: text-base keeps iOS from zooming into
+    // the inputs and py-2.5 makes them 44px tall, the touch-target floor.
+    // py-1.5 keeps the sidebar's density where there is a mouse.
     const inputClasses =
-        'w-full px-2.5 py-1.5 text-base sm:text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500 outline-none transition-shadow tabular-nums';
+        'w-full px-2.5 py-1.5 max-sm:py-2.5 pointer-coarse:py-2.5 text-sm max-sm:text-base pointer-coarse:text-base rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500 outline-none transition-shadow tabular-nums';
 
     return (
         <Card className="p-4">
@@ -107,6 +87,8 @@ export const SatConverterWidget = () => {
                         id={satsId}
                         type="number"
                         inputMode="decimal"
+                        min="0"
+                        step="1"
                         value={satsDisplay}
                         onChange={handleSatsChange}
                         className={inputClasses}
@@ -124,23 +106,31 @@ export const SatConverterWidget = () => {
                         id={fiatId}
                         type="number"
                         inputMode="decimal"
+                        min="0"
+                        step="any"
                         value={fiatDisplay}
                         onChange={handleFiatChange}
-                        step="0.01"
                         className={inputClasses}
                         placeholder="0.00"
                     />
                 </div>
             </div>
 
-            <div className="mt-3 pt-2.5 border-t border-slate-100 dark:border-slate-800 text-center">
-                <span className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 tabular-nums">
-                    {price !== null
-                        ? `1 sat = ${currencyConfig.symbol}${convertFromUsd(price / SATS_PER_BTC).toFixed(8)}`
+            <div className="mt-3 pt-2.5 border-t border-slate-100 dark:border-slate-800 text-center text-[11px] sm:text-xs text-slate-500 dark:text-slate-400">
+                <span className="tabular-nums">
+                    {quote !== null
+                        ? `1 sat = ${currencyConfig.symbol}${convertFromUsd(quote.price / SATS_PER_BTC).toFixed(8)}`
                         : failed
                             ? 'Data unavailable'
                             : 'Loading live price…'}
                 </span>
+                {quote !== null && (
+                    <p className="mt-0.5">
+                        {/* A failed refresh keeps the last price; say that it is no longer live. */}
+                        {failed || old ? 'Last known price' : 'Live price'} from {PRICE_PROVIDER_LABELS[quote.provider].name}
+                    </p>
+                )}
+                {quote !== null && rateNote && <p className="mt-1 leading-relaxed">{rateNote}</p>}
             </div>
         </Card>
     );

@@ -1,14 +1,19 @@
 'use client';
 
-import { useState, useEffect, useCallback, useSyncExternalStore } from 'react';
+import { useState, useEffect, useCallback, useRef, useSyncExternalStore } from 'react';
 import { Download, X, Share } from 'lucide-react';
+import clsx from 'clsx';
 import { Logo } from '@/components/brand/Logo';
+import { isEmbedPath } from '@/components/nav/navPathname';
+import { useBottomNavGone } from '@/hooks/useBottomNavGone';
+import { useBottomOverlayHeight } from '@/hooks/useBottomOverlayHeight';
+import { useConsentStatus } from '@/hooks/useConsent';
+import { readStorage, storageAvailable, writeStorage } from '@/hooks/safeStorage';
 
 // Stores the dismissal timestamp (ms). Legacy value '1' parses as an
 // expired timestamp, so previously-permanent dismissals become re-offerable.
 const DISMISS_KEY = 'pwa-install-dismissed';
 const VISIT_KEY = 'pwa-visit-count';
-const CONSENT_KEY = 'cookie-consent';
 const REOFFER_AFTER_MS = 30 * 24 * 60 * 60 * 1000; // re-offer 30 days after dismissal
 const ENGAGEMENT_DELAY_MS = 45_000; // 45s after the user's first interaction
 
@@ -18,27 +23,14 @@ interface BeforeInstallPromptEvent extends Event {
 }
 
 function isDismissedRecently(): boolean {
-  try {
-    const raw = localStorage.getItem(DISMISS_KEY);
-    if (!raw) return false;
-    const ts = Number(raw);
-    if (!Number.isFinite(ts)) return true; // unparseable -> stay dismissed
-    return Date.now() - ts < REOFFER_AFTER_MS;
-  } catch {
-    return true;
-  }
-}
-
-/** The cookie banner is gone once a consent with a boolean analytics flag is stored. */
-function isConsentResolved(): boolean {
-  try {
-    const raw = localStorage.getItem(CONSENT_KEY);
-    if (!raw) return false;
-    const consent = JSON.parse(raw) as { analytics?: unknown };
-    return typeof consent.analytics === 'boolean';
-  } catch {
-    return false;
-  }
+  // No storage means a dismissal could never be remembered, and the prompt
+  // would come back on every page. Treat it as dismissed.
+  if (!storageAvailable('local')) return true;
+  const raw = readStorage('local', DISMISS_KEY);
+  if (!raw) return false;
+  const ts = Number(raw);
+  if (!Number.isFinite(ts)) return true; // unparseable -> stay dismissed
+  return Date.now() - ts < REOFFER_AFTER_MS;
 }
 
 // Environment facts, evaluated once per page load (cached for a stable
@@ -56,6 +48,14 @@ let envCache: InstallEnv | null = null;
 function getInstallEnv(): InstallEnv {
   if (envCache) return envCache;
 
+  // Never inside the embeddable widget. It runs in someone else's page, where
+  // there is nothing to install, and the visit counter below has no business
+  // being written into a publisher's reader's browser.
+  if (isEmbedPath(window.location.pathname)) {
+    envCache = SERVER_ENV;
+    return envCache;
+  }
+
   let blocked: boolean;
   try {
     blocked =
@@ -72,12 +72,10 @@ function getInstallEnv(): InstallEnv {
     (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
   const isSafari = /Safari/.test(ua) && !/Chrome|CriOS|FxiOS/.test(ua);
 
-  let returningVisit = false;
-  try {
-    const visits = (parseInt(sessionStorage.getItem(VISIT_KEY) ?? '0', 10) || 0) + 1;
-    sessionStorage.setItem(VISIT_KEY, String(visits));
-    returningVisit = visits >= 2;
-  } catch {}
+  // If the count cannot be stored, every pageview reads as the first: the 45s
+  // engagement timer below still qualifies the visitor.
+  const visits = (parseInt(readStorage('session', VISIT_KEY) ?? '0', 10) || 0) + 1;
+  const returningVisit = writeStorage('session', VISIT_KEY, String(visits)) && visits >= 2;
 
   envCache = { blocked, iosSafari: isIos && isSafari, returningVisit };
   return envCache;
@@ -87,16 +85,16 @@ function subscribeNoop() {
   return () => {};
 }
 
-function subscribeToStorage(callback: () => void) {
-  window.addEventListener('storage', callback);
-  return () => window.removeEventListener('storage', callback);
-}
-
 export function PwaInstallPrompt() {
   const env = useSyncExternalStore(subscribeNoop, getInstallEnv, () => SERVER_ENV);
-  // Never stack on top of the cookie consent banner: wait until consent is
-  // stored (CookieConsent dispatches a 'storage' event when it saves).
-  const consentResolved = useSyncExternalStore(subscribeToStorage, isConsentResolved, () => false);
+  // Never stack on top of the cookie consent banner: wait until the visitor has
+  // answered it. Same store the banner reads, so the two cannot disagree.
+  const consentResolved = useConsentStatus() === 'resolved';
+  // The prompt sits above the tab bar with a 76px offset. When the bar is not
+  // there (unmounted for the keyboard, or hidden in phone landscape) that offset
+  // would leave it hovering mid-screen with the page showing underneath.
+  const bottomNavGone = useBottomNavGone();
+  const promptRef = useRef<HTMLDivElement>(null);
 
   const [deferredPrompt, setDeferredPrompt] =
     useState<BeforeInstallPromptEvent | null>(null);
@@ -132,20 +130,19 @@ export function PwaInstallPrompt() {
   }, [env]);
 
   const rememberDismissal = () => {
-    try {
-      localStorage.setItem(DISMISS_KEY, String(Date.now()));
-    } catch {}
+    writeStorage('local', DISMISS_KEY, String(Date.now()));
   };
 
   const handleInstall = useCallback(async () => {
     if (!deferredPrompt) return;
     deferredPrompt.prompt();
-    const { outcome } = await deferredPrompt.userChoice;
-    if (outcome === 'accepted') {
-      setDismissed(true);
-      rememberDismissal();
-    }
+    await deferredPrompt.userChoice;
+    // Either answer ends the offer. A "no" in the browser's own dialog is a
+    // dismissal like the X: the browser fires beforeinstallprompt again as soon
+    // as the choice resolves, and without this the bar would be straight back.
+    setDismissed(true);
     setDeferredPrompt(null);
+    rememberDismissal();
   }, [deferredPrompt]);
 
   const handleDismiss = useCallback(() => {
@@ -156,22 +153,37 @@ export function PwaInstallPrompt() {
 
   const engaged = env.returningVisit || engagedByTimer;
 
-  // Nothing to show
-  if (
-    env.blocked ||
-    dismissed ||
-    !engaged ||
-    !consentResolved ||
-    (!deferredPrompt && !env.iosSafari)
-  ) {
-    return null;
-  }
+  const shown =
+    !env.blocked &&
+    !dismissed &&
+    engaged &&
+    consentResolved &&
+    (deferredPrompt !== null || env.iosSafari);
+
+  // Like the cookie banner, this covers a strip of the page until dismissed, so
+  // the page has to scroll around it.
+  useBottomOverlayHeight(promptRef, shown);
+
+  if (!shown) return null;
 
   return (
     <div
+      ref={promptRef}
       role="dialog"
       aria-label="Install app"
-      className="fixed left-0 right-0 z-40 p-3 sm:p-4 pl-[max(env(safe-area-inset-left),0.75rem)] pr-[max(env(safe-area-inset-right),0.75rem)] sm:pl-[max(env(safe-area-inset-left),1rem)] sm:pr-[max(env(safe-area-inset-right),1rem)] bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-700 shadow-[0_-4px_20px_rgba(0,0,0,0.08)] dark:shadow-[0_-4px_20px_rgba(0,0,0,0.3)] bottom-[calc(var(--bottom-nav-h)_+_max(env(safe-area-inset-bottom),12px))] md:bottom-0 md:pb-[max(env(safe-area-inset-bottom),1rem)]"
+      // globals.css takes this off screen while a field is being typed into on
+      // a short viewport, and DockedResult stays away while anything carrying
+      // the attribute is showing.
+      data-bottom-overlay
+      className={clsx(
+        'fixed left-0 right-0 z-40 p-3 sm:p-4 pl-[max(env(safe-area-inset-left),0.75rem)] pr-[max(env(safe-area-inset-right),0.75rem)] sm:pl-[max(env(safe-area-inset-left),1rem)] sm:pr-[max(env(safe-area-inset-right),1rem)] bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-700 shadow-[0_-4px_20px_rgba(0,0,0,0.08)] dark:shadow-[0_-4px_20px_rgba(0,0,0,0.3)]',
+        // Same two positions as the cookie banner. The sm:pb is needed: sm:p-4
+        // above would otherwise override the safe-area padding from 640px up,
+        // which is exactly the landscape-phone band where the bar is hidden.
+        bottomNavGone
+          ? 'bottom-0 pb-[max(env(safe-area-inset-bottom),0.75rem)] sm:pb-[max(env(safe-area-inset-bottom),1rem)]'
+          : 'bottom-[calc(var(--bottom-nav-h)_+_max(env(safe-area-inset-bottom),12px))] md:bottom-0 md:pb-[max(env(safe-area-inset-bottom),1rem)]',
+      )}
     >
       <div className="max-w-4xl mx-auto">
         <div className="flex items-center gap-3">
@@ -196,14 +208,15 @@ export function PwaInstallPrompt() {
                   Add to Home Screen
                 </p>
                 <p className="text-xs text-slate-500 dark:text-slate-400">
-                  Tap <Share size={12} className="inline -mt-0.5" aria-hidden="true" /> then &quot;Add to Home Screen&quot;
+                  Tap <Share size={12} className="inline -mt-0.5" aria-hidden="true" />
+                  <span className="sr-only">the Share button</span> then &quot;Add to Home Screen&quot;
                 </p>
               </>
             )}
           </div>
-          {/* h-11/w-11, not min-h-[44px]: globals.css sets an unlayered
-              `button { min-height: 36px }` under 640px that outranks
-              Tailwind's layered min-h-* utilities. */}
+          {/* h-11/w-11 at every width: the globals.css button floor is for
+              narrow screens and coarse pointers, and this bar also shows on a
+              desktop. */}
           <div className="flex items-center gap-2 shrink-0">
             {deferredPrompt && (
               <button

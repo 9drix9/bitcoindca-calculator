@@ -3,10 +3,13 @@ import Link from 'next/link';
 import { AlertTriangle, ArrowRight, Target } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { StackingGoalTracker } from '@/components/StackingGoalTracker';
-import { getBitcoinPriceHistory, getCurrentBitcoinPrice } from '@/app/actions';
+import { getBitcoinPriceHistoryWithMeta, getBitcoinSpot } from '@/app/actions';
 import { DAILY_PRICE_REVALIDATE } from '@/utils/revalidate';
-import { calculateDca } from '@/utils/dca';
-import { DAY_MS, EARLIEST_PRICE_TS, formatUtc, utcDayStart } from '@/utils/dates';
+import { calculateDca, priceSeriesCovers } from '@/utils/dca';
+import { DAY_MS, EARLIEST_PRICE_TS, formatUtc, utcDayStart, utcYearsBefore } from '@/utils/dates';
+import { PRICE_PROVIDER_LABELS, type PriceProvider } from '@/data/priceSources';
+import { feeExamplePair } from '@/data/exchangeFees';
+import { DAILY_VS_WEEKLY_GAP } from '@/app/calculators/stack-sats-goal/frequencyGap';
 
 // Recomputed once a day against fresh prices.
 export const revalidate = 86400;
@@ -17,7 +20,7 @@ const PAGE_PATH = '/calculators/stack-sats-goal';
 export const metadata: Metadata = {
     title: 'How Long to Stack 1 Bitcoin — Stack Sats Calculator',
     description:
-        'A stack sats calculator: how long it takes to stack 0.01, 0.1 or 1 whole bitcoin at your contribution rate, projected at today’s price rather than an assumed future one. Includes a live milestone tracker and a plain explanation of sats.',
+        'A stack sats calculator: how long it takes to stack 0.01, 0.1 or 1 whole bitcoin at seven contribution rates, worked out at the latest price rather than an assumed future one. Includes a milestone tracker and a plain explanation of sats.',
     keywords: [
         'how long to stack 1 bitcoin',
         'stack sats calculator',
@@ -31,7 +34,7 @@ export const metadata: Metadata = {
         images: [{ url: '/opengraph-image', width: 1200, height: 630 }],
         title: 'How Long to Stack 1 Bitcoin — Stack Sats Calculator',
         description:
-            'How long 0.01, 0.1 and 1 BTC take at your contribution rate, projected honestly at today’s price.',
+            'How long 0.01, 0.1 and 1 BTC take at seven contribution rates, worked out at the latest price with no assumed growth.',
         url: PAGE_PATH,
         type: 'article',
         siteName: 'Bitcoin DCA Calculator',
@@ -42,7 +45,7 @@ export const metadata: Metadata = {
         card: 'summary_large_image',
         title: 'How Long to Stack 1 Bitcoin — Stack Sats Calculator',
         description:
-            'How long 0.01, 0.1 and 1 BTC take at your contribution rate, projected honestly at today’s price.',
+            'How long 0.01, 0.1 and 1 BTC take at seven contribution rates, worked out at the latest price with no assumed growth.',
         creator: '@9drix9',
     },
 };
@@ -66,23 +69,53 @@ function fmtBtc(value: number): string {
     return `${value.toFixed(decimals).replace(/(\.\d*?)0+$/, '$1').replace(/\.$/, '')} BTC`;
 }
 
-/** Months → "3 yr 4 mo". Used for straight-line milestone estimates. */
+/**
+ * Months → "3 yr 4 mo". Used for straight-line milestone estimates.
+ *
+ * Each number is tied to its unit with a non-breaking space, so a table cell
+ * too narrow for the whole figure breaks between the years and the months
+ * ("16 yr" over "1 mo"), never between a number and its unit.
+ */
 function fmtDuration(months: number): string {
     if (!Number.isFinite(months) || months <= 0) return '—';
     if (months < 1) return 'under a month';
     const total = Math.round(months);
     const years = Math.floor(total / 12);
     const rest = total % 12;
-    if (years === 0) return `${rest} mo`;
-    if (years >= 100) return `${years} yr`;
-    if (rest === 0) return `${years} yr`;
-    return `${years} yr ${rest} mo`;
+    if (years === 0) return `${rest}\u00a0mo`;
+    if (years >= 100) return `${years}\u00a0yr`;
+    if (rest === 0) return `${years}\u00a0yr`;
+    return `${years}\u00a0yr ${rest}\u00a0mo`;
+}
+
+/** "Oct 12, 2026 at 04:50 UTC". Every date on the site is a UTC date. */
+function fmtUtcMoment(ts: number): string {
+    return `${formatUtc(ts, 'full')} at ${new Date(ts).toISOString().slice(11, 16)} UTC`;
 }
 
 // ── Data ───────────────────────────────────────────────────────────────────────
 
+/** The sample schedule behind the milestone tracker. */
+const SAMPLE_AMOUNT = 50;
+/**
+ * The fee the prose uses to show what a fee does to a timeline, when the fee
+ * registry's example rows cannot be compared (see feeExamplePair). A plain
+ * round rate, not a quoted one.
+ */
+const FALLBACK_EXAMPLE_FEE_PERCENT = 1;
+
 interface PageData {
+    /** USD per BTC that every figure on the page is worked out at. */
     price: number;
+    /**
+     * When that price is from: the instant an exchange quoted it, or, when no
+     * quote could be had, the UTC day of the newest row in the daily series.
+     * Printed wherever the price is: this page is rebuilt about once a day,
+     * and "live" and "today's price" were never true of it.
+     */
+    priceAsOf: number;
+    /** The exchange that quoted `price`; null when it is the newest row of the daily series. */
+    quotedBy: PriceProvider | null;
     /** A real trailing-12-month $50/week schedule, used to seed the milestone tracker. */
     sample: {
         btcAccumulated: number;
@@ -90,6 +123,8 @@ interface PageData {
         purchaseCount: number;
         startDate: string;
         endDate: string;
+        /** The exchange whose daily series priced the schedule. */
+        provider: PriceProvider;
     } | null;
 }
 
@@ -105,29 +140,51 @@ const CONTRIBUTIONS: { label: string; amount: number; perMonth: number }[] = [
 
 const MILESTONES = [0.01, 0.1, 1];
 
+/**
+ * Whether a failed load should throw instead of rendering the fallback card.
+ * Same rule and reasoning as the exchange-fees page: `next build` must never
+ * fail on a provider outage, but once deployed a render that completes
+ * replaces the cached page for a day, fallback card included, while one that
+ * throws leaves the last good page in place and is retried on the next
+ * request. That last good page prints the date of its price, so serving it a
+ * little longer misleads nobody.
+ */
+const keepLastGoodPage = (): boolean =>
+    process.env.NODE_ENV === 'production' && process.env.NEXT_PHASE !== 'phase-production-build';
+
 async function loadData(): Promise<PageData | null> {
     try {
         const nowTs = utcDayStart(Date.now());
-        const start = new Date(nowTs);
-        const startTs = Math.max(
-            EARLIEST_PRICE_TS,
-            Date.UTC(start.getUTCFullYear() - 1, start.getUTCMonth(), start.getUTCDate()),
-        );
+        const startTs = Math.max(EARLIEST_PRICE_TS, utcYearsBefore(nowTs, 1));
 
-        const [history, livePrice] = await Promise.all([
-            getBitcoinPriceHistory(startTs, nowTs + DAY_MS, 'kraken', DAILY_PRICE_REVALIDATE),
-            getCurrentBitcoinPrice('kraken', DAILY_PRICE_REVALIDATE).catch(() => null),
+        // No provider is named, so this follows the price action's default
+        // series. The copy names whichever exchange actually answered.
+        const [history, spot] = await Promise.all([
+            getBitcoinPriceHistoryWithMeta(startTs, nowTs + DAY_MS, undefined, DAILY_PRICE_REVALIDATE)
+                .catch((error) => {
+                    // The table needs only a price, so a build can still publish
+                    // it without the history. Once deployed, the last good page
+                    // (table and tracker both) is the better thing to keep.
+                    if (keepLastGoodPage()) throw error;
+                    console.error('[calculators/stack-sats-goal] price history failed:', error);
+                    return null;
+                }),
+            getBitcoinSpot(undefined, DAILY_PRICE_REVALIDATE),
         ]);
+        // The engine carries the last bar forward without limit, so a series
+        // that stops short is not used at all.
+        const series = history && priceSeriesCovers(history.data, startTs, nowTs) ? history : null;
 
-        const fallbackPrice = history && history.length > 0 ? history[history.length - 1][1] : 0;
-        const price = livePrice && livePrice > 0 ? livePrice : fallbackPrice;
-        if (!price || price <= 0) return null;
+        const lastRow = series ? series.data[series.data.length - 1] : null;
+        const price = spot ? spot.price : lastRow ? lastRow[1] : 0;
+        const priceAsOf = spot ? spot.asOf : lastRow ? lastRow[0] : 0;
+        if (!(price > 0)) throw new Error('no usable price');
 
         let sample: PageData['sample'] = null;
-        if (history && history.length > 0) {
+        if (series) {
             const result = calculateDca(
                 {
-                    amount: 50,
+                    amount: SAMPLE_AMOUNT,
                     frequency: 'weekly',
                     startDate: new Date(startTs),
                     endDate: new Date(nowTs),
@@ -135,8 +192,9 @@ async function loadData(): Promise<PageData | null> {
                     priceMode: 'api',
                     manualPrice: 0,
                 },
-                history,
+                series.data,
                 price,
+                priceAsOf,
             );
             if (result.btcAccumulated > 0 && result.breakdown.length > 1) {
                 sample = {
@@ -145,19 +203,27 @@ async function loadData(): Promise<PageData | null> {
                     purchaseCount: result.breakdown.length,
                     startDate: formatUtc(startTs, 'isoDay'),
                     endDate: formatUtc(nowTs, 'isoDay'),
+                    provider: series.servedProvider,
                 };
             }
         }
 
-        return { price, sample };
+        return { price, priceAsOf, quotedBy: spot ? spot.provider : null, sample };
     } catch (error) {
-        // Never build-fail on a provider outage: the page renders an honest fallback.
         console.error('[calculators/stack-sats-goal] data load failed:', error);
+        if (keepLastGoodPage()) throw error;
+        // During `next build` (and in development): an honest fallback, never a failed build.
         return null;
     }
 }
 
 // ── Page ───────────────────────────────────────────────────────────────────────
+
+// A breadcrumb link is one or two short words, about 15px tall as text on a
+// phone. The padding makes it a 44px touch target, and the negative margins
+// hand the same space back so the row sits exactly where it did.
+const crumbLink =
+    'inline-flex min-h-11 items-center -my-3.5 px-1.5 -mx-1.5 hover:text-amber-700 dark:hover:text-amber-400 transition-colors';
 
 export default async function StackSatsGoalPage() {
     const data = await loadData();
@@ -176,30 +242,55 @@ export default async function StackSatsGoalPage() {
 
     const satsPer100 = price ? (100 / price) * 1e8 : 0;
     const monthsTo1BtcAt500 = price ? 1 / (500 / price) : 0;
+    // What one sample buy comes to, for the prose on units. Worked out from the
+    // page's price, like the table, so the prose and the table's row for the
+    // same amount cannot quote different figures.
+    const sampleBuyBtc = price ? SAMPLE_AMOUNT / price : 0;
+
+    // "Oct 12, 2026": the day the price is from. The page is rebuilt about once
+    // a day, so the copy names that day and never says "today" or "live".
+    const priceDay = data ? formatUtc(data.priceAsOf, 'full') : '';
+    const priceSource = data
+        ? data.quotedBy
+            ? `the ${PRICE_PROVIDER_LABELS[data.quotedBy].name} price on ${fmtUtcMoment(data.priceAsOf)}`
+            : `the newest daily price we have, from ${priceDay}`
+        : '';
+    const sampleSeriesWords = data?.sample?.provider === 'kraken'
+        ? "Kraken's weekly closing prices, with the days in between filled in along a straight line"
+        : "Coinbase's daily closing prices";
+    // The rate the fee sentences run on is the one the fee comparison builds its
+    // own worked example on, read from the same registry. The prose links to
+    // that page, and a rate typed in here by hand (1.49%) went on being quoted
+    // after the page had stopped listing it.
+    const exampleFeePercent = feeExamplePair()?.higher.percent ?? FALLBACK_EXAMPLE_FEE_PERCENT;
+    // What a percentage fee does to every row of the table: the same money buys
+    // (1 - fee) as much bitcoin, so the time grows by 1 / (1 - fee).
+    const feeStretchPercent = (1 / (1 - exampleFeePercent / 100) - 1) * 100;
+    const feeExtraMonthsOnTenYears = (120 * feeStretchPercent) / 100;
 
     const faqs: { question: string; answer: string }[] = [
         {
             question: 'How long does it take to stack 1 bitcoin?',
             answer: price
-                ? `At today's price of ${fmtUsd(price)}, $500 a month buys roughly ${fmtInt((500 / price) * 1e8)} sats a month. A whole bitcoin then takes about ${fmtDuration(monthsTo1BtcAt500)}, if the price never moves. Double the contribution and you roughly halve the time. This is a straight-line estimate at a constant price, not a forecast. The real answer depends entirely on what the price does while you are buying.`
-                : 'It depends on how much you contribute and what the price does. At a constant price, the estimate is simply 1 BTC divided by the bitcoin your monthly contribution buys at that price. This page shows the calculation once live price data is available.',
+                ? `At ${fmtUsd(price)}, the price on ${priceDay}, $500 a month buys roughly ${fmtInt((500 / price) * 1e8)} sats a month. A whole bitcoin then takes about ${fmtDuration(monthsTo1BtcAt500)}, if the price never moves. Double the contribution and you halve the time. This is a straight-line estimate at a constant price, not a forecast. The real answer depends entirely on what the price does while you are buying.`
+                : 'It depends on how much you contribute and what the price does. At a constant price, the estimate is simply 1 BTC divided by the bitcoin your monthly contribution buys at that price. This page shows the calculation once price data is available.',
         },
         {
             question: 'What is a sat?',
             answer: price
-                ? `A satoshi, or sat, is one hundred-millionth of a bitcoin: 1 BTC = 100,000,000 sats. It is the smallest unit the Bitcoin protocol can record, which is why you never need to buy a whole coin. At ${fmtUsd(price)}, $100 buys about ${fmtInt(satsPer100)} sats.`
+                ? `A satoshi, or sat, is one hundred-millionth of a bitcoin: 1 BTC = 100,000,000 sats. It is the smallest unit the Bitcoin protocol can record, which is why you never need to buy a whole coin. At ${fmtUsd(price)}, the price on ${priceDay}, $100 buys about ${fmtInt(satsPer100)} sats.`
                 : 'A satoshi, or sat, is one hundred-millionth of a bitcoin: 1 BTC = 100,000,000 sats. It is the smallest unit the Bitcoin protocol can record, which is why you never need to buy a whole coin.',
         },
         {
             question: 'What does “stack sats” mean?',
-            answer: 'Stacking sats means buying or earning small amounts of bitcoin on a regular basis and holding them. A sat is one hundred-millionth of a bitcoin, so the phrase just describes accumulating bitcoin a little at a time rather than in one purchase. Dollar-cost averaging, a fixed buy on a fixed schedule, is the most common way to do it. This stack sats calculator turns that rate into a timeline: how long 0.01, 0.1 and 1 BTC take at today’s price.',
+            answer: 'Stacking sats means buying or earning small amounts of bitcoin on a regular basis and holding them. A sat is one hundred-millionth of a bitcoin, so the phrase just describes accumulating bitcoin a little at a time rather than in one purchase. Dollar-cost averaging, a fixed buy on a fixed schedule, is the most common way to do it. This stack sats calculator turns that rate into a timeline: how long 0.01, 0.1 and 1 BTC take if the price holds where it last was.',
         },
         {
             question: 'Do I need to buy a whole bitcoin?',
             answer: 'No. Bitcoin is divisible to eight decimal places, and every major exchange sells fractions. The instinct that you must own a whole unit is called unit bias. It makes a $3 token feel cheaper than a $100,000 one, even though what you own is a percentage of a supply rather than a number of units. What matters is the fraction of total supply you hold, not whether it rounds to a whole coin.',
         },
         {
-            question: 'Why does this page project at today’s price instead of assuming growth?',
+            question: 'Why does this page hold the price flat instead of assuming growth?',
             answer: 'Because a projection that assumes appreciation mostly tells you what you assumed. Take bitcoin\'s past annualized return, apply it forward, then use the result to argue that stacking is worthwhile. The conclusion was baked into the input. Holding the price constant is the one assumption that adds no opinion. It isolates the part you actually control: how much you contribute and how often.',
         },
         {
@@ -242,9 +333,9 @@ export default async function StackSatsGoalPage() {
                 {/* Breadcrumb */}
                 <nav aria-label="Breadcrumb" className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
                     <ol className="flex flex-wrap items-center gap-1.5">
-                        <li><Link href="/" className="hover:text-amber-700 dark:hover:text-amber-400 transition-colors">Home</Link></li>
+                        <li><Link href="/" className={crumbLink}>Home</Link></li>
                         <li aria-hidden="true">/</li>
-                        <li><Link href="/calculators" className="hover:text-amber-700 dark:hover:text-amber-400 transition-colors">Calculators</Link></li>
+                        <li><Link href="/calculators" className={crumbLink}>Calculators</Link></li>
                         <li aria-hidden="true">/</li>
                         <li aria-current="page" className="text-slate-700 dark:text-slate-300">Stack sats goal</li>
                     </ol>
@@ -258,17 +349,21 @@ export default async function StackSatsGoalPage() {
                     <p className="text-base sm:text-lg text-slate-600 dark:text-slate-300 leading-relaxed">
                         {price ? (
                             <>
-                                Bitcoin is trading at <strong className="font-semibold text-slate-900 dark:text-white">{fmtUsd(price)}</strong>,
-                                so $100 buys about <strong className="font-semibold text-slate-900 dark:text-white">{fmtInt(satsPer100)} sats</strong>.
+                                At <strong className="font-semibold text-slate-900 dark:text-white">{fmtUsd(price)}</strong> per
+                                bitcoin, {priceSource}, $100 buys about{' '}
+                                <strong className="font-semibold text-slate-900 dark:text-white">{fmtInt(satsPer100)} sats</strong>.
                                 A sat is one hundred-millionth of a bitcoin, which is why you never need to buy a whole
                                 coin. The table below turns that into a timeline. It shows how long 0.01, 0.1 and a full
-                                bitcoin take at seven common contribution rates, held at today&apos;s price. No assumed
-                                growth rate, because assuming one would answer the question before you asked it.
+                                bitcoin take at seven common contribution rates, with the price held at that figure. At
+                                $500 a month a whole bitcoin takes about {fmtDuration(monthsTo1BtcAt500)} on that
+                                basis. No assumed growth rate, because assuming one would answer the question before you
+                                asked it. The page is recalculated about once a day, so the price above is not a live
+                                one.
                             </>
                         ) : (
                             <>
                                 This page turns a contribution rate into a timeline. It shows how long 0.01, 0.1 and a
-                                full bitcoin take at today&apos;s price, with no assumed growth rate. Live price data is
+                                full bitcoin take at the latest price, with no assumed growth rate. Price data is
                                 temporarily unavailable, so the figures below are not showing right now.
                             </>
                         )}
@@ -278,29 +373,38 @@ export default async function StackSatsGoalPage() {
                 {/* Milestone table */}
                 <section className="space-y-4">
                     <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">
-                        Time to each milestone at today&apos;s price
+                        Time to each milestone if the price holds
                     </h2>
                     {price ? (
                         <>
                             <Card className="p-4 sm:p-6">
+                                {/* Under 640px the table has to fit the screen: at its full
+                                    width "To 1 BTC", the question in the page's title, is off
+                                    a phone's right edge. So there the sats per buy move under
+                                    the contribution, and a long duration may break in two. */}
                                 <div className="overflow-x-auto -mx-4 sm:mx-0">
-                                    <table className="w-full min-w-[520px] text-xs sm:text-sm tabular-nums">
+                                    <table className="w-full sm:min-w-[520px] text-xs sm:text-sm tabular-nums">
                                         <thead>
                                             <tr className="text-left text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800">
-                                                <th scope="col" className="px-3 sm:px-4 py-2 font-medium whitespace-nowrap">Contribution</th>
-                                                <th scope="col" className="px-3 sm:px-4 py-2 font-medium text-right whitespace-nowrap">Sats per buy</th>
-                                                <th scope="col" className="px-3 sm:px-4 py-2 font-medium text-right whitespace-nowrap">To 0.01 BTC</th>
-                                                <th scope="col" className="px-3 sm:px-4 py-2 font-medium text-right whitespace-nowrap">To 0.1 BTC</th>
-                                                <th scope="col" className="px-3 sm:px-4 py-2 font-medium text-right whitespace-nowrap">To 1 BTC</th>
+                                                <th scope="col" className="px-2 sm:px-4 py-2 font-medium whitespace-nowrap">Contribution</th>
+                                                <th scope="col" className="hidden sm:table-cell px-2 sm:px-4 py-2 font-medium text-right whitespace-nowrap">Sats per buy</th>
+                                                <th scope="col" className="px-2 sm:px-4 py-2 font-medium text-right sm:whitespace-nowrap">To 0.01 BTC</th>
+                                                <th scope="col" className="px-2 sm:px-4 py-2 font-medium text-right sm:whitespace-nowrap">To 0.1 BTC</th>
+                                                <th scope="col" className="px-2 sm:px-4 py-2 font-medium text-right sm:whitespace-nowrap">To 1 BTC</th>
                                             </tr>
                                         </thead>
                                         <tbody className="text-slate-700 dark:text-slate-300">
                                             {rows.map((row) => (
                                                 <tr key={row.label} className="border-b border-slate-100 dark:border-slate-800/60 last:border-0">
-                                                    <td className="px-3 sm:px-4 py-2 font-medium text-slate-800 dark:text-slate-100 whitespace-nowrap">{row.label}</td>
-                                                    <td className="px-3 sm:px-4 py-2 text-right whitespace-nowrap">{fmtInt(row.satsPerBuy)}</td>
+                                                    <td className="px-2 sm:px-4 py-2 align-top font-medium text-slate-800 dark:text-slate-100 whitespace-nowrap">
+                                                        {row.label}
+                                                        <span className="block sm:hidden text-[11px] font-normal text-slate-500 dark:text-slate-400">
+                                                            {fmtInt(row.satsPerBuy)} sats a buy
+                                                        </span>
+                                                    </td>
+                                                    <td className="hidden sm:table-cell px-2 sm:px-4 py-2 align-top text-right whitespace-nowrap">{fmtInt(row.satsPerBuy)}</td>
                                                     {row.months.map((m, i) => (
-                                                        <td key={i} className="px-3 sm:px-4 py-2 text-right whitespace-nowrap">{fmtDuration(m)}</td>
+                                                        <td key={i} className="px-2 sm:px-4 py-2 align-top text-right sm:whitespace-nowrap">{fmtDuration(m)}</td>
                                                     ))}
                                                 </tr>
                                             ))}
@@ -308,9 +412,9 @@ export default async function StackSatsGoalPage() {
                                     </table>
                                 </div>
                                 <p className="mt-3 text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-                                    Calculated at the live price of {fmtUsd(price)} and held constant. Weekly rates are
-                                    converted at 52 weeks per year. Exchange fees are excluded. At a 1% fee every row gets
-                                    about 1% longer.
+                                    Calculated at {fmtUsd(price)}, {priceSource}, and held constant. Weekly rates are
+                                    converted at 52 weeks per year. Exchange fees are excluded. At a {exampleFeePercent}% fee
+                                    every row gets about {feeStretchPercent.toFixed(1)}% longer.
                                 </p>
                             </Card>
 
@@ -329,9 +433,10 @@ export default async function StackSatsGoalPage() {
                                         Price data is temporarily unavailable
                                     </h3>
                                     <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
-                                        We could not reach a price provider for this page. The live{' '}
+                                        We could not reach either exchange for a price. The main{' '}
                                         <Link href="/" className="text-amber-700 dark:text-amber-400 hover:underline">calculator</Link>{' '}
-                                        falls back across several providers, so it will usually still work.
+                                        reads the same two exchanges, so it may be affected as well. Try again in a few
+                                        minutes.
                                     </p>
                                 </div>
                             </div>
@@ -388,21 +493,29 @@ export default async function StackSatsGoalPage() {
                         <p>
                             That matters because of <strong className="text-slate-800 dark:text-slate-200">unit bias</strong>:
                             the tendency to judge an asset by its price per unit rather than by what a unit represents. A
-                            token priced at $0.02 feels cheap, and a bitcoin priced in six figures feels expensive. But price
-                            per unit says nothing at all without the supply attached to it. What you own is a share of a
-                            fixed 21 million supply. Buying $50 of bitcoin gets you the same fraction of that supply whether
-                            the interface shows it as 0.00045 BTC or 45,000 sats.
+                            token priced at $0.02 feels cheap, and a bitcoin{price ? ` priced at ${fmtUsd(price)}` : ''}{' '}
+                            feels expensive. But price per unit says nothing at all without the supply attached to it.
+                            What you own is a share of a fixed 21 million supply. Buying ${SAMPLE_AMOUNT} of bitcoin
+                            gets you the same fraction of that supply whether the interface shows it as{' '}
+                            {price
+                                ? `${fmtBtc(sampleBuyBtc)} or ${fmtInt(sampleBuyBtc * 1e8)} sats`
+                                : 'a fraction of a BTC or a whole number of sats'}
+                            .
                         </p>
                         <p>
-                            Counting in sats mostly removes the illusion. It replaces a number with six leading zeros with an
-                            ordinary five- or six-digit one. It also reframes the goal from &ldquo;buy a coin&rdquo; to
-                            &ldquo;accumulate units,&rdquo; which is what a DCA schedule actually does. The calculator can
-                            display either. The BTC/sats toggle sits next to the currency selector.
+                            Counting in sats mostly removes the illusion. It swaps a decimal with a row of zeros in
+                            front{price ? ` (${fmtBtc(sampleBuyBtc).replace(' BTC', '')})` : ''} for an ordinary whole
+                            number{price ? ` (${fmtInt(sampleBuyBtc * 1e8)})` : ''}. It also reframes the goal from &ldquo;buy a coin&rdquo; to
+                            &ldquo;accumulate units,&rdquo; which is what a DCA schedule actually does. The{' '}
+                            <Link href="/" className="text-amber-700 dark:text-amber-400 hover:underline">
+                                calculator on the home page
+                            </Link>{' '}
+                            can display either: the Units switch sits under the headline result.
                         </p>
                     </div>
                 </section>
 
-                {/* Live milestone tracker */}
+                {/* Milestone tracker */}
                 <section className="space-y-4">
                     <div className="flex items-center gap-2 sm:gap-3">
                         <Target className="w-6 h-6 sm:w-7 sm:h-7 text-amber-700 dark:text-amber-400 shrink-0" />
@@ -413,8 +526,9 @@ export default async function StackSatsGoalPage() {
                     {data?.sample ? (
                         <>
                             <p className="text-sm sm:text-base text-slate-600 dark:text-slate-400 leading-relaxed">
-                                These are real numbers, not a mock-up: $50 a week bought every week for the last twelve
-                                months against real Kraken prices. That is {data.sample.purchaseCount} purchases,{' '}
+                                These are real numbers, not a mock-up: ${SAMPLE_AMOUNT} bought every week from{' '}
+                                {formatUtc(data.sample.startDate, 'full')} to {formatUtc(data.sample.endDate, 'full')}, priced
+                                on {sampleSeriesWords}, with no fee. That is {data.sample.purchaseCount} purchases,{' '}
                                 {fmtUsd(data.sample.totalInvested)} invested, and{' '}
                                 {fmtBtc(data.sample.btcAccumulated)} accumulated
                                 ({fmtInt(data.sample.btcAccumulated * 1e8)} sats).
@@ -425,7 +539,7 @@ export default async function StackSatsGoalPage() {
                                 purchaseCount={data.sample.purchaseCount}
                                 startDate={data.sample.startDate}
                                 endDate={data.sample.endDate}
-                                amount={50}
+                                amount={SAMPLE_AMOUNT}
                                 frequency="weekly"
                                 unit="BTC"
                                 /* Without this the component's own guard returns null
@@ -433,21 +547,25 @@ export default async function StackSatsGoalPage() {
                                    this page exists, and the thing the paragraph below
                                    goes on to caveat — never renders at all. */
                                 currentPrice={data.price}
+                                /* This page is rebuilt about once a day, so the card
+                                   names the day its price is from. Left out, it would
+                                   call that price "today's". */
+                                priceLabel={`the ${priceDay} price`}
                             />
                             <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
-                                The time-to-goal estimate at the bottom of that card prices every future buy at
-                                today&apos;s market, the same assumption as the table at the top of this page, so the
-                                two agree. The fragile part is the assumption itself: holding the price flat makes the
-                                date pure arithmetic, and the price will not stay flat. The card states that, along
-                                with the fees it leaves out.
+                                The time-to-goal estimate at the bottom of that card prices every future buy at{' '}
+                                {fmtUsd(data.price)}, as the table at the top of this page does. The fragile part is the
+                                assumption itself: holding the price flat makes the date pure arithmetic, and the price
+                                will not stay flat. The card states that, along with the fees it leaves out.
                             </p>
                         </>
                     ) : (
                         <Card className="p-6">
                             <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
-                                The live milestone tracker needs historical price data, which we could not load right now.
-                                It is available on every result in the{' '}
-                                <Link href="/" className="text-amber-700 dark:text-amber-400 hover:underline">main calculator</Link>.
+                                The milestone tracker needs historical price data, which we could not load right now.
+                                It is also in the{' '}
+                                <Link href="/" className="text-amber-700 dark:text-amber-400 hover:underline">main calculator</Link>,
+                                under the Project tab of any result.
                             </p>
                         </Card>
                     )}
@@ -465,14 +583,18 @@ export default async function StackSatsGoalPage() {
                             trick comes close to that effect.
                         </p>
                         <p>
-                            <strong className="text-slate-800 dark:text-slate-200">Frequency barely matters.</strong> Over
-                            multi-year periods, daily and weekly buying land within a rounding error of each other. Pick the
-                            cadence that minimizes fees and admin for you.
+                            <strong className="text-slate-800 dark:text-slate-200">Frequency matters much less.</strong> At
+                            a constant price it changes nothing: the table converts a weekly amount at 52 weeks a year.
+                            Against real prices the gap has been small. Measured on {DAILY_VS_WEEKLY_GAP.measuredOn} over
+                            every {DAILY_VS_WEEKLY_GAP.windowYears}-year stretch of Coinbase&apos;s daily closes since{' '}
+                            {DAILY_VS_WEEKLY_GAP.seriesFrom}, the same money spent daily or weekly ended within{' '}
+                            {DAILY_VS_WEEKLY_GAP.withinPercent}% of each other.
                         </p>
                         <p>
                             <strong className="text-slate-800 dark:text-slate-200">Fees push the date out proportionally.</strong>{' '}
-                            A 1.49% fee means 1.49% fewer sats on every buy, forever. On a ten-year plan that is roughly two
-                            extra months.{' '}
+                            A {exampleFeePercent}% fee means {exampleFeePercent}% fewer sats on every buy, for as long
+                            as you pay it. On a ten-year plan that is about {feeExtraMonthsOnTenYears.toFixed(1)} extra
+                            months.{' '}
                             <Link href="/calculators/exchange-fees" className="text-amber-700 dark:text-amber-400 hover:underline">
                                 The fee comparison
                             </Link>{' '}
@@ -485,9 +607,12 @@ export default async function StackSatsGoalPage() {
                             Anyone selling you certainty about which one is coming is selling something.
                         </p>
                         <p>
-                            <strong className="text-slate-800 dark:text-slate-200">Only invest what you can leave alone.</strong>{' '}
-                            Bitcoin has fallen more than 70% from its high on several occasions. A plan that survives that is
-                            worth more than one that reaches a milestone faster on paper.
+                            <strong className="text-slate-800 dark:text-slate-200">Falls of more than 70% are in the record.</strong>{' '}
+                            Bitcoin has fallen that far from a high several times, and the{' '}
+                            <Link href="/calculators/bitcoin-drawdown" className="text-amber-700 dark:text-amber-400 hover:underline">
+                                drawdown history
+                            </Link>{' '}
+                            lists each one. Money that has to come out during a fall like that is sold at those prices.
                         </p>
                     </div>
                 </section>
@@ -515,11 +640,18 @@ export default async function StackSatsGoalPage() {
                         Run your own numbers
                     </h2>
                     <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300 mb-5 max-w-xl mx-auto">
-                        Put in your own amount, cadence and start date. The calculator backtests it against real historical
-                        prices and shows the milestone tracker alongside fees, drawdowns and a full purchase table.
+                        {data?.sample
+                            ? 'The button opens the calculator on the schedule above, same dates, same price series and no fee, so you can check it. Then put in your own amount, cadence and start date.'
+                            : 'Put in your own amount, cadence and start date.'}{' '}
+                        The calculator backtests it against historical prices and shows the milestone tracker alongside
+                        fees, drawdowns and a full purchase table.
                     </p>
                     <Link
-                        href="/?amount=50&frequency=weekly&fee=0"
+                        href={
+                            data?.sample
+                                ? `/?amount=${SAMPLE_AMOUNT}&frequency=weekly&startDate=${data.sample.startDate}&fee=0&provider=${data.sample.provider}`
+                                : `/?amount=${SAMPLE_AMOUNT}&frequency=weekly&fee=0`
+                        }
                         className="inline-flex items-center gap-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-semibold px-6 py-3 rounded-xl transition-colors text-sm sm:text-base"
                     >
                         Open the calculator
@@ -534,22 +666,22 @@ export default async function StackSatsGoalPage() {
                     </h2>
                     <ul className="grid sm:grid-cols-2 gap-2 text-sm">
                         <li>
-                            <Link href="/calculators" className="block rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-2.5 font-medium text-slate-700 dark:text-slate-300 hover:border-amber-500/50 hover:text-amber-700 dark:hover:text-amber-400 transition-colors">
+                            <Link href="/calculators" className="block rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-3 font-medium text-slate-700 dark:text-slate-300 hover:border-amber-500/50 hover:text-amber-700 dark:hover:text-amber-400 transition-colors">
                                 All calculators
                             </Link>
                         </li>
                         <li>
-                            <Link href="/calculators/exchange-fees" className="block rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-2.5 font-medium text-slate-700 dark:text-slate-300 hover:border-amber-500/50 hover:text-amber-700 dark:hover:text-amber-400 transition-colors">
+                            <Link href="/calculators/exchange-fees" className="block rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-3 font-medium text-slate-700 dark:text-slate-300 hover:border-amber-500/50 hover:text-amber-700 dark:hover:text-amber-400 transition-colors">
                                 What exchange fees really cost
                             </Link>
                         </li>
                         <li>
-                            <Link href="/calculators/bitcoin-cost-basis" className="block rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-2.5 font-medium text-slate-700 dark:text-slate-300 hover:border-amber-500/50 hover:text-amber-700 dark:hover:text-amber-400 transition-colors">
+                            <Link href="/calculators/bitcoin-cost-basis" className="block rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-3 font-medium text-slate-700 dark:text-slate-300 hover:border-amber-500/50 hover:text-amber-700 dark:hover:text-amber-400 transition-colors">
                                 Bitcoin cost basis calculator
                             </Link>
                         </li>
                         <li>
-                            <Link href="/methodology" className="block rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-2.5 font-medium text-slate-700 dark:text-slate-300 hover:border-amber-500/50 hover:text-amber-700 dark:hover:text-amber-400 transition-colors">
+                            <Link href="/methodology" className="block rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-3 font-medium text-slate-700 dark:text-slate-300 hover:border-amber-500/50 hover:text-amber-700 dark:hover:text-amber-400 transition-colors">
                                 Methodology &amp; data sources
                             </Link>
                         </li>
@@ -558,8 +690,8 @@ export default async function StackSatsGoalPage() {
 
                 {/* Disclaimer */}
                 <p className="border-t border-slate-200 dark:border-slate-800 pt-6 text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-                    Not financial advice. Every figure on this page is a straight-line estimate at the current market price,
-                    provided for education. Past performance does not guarantee future results, bitcoin is volatile, and you
+                    Not financial advice. Every figure on this page is a straight-line estimate at the price stated at the
+                    top of the page, provided for education. Past performance does not guarantee future results, bitcoin is volatile, and you
                     can lose money.
                 </p>
             </div>

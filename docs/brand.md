@@ -1,6 +1,8 @@
 # Names and domains
 
-Decided 2026-08-17. Change this file before changing anything it describes.
+Decided 2026-08-17. Amended 2026-10-12: the second domain's redirect is no longer tagged
+or measured; btcdollarcostaverage.com is the only name in use. Change this file before
+changing anything it describes.
 
 ## Names
 
@@ -25,14 +27,15 @@ on `/embed-guide`, the `/developers` curl examples, the `/api/og` card text, the
 and service worker, and all browser state (cost basis, currency, sats mode).
 
 **stackmysats.com** (and www) is a 301 front door. Every path redirects to the same
-path on the primary with `?utm_source=stackmysats` appended. Nothing is served on it,
+path on the primary, with nothing added. Nothing is served on it,
 nothing is indexed, no sitemap, no PWA. The rule lives in `next.config.ts`
 (`redirects()` with `has: host`), and the same file drops HSTS `preload` for that host.
 
 Why it exists: a human can say and retype it. It has no search demand of its own
 ("stack my sats" autocompletes away), so it is not a traffic lever and never will be.
-The UTM is the only way to learn whether anyone types it: Vercel Web Analytics does not
-fire on a redirect and runtime logs keep about a day.
+Whether anyone types it is not measured: Vercel Web Analytics does not fire on a
+redirect, runtime logs keep about a day, and analytics reports carry no query string,
+so a tag on the redirect would never be seen.
 
 Vercel: both stackmysats domains are set to **serve** (no dashboard "Redirect to"), so
 the code path is the only path. Never run both; the dashboard answers first and hides
@@ -83,5 +86,5 @@ domain ever lapses. If it is ever dropped, revert the printed artefacts first.
 ## Measuring
 
 Monthly: Search Console queries containing "sats" or "stack" for
-`/calculators/stack-sats-goal`; `utm_source=stackmysats` in Vercel Web Analytics.
-No typed traffic after 8–12 weeks: leave the redirect forever and stop thinking about it.
+`/calculators/stack-sats-goal`. Typed traffic through stackmysats.com is not counted:
+leave the redirect in place and stop thinking about it.

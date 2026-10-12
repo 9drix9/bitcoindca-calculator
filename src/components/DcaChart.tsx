@@ -13,35 +13,78 @@ import {
     Line,
     ComposedChart,
     Brush,
+    useXAxisDomain,
 } from 'recharts';
 import { DcaBreakdownItem, HistoricalEvent } from '@/types';
 import { Camera } from 'lucide-react';
 import clsx from 'clsx';
 import { useCurrency, Denomination } from '@/context/CurrencyContext';
-import { formatUtc } from '@/utils/dates';
+import { DAY_MS, formatUtc } from '@/utils/dates';
 import { Card } from '@/components/ui/Card';
 import { useIsDark } from '@/hooks/useIsDark';
 
 type ChartTab = 'portfolio' | 'price';
+
+/** What the reader has switched on in the chart. */
+export interface DcaChartView {
+    tab: ChartTab;
+    isLog: boolean;
+    showPowerLaw: boolean;
+    showEvents: boolean;
+}
+
+const DEFAULT_CHART_VIEW: DcaChartView = { tab: 'portfolio', isLog: false, showPowerLaw: false, showEvents: false };
 
 interface DcaChartProps {
     data: DcaBreakdownItem[];
     /** Overrides the site-wide denomination preference when supplied. */
     unit?: Denomination;
     /**
-     * Accepted for backward compatibility with the parent call site but intentionally
-     * unused: the old M2 overlay min-max-normalized money supply onto the portfolio's
-     * scale, which invented a visual correlation that is not in the data (removed per
-     * design spec §2).
+     * The chart's switches, when the parent keeps them. The calculator does:
+     * it unmounts its results while a first set of prices loads, and the
+     * switches have to outlive that. Left out, the chart keeps them itself.
      */
-    m2Data?: [number, number][] | null;
+    view?: DcaChartView;
+    onViewChange?: (view: DcaChartView) => void;
+    /**
+     * Largest fall in portfolio value, in percent, from the engine's daily
+     * walk: the figure the stats strip shows. Pass null when it cannot be
+     * measured (a fixed manual price). Leave it out when the series is not the
+     * one the figure describes: the text summary then measures purchase days
+     * only, and says so.
+     */
+    maxDrawdownPercent?: number | null;
+    /**
+     * UTC midnight (ms) of today, from the calculator. When the series runs past
+     * it (a plan with a future end date), the chart marks where today falls and
+     * says in words that everything to the right is a projection.
+     */
+    todayUtcTs?: number;
+    /**
+     * What the purchases still to come are priced at, in words that fit after
+     * "at". Left out, "the last known price". A calculator running on a typed
+     * price passes that instead.
+     */
+    plannedPriceWords?: string;
+    /**
+     * Where the stack stands on the day the headline values it, when that is
+     * after the last purchase: UTC midnight (ms), the BTC price used and the
+     * stack's value, both in USD. Drawn as a closing point, so the right edge
+     * and the text summary end on the headline's figure. Ignored unless it is
+     * dated after the last row.
+     */
+    valuation?: { ts: number; price: number; value: number };
 }
 
+// Past entries are the UTC date of the halving block, like every date on the
+// site: block 840,000 was mined at 00:09 UTC on 20 April 2024. Halving 5 is
+// that time plus 210,000 ten-minute blocks, to be replaced by the block's own
+// date once block 1,050,000 is mined.
 const HALVING_DATES: { date: string; label: string }[] = [
     { date: '2012-11-28', label: 'Halving 1' },
     { date: '2016-07-09', label: 'Halving 2' },
     { date: '2020-05-11', label: 'Halving 3' },
-    { date: '2024-04-19', label: 'Halving 4' },
+    { date: '2024-04-20', label: 'Halving 4' },
     { date: '2028-04-17', label: 'Halving 5 (est.)' },
 ];
 
@@ -57,9 +100,8 @@ const HISTORICAL_EVENTS: HistoricalEvent[] = [
 
 const GENESIS_DATE = new Date('2009-01-03T00:00:00Z');
 
-const computePowerLawPrice = (dateStr: string): number | null => {
-    const date = new Date(dateStr);
-    const daysSinceGenesis = (date.getTime() - GENESIS_DATE.getTime()) / (1000 * 60 * 60 * 24);
+const computePowerLawPrice = (ts: number): number | null => {
+    const daysSinceGenesis = (ts - GENESIS_DATE.getTime()) / DAY_MS;
     if (daysSinceGenesis <= 0) return null;
     const logDays = Math.log10(daysSinceGenesis);
     return Math.pow(10, 5.82 * logDays - 17.01);
@@ -74,17 +116,34 @@ const DOWNSAMPLE_THRESHOLD = 500;
 const DOWNSAMPLE_TARGET = 400;
 const BRUSH_MIN_POINTS = 90;
 const BUY_DOT_MAX_POINTS = 60;
+// Up to this many days on the axis, ticks are labelled with the day ("Jul 8").
+// Beyond it, with month and year ("Jul 26"), which on a short span repeats.
+const DAY_LABEL_MAX_DAYS = 550;
+
+/** Index of the last row dated on or before `ts`, or -1. Rows are in date order. */
+function lastIndexThrough(rows: readonly { date: string }[], ts: number): number {
+    let i = rows.length - 1;
+    while (i >= 0 && Date.parse(rows[i].date) > ts) i--;
+    return i;
+}
 
 /**
  * Min-max-per-bucket downsampling. For each bucket keep the min and max points of
  * BOTH portfolioValue and price (in time order), so peaks survive on either tab.
  * Up to 4 kept indices per bucket → ~DOWNSAMPLE_TARGET points out.
+ *
+ * The last purchase made by `todayUtcTs` is always kept: it is where history
+ * ends, and the line to its left must not stop a bucket short of it.
  */
-function downsampleMinMax(data: DcaBreakdownItem[]): DcaBreakdownItem[] {
+function downsampleMinMax(data: DcaBreakdownItem[], todayUtcTs?: number): DcaBreakdownItem[] {
     if (data.length <= DOWNSAMPLE_THRESHOLD) return data;
     const buckets = Math.max(1, Math.floor(DOWNSAMPLE_TARGET / 4));
     const bucketSize = data.length / buckets;
     const keep = new Set<number>([0, data.length - 1]);
+    if (todayUtcTs !== undefined) {
+        const lastMade = lastIndexThrough(data, todayUtcTs);
+        if (lastMade >= 0) keep.add(lastMade);
+    }
     for (let b = 0; b < buckets; b++) {
         const start = Math.floor(b * bucketSize);
         const end = Math.min(data.length, Math.max(start + 1, Math.floor((b + 1) * bucketSize)));
@@ -108,7 +167,11 @@ function downsampleMinMax(data: DcaBreakdownItem[]): DcaBreakdownItem[] {
 }
 
 interface ChartPoint {
+    /** UTC ms of `date`: the X position, so the axis is linear in time. */
+    ts: number;
     date: string;
+    /** True on the point a `valuation` adds: a valuation, not a purchase. */
+    closing: boolean;
     invested: number;
     accumulated: number;
     totalAccumulated: number;
@@ -119,27 +182,78 @@ interface ChartPoint {
     powerLaw: number | null;
 }
 
-function snapToChartDate(points: ChartPoint[], targetTs: number): string {
-    let closestIdx = 0;
-    let closestDist = Infinity;
-    for (let i = 0; i < points.length; i++) {
-        const dist = Math.abs(new Date(points[i].date).getTime() - targetTs);
-        if (dist < closestDist) {
-            closestDist = dist;
-            closestIdx = i;
-        }
-    }
-    return points[closestIdx].date;
+/**
+ * Which side of a vertical line its label goes. A label centred on a line near
+ * either end of the series runs off the plot, so there it sits on the inner side.
+ */
+function labelSideFor(
+    ts: number,
+    firstTs: number,
+    lastTs: number,
+    preferred: 'insideTop' | 'insideTopLeft',
+): 'insideTop' | 'insideTopLeft' | 'insideTopRight' {
+    const along = lastTs > firstTs ? (ts - firstTs) / (lastTs - firstTs) : 0;
+    if (along > 0.85) return 'insideTopRight';
+    if (along < 0.1) return 'insideTopLeft';
+    return preferred;
 }
 
-// ── Viewport: the brush is sized for fingers below 640px, for pixels above ────
-const resizeSubscribe = (onChange: () => void) => {
-    window.addEventListener('resize', onChange);
-    return () => window.removeEventListener('resize', onChange);
+// ── Brush ─────────────────────────────────────────────────────────────────────
+// Sized for a finger on a narrow screen or a coarse pointer, for a mouse
+// otherwise: the same test as the 44px floor in globals.css.
+const FINGER_QUERY = '(max-width: 640px), (pointer: coarse)';
+const fingerSubscribe = (onChange: () => void) => {
+    const query = window.matchMedia(FINGER_QUERY);
+    query.addEventListener('change', onChange);
+    return () => query.removeEventListener('change', onChange);
 };
-const getIsWide = () => window.innerWidth >= 640;
-const getIsWideServer = () => false;
-const useIsWideViewport = () => useSyncExternalStore(resizeSubscribe, getIsWide, getIsWideServer);
+const getIsFinger = () => window.matchMedia(FINGER_QUERY).matches;
+const getIsFingerServer = () => true;
+const useFingerBrush = () => useSyncExternalStore(fingerSubscribe, getIsFinger, getIsFingerServer);
+
+const FINGER_BRUSH_HEIGHT = 30;
+const FINGER_HANDLE_WIDTH = 24;
+const TOUCH_TARGET = 44;
+
+/**
+ * The finger-sized brush handle: drawn 24px wide, with an unpainted 44px
+ * square around it to land on. The square reaches up into the band of axis
+ * labels and never below the brush, where the chart ends.
+ */
+function renderFingerHandle({ x, y, width, height, stroke }: { x: number; y: number; width: number; height: number; stroke?: string }) {
+    const gripY = Math.floor(y + height / 2) - 1;
+    return (
+        <>
+            <rect
+                x={x - (TOUCH_TARGET - width) / 2}
+                y={y + height - TOUCH_TARGET}
+                width={TOUCH_TARGET}
+                height={TOUCH_TARGET}
+                fill="transparent"
+                stroke="none"
+            />
+            <rect x={x} y={y} width={width} height={height} fill={stroke} stroke="none" />
+            <line x1={x + 1} y1={gripY} x2={x + width - 1} y2={gripY} fill="none" stroke="#fff" />
+            <line x1={x + 1} y1={gripY + 2} x2={x + width - 1} y2={gripY + 2} fill="none" stroke="#fff" />
+        </>
+    );
+}
+
+/**
+ * Reports whether the X axis, as drawn, covers a short span. Read from the
+ * chart's own axis so that a brush zoom counts: a five-year plan zoomed to
+ * three months needs day labels as much as a three-month plan does.
+ */
+function AxisSpanProbe({ onShortSpan }: { onShortSpan: (short: boolean) => void }) {
+    const domain = useXAxisDomain();
+    const from = domain?.[0];
+    const to = domain?.[domain.length - 1];
+    const short = typeof from === 'number' && typeof to === 'number' ? (to - from) / DAY_MS <= DAY_LABEL_MAX_DAYS : null;
+    useEffect(() => {
+        if (short !== null) onShortSpan(short);
+    }, [short, onShortSpan]);
+    return null;
+}
 
 // ── Text alternative ──────────────────────────────────────────────────────────
 
@@ -171,6 +285,11 @@ function maxDrawdownPct(values: readonly number[]): number | null {
     }
     return seen ? worst * 100 : null;
 }
+
+/** Shown above the plot whenever the series runs past today. */
+const PROJECTION_NOTE = 'Right of the Today line the purchases have not happened yet.';
+/** The same, for a plan whose first purchase is still to come. */
+const ALL_PROJECTED_NOTE = 'None of these purchases has happened yet.';
 
 const signedPct = (pct: number): string => `${pct >= 0 ? 'up ' : 'down '}${Math.abs(pct).toFixed(1)}%`;
 
@@ -221,14 +340,12 @@ function TooltipRow({
 function ChartTooltip({
     active,
     payload,
-    label,
     tab,
     unit,
     colors,
 }: {
     active?: boolean;
     payload?: TooltipPayloadEntry[];
-    label?: string | number;
     tab: ChartTab;
     unit: Denomination;
     colors: SeriesColors;
@@ -246,7 +363,7 @@ function ChartTooltip({
     return (
         <div className="rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-xs shadow-lg dark:border-slate-700 dark:bg-slate-900">
             <p className="mb-1.5 font-semibold text-slate-800 dark:text-slate-100">
-                {formatUtc(String(label ?? point.date), 'full')}
+                {formatUtc(point.date, 'full')}
             </p>
             <div className="space-y-1">
                 {tab === 'portfolio' ? (
@@ -291,12 +408,21 @@ function ChartTooltip({
 }
 
 // The checkbox alone is a 16px target, so the label carries the tap area
-// (clicking a label toggles its input). min-h-11 below sm: phones get the full
-// 44px touch floor; pointer devices keep the tighter 32px row.
+// (clicking a label toggles its input): 44px on a narrow screen or a coarse
+// pointer, the tighter 32px row for a mouse.
 const toggleLabelClass =
-    'flex min-h-11 sm:min-h-8 cursor-pointer select-none items-center gap-1.5 whitespace-nowrap py-1 pr-1 text-[11px] text-slate-500 dark:text-slate-400';
+    'flex min-h-11 sm:min-h-8 pointer-coarse:min-h-11 cursor-pointer select-none items-center gap-1.5 whitespace-nowrap py-1 pr-1 text-[11px] text-slate-500 dark:text-slate-400';
 
-export const DcaChart = memo(function DcaChart({ data, unit }: DcaChartProps) {
+export const DcaChart = memo(function DcaChart({
+    data,
+    unit,
+    todayUtcTs,
+    view,
+    onViewChange,
+    maxDrawdownPercent,
+    plannedPriceWords = 'the last known price',
+    valuation,
+}: DcaChartProps) {
     const { currencyConfig, convertFromUsd, denomination, formatCurrency, formatBtc, formatSats } = useCurrency();
     // Falls back to the site-wide preference when the call site doesn't pin a unit.
     const activeUnit: Denomination = unit ?? denomination;
@@ -306,16 +432,21 @@ export const DcaChart = memo(function DcaChart({ data, unit }: DcaChartProps) {
     const uid = useId();
     const captionId = `${uid}-caption`;
     const summaryId = `${uid}-summary`;
-    const [tab, setTab] = useState<ChartTab>('portfolio');
-    const [showPowerLaw, setShowPowerLaw] = useState(false);
-    const [showEvents, setShowEvents] = useState(false);
-    const [isLog, setIsLog] = useState(false);
+    const [ownView, setOwnView] = useState<DcaChartView>(DEFAULT_CHART_VIEW);
+    const chartView = view ?? ownView;
+    const { tab, isLog, showPowerLaw, showEvents } = chartView;
+    const changeView = (patch: Partial<DcaChartView>) => {
+        const next = { ...chartView, ...patch };
+        if (onViewChange) onViewChange(next);
+        else setOwnView(next);
+    };
     const [exportError, setExportError] = useState<string | null>(null);
     const exportErrorTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
     const isDark = useIsDark();
-    const isWide = useIsWideViewport();
+    const fingerBrush = useFingerBrush();
+    const [zoomedShort, setZoomedShort] = useState<boolean | null>(null);
 
-    const colors: SeriesColors & { grid: string; axis: string; halving: string; cursor: string } = {
+    const colors: SeriesColors & { grid: string; axis: string; halving: string; halvingLabel: string; cursor: string } = {
         portfolio: '#d97706',
         price: '#059669',
         powerLaw: isDark ? '#8b5cf6' : '#7c3aed',
@@ -325,6 +456,8 @@ export const DcaChart = memo(function DcaChart({ data, unit }: DcaChartProps) {
         // the dark one, so a single fixed value cannot clear AA in both.
         axis: isDark ? '#94a3b8' : '#64748b',
         halving: '#a855f7',
+        // 10px text needs 4.5:1. The line's purple is 3.96:1 on the light card.
+        halvingLabel: isDark ? '#a855f7' : '#7e22ce',
         cursor: isDark ? '#334155' : '#cbd5e1',
     };
 
@@ -335,8 +468,10 @@ export const DcaChart = memo(function DcaChart({ data, unit }: DcaChartProps) {
             const sym = currencyConfig.symbol;
             const sign = v < 0 ? '-' : '';
             const abs = Math.abs(v);
-            if (abs >= 1_000_000_000) return `${sign}${sym}${(abs / 1_000_000_000).toFixed(1)}B`;
-            if (abs >= 1_000_000) return `${sign}${sym}${(abs / 1_000_000).toFixed(1)}M`;
+            // One decimal below 100: "$100.0M" is wider than the axis.
+            const short = (n: number): string => n.toFixed(n >= 100 ? 0 : 1);
+            if (abs >= 1_000_000_000) return `${sign}${sym}${short(abs / 1_000_000_000)}B`;
+            if (abs >= 1_000_000) return `${sign}${sym}${short(abs / 1_000_000)}M`;
             if (abs >= 10_000) return `${sign}${sym}${(abs / 1_000).toFixed(0)}k`;
             if (abs >= 1_000) return `${sign}${sym}${(abs / 1_000).toFixed(1)}k`;
             if (abs >= 1) return `${sign}${sym}${abs.toFixed(0)}`;
@@ -347,17 +482,51 @@ export const DcaChart = memo(function DcaChart({ data, unit }: DcaChartProps) {
         [convertFromUsd, currencyConfig.symbol],
     );
 
-    const sampled = useMemo(() => {
-        if (!data || data.length === 0) return [];
-        return downsampleMinMax(data);
-    }, [data]);
+    // The rows the chart draws: one per day, and the closing valuation when the
+    // parent supplies one dated after the last of them.
+    const closingTs = valuation?.ts;
+    const closingPrice = valuation?.price;
+    const closingValue = valuation?.value;
+    const { series, hasClosing } = useMemo<{ series: DcaBreakdownItem[]; hasClosing: boolean }>(() => {
+        if (!data || data.length === 0) return { series: [], hasClosing: false };
+        // A starting stack shares the start date with the first purchase, whose
+        // running totals already include it. Two points at one X would also
+        // stop the axis thinning its ticks.
+        const rows = data.length > 1 && data[0].isStartingStack && data[0].date === data[1].date ? data.slice(1) : data;
+        const last = rows[rows.length - 1];
+        if (
+            closingTs === undefined || closingPrice === undefined || closingValue === undefined ||
+            !(closingTs > Date.parse(last.date)) || !(closingPrice > 0) || !Number.isFinite(closingValue)
+        ) {
+            return { series: rows, hasClosing: false };
+        }
+        const closing: DcaBreakdownItem = {
+            date: new Date(closingTs).toISOString(),
+            price: closingPrice,
+            invested: 0,
+            accumulated: 0,
+            fee: 0,
+            totalInvested: last.totalInvested,
+            totalAccumulated: last.totalAccumulated,
+            portfolioValue: closingValue,
+        };
+        return { series: [...rows, closing], hasClosing: true };
+    }, [data, closingTs, closingPrice, closingValue]);
+
+    const sampled = useMemo(() => downsampleMinMax(series, todayUtcTs), [series, todayUtcTs]);
 
     const chartData = useMemo<ChartPoint[]>(() => {
         const clamp = (v: number): number | null => (isLog && v <= 0 ? null : v);
-        return sampled.map((item) => {
-            const pl = showPowerLaw ? computePowerLawPrice(item.date) : null;
+        return sampled.map((item, i) => {
+            const ts = Date.parse(item.date);
+            // The power law is a fit to history. Past today it would be a model
+            // price for a date that has not happened, so the curve stops there.
+            const isFuture = todayUtcTs !== undefined && ts > todayUtcTs;
+            const pl = showPowerLaw && !isFuture ? computePowerLawPrice(ts) : null;
             return {
+                ts,
                 date: item.date,
+                closing: hasClosing && i === sampled.length - 1,
                 invested: item.invested,
                 accumulated: item.accumulated,
                 totalAccumulated: item.totalAccumulated,
@@ -367,7 +536,7 @@ export const DcaChart = memo(function DcaChart({ data, unit }: DcaChartProps) {
                 powerLaw: pl === null ? null : clamp(pl),
             };
         });
-    }, [sampled, showPowerLaw, isLog]);
+    }, [sampled, showPowerLaw, isLog, todayUtcTs, hasClosing]);
 
     // Average cost basis = last cumulative invested / last cumulative accumulated.
     const avgCostUsd = useMemo(() => {
@@ -376,29 +545,24 @@ export const DcaChart = memo(function DcaChart({ data, unit }: DcaChartProps) {
         return last.totalAccumulated > 0 ? last.totalInvested / last.totalAccumulated : null;
     }, [data]);
 
-    // Snap halving/event lines to dates that exist in the (downsampled) chart data.
+    // Halving and event lines that fall inside the series, at their own dates.
     const halvingLines = useMemo(() => {
         if (chartData.length < 2) return [];
-        const firstTs = new Date(chartData[0].date).getTime();
-        const lastTs = new Date(chartData[chartData.length - 1].date).getTime();
-        return HALVING_DATES.filter((h) => {
-            const t = new Date(h.date).getTime();
-            return t >= firstTs && t <= lastTs;
-        }).map((h) => ({ ...h, snappedDate: snapToChartDate(chartData, new Date(h.date).getTime()) }));
+        const firstTs = chartData[0].ts;
+        const lastTs = chartData[chartData.length - 1].ts;
+        return HALVING_DATES.map((h) => ({ ...h, ts: new Date(h.date).getTime() }))
+            .filter((h) => h.ts >= firstTs && h.ts <= lastTs)
+            .map((h) => ({ ...h, labelPosition: labelSideFor(h.ts, firstTs, lastTs, 'insideTop') }));
     }, [chartData]);
 
     const eventLines = useMemo(() => {
         if (!showEvents || chartData.length < 2) return [];
-        const firstTs = new Date(chartData[0].date).getTime();
-        const lastTs = new Date(chartData[chartData.length - 1].date).getTime();
+        const firstTs = chartData[0].ts;
+        const lastTs = chartData[chartData.length - 1].ts;
 
-        const candidates = HISTORICAL_EVENTS.filter((e) => {
-            const t = new Date(e.date).getTime();
-            return t >= firstTs && t <= lastTs;
-        }).map((e) => {
-            const ts = new Date(e.date).getTime();
-            return { ...e, ts, snappedDate: snapToChartDate(chartData, ts) };
-        });
+        const candidates = HISTORICAL_EVENTS.map((e) => ({ ...e, ts: new Date(e.date).getTime() })).filter(
+            (e) => e.ts >= firstTs && e.ts <= lastTs,
+        );
 
         // Filter out events too close together to be readable on long ranges
         const rangeYears = (lastTs - firstTs) / (365.25 * 24 * 60 * 60 * 1000);
@@ -417,33 +581,52 @@ export const DcaChart = memo(function DcaChart({ data, unit }: DcaChartProps) {
         return candidates;
     }, [chartData, showEvents]);
 
+    // Set when the series continues past today. `todayOnAxis` is false when
+    // the whole series lies after today: there is no "today" on the axis to
+    // mark, and every point is a projection.
+    const projection = useMemo(() => {
+        if (todayUtcTs === undefined || chartData.length === 0) return null;
+        const firstTs = chartData[0].ts;
+        const lastTs = chartData[chartData.length - 1].ts;
+        if (!(lastTs > todayUtcTs)) return null;
+        const todayOnAxis = firstTs <= todayUtcTs;
+        return {
+            todayOnAxis,
+            labelPosition: labelSideFor(todayUtcTs, firstTs, lastTs, 'insideTopLeft'),
+            note: `${todayOnAxis ? PROJECTION_NOTE : ALL_PROJECTED_NOTE} They are drawn at ${plannedPriceWords}: a projection, not history.`,
+        };
+    }, [chartData, todayUtcTs, plannedPriceWords]);
+
     // ── Text alternative: caption, prose summary, and a downsampled data table ──
     // A Recharts SVG carries nothing an assistive technology can read, so the
     // figure is labelled and described in text and the series is repeated as a
     // small table. The chart itself is collapsed to a single node (see role="img"
     // below) so the axis ticks are not read out on top of the table.
 
-    const textRows = useMemo(() => sampleEvenly(data ?? [], TEXT_TABLE_ROWS), [data]);
+    const textRows = useMemo(() => sampleEvenly(series, TEXT_TABLE_ROWS), [series]);
 
     const chartCaption = useMemo(() => {
-        if (!data || data.length === 0) return 'DCA performance chart';
-        const start = formatUtc(data[0].date, 'full');
-        const end = formatUtc(data[data.length - 1].date, 'full');
+        if (series.length === 0) return 'DCA performance chart';
+        const start = formatUtc(series[0].date, 'full');
+        const end = formatUtc(series[series.length - 1].date, 'full');
         return tab === 'portfolio'
             ? `Portfolio value versus total invested, ${start} to ${end}`
             : `Bitcoin price versus average cost, ${start} to ${end}`;
-    }, [data, tab]);
+    }, [series, tab]);
 
     const chartSummary = useMemo(() => {
-        if (!data || data.length === 0) return '';
-        const first = data[0];
-        const last = data[data.length - 1];
+        if (series.length === 0) return '';
+        const first = series[0];
+        const last = series[series.length - 1];
         const startLabel = formatUtc(first.date, 'full');
         const endLabel = formatUtc(last.date, 'full');
         const parts: string[] = [];
 
         if (tab === 'portfolio') {
-            const drawdown = maxDrawdownPct(data.map((d) => d.portfolioValue));
+            // The engine's figure when the parent has one. The fallback only
+            // sees purchase days, and says so.
+            const measured = maxDrawdownPercent !== undefined;
+            const drawdown = measured ? maxDrawdownPercent : maxDrawdownPct(data.map((d) => d.portfolioValue));
             const pl = last.portfolioValue - last.totalInvested;
             const plPct = last.totalInvested > 0 ? (pl / last.totalInvested) * 100 : null;
             parts.push(
@@ -458,7 +641,11 @@ export const DcaChart = memo(function DcaChart({ data, unit }: DcaChartProps) {
                       `${signedPct(plPct)}.`,
             );
             if (drawdown !== null && drawdown > 0) {
-                parts.push(`Largest peak-to-trough fall in portfolio value over the period: ${drawdown.toFixed(1)}%.`);
+                parts.push(
+                    measured
+                        ? `Largest peak-to-trough fall in portfolio value over the period: ${drawdown.toFixed(1)}%.`
+                        : `Largest peak-to-trough fall in portfolio value between purchase dates: ${drawdown.toFixed(1)}%.`,
+                );
             }
         } else {
             const drawdown = maxDrawdownPct(data.map((d) => d.price));
@@ -468,14 +655,21 @@ export const DcaChart = memo(function DcaChart({ data, unit }: DcaChartProps) {
                     `${formatCurrency(last.price)} on ${endLabel}${pct === null ? '' : `, ${signedPct(pct)}`}.`,
             );
             if (avgCostUsd !== null) parts.push(`Average cost paid: ${formatCurrency(avgCostUsd)}.`);
+            // Purchase-day prices only: a low between two buys is not in this
+            // series, so the sentence does not claim the whole period.
             if (drawdown !== null && drawdown > 0) {
-                parts.push(`Largest peak-to-trough fall in price over the period: ${drawdown.toFixed(1)}%.`);
+                parts.push(`Largest peak-to-trough fall in price between purchase dates: ${drawdown.toFixed(1)}%.`);
             }
         }
 
+        if (todayUtcTs !== undefined && new Date(last.date).getTime() > todayUtcTs) {
+            parts.push(
+                `Dates after ${formatUtc(todayUtcTs, 'full')} are purchases still to come, priced at ${plannedPriceWords}: a projection, not history.`,
+            );
+        }
         parts.push(`A table of ${textRows.length} evenly spaced sample points follows the chart.`);
         return parts.join(' ');
-    }, [data, tab, formatCurrency, avgCostUsd, textRows.length]);
+    }, [data, series, tab, formatCurrency, avgCostUsd, textRows.length, todayUtcTs, maxDrawdownPercent, plannedPriceWords]);
 
     // Short label for the SVG itself — the detail lives in the caption, summary
     // and table, so repeating it here would make every reader hear it twice.
@@ -506,31 +700,26 @@ export const DcaChart = memo(function DcaChart({ data, unit }: DcaChartProps) {
         }
     }, []);
 
-    // The brush now renders at every width. Below 640px it has to fight the global
-    // chart touch rules in globals.css (`.recharts-wrapper *` gets
-    // `touch-action: manipulation`, `.recharts-surface` gets `pan-x pan-y`), which
-    // let the browser claim a drag for scrolling and fire touchcancel mid-gesture.
-    // React attaches touchstart/touchmove passively at the root, so Recharts' own
-    // handlers cannot preventDefault. This non-passive listener does it for them,
-    // and only while a traveller or the slide is actually being dragged — a drag
-    // anywhere else on the chart still scrolls the page normally.
     const showBrush = (data?.length ?? 0) > BRUSH_MIN_POINTS;
 
     useEffect(() => () => {
         if (exportErrorTimer.current) clearTimeout(exportErrorTimer.current);
     }, []);
 
-    // The brush travellers are SVG rects Recharts makes keyboard-focusable, but
-    // they sit inside the role=img subtree, so a keyboard user tabs into two
-    // stops that announce raw pixel coordinates. The sr-only table is the
-    // accessible path; take the travellers out of the tab order (re-applied via
-    // observer because Recharts recreates them on every data change).
+    // Recharts makes the brush travellers focusable sliders, but they sit
+    // inside the role=img subtree: a keyboard user tabs into two stops that
+    // announce raw pixel coordinates. The sr-only table is the accessible
+    // path, so the travellers leave the tab order and the accessibility tree.
+    // The tabindex is removed, not set to -1, which would still count as
+    // focusable content inside an image. Re-applied via observer because
+    // Recharts recreates them on every data change.
     useEffect(() => {
         const el = plotRef.current;
         if (!el || !showBrush) return;
         const detune = () => {
-            el.querySelectorAll<SVGElement>('.recharts-brush-traveller').forEach((t) => {
-                t.setAttribute('tabindex', '-1');
+            el.querySelectorAll<SVGElement>('.recharts-brush-traveller:not([aria-hidden])').forEach((t) => {
+                t.removeAttribute('tabindex');
+                t.setAttribute('aria-hidden', 'true');
             });
         };
         detune();
@@ -539,6 +728,13 @@ export const DcaChart = memo(function DcaChart({ data, unit }: DcaChartProps) {
         return () => observer.disconnect();
     }, [showBrush]);
 
+    // The global chart touch rules in globals.css (`.recharts-wrapper *` gets
+    // `touch-action: manipulation`, `.recharts-surface` gets `pan-x pan-y`) let
+    // the browser claim a drag for scrolling and fire touchcancel mid-gesture.
+    // React attaches touchstart/touchmove passively at the root, so Recharts' own
+    // handlers cannot preventDefault. This non-passive listener does it for them,
+    // and only while a traveller or the slide is actually being dragged — a drag
+    // anywhere else on the chart still scrolls the page normally.
     useEffect(() => {
         const el = plotRef.current;
         if (!el || !showBrush) return;
@@ -570,26 +766,34 @@ export const DcaChart = memo(function DcaChart({ data, unit }: DcaChartProps) {
     if (!data || data.length === 0) return null;
 
     const showBuyDots = chartData.length <= BUY_DOT_MAX_POINTS;
-    // Legend only when the active tab draws ≥ 2 series
-    const showLegend = tab === 'portfolio' || showPowerLaw;
+    // Legend only when the active tab draws ≥ 2 series. The power law draws
+    // nothing for a plan that lies wholly after today.
+    const showLegend = tab === 'portfolio' || (showPowerLaw && chartData.some((p) => p.powerLaw !== null));
+    // Until the axis has reported what it shows, the whole series is the span.
+    const wholeSpanShort = (chartData[chartData.length - 1].ts - chartData[0].ts) / DAY_MS <= DAY_LABEL_MAX_DAYS;
+    const xTickStyle = (zoomedShort ?? wholeSpanShort) ? 'monthDay' : 'shortMonthYear';
 
     const tabButtonClass = (active: boolean) =>
         clsx(
             'rounded-md px-2.5 py-1 text-xs font-medium transition-colors',
             active
                 ? 'bg-white text-amber-700 shadow-sm dark:bg-slate-700 dark:text-amber-400'
-                : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200',
+                // slate-600, like the calculator's Live / Manual switch: the
+                // unselected option sits on the slate-100 track, the darkest
+                // surface muted text lands on.
+                : 'text-slate-600 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200',
         );
 
     return (
         <div ref={chartRef}>
-            <Card className="relative flex h-[340px] w-full flex-col overflow-hidden p-3 select-none touch-manipulation contain-layout-paint sm:h-[460px] sm:p-4">
+            {/* Below sm the plot keeps a fixed height and the card grows with
+                the notes above it. From sm up the card is fixed and has the room. */}
+            <Card className="relative flex min-h-[340px] w-full flex-col overflow-hidden p-3 select-none touch-manipulation contain-layout-paint sm:h-[460px] sm:p-4">
                 {/* Header: title + tab switcher */}
                 <div className="mb-2 flex shrink-0 items-center justify-between gap-2">
                     {/* "Performance Over Time" does not fit beside the Portfolio /
-                        BTC Price switcher at 390px and was rendering as
-                        "Performance Over Ti…". Shortened on small screens rather
-                        than truncated mid-word. */}
+                        BTC Price switcher at 390px, so small screens get a shorter
+                        title rather than one cut mid-word. */}
                     <h3 className="min-w-0 text-sm font-semibold text-slate-800 dark:text-slate-100 sm:text-base">
                         <span className="sm:hidden">Performance</span>
                         <span className="hidden sm:inline">Performance Over Time</span>
@@ -602,7 +806,7 @@ export const DcaChart = memo(function DcaChart({ data, unit }: DcaChartProps) {
                         <button
                             type="button"
                             aria-pressed={tab === 'portfolio'}
-                            onClick={() => setTab('portfolio')}
+                            onClick={() => changeView({ tab: 'portfolio' })}
                             className={tabButtonClass(tab === 'portfolio')}
                         >
                             Portfolio
@@ -610,7 +814,7 @@ export const DcaChart = memo(function DcaChart({ data, unit }: DcaChartProps) {
                         <button
                             type="button"
                             aria-pressed={tab === 'price'}
-                            onClick={() => setTab('price')}
+                            onClick={() => changeView({ tab: 'price' })}
                             className={tabButtonClass(tab === 'price')}
                         >
                             BTC Price
@@ -627,7 +831,7 @@ export const DcaChart = memo(function DcaChart({ data, unit }: DcaChartProps) {
                         <input
                             type="checkbox"
                             checked={isLog}
-                            onChange={(e) => setIsLog(e.target.checked)}
+                            onChange={(e) => changeView({ isLog: e.target.checked })}
                             aria-describedby={isLog ? `${uid}-log-hint` : undefined}
                             className="h-4 w-4 rounded border-slate-300 text-amber-700 dark:text-amber-400 focus:ring-amber-500 dark:border-slate-600"
                         />
@@ -638,7 +842,7 @@ export const DcaChart = memo(function DcaChart({ data, unit }: DcaChartProps) {
                             <input
                                 type="checkbox"
                                 checked={showPowerLaw}
-                                onChange={(e) => setShowPowerLaw(e.target.checked)}
+                                onChange={(e) => changeView({ showPowerLaw: e.target.checked })}
                                 aria-describedby={showPowerLaw ? `${uid}-pl-hint` : undefined}
                                 className="h-4 w-4 rounded border-slate-300 text-violet-600 focus:ring-violet-500 dark:border-slate-600"
                             />
@@ -649,7 +853,7 @@ export const DcaChart = memo(function DcaChart({ data, unit }: DcaChartProps) {
                         <input
                             type="checkbox"
                             checked={showEvents}
-                            onChange={(e) => setShowEvents(e.target.checked)}
+                            onChange={(e) => changeView({ showEvents: e.target.checked })}
                             className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 dark:border-slate-600"
                         />
                         Events
@@ -658,7 +862,7 @@ export const DcaChart = memo(function DcaChart({ data, unit }: DcaChartProps) {
                     <button
                         type="button"
                         onClick={handleExport}
-                        className="flex items-center justify-center rounded-lg p-1.5 max-sm:min-h-11 max-sm:min-w-11 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-600 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-300 sm:p-2"
+                        className="flex items-center justify-center rounded-lg p-1.5 max-sm:min-h-11 max-sm:min-w-11 pointer-coarse:min-h-11 pointer-coarse:min-w-11 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-600 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-300 sm:p-2"
                         aria-label="Save the chart as a PNG image"
                         title="Save the chart as a PNG image"
                     >
@@ -666,13 +870,16 @@ export const DcaChart = memo(function DcaChart({ data, unit }: DcaChartProps) {
                     </button>
                 </div>
 
-                {(isLog || (tab === 'price' && showPowerLaw)) && (
+                {(isLog || (tab === 'price' && showPowerLaw) || projection !== null) && (
                     <div className="mb-1 shrink-0 space-y-0.5 text-[11px] leading-snug text-slate-500 dark:text-slate-400">
+                        {projection !== null && <p>{projection.note}</p>}
                         {isLog && (
                             <p id={`${uid}-log-hint`}>Log scale: equal percentage moves take equal space.</p>
                         )}
                         {tab === 'price' && showPowerLaw && (
-                            <p id={`${uid}-pl-hint`}>Power law: a curve fitted to Bitcoin’s whole history — a fit, not a forecast.</p>
+                            <p id={`${uid}-pl-hint`}>
+                                Power law: a curve fitted to Bitcoin’s whole history{projection !== null ? ', drawn up to today only' : ''} — a fit, not a forecast.
+                            </p>
                         )}
                     </div>
                 )}
@@ -699,13 +906,23 @@ export const DcaChart = memo(function DcaChart({ data, unit }: DcaChartProps) {
                     <p id={summaryId} className="sr-only">
                         {chartSummary}
                         {tab === 'price' && showPowerLaw
-                            ? ' A power-law trend line fitted to Bitcoin’s full price history is also drawn — a curve fit, not a forecast.'
+                            ? ` A power-law trend line fitted to Bitcoin’s full price history is also drawn${projection !== null ? ', up to today only' : ''} — a curve fit, not a forecast.`
                             : ''}
                     </p>
                     {/* role="img" collapses the whole SVG — axis ticks, legend, reference-line
                         labels, brush ticks — into one node, so none of it is read out a second
-                        time next to the table below. */}
-                    <div ref={plotRef} className="min-h-0 flex-1" role="img" aria-label={chartAriaLabel}>
+                        time next to the table below.
+                        The legend text is coloured here: Recharts gives it the series colour
+                        inline, and a formatter that returns an element to recolour it ends up
+                        in the icon's label as "[object Object]".
+                        Axis labels take no pointer events: they are painted over the top of
+                        the brush handles' touch area and would swallow a drag that starts on one. */}
+                    <div
+                        ref={plotRef}
+                        className="h-[210px] flex-none sm:h-auto sm:min-h-0 sm:flex-1 [&_.recharts-legend-item-text]:text-slate-500! dark:[&_.recharts-legend-item-text]:text-slate-400! [&_.recharts-cartesian-axis-tick-value]:pointer-events-none"
+                        role="img"
+                        aria-label={chartAriaLabel}
+                    >
                         {/* initialDimension: without it the first render measures -1×-1,
                             spamming a console warning and flashing an empty chart. */}
                         <ResponsiveContainer width="100%" height="100%" debounce={150} initialDimension={{ width: 358, height: 260 }}>
@@ -725,9 +942,13 @@ export const DcaChart = memo(function DcaChart({ data, unit }: DcaChartProps) {
                                 </defs>
                                 {/* Horizontal-only SOLID hairlines */}
                                 <CartesianGrid vertical={false} stroke={colors.grid} />
+                                <AxisSpanProbe onShortSpan={setZoomedShort} />
                                 <XAxis
-                                    dataKey="date"
-                                    tickFormatter={(d: string) => formatUtc(d, 'shortMonthYear')}
+                                    dataKey="ts"
+                                    type="number"
+                                    scale="time"
+                                    domain={['dataMin', 'dataMax']}
+                                    tickFormatter={(ts: number) => formatUtc(ts, xTickStyle)}
                                     minTickGap={40}
                                     tick={{ fontSize: 11, fill: colors.axis }}
                                     tickLine={false}
@@ -748,34 +969,40 @@ export const DcaChart = memo(function DcaChart({ data, unit }: DcaChartProps) {
                                     cursor={{ stroke: colors.cursor, strokeWidth: 1 }}
                                 />
                                 {showLegend && (
-                                    <Legend
-                                        verticalAlign="top"
-                                        height={24}
-                                        iconSize={8}
-                                        wrapperStyle={{ fontSize: 11 }}
-                                        formatter={(value) => <span style={{ color: colors.axis }}>{value}</span>}
-                                    />
+                                    <Legend verticalAlign="top" height={24} iconSize={8} wrapperStyle={{ fontSize: 11 }} />
                                 )}
                                 {halvingLines.map((h) => (
                                     <ReferenceLine
                                         key={h.date}
-                                        x={h.snappedDate}
+                                        x={h.ts}
                                         stroke={colors.halving}
                                         strokeDasharray="4 4"
                                         strokeWidth={1.5}
-                                        label={{ value: h.label, position: 'insideTop', fill: colors.halving, fontSize: 10 }}
+                                        label={{ value: h.label, position: h.labelPosition, fill: colors.halvingLabel, fontSize: 10 }}
                                     />
                                 ))}
+                                {projection !== null && projection.todayOnAxis && (
+                                    <ReferenceLine
+                                        x={todayUtcTs}
+                                        stroke={colors.axis}
+                                        strokeWidth={1.5}
+                                        // One row down, clear of a halving label beside it.
+                                        label={{ value: 'Today', position: projection.labelPosition, dy: 12, fill: colors.axis, fontSize: 10 }}
+                                    />
+                                )}
                                 {eventLines.map((e, i) => (
                                     <ReferenceLine
                                         key={e.date}
-                                        x={e.snappedDate}
+                                        x={e.ts}
                                         stroke={e.color}
                                         strokeDasharray="3 3"
                                         strokeWidth={1}
+                                        // Top labels sit two rows down, under the halving
+                                        // and Today labels.
                                         label={{
                                             value: e.label,
                                             position: i % 2 === 0 ? 'insideTopRight' : 'insideBottomRight',
+                                            dy: i % 2 === 0 ? 24 : 0,
                                             fill: e.color,
                                             fontSize: 10,
                                         }}
@@ -839,7 +1066,15 @@ export const DcaChart = memo(function DcaChart({ data, unit }: DcaChartProps) {
                                         name="BTC Price"
                                         stroke={colors.price}
                                         strokeWidth={2}
-                                        dot={showBuyDots ? { r: 2.5, fill: colors.portfolio, stroke: 'none' } : false}
+                                        // One dot per purchase. The closing valuation is not one.
+                                        dot={
+                                            showBuyDots
+                                                ? ({ cx, cy, payload }) =>
+                                                      (payload as ChartPoint).closing || cx == null || cy == null ? null : (
+                                                          <circle cx={cx} cy={cy} r={2.5} fill={colors.portfolio} stroke="none" />
+                                                      )
+                                                : false
+                                        }
                                         activeDot={{ r: 4, strokeWidth: 0 }}
                                         isAnimationActive={false}
                                     />
@@ -857,19 +1092,21 @@ export const DcaChart = memo(function DcaChart({ data, unit }: DcaChartProps) {
                                     />
                                 )}
                                 {showBrush && (
-                                    // Touch sizing below sm: a 24px-wide, 30px-tall traveller clears
-                                    // the 24x24 CSS-pixel minimum target size for a finger.
                                     <Brush
                                         dataKey="date"
                                         // Recharts' default traveller label reads `data[i].name`,
                                         // which our rows do not have — it would announce
                                         // "Min value: undefined". Override it.
                                         ariaLabel="Zoom the chart to a date range"
-                                        height={isWide ? 24 : 30}
-                                        travellerWidth={isWide ? 8 : 24}
+                                        height={fingerBrush ? FINGER_BRUSH_HEIGHT : 24}
+                                        travellerWidth={fingerBrush ? FINGER_HANDLE_WIDTH : 8}
+                                        traveller={fingerBrush ? renderFingerHandle : undefined}
                                         stroke={colors.portfolio}
                                         fill={isDark ? 'rgba(217, 119, 6, 0.08)' : 'rgba(217, 119, 6, 0.06)'}
-                                        tickFormatter={(d: string) => formatUtc(d, 'shortMonthYear')}
+                                        // No date labels on the brush itself: they are clipped by the
+                                        // card at both ends of the track, and the axis above shows the
+                                        // window as it moves.
+                                        tickFormatter={() => ''}
                                     />
                                 )}
                             </ComposedChart>
@@ -882,13 +1119,10 @@ export const DcaChart = memo(function DcaChart({ data, unit }: DcaChartProps) {
 
                         The `sr-only` class MUST sit on a wrapping <div>, never on the
                         <table> itself. A table sizes to its content and ignores the
-                        class's `width:1px; height:1px` — measured on production, the
-                        table stayed 434x480 — and `overflow:hidden` does not reliably
-                        apply to a table wrapper box either. That left `clip-path` as
-                        the single property hiding it, and clip-path on `display:table`
-                        is unreliable in WebKit, so the caption and all 18 rows painted
-                        over the chart as near-white text in dark mode. A <div> honours
-                        width/height/overflow, so the table is clipped by a real box. */}
+                        class's `width:1px; height:1px`, which leaves `clip-path` as the
+                        only property hiding it, and clip-path on `display:table` is
+                        unreliable in WebKit. A <div> honours width/height/overflow, so
+                        the table is clipped by a real box. */}
                     <div className="sr-only">
                     <table>
                         <caption>
@@ -944,7 +1178,7 @@ export const DcaChart = memo(function DcaChart({ data, unit }: DcaChartProps) {
                     </table>
                     </div>
                 </div>
-                <div className="pointer-events-none absolute bottom-0.5 right-2 select-none text-[9px] text-slate-400/40 dark:text-slate-600/40">
+                <div aria-hidden="true" className="pointer-events-none absolute bottom-0.5 right-2 select-none text-[9px] text-slate-400/40 dark:text-slate-600/40">
                     btcdollarcostaverage.com
                 </div>
             </Card>

@@ -5,22 +5,31 @@ import { Card } from '@/components/ui/Card';
 
 /**
  * Every claim about dcabtc.com on this page was observed in a real browser on
- * this date. Re-verify before editing the observations: if dcaBTC has fixed
- * its results panel, the "what we found" section below must be rewritten, not
+ * this date. Re-verify before editing the observations: if dcaBTC has shipped
+ * a new price table, the "what we found" section below must be rewritten, not
  * merely re-dated.
+ *
+ * The $NaN is date-sensitive even if dcaBTC changes nothing. It appears only
+ * for plans with a purchase inside the gap in the page's built-in price table
+ * (12 September to 12 October 2024), and the "N years ago" presets slide past
+ * that gap as time passes: the default 3-year plan stops crossing it in
+ * October 2027. Re-run the plans, do not assume.
  */
-const LAST_CHECKED = '11 August 2026';
-const LAST_CHECKED_ISO = '2026-08-11';
+const LAST_CHECKED = '12 October 2026';
+const LAST_CHECKED_ISO = '2026-10-12';
+/** The page went live with the 11 August 2026 check. Only dateModified moves. */
+const FIRST_PUBLISHED_ISO = '2026-08-11';
 
 const BASE_URL = 'https://btcdollarcostaverage.com';
 
 const TITLE = 'dcaBTC Alternative: a Bitcoin DCA Calculator That Shows Its Work';
 const DESCRIPTION =
-    'Looking for a dcaBTC alternative? We loaded dcabtc.com in August 2026, recorded exactly what we saw, and mapped every dcaBTC setting onto this free, open-source calculator.';
+    'We loaded dcabtc.com in October 2026, wrote down exactly what we saw, and mapped each dcaBTC setting onto this free, open-source calculator.';
 
 export const metadata: Metadata = {
-    // Root layout template appends "| Bitcoin DCA Calculator".
-    title: TITLE,
+    // TITLE already says "Bitcoin DCA Calculator", so it opts out of the root
+    // layout's "%s | Bitcoin DCA Calculator" template instead of repeating it.
+    title: { absolute: TITLE },
     description: DESCRIPTION,
     keywords: [
         'dcabtc alternative',
@@ -71,7 +80,7 @@ const webPageJsonLd = {
     name: TITLE,
     description: DESCRIPTION,
     isPartOf: { '@id': `${BASE_URL}/#website` },
-    datePublished: LAST_CHECKED_ISO,
+    datePublished: FIRST_PUBLISHED_ISO,
     dateModified: LAST_CHECKED_ISO,
     inLanguage: 'en-US',
 };
@@ -96,18 +105,25 @@ const COMPARE: CompareRow[] = [
     },
     {
         feature: 'Date range',
-        dcabtc: { text: '6 months to 9 years back, or a specific date' },
+        dcabtc: { text: '6 months to 9 years back, or a specific start date from 17 Jul 2010' },
         us: { text: 'Any start and end date from 18 Aug 2010' },
     },
     {
+        feature: 'Price data',
+        dcabtc: { text: 'A fixed table inside the page: 17 Jul 2010 to 3 May 2025, with a one-month gap' },
+        // Ours is part stored table too: SNAPSHOT_END_DATE in data/priceSources
+        // is the last day of the bundled blockchain.info copy.
+        us: { text: 'A stored table to 19 Jul 2015, then exchange prices fetched up to today' },
+    },
+    {
         feature: `Results rendering (checked ${LAST_CHECKED})`,
-        dcabtc: { mark: 'na', text: 'Values showed $NaN' },
+        dcabtc: { mark: 'na', text: 'Default plan showed $NaN; plans outside the gap showed numbers' },
         us: { mark: 'yes' },
     },
     {
         feature: 'Exchange fees modeled',
         dcabtc: { mark: 'no', text: 'Not that we found' },
-        us: { mark: 'yes', text: 'Any custom %' },
+        us: { mark: 'yes', text: 'Custom %, plus a flat fee per buy' },
     },
     {
         feature: 'Annualized return (XIRR)',
@@ -126,7 +142,8 @@ const COMPARE: CompareRow[] = [
     },
     {
         feature: 'Benchmarks',
-        dcabtc: { mark: 'na', text: '"Compare to other assets" toggle; output unverifiable' },
+        // dcaBTC's stylesheet hides the toggle below 768px, which is most phones.
+        dcabtc: { mark: 'yes', text: 'Gold and the Dow Jones, via a toggle shown on screens 768px and wider' },
         us: { text: 'S&P 500 total return, gold, CPI, savings' },
     },
     {
@@ -165,10 +182,19 @@ const COMPARE: CompareRow[] = [
 const MIGRATION: { theirs: string; ours: string }[] = [
     { theirs: 'Purchase Amount', ours: 'Investment amount — same idea, any number.' },
     { theirs: 'Repeat Purchase (daily / weekly / every two weeks / monthly)', ours: 'Frequency — the same four options, same names give or take "bi-weekly".' },
-    { theirs: 'Accumulate For + Starting', ours: 'A start date and an end date. Pick the same window; an end date in the future switches to projections.' },
-    { theirs: 'Compare to other assets?', ours: 'Built into the results: S&P 500 (total return), gold, inflation-adjusted, and savings-account comparisons.' },
+    { theirs: 'Accumulate For + Starting', ours: 'A start date and an end date. Pick the same window; an end date in the future shows what the plan would add up to at today’s price.' },
+    { theirs: 'Compare to other assets?', ours: 'Built into the results: gold, the S&P 500 (total return) where dcaBTC uses the Dow Jones, plus inflation-adjusted and savings-account comparisons.' },
     { theirs: 'Copy Direct Link', ours: 'Share button — the URL carries your exact settings, plus an image card for social.' },
 ];
+
+// A breadcrumb link is one short word, about 15px tall as text on a phone. The
+// padding makes it a 44px touch target, and the negative margins hand the same
+// space back so the row sits exactly where it did.
+const crumbLink =
+    'inline-flex min-h-11 items-center -my-3.5 px-1.5 -mx-1.5 hover:text-amber-700 dark:hover:text-amber-400 transition-colors';
+// Links inside a sentence are underlined: colour alone does not mark a link.
+const textLink =
+    'text-amber-700 dark:text-amber-400 underline underline-offset-2 hover:text-amber-800 dark:hover:text-amber-300 font-medium';
 
 function Mark({ kind }: { kind: MarkKind }) {
     if (kind === 'yes') {
@@ -190,7 +216,7 @@ function Mark({ kind }: { kind: MarkKind }) {
     return (
         <span className="inline-flex items-center justify-center">
             <Minus className="w-4 h-4 text-slate-400 dark:text-slate-500" aria-hidden="true" />
-            <span className="sr-only">Could not verify</span>
+            <span className="sr-only">Depends on the plan</span>
         </span>
     );
 }
@@ -223,13 +249,13 @@ export default function DcaBtcAlternativePage() {
                 <nav aria-label="Breadcrumb" className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
                     <ol className="flex flex-wrap items-center gap-1.5">
                         <li>
-                            <Link href="/" className="hover:text-amber-700 dark:hover:text-amber-400 transition-colors">
+                            <Link href="/" className={crumbLink}>
                                 Home
                             </Link>
                         </li>
                         <li aria-hidden="true">/</li>
                         <li>
-                            <Link href="/alternatives" className="hover:text-amber-700 dark:hover:text-amber-400 transition-colors">
+                            <Link href="/alternatives" className={crumbLink}>
                                 Alternatives
                             </Link>
                         </li>
@@ -244,14 +270,15 @@ export default function DcaBtcAlternativePage() {
                         Looking for a <span className="text-amber-700 dark:text-amber-400">dcaBTC alternative</span>?
                     </h1>
                     <p className="text-base sm:text-lg text-slate-600 dark:text-slate-300 leading-relaxed max-w-3xl">
-                        dcaBTC deserves real credit: it made Bitcoin-only DCA backtesting a thing people do, and its
+                        dcaBTC deserves real credit: it is a clean, single-purpose Bitcoin DCA backtester, and its
                         guides are genuinely good. This page is not here to mock it. It exists because when we checked
-                        dcabtc.com on {LAST_CHECKED} its results weren&apos;t rendering, and people searching for an
-                        alternative deserve a straight, dated account of what we saw and what this site does differently.
+                        dcabtc.com on {LAST_CHECKED} its default plan showed $NaN where the result should be, and
+                        people searching for an alternative deserve a straight, dated account of what we saw and what
+                        this site does differently.
                     </p>
                     <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
                         By{' '}
-                        <Link href="/author" className="text-amber-700 dark:text-amber-400 hover:underline font-medium">
+                        <Link href="/author" className={textLink}>
                             drix
                         </Link>
                         {' '}&middot; Last checked {LAST_CHECKED}
@@ -283,12 +310,28 @@ export default function DcaBtcAlternativePage() {
                                     The prefilled tweet read &quot;…would have turned $1,570 into $NaN (-NaN%)&quot;.
                                 </p>
                                 <p>
-                                    That pattern — invested amount fine, value broken — looks like a price-data feed problem
-                                    rather than abandonment, and it may well be fixed by the time you read this. We date every
-                                    observation for exactly that reason. If dcaBTC is working when you visit it,{' '}
-                                    <Link href="/contact" className="text-amber-700 dark:text-amber-400 hover:underline font-medium">tell us</Link>{' '}
+                                    That pattern — invested amount fine, value broken — is not a price feed that has gone down.
+                                    dcaBTC makes no price request while you use it: its Bitcoin history is a fixed table inside
+                                    the page&apos;s own code. On {LAST_CHECKED} that table ran from 17 July 2010 to 3 May 2025
+                                    and had no prices for 12 September to 12 October 2024. Every plan we tried with a purchase
+                                    inside that month showed $NaN: the default scenario, our five-year test, and a six-month
+                                    plan from June 2024 that ends well before the table does.
+                                </p>
+                                <p>
+                                    Plans that avoid the gap do show numbers. $10 a week for two years from 12 October 2021
+                                    showed $1,050 invested and $1,062 of value, up 1.22%. But every day after 3 May 2025 is
+                                    priced at the 3 May 2025 value, so a plan that starts later than that shows a value equal
+                                    to the amount invested and a 0.00% change, whatever Bitcoin actually did. The preset for
+                                    one year, starting one year ago, did exactly that.
+                                </p>
+                                <p>
+                                    So this is not an outage that clears on its own: the gap and the cut-off stay until dcaBTC
+                                    ships a new table. Which plans hit the gap does change with the date, because
+                                    &quot;starting 3 years ago&quot; moves forward every day. We date every observation for
+                                    exactly that reason. If dcaBTC is working when you visit it,{' '}
+                                    <Link href="/contact" className={textLink}>tell us</Link>{' '}
                                     and we&apos;ll update this page — confirmed corrections jump the queue under our{' '}
-                                    <Link href="/author#corrections-policy" className="text-amber-700 dark:text-amber-400 hover:underline font-medium">corrections policy</Link>.
+                                    <Link href="/author#corrections-policy" className={textLink}>corrections policy</Link>.
                                 </p>
                             </div>
                         </div>
@@ -308,14 +351,14 @@ export default function DcaBtcAlternativePage() {
                                     Its interface is one of the cleanest in the niche: a handful of controls, no clutter, and defaults
                                     phrased the way people actually think (&quot;$10 weekly for 3 years&quot;). Its long-form
                                     explanations of what DCA is and why it suits volatile assets are better written than most,
-                                    and its one-click link sharing made comparing scenarios with friends easy years before
-                                    anyone else bothered.
+                                    and its one-click direct link carries your exact settings, which makes comparing scenarios
+                                    with someone else easy.
                                 </p>
                                 <p>
-                                    If all you want is a quick &quot;what would $X a week have done&quot; — and it&apos;s
-                                    rendering numbers again — dcaBTC answers that question well. The comparison below is for
-                                    people who want the same answer plus the parts it leaves out: fees, risk metrics,
-                                    benchmarks, and a way to check the math.
+                                    If all you want is a quick &quot;what would $X a week have done&quot; for a window its
+                                    price table covers, dcaBTC puts an answer on one screen. The comparison below is for
+                                    people who want that answer for any dates up to today, plus the parts it leaves out: fees,
+                                    risk metrics, more benchmarks, and a way to check the math.
                                 </p>
                             </div>
                         </div>
@@ -331,12 +374,16 @@ export default function DcaBtcAlternativePage() {
                         Everything in the dcaBTC column is what we observed on {LAST_CHECKED}. An{' '}
                         <X className="inline w-3.5 h-3.5 text-slate-400 dark:text-slate-500" aria-label="x mark" /> means we
                         could not find the feature, not proof it doesn&apos;t exist; a{' '}
-                        <Minus className="inline w-3.5 h-3.5 text-slate-400 dark:text-slate-500" aria-label="dash" /> means we
-                        could not verify it because results weren&apos;t rendering.
+                        <Minus className="inline w-3.5 h-3.5 text-slate-400 dark:text-slate-500" aria-label="dash" /> means it
+                        depended on the plan, as described above.
                     </p>
                     <Card className="p-4 sm:p-6">
-                        <div className="overflow-x-auto -mx-2 sm:mx-0">
-                            <table className="w-full text-xs sm:text-sm min-w-[560px]">
+                        {/* `relative` keeps the sr-only "Yes" / "Not found" marks inside
+                            this scroller. They are absolutely positioned, and with no
+                            positioned ancestor they hung off the page itself and made
+                            the whole document 435px wide on a 390px phone. */}
+                        <div className="relative overflow-x-auto -mx-2 sm:mx-0">
+                            <table className="w-full text-xs sm:text-sm">
                                 <thead>
                                     <tr className="text-left text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-700">
                                         <th scope="col" className="pb-2 pr-3 font-medium">Feature</th>
@@ -371,12 +418,13 @@ export default function DcaBtcAlternativePage() {
                         Switching takes about a minute
                     </h2>
                     <p className="text-sm sm:text-base text-slate-600 dark:text-slate-400 leading-relaxed">
-                        Every dcaBTC setting has a direct equivalent here. Nothing to import and no account to create —
-                        just set the same schedule.
+                        Every dcaBTC setting has an equivalent here, with one swap: the S&amp;P 500 where dcaBTC
+                        compares against the Dow Jones. Nothing to import and no account to create — just set the same
+                        schedule.
                     </p>
                     <Card className="p-4 sm:p-6">
-                        <div className="overflow-x-auto -mx-2 sm:mx-0">
-                            <table className="w-full text-xs sm:text-sm min-w-[520px]">
+                        <div className="relative overflow-x-auto -mx-2 sm:mx-0">
+                            <table className="w-full text-xs sm:text-sm">
                                 <thead>
                                     <tr className="text-left text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-700">
                                         <th scope="col" className="pb-2 pr-3 font-medium">On dcaBTC</th>
@@ -397,17 +445,17 @@ export default function DcaBtcAlternativePage() {
                     <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
                         What you gain on top: a fee percentage that actually drags on returns the way your exchange
                         does, XIRR and max drawdown so the risk is visible, CSV export of every simulated purchase, and{' '}
-                        <Link href="/methodology" className="text-amber-700 dark:text-amber-400 hover:underline font-medium">a methodology page</Link>{' '}
+                        <Link href="/methodology" className={textLink}>a methodology page</Link>{' '}
                         that writes out every formula and data source. The code is MIT-licensed on{' '}
                         <a
                             href="https://github.com/9drix9/bitcoindca-calculator"
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-amber-700 dark:text-amber-400 hover:underline font-medium"
+                            className={textLink}
                         >
                             GitHub
                         </a>, and there&apos;s a{' '}
-                        <Link href="/developers" className="text-amber-700 dark:text-amber-400 hover:underline font-medium">documented API</Link>{' '}
+                        <Link href="/developers" className={textLink}>documented API</Link>{' '}
                         if you&apos;d rather pull the numbers into your own tools.
                     </p>
                 </section>
@@ -422,15 +470,18 @@ export default function DcaBtcAlternativePage() {
                             <ClipboardCheck className="w-5 h-5 text-amber-500 mt-0.5 shrink-0" aria-hidden="true" />
                             <div className="space-y-3 text-sm sm:text-base text-slate-600 dark:text-slate-300 leading-relaxed">
                                 <p>
-                                    We loaded dcabtc.com in an ordinary browser on {LAST_CHECKED}, ran its default scenario,
-                                    inspected each control, and recorded exactly what rendered. We intended to run our standard
-                                    cross-tool test — $50 a week for five years — but with result values showing $NaN there
-                                    were no numbers to compare, so this page compares features and observed behavior only.
+                                    We loaded dcabtc.com in an ordinary browser on {LAST_CHECKED}, ran its default scenario
+                                    and more than twenty other plans with different start dates, lengths and frequencies,
+                                    inspected each control, and recorded exactly what rendered. We also read the price table
+                                    in the page&apos;s own JavaScript, which is how we know where it starts, where it stops
+                                    and where the gap is. Our standard cross-tool test — $50 a week for five years — showed
+                                    $NaN, so there were no numbers to compare, and this page compares features and observed
+                                    behavior only.
                                 </p>
                                 <p>
                                     We are not neutral; this is our calculator. That&apos;s why every claim is dated,
                                     every &quot;not found&quot; is labeled as such rather than as fact, and errors reported via
-                                    the <Link href="/contact" className="text-amber-700 dark:text-amber-400 hover:underline font-medium">contact page</Link>{' '}
+                                    the <Link href="/contact" className={textLink}>contact page</Link>{' '}
                                     get corrected with priority.
                                 </p>
                             </div>
@@ -468,7 +519,7 @@ export default function DcaBtcAlternativePage() {
                 <p className="border-t border-slate-200 dark:border-slate-800 pt-6 text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
                     Not financial advice. Both tools are educational simulations; past performance does not guarantee
                     future results. dcaBTC is an independent product with no affiliation to this site; observations
-                    about it reflect a single check on {LAST_CHECKED} and may no longer be current.
+                    about it reflect what we saw on {LAST_CHECKED} and may no longer be current.
                 </p>
 
             </div>

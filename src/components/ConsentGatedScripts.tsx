@@ -1,28 +1,16 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { usePathname } from 'next/navigation';
 import Script from 'next/script';
+import { isEmbedPath } from '@/components/nav/navPathname';
+import { readStorage, writeStorage } from '@/hooks/safeStorage';
+import { clearGoogleAdsStorage, hasAnalyticsConsent, useAnalyticsConsent } from '@/hooks/useConsent';
 
 declare global {
     interface Window {
         dataLayer: unknown[];
         gtag: (...args: unknown[]) => void;
-    }
-}
-
-interface ConsentData {
-    essential?: boolean;
-    analytics?: boolean;
-}
-
-function getConsent(): ConsentData | null {
-    try {
-        const raw = localStorage.getItem('cookie-consent');
-        if (!raw) return null;
-        return JSON.parse(raw) as ConsentData;
-    } catch {
-        return null;
     }
 }
 
@@ -36,52 +24,54 @@ const CONVERSION_DWELL_MS = 10_000;
 const CONVERSION_SEND_TO = 'AW-17927251983/1XdmCPrtgfIbEI_QsORC';
 
 export const ConsentGatedScripts = () => {
-    const pathname = usePathname();
-    const isEmbed = pathname === '/embed' || pathname?.startsWith('/embed/');
-    const [analyticsGranted, setAnalyticsGranted] = useState(false);
+    const isEmbed = isEmbedPath(usePathname() ?? '');
+    const analyticsGranted = useAnalyticsConsent();
+    // The consent state last sent to Google from this page. null = none yet.
+    const lastSent = useRef<boolean | null>(null);
 
     useEffect(() => {
-        const check = () => {
-            const consent = getConsent();
-            setAnalyticsGranted(consent?.analytics === true);
-        };
+        // Nothing here belongs inside the embed: it is someone else's page, the
+        // Google tag never loads there, and its storage is not ours to tidy.
+        if (isEmbed) return;
 
-        check();
+        // Read the store, not the render value: the first commit after
+        // hydration still carries the server snapshot (false) for a visitor who
+        // has consented, and acting on that would tell Google "denied" and
+        // delete a consenting visitor's ad-click ID on every page load.
+        const granted = hasAnalyticsConsent();
+        const before = lastSent.current;
+        lastSent.current = granted;
 
-        const onStorage = (e: StorageEvent) => {
-            if (e.key === 'cookie-consent' || e.key === null) check();
-        };
-
-        window.addEventListener('storage', onStorage);
-        return () => window.removeEventListener('storage', onStorage);
-    }, []);
-
-    useEffect(() => {
+        // layout.tsx defines gtag() and a default of "denied" for every visitor
+        // before anything else runs, so there is nothing to tell Google until
+        // the answer is yes, or stops being yes.
+        //
         // Withdrawal has to push a denied update, not just unmount the <Script>.
-        // Once gtag.js has executed it stays resident on the page, so dropping the
-        // tag from the tree leaves it running with whatever consent state it last
-        // saw. Only this call actually revokes it. Guarded because gtag is absent
-        // until the script has loaded at least once — i.e. for anyone who has
-        // never granted consent, which is the common case.
-        if (typeof window.gtag !== 'function') return;
+        // Once gtag.js has executed it stays resident on the page, so dropping
+        // the tag from the tree leaves it running with whatever consent state it
+        // last saw. Only this call revokes it.
+        if (granted !== before && (granted || before === true) && typeof window.gtag === 'function') {
+            const state = granted ? 'granted' : 'denied';
+            window.gtag('consent', 'update', {
+                ad_storage: state,
+                ad_user_data: state,
+                ad_personalization: state,
+                analytics_storage: state,
+            });
+        }
 
-        const state = analyticsGranted ? 'granted' : 'denied';
-        window.gtag('consent', 'update', {
-            ad_storage: state,
-            ad_user_data: state,
-            ad_personalization: state,
-            analytics_storage: state,
-        });
-    }, [analyticsGranted]);
+        // "Denied" only stops Google writing anything new. What its tag already
+        // wrote on this origin is ours to remove — after the update above, so
+        // the tag does not put it back. This also runs when a page loads with no
+        // consent on file, which clears what an earlier withdrawal left behind
+        // (one made before this cleanup existed, or in another tab). With
+        // nothing stored it does nothing.
+        if (!granted) clearGoogleAdsStorage();
+    }, [analyticsGranted, isEmbed]);
 
     useEffect(() => {
         if (isEmbed || !analyticsGranted) return;
-        try {
-            if (sessionStorage.getItem(CONVERSION_SESSION_KEY)) return;
-        } catch {
-            // No sessionStorage means no way to dedupe, so never fire.
-            return;
-        }
+        if (readStorage('session', CONVERSION_SESSION_KEY)) return;
 
         let dwelled = false;
         let interacted = false;
@@ -89,11 +79,8 @@ export const ConsentGatedScripts = () => {
         const fire = () => {
             if (!dwelled || !interacted) return;
             cleanup();
-            try {
-                sessionStorage.setItem(CONVERSION_SESSION_KEY, '1');
-            } catch {
-                return;
-            }
+            // No sessionStorage means no way to dedupe, so never fire.
+            if (!writeStorage('session', CONVERSION_SESSION_KEY, '1')) return;
             // Standard shim: if gtag.js hasn't finished loading yet, the event
             // queues on the dataLayer and is replayed when it does.
             window.dataLayer = window.dataLayer || [];
@@ -145,9 +132,13 @@ export const ConsentGatedScripts = () => {
                     gtag('config', 'AW-17927251983');
                 `}
             </Script>
-            {/* Google AdSense was removed deliberately: surveillance display advertising
-                contradicts this site's stated privacy position. Ad revenue comes from
-                A-ADS, which is Bitcoin-native and does not track visitors. */}
+            {/* This tag shows no ads; it measures the site's own Google Ads
+                campaigns, and the consent passed above lets Google personalise
+                ads from the visit as well. The display ads are A-ADS frames
+                (AdSlot.tsx), which are not behind this gate and load whatever
+                the answer was. What a frame loads and what A-ADS receives is
+                set out on /privacy ("Third-Party Advertising") from a dated
+                check; nothing about it is claimed here. */}
         </>
     );
 };

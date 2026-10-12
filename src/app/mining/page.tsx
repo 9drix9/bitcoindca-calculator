@@ -4,9 +4,25 @@ import Link from 'next/link';
 import { Pickaxe, Hash, Clock, BarChart3, Users, Cpu, TrendingUp, Coins, ShieldAlert, Leaf, HelpCircle, AlertTriangle, ArrowRight, CheckCircle2, ExternalLink, BookOpen } from 'lucide-react';
 import { WalletImage } from '@/components/WalletImage';
 import { getBlockHeight } from '@/app/actions';
+import { formatUtc } from '@/utils/dates';
+import { SATS_PER_BTC } from '@/utils/units';
+import {
+    HALVING_INTERVAL,
+    HALVING_SCHEDULE,
+    MAX_ISSUED_SATS,
+    TOTAL_ERAS,
+    formatBtc,
+    issuedSatsBefore,
+    subsidySats,
+} from './halvings';
 
-/** Date the factual claims on this page were last checked against their sources. */
-const LAST_REVIEWED = '10 August 2026';
+/**
+ * Date the factual claims on this page were last checked against their sources.
+ *
+ * Two sentences also print it as an as-of date ("still unpublished on …", for
+ * Cambridge's second edition), so moving it forward means checking that again.
+ */
+const LAST_REVIEWED = '12 October 2026';
 
 /** A single external reference. `label` is what the reader sees inline. */
 type Source = { label: string; url: string };
@@ -20,22 +36,42 @@ const SRC = {
     blockChainRef: { label: 'Bitcoin developer reference, block headers', url: 'https://developer.bitcoin.org/reference/block_chain.html' },
     pow: { label: 'Bitcoin Core, pow.cpp', url: 'https://github.com/bitcoin/bitcoin/blob/master/src/pow.cpp' },
     consensusH: { label: 'Bitcoin Core, consensus.h (COINBASE_MATURITY)', url: 'https://github.com/bitcoin/bitcoin/blob/master/src/consensus/consensus.h' },
-    amountH: { label: 'Bitcoin Core, amount.h (MAX_MONEY)', url: 'https://github.com/bitcoin/bitcoin/blob/master/src/consensus/amount.h' },
+    // The subsidy rule itself. amount.h below only defines the unit: its MAX_MONEY
+    // is a sanity limit on amounts, and its own comment says it is not the supply.
+    validation: { label: 'Bitcoin Core, validation.cpp (GetBlockSubsidy)', url: 'https://github.com/bitcoin/bitcoin/blob/master/src/validation.cpp' },
+    amountH: { label: 'Bitcoin Core, amount.h (COIN)', url: 'https://github.com/bitcoin/bitcoin/blob/master/src/consensus/amount.h' },
     controlledSupply: { label: 'Bitcoin Wiki, controlled supply', url: 'https://en.bitcoin.it/wiki/Controlled_supply' },
     genesis: { label: 'Bitcoin Wiki, genesis block', url: 'https://en.bitcoin.it/wiki/Genesis_block' },
     block840k: { label: 'mempool.space, block 840,000', url: 'https://mempool.space/block/840000' },
+    // #all opens the graph on its full history, where both periods the page quotes are visible.
+    feeShare: { label: 'mempool.space, block fees vs subsidy', url: 'https://mempool.space/graphs/mining/block-fees-subsidy#all' },
     hashrate: { label: 'mempool.space, hashrate and difficulty', url: 'https://mempool.space/graphs/mining/hashrate-difficulty' },
     pools: { label: 'mempool.space, mining pool share', url: 'https://mempool.space/graphs/mining/pools' },
     difficultyDrop: { label: 'CoinDesk, July 2021 difficulty adjustments', url: 'https://www.coindesk.com/markets/2021/07/19/bitcoin-network-sees-fourth-straight-downward-difficulty-adjustment' },
     cambridge: { label: 'Cambridge Digital Mining Industry Report (April 2025)', url: 'https://www.jbs.cam.ac.uk/faculty-research/centres/alternative-finance/publications/cambridge-digital-mining-industry-report/' },
+    // The landing page above states only the median electricity rate. The spread
+    // between firms and the cost-per-bitcoin range are in the PDF: the text on
+    // page 86, Figures 44 and 45 on page 87. The label carries the size because
+    // it is a 20 MB download on a phone.
+    cambridgeRates: { label: 'Cambridge Digital Mining Industry Report, full PDF, p. 86 (20 MB)', url: 'https://www.jbs.cam.ac.uk/wp-content/uploads/2025/04/2025-04-cambridge-digital-mining-industry-report.pdf#page=86' },
     cambridgeNews: { label: 'Cambridge Judge Business School summary', url: 'https://www.jbs.cam.ac.uk/2025/cambridge-study-sustainable-energy-rising-in-bitcoin-mining/' },
+    // A write-up of a conference talk, not a Cambridge publication. Its byline is
+    // "TheEnergyMag AI" and the outlet is run by the team behind the forum where
+    // the talk was given, so the label says both. Replace it with the report
+    // itself once the second edition is out.
+    cambridgePreview: { label: 'TheEnergyMag, AI-assisted write-up by the forum organiser\'s outlet of Cambridge\'s preliminary figures (25 July 2026)', url: 'https://www.theenergymag.com/news/market-news/bitcoin-energy-consumption-mix-cambridge-eif' },
     cbeci: { label: 'Cambridge CBECI live index', url: 'https://ccaf.io/cbnsi/cbeci' },
     miningMap: { label: 'Cambridge mining map', url: 'https://ccaf.io/cbnsi/cbeci/mining_map' },
     eia: { label: 'EIA Electric Power Monthly, Table 5.6.A', url: 'https://www.eia.gov/electricity/monthly/epm_table_grapher.php?t=epmt_5_6_a' },
     asicValue: { label: 'ASIC Miner Value, S9 vs S21 XP', url: 'https://www.asicminervalue.com/miners/compare/bitmain--antminer-s9-13-5th,bitmain--antmine-s21-xp-270th' },
+    asicS23: { label: 'ASIC Miner Value, Antminer S23 (318 TH/s)', url: 'https://www.asicminervalue.com/miners/bitmain/antminer-s23-318th' },
+    asicS23Hyd: { label: 'ASIC Miner Value, Antminer S23 Hyd (580 TH/s)', url: 'https://www.asicminervalue.com/miners/bitmain/antminer-s23-hyd-580th' },
     sv2: { label: 'Stratum V2 specification', url: 'https://github.com/stratum-mining/sv2-spec' },
     etcAttack: { label: 'CoinDesk, Ethereum Classic 51% attacks (2020)', url: 'https://www.coindesk.com/markets/2020/08/29/ethereum-classic-hit-by-third-51-attack-in-a-month' },
     btgAttack: { label: 'Cointelegraph, Bitcoin Gold 51% attack (2020)', url: 'https://cointelegraph.com/news/bitcoin-gold-blockchain-hit-by-51-attack-leading-to-70k-double-spend' },
+    // The operator's own page, with no referral tag: it is cited for the price and
+    // the token discount, not as the placement.
+    gomining: { label: 'GoMining, digital miners (the operator\'s own price list)', url: 'https://gomining.com/digital-miners' },
 } as const satisfies Record<string, Source>;
 
 export const metadata: Metadata = {
@@ -103,14 +139,14 @@ const articleJsonLd = {
     },
     "datePublished": "2026-02-05",
     // Static date. Update when the content changes, and keep in sync with sitemap.ts.
-    "dateModified": "2026-08-11",
+    "dateModified": "2026-10-12",
 };
 
 const faqs: { q: string; a: string; sources?: readonly Source[] }[] = [
     {
         q: 'Is Bitcoin mining still profitable at home?',
-        a: 'Almost never, at residential electricity prices. A recent machine such as the 2024 Antminer S21 XP draws about 3.6 kW, or roughly 2,600 kWh a month. At the US residential average of 18.4 cents per kWh that is about $480 of electricity. Industrial miners buy the same power for $0.03 to $0.05 per kWh, so their cost per bitcoin is roughly four to six times lower. And network difficulty is set by their economics, not yours. Home mining can still make sense as a hobby, as a heat source, or where power is unusually cheap. Treated purely as an investment, it is normally beaten by buying bitcoin outright.',
-        sources: [SRC.asicValue, SRC.eia],
+        a: 'Almost never, at residential electricity prices. A recent machine such as the 2024 Antminer S21 XP draws about 3.6 kW, or roughly 2,600 kWh a month. At the US residential average of 18.3 cents per kWh (July 2026) that is about $480 of electricity. Cambridge\'s survey of mining firms found a median electricity rate of $45 per MWh, or 4.5 cents per kWh, at the end of June 2024. At that rate the same month of work costs about $118, roughly a quarter as much. And network difficulty is set by their economics, not yours. Home mining can still make sense as a hobby, as a heat source, or where power is unusually cheap.',
+        sources: [SRC.asicValue, SRC.eia, SRC.cambridge],
     },
     {
         q: 'What is hashprice?',
@@ -125,12 +161,12 @@ const faqs: { q: string; a: string; sources?: readonly Source[] }[] = [
     {
         q: 'What happens when all 21 million bitcoin are mined?',
         a: 'After roughly 33 halvings the subsidy rounds to zero in integer satoshis, which lands around the year 2140. From then on, miners earn only transaction fees. Whether fees alone can fund enough security is the most interesting open question in Bitcoin. It depends on how much demand there is for on-chain settlement decades from now. Anyone who tells you it is definitely fine, or definitely fatal, is claiming to know something nobody knows.',
-        sources: [SRC.controlledSupply, SRC.amountH],
+        sources: [SRC.validation, SRC.controlledSupply],
     },
     {
         q: 'Does Bitcoin mining waste energy?',
-        a: 'Mining uses real energy on purpose. That expenditure is what makes rewriting history expensive. Cambridge\'s most recent full study put annual consumption at 138 TWh, about 0.54% of global electricity, using data through mid-2024. The live Cambridge index has run higher since. Nobody meters the network, so every figure is a model built from observed hashrate and an assumed hardware mix. The same study found 52.4% of the energy mix came from renewables and nuclear. Whether that use is justified is a value judgment about what you think the network is for. The numbers do not settle it.',
-        sources: [SRC.cambridge, SRC.cambridgeNews, SRC.cbeci],
+        a: `Mining uses real energy on purpose. That expenditure is what makes rewriting history expensive. Cambridge's most recent full study put annual consumption at 138 TWh, about 0.54% of global electricity, using data through mid-2024, with 52.4% of the energy mix from renewables and nuclear. The live Cambridge index has run higher since. Preliminary figures from Cambridge's next edition, presented at a conference in July 2026 and still unpublished on ${LAST_REVIEWED}, put the annualised rate at about 190 TWh in December 2025 and the low-carbon share at 59.4%. Nobody meters the network, so every figure is a model built from observed hashrate and an assumed hardware mix. Whether that use is justified is a value judgment about what you think the network is for. The numbers do not settle it.`,
+        sources: [SRC.cambridge, SRC.cambridgeNews, SRC.cbeci, SRC.cambridgePreview],
     },
     {
         q: 'Can a government ban Bitcoin mining?',
@@ -140,7 +176,7 @@ const faqs: { q: string; a: string; sources?: readonly Source[] }[] = [
     {
         q: 'Could someone with 51% of the hashrate steal my bitcoin?',
         a: 'No. A majority attacker can reverse its own recent transactions, censor transactions and reorganize recent blocks. The whitepaper says so directly: an attacker cannot make "arbitrary changes, such as creating value out of thin air or taking money that never belonged to the attacker". Every full node checks those rules independently and rejects invalid blocks no matter how much work sits behind them. Coins in a wallet you control are not at risk from hashrate.',
-        sources: [SRC.whitepaper, SRC.amountH],
+        sources: [SRC.whitepaper, SRC.validation],
     },
     {
         q: 'Why can\'t newly mined bitcoin be spent right away?',
@@ -164,51 +200,24 @@ const faqJsonLd = {
     })),
 };
 
-const HALVING_DATA = [
-    { halving: 'Start', block: 0, date: 'Jan 3, 2009', reward: '50 BTC', supplyAfter: '0' },
-    { halving: '1st', block: 210000, date: 'Nov 28, 2012', reward: '25 BTC', supplyAfter: '10.5M' },
-    { halving: '2nd', block: 420000, date: 'Jul 9, 2016', reward: '12.5 BTC', supplyAfter: '15.75M' },
-    { halving: '3rd', block: 630000, date: 'May 11, 2020', reward: '6.25 BTC', supplyAfter: '18.375M' },
-    { halving: '4th', block: 840000, date: 'Apr 20, 2024', reward: '3.125 BTC', supplyAfter: '19.6875M' },
-    { halving: '5th', block: 1050000, date: '~Apr 2028', reward: '1.5625 BTC', supplyAfter: '20.34M' },
-    { halving: '6th', block: 1260000, date: '~2032', reward: '0.78125 BTC', supplyAfter: '20.67M' },
-    { halving: '7th', block: 1470000, date: '~2036', reward: '0.390625 BTC', supplyAfter: '20.84M' },
-    { halving: '8th', block: 1680000, date: '~2040', reward: '0.1953125 BTC', supplyAfter: '20.92M' },
-    { halving: '9th', block: 1890000, date: '~2044', reward: '0.09765625 BTC', supplyAfter: '20.96M' },
-    { halving: '10th', block: 2100000, date: '~2048', reward: '0.04882812 BTC', supplyAfter: '20.98M' },
-    { halving: '11th', block: 2310000, date: '~2052', reward: '0.02441406 BTC', supplyAfter: '20.99M' },
-    { halving: '12th', block: 2520000, date: '~2056', reward: '0.01220703 BTC', supplyAfter: '20.995M' },
-    { halving: '13th', block: 2730000, date: '~2060', reward: '0.00610351 BTC', supplyAfter: '20.9975M' },
-    { halving: '14th', block: 2940000, date: '~2064', reward: '0.00305175 BTC', supplyAfter: '20.99875M' },
-    { halving: '15th', block: 3150000, date: '~2068', reward: '0.00152587 BTC', supplyAfter: '20.999375M' },
-    { halving: '16th', block: 3360000, date: '~2072', reward: '0.00076293 BTC', supplyAfter: '20.9996875M' },
-    { halving: '17th', block: 3570000, date: '~2076', reward: '0.00038146 BTC', supplyAfter: '20.9998437M' },
-    { halving: '18th', block: 3780000, date: '~2080', reward: '0.00019073 BTC', supplyAfter: '20.9999218M' },
-    { halving: '19th', block: 3990000, date: '~2084', reward: '0.00009536 BTC', supplyAfter: '20.9999609M' },
-    { halving: '20th', block: 4200000, date: '~2088', reward: '0.00004768 BTC', supplyAfter: '20.9999804M' },
-    { halving: '21st', block: 4410000, date: '~2092', reward: '0.00002384 BTC', supplyAfter: '20.9999902M' },
-    { halving: '22nd', block: 4620000, date: '~2096', reward: '0.00001192 BTC', supplyAfter: '20.9999951M' },
-    { halving: '23rd', block: 4830000, date: '~2100', reward: '596 sats', supplyAfter: '20.9999975M' },
-    { halving: '24th', block: 5040000, date: '~2104', reward: '298 sats', supplyAfter: '20.9999987M' },
-    { halving: '25th', block: 5250000, date: '~2108', reward: '149 sats', supplyAfter: '20.9999993M' },
-    { halving: '26th', block: 5460000, date: '~2112', reward: '74 sats', supplyAfter: '20.9999996M' },
-    { halving: '27th', block: 5670000, date: '~2116', reward: '37 sats', supplyAfter: '20.9999998M' },
-    { halving: '28th', block: 5880000, date: '~2120', reward: '18 sats', supplyAfter: '20.9999999M' },
-    { halving: '29th', block: 6090000, date: '~2124', reward: '9 sats', supplyAfter: '20.99999995M' },
-    { halving: '30th', block: 6300000, date: '~2128', reward: '4 sats', supplyAfter: '20.99999997M' },
-    { halving: '31st', block: 6510000, date: '~2132', reward: '2 sats', supplyAfter: '20.99999998M' },
-    { halving: '32nd', block: 6720000, date: '~2136', reward: '1 sat', supplyAfter: '20.99999999M' },
-    { halving: '33rd (Final)', block: 6930000, date: '~2140', reward: '0', supplyAfter: '21M' },
-];
+/**
+ * GoMining's advertised entry price, read from SRC.gomining on the date given.
+ * One constant feeds the badge and the bullet so the two cannot disagree.
+ *
+ * It moves. The same page read "from $21.99" in archive.org's copy of
+ * 11 August 2026, while this file still said "~$30", so re-read it at every
+ * review instead of trusting this value.
+ */
+const GOMINING_ENTRY = { price: '$12.99', checked: '12 October 2026' } as const;
 
 const GOMINING_DATA = {
     name: 'GoMining',
     tagline: 'Hashrate exposure without owning hardware',
-    description: 'GoMining sells tokenized shares of hashrate hosted in its own facilities, paying holders a share of mining output in bitcoin. Be clear about what that is: a custodial, token-based product. GoMining runs the machines and controls the hashrate; you hold a claim on the operator, not bitcoin and not hardware. Your return depends on difficulty, on price, and on the operator staying solvent.',
-    claims: ['No equipment to buy or maintain', 'Payouts made in bitcoin', 'Entry from roughly $30', 'Hashrate hosted in operator-run data centers'],
-    price: 'From ~$30',
+    description: 'GoMining sells tokenized shares of hashrate hosted in data centers that it says are run by itself and its service providers, paying holders a share of mining output in bitcoin. Be clear about what that is: a custodial, token-based product. GoMining and its providers run the machines and control the hashrate; you hold a claim on the operator, not bitcoin and not hardware. Your return depends on difficulty, on price, and on the operator staying solvent.',
+    claims: ['No equipment to buy or maintain', 'Payouts made in bitcoin', `Digital miners from ${GOMINING_ENTRY.price}`, 'Hashrate in data centers run by GoMining and its service providers'],
+    price: `From ${GOMINING_ENTRY.price}`,
     href: 'https://gomining.com/?ref=v56m_',
-    image: '/wallets/gomining.png',
+    image: '/wallets/gomining.webp',
 };
 
 const affiliateClasses = {
@@ -241,21 +250,35 @@ const cardBody = 'text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-
 const sectionHead = 'text-xl sm:text-3xl font-bold text-slate-900 dark:text-white';
 const sectionIcon = 'w-6 h-6 sm:w-8 sm:h-8 text-amber-500 shrink-0';
 const prose = 'space-y-4 text-sm sm:text-base text-slate-600 dark:text-slate-400 leading-relaxed';
-const linkClass = 'text-amber-700 dark:text-amber-400 hover:underline';
+// Underlined, not colour alone: these links sit inside running text, where amber
+// against slate is about 1.5:1 and a hover underline never shows on a phone.
+const linkClass = 'text-amber-700 dark:text-amber-400 underline underline-offset-2 hover:text-amber-800 dark:hover:text-amber-300';
+// The "On this page" rows stand alone in a labelled nav, so position marks them.
+const navLink = 'text-amber-700 dark:text-amber-400 hover:underline';
 
-/** Unobtrusive inline external link used for citations in prose. */
-function Src({ href, children }: { href: string; children: ReactNode }) {
+/**
+ * Unobtrusive inline external link used for citations in prose. `className` is
+ * for the one place a citation stands alone as a row, the Sources list, where it
+ * has to be a full-height tap target on a touch screen.
+ */
+function Src({ href, children, className }: { href: string; children: ReactNode; className?: string }) {
     return (
-        <a href={href} target="_blank" rel="noopener noreferrer" className={linkClass}>
+        <a href={href} target="_blank" rel="noopener noreferrer" className={className ? `${linkClass} ${className}` : linkClass}>
             {children}
         </a>
     );
 }
 
-/** Compact "Source: …" footer attached to a card or FAQ answer. */
+/**
+ * Compact "Source: …" footer attached to a card or FAQ answer.
+ *
+ * slate-600, not the slate-500 used for small print on white: some of these sit
+ * on the slate-100 panels, where slate-500 is 4.35:1 and fails AA for text this
+ * size. The same goes for every other caption inside those panels.
+ */
 function Cite({ items }: { items: readonly Source[] }) {
     return (
-        <p className="mt-2 text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+        <p className="mt-2 text-[11px] sm:text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
             <span className="font-semibold">{items.length > 1 ? 'Sources' : 'Source'}:</span>{' '}
             {items.map((s, i) => (
                 <span key={s.url}>
@@ -267,10 +290,6 @@ function Cite({ items }: { items: readonly Source[] }) {
     );
 }
 
-const HALVING_INTERVAL = 210_000;
-const INITIAL_SUBSIDY = 50;
-const TOTAL_ERAS = 33; // After 33 halvings integer arithmetic drives the subsidy to zero.
-
 // Fallback height used when the mempool.space API is unavailable.
 //
 // This was a hardcoded constant, which silently rotted: it read 958,000 while
@@ -280,8 +299,12 @@ const TOTAL_ERAS = 33; // After 33 halvings integer arithmetic drives the subsid
 // the height is predictable from any known anchor — extrapolating stays accurate
 // on its own instead of decaying between manual edits.
 //
-// Anchor verified against mempool.space on the date shown.
-const BLOCK_HEIGHT_ANCHOR = { height: 961_685, ts: Date.UTC(2026, 7, 9) };
+// The anchor is a height and the minute it was read (mempool.space and
+// blockstream.info agreed), not midnight of that day: a midnight timestamp would
+// start the estimate up to a day's blocks ahead. The chain has run slightly fast
+// of the target (about 144.8 blocks a day since the 2024 halving), so the
+// estimate falls behind by roughly a block a day. Re-read it at each review.
+const BLOCK_HEIGHT_ANCHOR = { height: 971_047, ts: Date.UTC(2026, 9, 12, 5, 13) };
 const BLOCKS_PER_DAY = 144; // 6 per hour at the 10-minute target.
 
 function estimateBlockHeight(): number {
@@ -291,48 +314,43 @@ function estimateBlockHeight(): number {
     return BLOCK_HEIGHT_ANCHOR.height + Math.floor(elapsedDays * BLOCKS_PER_DAY);
 }
 
-/** Block subsidy in BTC at a given height, straight from the halving schedule. */
-function subsidyAtHeight(height: number): number {
-    const era = Math.floor(height / HALVING_INTERVAL);
-    if (era >= TOTAL_ERAS) return 0;
-    return INITIAL_SUBSIDY / 2 ** era;
-}
-
-/**
- * Total BTC issued by a given height. Includes the genesis block's 50 BTC,
- * which is famously unspendable, so the spendable supply is slightly lower.
- */
-function issuedSupply(height: number): number {
-    let total = 0;
-    for (let era = 0; era < TOTAL_ERAS; era++) {
-        const eraStart = era * HALVING_INTERVAL;
-        if (height < eraStart) break;
-        const blocksInEra = Math.min(height - eraStart + 1, HALVING_INTERVAL);
-        total += blocksInEra * (INITIAL_SUBSIDY / 2 ** era);
-    }
-    return total;
-}
-
 export default async function MiningPage() {
     // Fetch current block height to determine which halvings have occurred.
+    // Fetched once and kept apart from the fallback, so the page can say which of
+    // the two it is showing instead of passing an extrapolation off as live.
+    const liveHeight = await getBlockHeight();
     // || (not ??) so a null OR zero height falls back. Height 0 would wrongly
     // mark every past halving as future.
-    const currentBlockHeight = (await getBlockHeight()) || estimateBlockHeight();
+    const currentBlockHeight = liveHeight || estimateBlockHeight();
+    const isEstimate = !liveHeight;
+    // Only the height and the countdown are marked. The subsidy is the same for a
+    // whole era and the issued supply is shown to the nearest 10,000 BTC, so an
+    // estimate a few hundred blocks out almost never shows in either.
+    const approx = isEstimate ? '~' : '';
 
     const currentEra = Math.floor(currentBlockHeight / HALVING_INTERVAL);
-    const currentSubsidy = subsidyAtHeight(currentBlockHeight);
-    const issued = issuedSupply(currentBlockHeight);
+    const currentSubsidy = formatBtc(subsidySats(currentBlockHeight));
+    // + 1: the supply after the current block, not before it.
+    const issued = issuedSatsBefore(currentBlockHeight + 1) / SATS_PER_BTC;
     const issuedMillions = (issued / 1_000_000).toFixed(2);
     const issuedPercent = ((issued / 21_000_000) * 100).toFixed(1);
     const nextHalvingHeight = (currentEra + 1) * HALVING_INTERVAL;
     const blocksToHalving = Math.max(nextHalvingHeight - currentBlockHeight, 0);
-    const nextHalvingRow = HALVING_DATA.find((row) => row.block === nextHalvingHeight);
+    const nextHalvingRow = HALVING_SCHEDULE.find((row) => row.block === nextHalvingHeight);
 
     const stats = [
-        { label: 'Block height', value: currentBlockHeight.toLocaleString(), sub: 'blocks mined so far' },
+        {
+            label: 'Block height',
+            value: `${approx}${currentBlockHeight.toLocaleString('en-US')}`,
+            sub: isEstimate ? 'estimate: live feed unreachable' : 'blocks mined so far',
+        },
         { label: 'Block subsidy', value: `${currentSubsidy} BTC`, sub: `subsidy era ${currentEra + 1} of ${TOTAL_ERAS}` },
         { label: 'BTC issued', value: `${issuedMillions}M`, sub: `${issuedPercent}% of the 21M cap` },
-        { label: 'Next halving', value: blocksToHalving.toLocaleString(), sub: `blocks away · ${nextHalvingRow?.date ?? 'scheduled'}` },
+        {
+            label: 'Next halving',
+            value: `${approx}${blocksToHalving.toLocaleString('en-US')}`,
+            sub: `blocks away${isEstimate ? ' (est.)' : ''} · ${nextHalvingRow?.date ?? 'scheduled'}`,
+        },
     ];
 
     return (
@@ -377,7 +395,7 @@ export default async function MiningPage() {
                     </p>
                 </section>
 
-                {/* Live stats strip */}
+                {/* Stats strip: live, or a labelled estimate when the height feed is down */}
                 <section aria-label="Current network figures" className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
                     {stats.map((stat) => (
                         <div key={stat.label} className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800">
@@ -393,13 +411,15 @@ export default async function MiningPage() {
                     aria-label="On this page"
                     className="bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-2xl border border-slate-200 dark:border-slate-800"
                 >
-                    <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-3">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">
                         On this page
                     </p>
-                    <ul className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-1.5 text-xs sm:text-sm">
+                    {/* Each link fills a 44px row. As bare text they were 15px tall on a
+                        22px pitch, in two columns: the wrong section was one thumb-width away. */}
+                    <ul className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 text-xs sm:text-sm">
                         {TOC.map((item) => (
                             <li key={item.href}>
-                                <a href={item.href} className={linkClass}>{item.label}</a>
+                                <a href={item.href} className={`${navLink} flex min-h-11 items-center`}>{item.label}</a>
                             </li>
                         ))}
                     </ul>
@@ -517,16 +537,17 @@ export default async function MiningPage() {
                                 weeks. Blocks slowed noticeably. The 3 July re-target cut difficulty by about 28%, the largest single
                                 drop in Bitcoin&apos;s history, and one of four consecutive downward adjustments. No committee met. No
                                 emergency patch shipped. The chain kept producing blocks the entire time, and the hashrate reappeared
-                                elsewhere over the following year. Cambridge notes that no country-level data has been available for China
-                                since that crackdown. Treat any precise &ldquo;share that left&rdquo; figure with caution.
+                                elsewhere over the following year. Cambridge&apos;s mining map says no province-level data for China has been
+                                available since that crackdown. Treat any precise &ldquo;share that left&rdquo; figure with caution.
                             </p>
                             <Cite items={[SRC.difficultyDrop, SRC.miningMap]} />
-                            <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                            <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
                                 A detail for the pedants: the retarget code walks back{' '}
                                 <Src href={SRC.pow.url}>DifficultyAdjustmentInterval() &minus; 1</Src> blocks, so it measures the elapsed
-                                time across 2,015 block intervals rather than 2,016. The network runs a hair fast as a result. It&apos;s
-                                one of the oldest known quirks in Bitcoin, left alone because fixing it would change consensus rules for
-                                no practical gain.
+                                time across 2,015 block intervals rather than 2,016. Taken alone, that makes the real target about
+                                10 minutes and 0.3 seconds a block. Blocks have still averaged a little under ten minutes, because
+                                hashrate has kept growing between re-targets. It&apos;s one of the oldest known quirks in Bitcoin, left
+                                alone because fixing it would change consensus rules for no practical gain.
                             </p>
                         </div>
                     </div>
@@ -564,34 +585,43 @@ export default async function MiningPage() {
                         {/* Halving table */}
                         <div className="bg-slate-100 dark:bg-slate-900/50 p-5 sm:p-6 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-4">
                             <h3 className="text-sm sm:text-base font-bold text-slate-800 dark:text-white">The Complete Halving Schedule</h3>
-                            <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
-                                Subsidy shown is the reward <em>after</em> that halving. Dates past the next one are estimates, since
+                            <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400">
+                                Subsidy shown is the reward <em>after</em> that halving, and the total is everything issued up to it,
+                                counted in whole satoshis the way the software counts. Dates past the next one are estimates, since
                                 block times drift slightly around the ten-minute target.
                             </p>
-                            <div className="overflow-x-auto -mx-2 sm:mx-0">
-                                <table className="w-full text-xs sm:text-sm min-w-[480px]">
+                            {/* No minimum width, so all four columns fit a 360px phone and the
+                                totals need no sideways scroll. The tighter column gap below sm
+                                is what makes that fit. Narrower screens scroll inside this box,
+                                which is focusable so a keyboard can scroll it too. */}
+                            <div className="overflow-x-auto -mx-2 sm:mx-0" tabIndex={0} role="region" aria-label="Halving schedule table">
+                                <table className="w-full text-xs sm:text-sm">
                                     <thead>
-                                        <tr className="text-left text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-700">
-                                            <th scope="col" className="pb-2 pr-3 font-medium">Halving</th>
-                                            <th scope="col" className="pb-2 pr-3 font-medium">When</th>
-                                            <th scope="col" className="pb-2 pr-3 font-medium">Block Subsidy</th>
+                                        <tr className="text-left text-slate-600 dark:text-slate-400 border-b border-slate-200 dark:border-slate-700">
+                                            <th scope="col" className="pb-2 pr-2 sm:pr-3 font-medium">Halving</th>
+                                            <th scope="col" className="pb-2 pr-2 sm:pr-3 font-medium">When</th>
+                                            <th scope="col" className="pb-2 pr-2 sm:pr-3 font-medium">Block Subsidy</th>
                                             <th scope="col" className="pb-2 font-medium">Total BTC After</th>
                                         </tr>
                                     </thead>
-                                    <tbody className="text-slate-700 dark:text-slate-300 tabular-nums">
-                                        {HALVING_DATA.map((row, idx) => {
+                                    {/* Past rows are slate-900 so they still read as darker than the
+                                        future ones, which had to move from slate-500 to slate-600 to
+                                        reach AA on this panel. The tick and the "~" carry the meaning. */}
+                                    <tbody className="text-slate-900 dark:text-slate-300 tabular-nums">
+                                        {HALVING_SCHEDULE.map((row, idx) => {
                                             const isPast = currentBlockHeight >= row.block;
                                             return (
                                                 <tr
                                                     key={row.halving}
-                                                    className={`border-t border-slate-200 dark:border-slate-700/50 ${isPast ? '' : 'text-slate-500 dark:text-slate-400'}`}
+                                                    className={`border-t border-slate-200 dark:border-slate-700/50 ${isPast ? '' : 'text-slate-600 dark:text-slate-400'}`}
                                                 >
-                                                    <td className="py-2 pr-3 font-medium">
+                                                    <td className="py-2 pr-2 sm:pr-3 font-medium">
                                                         {row.halving}
                                                         {isPast && idx > 0 && <span className="ml-1 text-emerald-700 dark:text-emerald-400">&#10003;</span>}
                                                     </td>
-                                                    <td className="py-2 pr-3">{row.date}</td>
-                                                    <td className="py-2 pr-3 font-mono text-xs">{row.reward}</td>
+                                                    {/* Month and day stay together, so a wrapped date breaks after the comma. */}
+                                                    <td className="py-2 pr-2 sm:pr-3">{row.date.replace(/ (?=\d+,)/, '\u00a0')}</td>
+                                                    <td className="py-2 pr-2 sm:pr-3 font-mono text-xs">{row.reward}</td>
                                                     <td className="py-2 font-mono text-xs">{row.supplyAfter}</td>
                                                 </tr>
                                             );
@@ -599,13 +629,15 @@ export default async function MiningPage() {
                                     </tbody>
                                 </table>
                             </div>
-                            <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-                                After 33 halvings the subsidy rounds to zero in integer satoshis, which happens around 2140. Slightly{' '}
-                                <em>fewer</em> than 21 million will ever be spendable, though. The genesis block&apos;s 50 BTC can never
-                                be moved, because of a quirk in the original code. A handful of miners have claimed less than the full
-                                subsidy they were owed. And an unknowable number of coins are permanently lost.
+                            <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+                                After 33 halvings the subsidy rounds to zero in integer satoshis, which happens around 2140. Because each
+                                halving rounds the subsidy down to a whole satoshi, the schedule stops at {formatBtc(MAX_ISSUED_SATS)} BTC,
+                                about {formatBtc(21_000_000 * SATS_PER_BTC - MAX_ISSUED_SATS)} BTC short of 21 million. <em>Fewer</em> still
+                                will ever be spendable. The genesis block&apos;s 50 BTC can never be moved, because of a quirk in the
+                                original code. A handful of miners have claimed less than the full subsidy they were owed. And an
+                                unknowable number of coins are permanently lost.
                             </p>
-                            <Cite items={[SRC.controlledSupply, SRC.genesis, SRC.amountH]} />
+                            <Cite items={[SRC.validation, SRC.amountH, SRC.controlledSupply, SRC.genesis]} />
                         </div>
 
                         <div className="grid sm:grid-cols-2 gap-3 sm:gap-4">
@@ -646,8 +678,9 @@ export default async function MiningPage() {
                             Solo mining is a lottery with brutal odds. A single machine at 270 TH/s, the 2024 S21 XP, is about one part in
                             four million of a network running near a{' '}
                             <Src href={SRC.hashrate.url}>zettahash per second</Src>. On average it finds a block once every seventy
-                            years or so. And &ldquo;on average&rdquo; hides the real problem: the process is memoryless. Your block is
-                            equally likely to arrive tomorrow or in year 200.
+                            years or so. And &ldquo;on average&rdquo; hides the real problem: the process is memoryless. Past bad luck
+                            earns you nothing. After ten dry years your odds tomorrow are what they were on day one, and the wait can
+                            run past a century.
                         </p>
                         <p>
                             Pools exist to sell you out of that variance. Miners submit <strong className="text-slate-800 dark:text-slate-200">shares</strong>:
@@ -725,11 +758,12 @@ export default async function MiningPage() {
                                 <h3 className={cardTitle}>Joules per terahash is the whole game</h3>
                                 <p className={cardBody}>
                                     Efficiency is measured in J/TH, energy burned per trillion hashes. The S9 generation ran at about
-                                    98 J/TH; the 2024 S21 XP does 13.5 J/TH, roughly seven times better; and the newest 2026 machines
-                                    push below 10 J/TH. Every generation lowers the electricity price at which the previous one breaks
-                                    even, and eventually strands it entirely.
+                                    98 J/TH; the 2024 S21 XP does 13.5 J/TH, roughly seven times better. Of the machines released in
+                                    2026, the air-cooled Antminer S23 is rated at 11 J/TH and the hydro-cooled S23 Hyd at 9.5. Those
+                                    are the maker&apos;s ratings, listed with a 5% tolerance. Every generation lowers the electricity
+                                    price at which the previous one breaks even, and eventually strands it entirely.
                                 </p>
-                                <Cite items={[SRC.asicValue]} />
+                                <Cite items={[SRC.asicValue, SRC.asicS23, SRC.asicS23Hyd]} />
                             </div>
                             <div className={cardClass}>
                                 <h3 className={cardTitle}>Hardware depreciates in two directions</h3>
@@ -753,20 +787,22 @@ export default async function MiningPage() {
                                 <h3 className={cardTitle}>The honest home-mining math</h3>
                                 <p className={cardBody}>
                                     An S21 XP draws 3,645 W. Run continuously that is roughly 2,600 kWh a month, about $480 at the US
-                                    residential average of 18.4 cents per kWh. An industrial operator on a $0.04/kWh contract pays around
-                                    $105 for identical work. Same bitcoin out, roughly four to five times the cost in, and difficulty is
-                                    set by their economics. Then add a few thousand dollars of hardware, serious fan noise, and 3.6 kW of
-                                    heat you have to move somewhere.
+                                    residential average of 18.3 cents per kWh (July 2026). The median electricity rate in Cambridge&apos;s
+                                    survey of mining firms was $45 per MWh, or 4.5 cents per kWh, at the end of June 2024. At that rate
+                                    the identical work costs about $118. Same bitcoin out, roughly four times the cost in, and difficulty
+                                    is set by their economics. Then add a few thousand dollars of hardware, serious fan noise, and 3.6 kW
+                                    of heat you have to move somewhere.
                                 </p>
-                                <Cite items={[SRC.asicValue, SRC.eia]} />
+                                <Cite items={[SRC.asicValue, SRC.eia, SRC.cambridge]} />
                             </div>
                         </div>
                         <div className="bg-amber-50/50 dark:bg-amber-950/20 border-l-4 border-amber-400 px-4 sm:px-6 py-3 sm:py-4 rounded-r-xl">
                             <p className="text-sm sm:text-base text-slate-700 dark:text-slate-300 leading-relaxed">
-                                <strong className="text-slate-800 dark:text-slate-200">The blunt version:</strong> if your goal is exposure
-                                to bitcoin, buying bitcoin is the cheaper trade. Home mining can be worth it as a hobby, as space heating
-                                you were paying for anyway, or where power is unusually cheap. As an investment, buying and holding almost
-                                always beats it. You can test what a schedule of ordinary purchases would have done with the{' '}
+                                <strong className="text-slate-800 dark:text-slate-200">The blunt version:</strong> at the average US
+                                home rate, electricity for the same work costs about four times what the median firm in
+                                Cambridge&apos;s survey paid, and the hardware is extra. Home mining can be worth it as a hobby, as space
+                                heating you were paying for anyway, or where power is unusually cheap. You can test what a schedule of
+                                ordinary purchases would have done with the{' '}
                                 <Link href="/" className={linkClass}>calculator</Link>.
                             </p>
                         </div>
@@ -821,8 +857,12 @@ export default async function MiningPage() {
                             </p>
                         </div>
                         <p>
-                            The claim has a second problem too: there is no such thing as <em>the</em> cost of production. A miner on
-                            flared gas at $0.02/kWh and one paying $0.09 in Europe differ by more than a factor of four. Any single global
+                            The claim has a second problem too: there is no such thing as <em>the</em> cost of production. In
+                            Cambridge&apos;s survey of mining firms, the electricity rates reported for mid-2024 ran from $20 to $65
+                            per MWh, which is 2 to 6.5 cents per kWh. At those rates Cambridge put the electricity cost of minting
+                            one bitcoin at anywhere from $17,417 to $56,606 on 30 June 2024, and that is with every firm assumed to
+                            run equally efficient machines. The gap is more than a factor of three among the 35 firms that answered (
+                            <Src href={SRC.cambridgeRates.url}>page 86 of the full report</Src>, a 20 MB PDF). Any single global
                             figure is an average across a very wide distribution. And it is the marginal miner, the most expensive one
                             still running, who sets the shutdown point, not the average one.
                         </p>
@@ -870,8 +910,11 @@ export default async function MiningPage() {
                         <p>
                             Miner revenue has two parts: the block subsidy and transaction fees. Blocks hold a limited amount of data by
                             design. When more people want to transact than there is space, they bid against each other, and the miner
-                            takes the highest bidders. Fees are usually a small fraction of block revenue, often a few percent. During
-                            congestion episodes they have briefly exceeded the subsidy itself: the halving block 840,000 collected{' '}
+                            takes the highest bidders. Fees are usually a small fraction of block revenue, and the share swings a
+                            long way. Over the twelve months to October 2026 fees were about 0.6% of what miners earned. Across
+                            2023 and 2024 they were about 6.5%. Both are fees divided by subsidy plus fees, from{' '}
+                            <Src href={SRC.feeShare.url}>mempool.space&apos;s fees-versus-subsidy data</Src>. During congestion
+                            episodes fees have briefly exceeded the subsidy itself: the halving block 840,000 collected{' '}
                             <Src href={SRC.block840k.url}>37.6 BTC in fees against a 3.125 BTC subsidy</Src>.
                         </p>
                         <div className="grid sm:grid-cols-2 gap-3 sm:gap-4">
@@ -941,7 +984,7 @@ export default async function MiningPage() {
                                 <h3 className="text-sm sm:text-base font-bold text-emerald-800 dark:text-emerald-300">It CANNOT</h3>
                                 <ul className="space-y-2 text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
                                     <li className="flex gap-2"><span className="text-emerald-700 dark:text-emerald-400 shrink-0">&bull;</span><span><strong className="text-slate-700 dark:text-slate-300">Steal coins it lacks the keys for.</strong> Every node verifies signatures. Hashrate does not forge them.</span></li>
-                                    <li className="flex gap-2"><span className="text-emerald-700 dark:text-emerald-400 shrink-0">&bull;</span><span><strong className="text-slate-700 dark:text-slate-300">Create coins out of thin air.</strong> A block whose coinbase pays more than the schedule allows is invalid, and every full node rejects it. A majority of hashrate cannot make an invalid block valid.</span></li>
+                                    <li className="flex gap-2"><span className="text-emerald-700 dark:text-emerald-400 shrink-0">&bull;</span><span><strong className="text-slate-700 dark:text-slate-300">Create coins out of thin air.</strong> A block whose coinbase pays more than that block&apos;s subsidy plus its fees is invalid, and every full node rejects it. A majority of hashrate cannot make an invalid block valid.</span></li>
                                     <li className="flex gap-2"><span className="text-emerald-700 dark:text-emerald-400 shrink-0">&bull;</span><span><strong className="text-slate-700 dark:text-slate-300">Change the 21 million cap.</strong> Same reason. The cap lives in the software users run, not in miner behavior.</span></li>
                                     <li className="flex gap-2"><span className="text-emerald-700 dark:text-emerald-400 shrink-0">&bull;</span><span><strong className="text-slate-700 dark:text-slate-300">Rewrite deep history.</strong> Undoing a year-old block means redoing a year of accumulated work while simultaneously outrunning the entire network.</span></li>
                                 </ul>
@@ -952,9 +995,11 @@ export default async function MiningPage() {
                                 <h3 className={cardTitle}>Depth is the defense</h3>
                                 <p className={cardBody}>
                                     A transaction one block deep is far cheaper to reverse than one six blocks deep, because each
-                                    additional block multiplies the work an attacker must redo. That is exactly why exchanges and
-                                    custodians set confirmation thresholds, and why large settlements wait for more of them.
+                                    additional block adds to the work an attacker must redo. For an attacker without a majority,
+                                    the chance of ever catching up falls exponentially with each block. That is exactly why exchanges
+                                    and custodians set confirmation thresholds, and why large settlements wait for more of them.
                                 </p>
+                                <Cite items={[SRC.whitepaper]} />
                             </div>
                             <div className={cardClass}>
                                 <h3 className={cardTitle}>Not hypothetical for small chains</h3>
@@ -985,10 +1030,15 @@ export default async function MiningPage() {
                             recent full study, published April 2025 on data through mid-2024, put consumption at{' '}
                             <strong className="text-slate-800 dark:text-slate-200">138 TWh per year</strong>. That is{' '}
                             <strong className="text-slate-800 dark:text-slate-200">about 0.54% of global electricity</strong>, comparable
-                            to a mid-sized country. The <Src href={SRC.cbeci.url}>live index</Src> has run higher since. Treat precise
-                            figures with suspicion, including the flattering ones.
+                            to a mid-sized country. The <Src href={SRC.cbeci.url}>live index</Src> has run higher since. Preliminary
+                            figures from Cambridge&apos;s next edition were presented at a conference in July 2026 and were still
+                            unpublished on {LAST_REVIEWED}. The source here is{' '}
+                            <Src href={SRC.cambridgePreview.url}>an AI-assisted write-up from the organiser&apos;s own outlet</Src>,
+                            not Cambridge. It puts the annualised rate at about 190 TWh in December 2025, with a 59.4% low-carbon
+                            share and emissions near 48 million tonnes of CO<sub>2</sub> equivalent. Treat precise figures with
+                            suspicion, including the flattering ones.
                         </p>
-                        <Cite items={[SRC.cambridge, SRC.cambridgeNews, SRC.cbeci]} />
+                        <Cite items={[SRC.cambridge, SRC.cambridgeNews, SRC.cbeci, SRC.cambridgePreview]} />
                         <div className="grid sm:grid-cols-2 gap-3 sm:gap-4">
                             <div className={cardClass}>
                                 <h3 className={cardTitle}>The strongest case for</h3>
@@ -1054,9 +1104,10 @@ export default async function MiningPage() {
                         </p>
                         <p className={cardBody}>
                             The placement below is a custodial product, and the one exception to the non-custodial rule the rest of this
-                            site&apos;s links follow. Our{' '}
-                            <Link href="/about#affiliate-disclosure" className={linkClass}>affiliate disclosure</Link> says so in the
-                            same words.
+                            site&apos;s affiliate links follow. Our{' '}
+                            <Link href="/about#affiliate-disclosure" className={linkClass}>affiliate disclosure</Link> says the
+                            same. GoMining also has its own token, GOMINING, and its digital miners page advertises a discount on
+                            maintenance fees paid in it.
                         </p>
                     </div>
 
@@ -1101,6 +1152,8 @@ export default async function MiningPage() {
                                         ))}
                                         <p className="text-xs text-slate-500 dark:text-slate-400 pt-1">
                                             These are the operator&apos;s own claims, not our findings. We have not audited their facilities.
+                                            The price is the one GoMining&apos;s digital miners page listed on {GOMINING_ENTRY.checked}. It
+                                            has changed before, so check it there before relying on it.
                                         </p>
                                     </div>
 
@@ -1108,7 +1161,7 @@ export default async function MiningPage() {
                                         href={GOMINING_DATA.href}
                                         target="_blank"
                                         rel="noopener noreferrer sponsored"
-                                        className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm sm:text-base font-semibold text-slate-950 ${affiliateClasses.button} transition-colors shadow-sm`}
+                                        className={`inline-flex min-h-11 items-center gap-2 px-5 py-2.5 rounded-xl text-sm sm:text-base font-semibold text-slate-950 ${affiliateClasses.button} transition-colors shadow-sm`}
                                     >
                                         Visit GoMining (affiliate link)
                                         <ExternalLink className="w-4 h-4" />
@@ -1171,7 +1224,7 @@ export default async function MiningPage() {
                             Why Bitcoin Has Value
                         </Link>
                     </div>
-                    <p className="mt-4 text-xs sm:text-sm text-slate-500 dark:text-slate-400">
+                    <p className="mt-4 text-xs sm:text-sm text-slate-600 dark:text-slate-400">
                         Curious how we source and compute all of it?{' '}
                         <Link href="/methodology" className={linkClass}>Read the methodology</Link>.
                     </p>
@@ -1185,22 +1238,31 @@ export default async function MiningPage() {
                     </div>
                     <div className="bg-slate-100 dark:bg-slate-900/50 p-5 sm:p-6 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-3">
                         <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-                            Protocol claims on this page are cited to the reference implementation or the specification, not to
-                            secondary explainers. Energy and hardware figures are cited to the body that produced them. Where a
-                            number could not be traced to a source, it was softened or dropped rather than repeated.
+                            Protocol claims on this page are cited to Bitcoin Core&apos;s source code, the whitepaper, the
+                            developer reference or the Stratum V2 specification. Two Bitcoin Wiki pages are cited as well, for
+                            the worked issuance table and the genesis block. Energy figures and electricity prices are cited to the bodies
+                            that produced them, Cambridge and the EIA, with one labelled exception: Cambridge&apos;s preliminary
+                            2026 figures, cited to an AI-assisted write-up of a conference talk from the organiser&apos;s own
+                            outlet. Hardware figures are the maker&apos;s ratings as listed by ASIC Miner Value. Where a number
+                            could not be traced to a source, it was softened or dropped rather than repeated.
                         </p>
-                        <ul className="space-y-1.5 text-xs sm:text-sm text-slate-600 dark:text-slate-400">
+                        {/* On a phone, and on any touch screen, each source is a 44px row. With a
+                            mouse from sm up it is a compact list. */}
+                        <ul className="sm:space-y-1.5 pointer-coarse:space-y-0 text-xs sm:text-sm text-slate-600 dark:text-slate-400">
                             {Object.values(SRC).map((s) => (
-                                <li key={s.url} className="flex items-start gap-2">
-                                    <span className="text-amber-700 dark:text-amber-400 mt-0.5 shrink-0">&bull;</span>
-                                    <Src href={s.url}>{s.label}</Src>
+                                <li key={s.url} className="flex items-center sm:items-start pointer-coarse:items-center gap-2">
+                                    <span className="text-amber-700 dark:text-amber-400 sm:mt-0.5 pointer-coarse:mt-0 shrink-0">&bull;</span>
+                                    <Src href={s.url} className="flex items-center max-sm:min-h-11 pointer-coarse:min-h-11">{s.label}</Src>
                                 </li>
                             ))}
                         </ul>
-                        <p className="text-xs text-slate-500 dark:text-slate-400 pt-1 border-t border-slate-200 dark:border-slate-800">
-                            <strong className="text-slate-600 dark:text-slate-300">Last reviewed:</strong> {LAST_REVIEWED}. Network
-                            figures move constantly. The block height, subsidy and issued supply at the top of this page are fetched
-                            live, and the links above go to the trackers rather than to a snapshot of them.
+                        <p className="text-xs text-slate-600 dark:text-slate-400 pt-1 border-t border-slate-200 dark:border-slate-800">
+                            <strong className="text-slate-700 dark:text-slate-300">Last reviewed:</strong> {LAST_REVIEWED}. Network
+                            figures move constantly.{' '}
+                            {isEstimate
+                                ? `mempool.space could not be reached when this page was generated, so the block height at the top is an estimate: block ${BLOCK_HEIGHT_ANCHOR.height.toLocaleString('en-US')}, seen on ${formatUtc(BLOCK_HEIGHT_ANCHOR.ts, 'full')} (UTC), plus ${BLOCKS_PER_DAY} blocks a day, the ten-minute target. The subsidy, issued supply and halving countdown are computed from it.`
+                                : 'The block height at the top of this page comes from mempool.space and is refreshed whenever the page is regenerated. The subsidy, issued supply and halving countdown are computed from it.'}{' '}
+                            The links above go to the trackers rather than to a snapshot of them.
                         </p>
                     </div>
                 </section>

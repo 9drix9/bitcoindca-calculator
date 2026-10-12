@@ -1,24 +1,31 @@
 import type { Metadata } from 'next';
 import { ArrowUpRight } from 'lucide-react';
 import clsx from 'clsx';
-import { getBitcoinPriceHistory, getCurrentBitcoinPrice } from '@/app/actions';
 import {
+    computeShareResult,
+    describeSharePlan,
     encodeShareQuery,
+    formatSignedPercent,
+    isApproximateFx,
     resolveShareParams,
     toCalculatorParams,
     type ResolvedShareParams,
+    type ShareComputed,
+    type ShareOutcome,
 } from '@/app/share/shareData';
-import { calculateDca } from '@/utils/dca';
-import { DAY_MS, formatUtc, parseUtcDate } from '@/utils/dates';
+import { EARLIEST_PRICE_TS, formatUtc } from '@/utils/dates';
+import { btcToSats } from '@/utils/units';
 import type { UrlCurrency } from '@/utils/urlParams';
-import type { DcaResult, Frequency } from '@/types';
-import { resolveServerCurrency, type ServerCurrencyConfig } from '@/utils/serverCurrency';
+import type { ServerCurrencyConfig } from '@/utils/serverCurrency';
 import { Logo } from '@/components/brand/Logo';
 
-// Embeds are cheap, cacheable, identical for everyone with the same params.
-// Rendered per request: the whole widget is a function of its query string, so a
-// static prerender would only ever produce the fallback card. Upstream price data is
-// still cached server-side, so this stays cheap.
+// Rendered per request: the whole widget is a function of its query string and
+// of prices that move, so a static prerender would only ever produce the
+// fallback card. That makes the HTML itself uncacheable (Next sends a dynamic
+// page as `private, no-store`), so every view of a page that embeds the widget
+// is one render here. What keeps that render cheap is underneath it: the price
+// history, the live quote and the FX rates are cached server-side, and nothing
+// is fetched from an exchange per view.
 export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
@@ -33,16 +40,9 @@ export const metadata: Metadata = {
 const SITE_URL = (process.env.NEXT_PUBLIC_BASE_URL || 'https://btcdollarcostaverage.com').replace(/\/+$/, '');
 const SITE_HOST = SITE_URL.replace(/^https?:\/\//, '');
 
-// Currency config comes from utils/serverCurrency (live ECB rates, constants only
-// as an outage fallback). The fixed table that used to live here had drifted ~18
-// months, so non-USD embeds understated BTC stacked by up to 7.2%.
-
-const FREQUENCY_LABEL: Record<Frequency, string> = {
-    daily: '/day',
-    weekly: '/week',
-    biweekly: ' every 2 weeks',
-    monthly: '/month',
-};
+// The numbers come from computeShareResult (app/share/shareData), the same run
+// that draws the /share card and the OG image: the plan up to today, in the
+// link's currency. This file only lays it out.
 
 // ── Theme ──────────────────────────────────────────────────────────────────────
 
@@ -77,45 +77,47 @@ footer,[data-site-overlay],[role="dialog"],a[href="#main-content"]{display:none!
 
 // ── Formatting ─────────────────────────────────────────────────────────────────
 
-/** Format a USD figure in the requested display currency. */
-function fmtMoney(usd: number, currency: UrlCurrency, cfg: ServerCurrencyConfig): string {
+/**
+ * Format a USD figure in the requested display currency. An amount of money
+ * stops at cents. `price` keeps four decimals below one unit: a plan that ran
+ * in 2010 has an average cost of a few cents per bitcoin, and rounding that to
+ * the cent can move it by several percent.
+ */
+function fmtMoney(usd: number, currency: UrlCurrency, cfg: ServerCurrencyConfig, price = false): string {
     const converted = usd * cfg.rate;
     const abs = Math.abs(converted);
-    const digits = currency === 'JPY' || abs >= 1000 ? 0 : abs >= 1 ? 2 : 4;
-    return `${converted < 0 ? '-' : ''}${cfg.symbol}${abs.toLocaleString('en-US', { maximumFractionDigits: digits })}`;
+    const digits = currency === 'JPY' || abs >= 1000 ? 0 : abs >= 1 || (abs >= 0.01 && !price) ? 2 : 4;
+    // Cents come in pairs: "$75.50", never "$75.5". A whole amount stays bare.
+    const cents = digits === 2 && !Number.isInteger(Math.round(abs * 100) / 100) ? 2 : 0;
+    return `${converted < 0 ? '-' : ''}${cfg.symbol}${abs.toLocaleString('en-US', { minimumFractionDigits: cents, maximumFractionDigits: digits })}`;
 }
 
-/** Format an amount that is already denominated in the display currency. */
-function fmtAmount(amount: number, cfg: ServerCurrencyConfig): string {
-    return `${cfg.symbol}${amount.toLocaleString('en-US', { maximumFractionDigits: 2 })}`;
-}
+/** One decimal below 100%, none from there up: the badge is short on room. */
+const fmtPct = (value: number): string => formatSignedPercent(value, Math.abs(value) >= 100 ? 0 : 1);
 
-function fmtPct(value: number): string {
-    const digits = Math.abs(value) >= 100 ? 0 : 1;
-    return `${value >= 0 ? '+' : ''}${value.toLocaleString('en-US', { maximumFractionDigits: digits })}%`;
-}
-
+/** The figure only: the "BTC" beside it is laid out on its own (see Stat). */
 function fmtBtc(btc: number): string {
-    if (!Number.isFinite(btc) || btc <= 0) return '0 BTC';
-    const decimals = btc >= 1 ? 4 : 8;
-    const text = btc.toFixed(decimals).replace(/(\.\d*?)0+$/, '$1').replace(/\.$/, '');
-    return `${text} BTC`;
+    if (!Number.isFinite(btc) || btc <= 0) return '0';
+    return btc.toLocaleString('en-US', { maximumFractionDigits: btc >= 1 ? 4 : 8 });
 }
 
-const fmtSats = (btc: number): string => `${Math.floor(btc * 1e8).toLocaleString('en-US')} sats`;
+// btcToSats rounds, the same as the calculator's sats figures: 0.755 * 1e8 is
+// 75499999.99999999 in floating point, and flooring printed 0.755 BTC as
+// 75,499,999 sats.
+const fmtSats = (btc: number): string => `${btcToSats(btc).toLocaleString('en-US')} sats`;
 
-/** "$50/week since Jul 2021" — or an explicit range when the end date isn't today. */
-function scenarioLine(p: ResolvedShareParams, cfg: ServerCurrencyConfig): string {
-    const amount = fmtAmount(p.amount, cfg);
-    const cadence = `${amount}${FREQUENCY_LABEL[p.frequency]}`;
-    const startTs = parseUtcDate(p.startDate);
-    const endTs = parseUtcDate(p.endDate);
-    const todayIso = formatUtc(Date.now(), 'isoDay');
-    const period = p.endDate >= todayIso
-        ? `since ${formatUtc(startTs, 'monthYear')}`
-        : `${formatUtc(startTs, 'monthYear')} → ${formatUtc(endTs, 'monthYear')}`;
-    const fee = p.feePercentage > 0 ? ` · ${p.feePercentage}% fee` : '';
-    return `${cadence} ${period}${fee}`;
+/**
+ * "$50/week since Jul 2021 · 0.5% fee": the plan, then everything else that
+ * shaped the number (an assumed price, a starting stack, a yearly raise, the
+ * fees). A plan that ended in the past is an explicit range; "since" is only
+ * used while the buying runs up to today.
+ */
+function scenarioLine(p: ResolvedShareParams, computed: ShareComputed): string {
+    const plan = describeSharePlan(p, computed);
+    const period = plan.running
+        ? `since ${plan.since}`
+        : plan.since === plan.until ? `in ${plan.since}` : `${plan.since} → ${plan.until}`;
+    return [`${plan.cadence} ${period}`, ...plan.notes].join(' · ');
 }
 
 // ── Computation ────────────────────────────────────────────────────────────────
@@ -125,56 +127,29 @@ async function resolveRenderedAt(): Promise<number> {
     return Date.now();
 }
 
-async function computeEmbed(p: ResolvedShareParams, cfg: ServerCurrencyConfig): Promise<DcaResult | null> {
-    try {
-        const startTs = parseUtcDate(p.startDate);
-        const endTs = parseUtcDate(p.endDate);
-        if (isNaN(startTs) || isNaN(endTs) || startTs > endTs) return null;
-        if (p.priceMode === 'manual' && p.manualPrice <= 0) return null;
-
-        let priceData: [number, number][] | undefined;
-        let currentPrice: number | null = null;
-        if (p.priceMode === 'api') {
-            const [history, price] = await Promise.all([
-                getBitcoinPriceHistory(startTs, endTs + DAY_MS, p.provider),
-                getCurrentBitcoinPrice(p.provider).catch(() => null),
-            ]);
-            if (!history || history.length === 0) return null;
-            priceData = history;
-            currentPrice = price && price > 0 ? price : null;
-        }
-
-        const result = calculateDca(
-            {
-                amount: p.amount / cfg.rate,
-                frequency: p.frequency,
-                startDate: new Date(startTs),
-                endDate: new Date(endTs),
-                feePercentage: p.feePercentage,
-                priceMode: p.priceMode,
-                manualPrice: p.manualPrice,
-                startingBtc: p.startingBtc > 0 ? p.startingBtc : undefined,
-                startingAvgCost: p.startingAvgCost > 0 ? p.startingAvgCost / cfg.rate : undefined,
-                annualEscalationPct: p.annualEscalationPct,
-            },
-            priceData,
-            p.priceMode === 'api' ? currentPrice : undefined,
-        );
-
-        if (
-            !(result.totalInvested > 0) ||
-            !(result.btcAccumulated > 0) ||
-            !Number.isFinite(result.currentValue) ||
-            !Number.isFinite(result.roi)
-        ) {
-            return null;
-        }
-        return result;
-    } catch (error) {
-        // An embed must degrade to a small branded card, never to a 500.
-        console.error('[embed] computation failed:', error);
-        return null;
+/**
+ * What the card says when there is no result to show. A problem with the link
+ * itself is named as one: telling a publisher that prices are "temporarily
+ * unavailable" for a start date in the future would have them wait for an
+ * outage that is not happening.
+ */
+function fallbackCopy(outcome: Exclude<ShareOutcome, ShareComputed> | null): { title: string; body: string } {
+    if (outcome?.status === 'not-started') {
+        return {
+            title: 'This schedule has not started yet',
+            body: `Its first purchase is dated ${formatUtc(outcome.startTs, 'full')}. The card only counts purchases that have already happened.`,
+        };
     }
+    if (outcome?.status === 'invalid') {
+        return {
+            title: 'Nothing to calculate for these settings',
+            body: `Check the link: the amount has to be above zero and above any flat fee, the start date on or before the end date, and manual mode needs a price. Price data begins on ${formatUtc(EARLIEST_PRICE_TS, 'full')}.`,
+        };
+    }
+    return {
+        title: 'Price data is temporarily unavailable',
+        body: "We couldn't compute this result right now. Please try again in a few minutes.",
+    };
 }
 
 // ── Pieces ─────────────────────────────────────────────────────────────────────
@@ -187,7 +162,11 @@ function Brand({ href }: { href: string }) {
             href={href}
             target="_blank"
             rel="noopener"
-            className="group flex min-w-0 items-center gap-2"
+            // 44px tall for a thumb. The negative margin gives the height
+            // back, so the header row and the card stay the size they were;
+            // `relative` keeps the part that reaches over the line below on
+            // top of it, where a tap lands on the link.
+            className="group relative -my-3 flex min-h-11 min-w-0 items-center gap-2"
         >
             {/* The Ð monogram, same as every other surface. This was the last
                 ₿-in-a-disc left in the codebase, and it was on the one component
@@ -220,13 +199,79 @@ function Attribution({ href }: { href: string }) {
     );
 }
 
-function Stat({ label, value, sub }: { label: string; value: string; sub: string }) {
+function Stat({ label, value, unit, sub }: { label: string; value: string; unit?: string; sub: string }) {
     return (
         <div className="rounded-xl bg-slate-50 px-2.5 py-2 dark:bg-slate-800/50">
             <p className={MICRO_LABEL}>{label}</p>
-            <p className="mt-0.5 truncate text-sm font-semibold tabular-nums text-slate-800 dark:text-slate-100">{value}</p>
+            {/* One line high, and wrapping. Where the frame is too narrow for
+                the figure and its unit together, the unit wraps to a second
+                line and is clipped away, and the figure stays whole. Cut off
+                as one string, a phone-width embed (under about 324px) read
+                "0.10749469 B…". The label above already names the unit, and
+                it is still in the text for a screen reader. */}
+            <p className="mt-0.5 flex h-5 flex-wrap gap-x-1 overflow-hidden text-sm font-semibold tabular-nums text-slate-800 dark:text-slate-100">
+                <span className="min-w-0 truncate">{value}</span>
+                {unit && <span> {unit}</span>}
+            </p>
             <p className="truncate text-[11px] tabular-nums text-slate-500 dark:text-slate-400">{sub}</p>
         </div>
+    );
+}
+
+/** The result itself: the plan up to today, in the link's currency. */
+function ResultBody({ params, computed }: { params: ResolvedShareParams; computed: ShareComputed }) {
+    const { result, cfg, purchaseCount } = computed;
+    const isProfit = result.profit >= 0;
+    // With constant FX rates the bitcoin a schedule bought and its average cost
+    // are off by however far the rate has moved, while its value and return are
+    // not (the rate cancels out of both). So these two are the figures marked;
+    // the scenario line above them says which rate was used.
+    const approx = isApproximateFx(params, cfg) ? '≈ ' : '';
+
+    return (
+        <>
+            <div className="min-w-0">
+                <p className={MICRO_LABEL}>{scenarioLine(params, computed)}</p>
+                <div className="mt-0.5 flex flex-wrap items-baseline gap-x-2">
+                    <p className="text-3xl font-bold text-slate-900 dark:text-white">
+                        {fmtMoney(result.currentValue, params.currency, cfg)}
+                    </p>
+                    <span
+                        className={clsx(
+                            'rounded-full px-2 py-0.5 text-xs font-semibold tabular-nums',
+                            isProfit
+                                ? 'bg-emerald-500/10 text-gain'
+                                : 'bg-rose-500/10 text-loss',
+                        )}
+                    >
+                        {fmtPct(result.roi)}
+                    </span>
+                </div>
+                <p className="mt-0.5 text-[13px] text-slate-600 dark:text-slate-300">
+                    <span className={clsx('font-semibold tabular-nums', isProfit ? 'text-gain' : 'text-loss')}>
+                        {isProfit ? '+' : ''}{fmtMoney(result.profit, params.currency, cfg)}
+                    </span>
+                    {/* "so far": the plan runs past today and only the buys made to date are counted. */}
+                    {' '}on {fmtMoney(result.totalInvested, params.currency, cfg)} invested{result.endsInFuture ? ' so far' : ''}
+                </p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+                <Stat
+                    label="BTC stacked"
+                    value={`${approx}${fmtBtc(result.btcAccumulated)}`}
+                    unit="BTC"
+                    sub={fmtSats(result.btcAccumulated)}
+                />
+                <Stat
+                    label="Average cost"
+                    value={`${approx}${fmtMoney(result.averageCost, params.currency, cfg, true)}`}
+                    // Scheduled buys only: a starting stack adds a row to the
+                    // breakdown but was never a purchase.
+                    sub={`${purchaseCount.toLocaleString('en-US')} ${purchaseCount === 1 ? 'buy' : 'buys'}`}
+                />
+            </div>
+        </>
     );
 }
 
@@ -248,34 +293,38 @@ export default async function EmbedPage({ searchParams }: EmbedPageProps) {
     const renderedAt = await resolveRenderedAt();
 
     let params: ResolvedShareParams | null = null;
-    let result: DcaResult | null = null;
-    // Resolved before the try so it is in scope for rendering too. Live ECB rate
-    // where available; the constants in utils/serverCurrency are the fallback.
-    let cfg: ServerCurrencyConfig = { symbol: '$', rate: 1, live: true };
+    let outcome: ShareOutcome | null = null;
     try {
-        params = resolveShareParams(toCalculatorParams(raw));
-        cfg = await resolveServerCurrency(params.currency);
-        result = await computeEmbed(params, cfg);
+        // One instant for "today", the default dates and the date printed on
+        // the card, so the three cannot disagree across a UTC midnight.
+        params = resolveShareParams(toCalculatorParams(raw), renderedAt);
+        // Never throws: an embed must degrade to a small branded card, never to a 500.
+        outcome = await computeShareResult(params, renderedAt);
     } catch (error) {
         console.error('[embed] render failed:', error);
         params = null;
-        result = null;
+        outcome = null;
     }
 
+    const computed = outcome?.status === 'ok' ? outcome : null;
+    const fallback = fallbackCopy(outcome && outcome.status !== 'ok' ? outcome : null);
+
+    // The link keeps the plan as written, future end date included, so the
+    // reader lands on the publisher's whole plan in the calculator.
     const ctaHref = params ? `${SITE_URL}/?${encodeShareQuery(params)}` : `${SITE_URL}/`;
-    const isProfit = !!result && result.profit >= 0;
-    const toneClass = isProfit
-        ? 'text-gain'
-        : 'text-loss';
 
     return (
         <div className={clsx(theme === 'dark' && 'dark')}>
             <style dangerouslySetInnerHTML={{ __html: EMBED_CSS }} />
             <script dangerouslySetInnerHTML={{ __html: themeScript(theme) }} />
 
-            <div className="flex min-h-[100svh] w-full bg-slate-50 p-2 dark:bg-slate-950">
+            {/* The gutter and the gaps are sized so the card fits a 300px-tall
+                frame with its plan line on two rows (293px). The guide's
+                snippet is 300px tall, and a phone-width column wraps that
+                line as soon as it names a second thing. */}
+            <div className="flex min-h-[100svh] w-full bg-slate-50 p-1.5 dark:bg-slate-950">
                 {/* Capped so an over-wide host iframe (or a direct visit) doesn't stretch the card */}
-                <div className="mx-auto flex w-full max-w-2xl flex-col gap-3 rounded-2xl border border-slate-200/80 bg-white p-3.5 shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:shadow-none">
+                <div className="mx-auto flex w-full max-w-2xl flex-col gap-2 rounded-2xl border border-slate-200/80 bg-white p-3.5 shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:shadow-none">
 
                     <div className="flex items-center justify-between gap-2">
                         <Brand href={ctaHref} />
@@ -284,54 +333,15 @@ export default async function EmbedPage({ searchParams }: EmbedPageProps) {
                         </span>
                     </div>
 
-                    {result && params ? (
-                        <>
-                            <div className="min-w-0">
-                                <p className={MICRO_LABEL}>{scenarioLine(params, cfg)}</p>
-                                <div className="mt-0.5 flex flex-wrap items-baseline gap-x-2">
-                                    <p className="text-3xl font-bold text-slate-900 dark:text-white">
-                                        {fmtMoney(result.currentValue, params.currency, cfg)}
-                                    </p>
-                                    <span
-                                        className={clsx(
-                                            'rounded-full px-2 py-0.5 text-xs font-semibold tabular-nums',
-                                            isProfit
-                                                ? 'bg-emerald-500/10 text-gain'
-                                                : 'bg-rose-500/10 text-loss',
-                                        )}
-                                    >
-                                        {fmtPct(result.roi)}
-                                    </span>
-                                </div>
-                                <p className="mt-0.5 text-[13px] text-slate-600 dark:text-slate-300">
-                                    <span className={clsx('font-semibold tabular-nums', toneClass)}>
-                                        {isProfit ? '+' : ''}{fmtMoney(result.profit, params.currency, cfg)}
-                                    </span>
-                                    {' '}on {fmtMoney(result.totalInvested, params.currency, cfg)} invested
-                                </p>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-2">
-                                <Stat
-                                    label="BTC stacked"
-                                    value={fmtBtc(result.btcAccumulated)}
-                                    sub={fmtSats(result.btcAccumulated)}
-                                />
-                                <Stat
-                                    label="Average cost"
-                                    value={fmtMoney(result.averageCost, params.currency, cfg)}
-                                    sub={`${result.breakdown.length} buys`}
-                                />
-                            </div>
-                        </>
+                    {computed && params ? (
+                        <ResultBody params={params} computed={computed} />
                     ) : (
                         <div className="min-w-0">
                             <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">
-                                Price data is temporarily unavailable
+                                {fallback.title}
                             </p>
                             <p className="mt-1 text-[13px] leading-relaxed text-slate-500 dark:text-slate-400">
-                                We couldn&apos;t compute this result right now. The live calculator can run the same
-                                schedule against multiple price sources.
+                                {fallback.body}
                             </p>
                         </div>
                     )}

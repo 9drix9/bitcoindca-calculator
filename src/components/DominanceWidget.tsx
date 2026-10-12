@@ -1,68 +1,34 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
 import { PieChart } from 'lucide-react';
-import { getBitcoinDominance } from '@/app/actions';
+import type { BitcoinDominance } from '@/app/api/live/contract';
 import { useCurrency } from '@/context/CurrencyContext';
 import { Card, CardHeader, StatRow, EmptyState } from '@/components/ui/Card';
-
-interface DominanceData {
-    dominancePercent: number;
-    btcMarketCap: number;
-    totalMarketCap: number;
-}
+import { LONE_LINK_HIT_AREA, StaleNote } from '@/components/live/cardFooter';
+import { useLiveFigure } from '@/components/live/liveSidebar';
 
 interface DominanceWidgetProps {
-    initialData: DominanceData | null;
+    initialData: BitcoinDominance | null;
+    /** When the server fetched `initialData` (ms epoch). */
+    fetchedAt?: number | null;
 }
 
-const POLL_MS = 5 * 60_000;
-
-export const DominanceWidget = ({ initialData }: DominanceWidgetProps) => {
-    const { currencyConfig, convertFromUsd } = useCurrency();
-    const [data, setData] = useState<DominanceData | null>(initialData);
-    const hadInitialData = useRef(initialData !== null);
+export const DominanceWidget = ({ initialData, fetchedAt }: DominanceWidgetProps) => {
+    const { currencyConfig, convertFromUsd, rateNote } = useCurrency();
+    const { data, fetchedAt: since, old } = useLiveFigure('dominance', initialData, fetchedAt);
 
     // Market caps arrive in USD; convert before attaching the selected currency's
-    // symbol. (Local tiers because context formatCompact has no trillions tier.)
+    // symbol. Its own tiers, not the context's formatCompact: a market cap wants
+    // two decimals on trillions. Each tier starts where the one below would
+    // round up into it.
     const formatMarketCap = (usdValue: number): string => {
         const sym = currencyConfig.symbol;
         const value = convertFromUsd(usdValue);
-        if (value >= 1e12) return `${sym}${(value / 1e12).toFixed(2)}T`;
-        if (value >= 1e9) return `${sym}${(value / 1e9).toFixed(1)}B`;
+        if (value >= 999.95e9) return `${sym}${(value / 1e12).toFixed(2)}T`;
+        if (value >= 999.95e6) return `${sym}${(value / 1e9).toFixed(1)}B`;
         if (value >= 1e6) return `${sym}${(value / 1e6).toFixed(1)}M`;
-        return `${sym}${Math.round(value).toLocaleString()}`;
+        return `${sym}${Math.round(value).toLocaleString('en-US')}`;
     };
-
-    useEffect(() => {
-        let mounted = true;
-        // SSR data is seconds old at hydration; only fetch immediately when it is missing.
-        let lastFetched = hadInitialData.current ? Date.now() : 0;
-
-        const refresh = async () => {
-            lastFetched = Date.now();
-            try {
-                const fresh = await getBitcoinDominance();
-                if (mounted && fresh) setData(fresh);
-            } catch { /* keep last known */ }
-        };
-
-        if (!hadInitialData.current) refresh();
-
-        const interval = setInterval(() => {
-            if (!document.hidden) refresh();
-        }, POLL_MS);
-        const onVisibilityChange = () => {
-            if (!document.hidden && Date.now() - lastFetched >= POLL_MS) refresh();
-        };
-        document.addEventListener('visibilitychange', onVisibilityChange);
-
-        return () => {
-            mounted = false;
-            clearInterval(interval);
-            document.removeEventListener('visibilitychange', onVisibilityChange);
-        };
-    }, []);
 
     return (
         <Card className="p-4">
@@ -104,6 +70,20 @@ export const DominanceWidget = ({ initialData }: DominanceWidgetProps) => {
             ) : (
                 <EmptyState />
             )}
+
+            <div className="mt-2 pt-2 border-t border-slate-100 dark:border-slate-800 text-[11px] sm:text-xs text-slate-500 dark:text-slate-400">
+                {/* Market caps arrive in USD: say so when the conversion is not at today's rate. */}
+                {data && rateNote && <p className="mb-1 leading-relaxed">{rateNote}</p>}
+                {old && <StaleNote since={since} />}
+                <a
+                    href="https://www.coingecko.com"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={`${LONE_LINK_HIT_AREA} hover:text-amber-700 dark:hover:text-amber-400 transition-colors`}
+                >
+                    Data from CoinGecko
+                </a>
+            </div>
         </Card>
     );
 };

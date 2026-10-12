@@ -1,8 +1,7 @@
 import { ImageResponse } from 'next/og';
 import { BRAND_OG_PATH } from '@/components/brand/Logo';
 
-export const runtime = 'edge';
-export const alt = 'Why Self-Custody Matters for Bitcoin';
+export const alt = 'Self-Custody: How to Hold Bitcoin Without Losing It';
 export const size = { width: 1200, height: 630 };
 export const contentType = 'image/png';
 
@@ -39,10 +38,10 @@ export default function Image() {
                         color: 'transparent',
                         marginBottom: 16,
                         textAlign: 'center',
-                        maxWidth: 800,
+                        maxWidth: 900,
                     }}
                 >
-                    Why Self-Custody Matters
+                    How to Hold Bitcoin Without Losing It
                 </div>
                 <div
                     style={{
@@ -53,7 +52,7 @@ export default function Image() {
                         lineHeight: 1.4,
                     }}
                 >
-                    Not Your Keys, Not Your Coins &middot; Hardware Wallets &middot; Secure Your Bitcoin
+                    Seed Phrases &middot; Tested Backups &middot; Hardware Wallet Comparison
                 </div>
                 <div
                     style={{

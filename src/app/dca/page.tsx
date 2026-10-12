@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
+import { FIRST_EXCHANGE_CLOSE_TS } from '@/data/priceSources';
 import { CURATED_SCENARIOS, SCENARIO_AMOUNTS, SCENARIO_FREQ_SLUGS, SCENARIOS } from './scenarios';
 
 export const revalidate = 86400;
@@ -8,8 +9,10 @@ export const revalidate = 86400;
 // Root layout template appends "| Bitcoin DCA Calculator".
 export const metadata: Metadata = {
     title: 'Bitcoin DCA Scenarios: What Steady Buying Would Be Worth',
+    // Both counts are read off the lists so the snippet cannot outlive a change
+    // to them, and together they are the number of links on the page.
     description:
-        '104 Bitcoin dollar-cost averaging scenarios: $10 to $250 weekly or monthly, from 2013 to 2025. Total invested, value today, ROI and BTC, refreshed daily.',
+        `${SCENARIOS.length} Bitcoin DCA scenarios, $10 to $250 weekly or monthly from 2013 to 2025, and ${CURATED_SCENARIOS.length} hand-picked plans. Total invested, value today, ROI and BTC, refreshed daily.`,
     alternates: {
         canonical: '/dca',
     },
@@ -31,6 +34,10 @@ export const metadata: Metadata = {
         creator: '@9drix9',
     },
 };
+
+/** "July 20, 2015", the date style of the scenario pages, read off the day the code switches series. */
+const FIRST_EXCHANGE_DAY = new Intl.DateTimeFormat('en-US', { timeZone: 'UTC', month: 'long', day: 'numeric', year: 'numeric' })
+    .format(FIRST_EXCHANGE_CLOSE_TS);
 
 const breadcrumbJsonLd = {
     '@context': 'https://schema.org',
@@ -57,10 +64,11 @@ export default function DcaScenariosIndexPage() {
                     </h1>
                     <p className="text-base sm:text-lg text-slate-600 dark:text-slate-300 leading-relaxed">
                         What would steady buying have done? DCA, or dollar-cost averaging, means buying the same amount
-                        on a fixed schedule whatever the price is doing. Each page below takes one such plan: a set
-                        amount of Bitcoin bought every week or month since January 1 of the year you pick. We run it
-                        against real historical prices and refresh the results daily. Pick a plan to see the total
-                        invested, what it&apos;s worth today, and the year-by-year breakdown.
+                        on a fixed schedule whatever the price is doing. Each page below takes one such plan and runs
+                        it against real historical prices, refreshed daily. Most are a set amount of Bitcoin bought
+                        every week or month since January 1 of the year you pick. The hand-picked ones at the top keep
+                        their own dates and schedules. Pick a plan to see the total invested, what it&apos;s worth
+                        today, and the year-by-year breakdown.
                     </p>
                 </section>
 
@@ -70,8 +78,8 @@ export default function DcaScenariosIndexPage() {
                         The interesting ones
                     </h2>
                     <p className="text-sm sm:text-base text-slate-600 dark:text-slate-400 leading-relaxed max-w-3xl">
-                        Hand-picked schedules with a story: buying the exact top, a daily coffee&apos;s worth,
-                        a plan that started at the worst possible moment. Real dates, real prices, no cherry-picking
+                        Hand-picked schedules with a story: a plan started on the day of a record high, a daily
+                        coffee&apos;s worth, a single calendar year. Real dates, real prices, no cherry-picking
                         beyond what the title says.
                     </p>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
@@ -106,7 +114,8 @@ export default function DcaScenariosIndexPage() {
                                             <Link
                                                 key={s.slug}
                                                 href={`/dca/${s.slug}`}
-                                                className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-2.5 text-sm font-medium text-slate-700 dark:text-slate-300 hover:border-amber-500/50 hover:text-amber-700 dark:hover:text-amber-400 transition-colors tabular-nums"
+                                                /* py-3 + a 20px line is the 44px touch floor; py-2.5 came to 40. */
+                                                className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-3 text-sm font-medium text-slate-700 dark:text-slate-300 hover:border-amber-500/50 hover:text-amber-700 dark:hover:text-amber-400 transition-colors tabular-nums"
                                             >
                                                 {s.shortLabel}
                                             </Link>
@@ -124,8 +133,9 @@ export default function DcaScenariosIndexPage() {
                     </h2>
                     <p className="text-sm sm:text-base text-slate-600 dark:text-slate-400 mb-5 max-w-xl mx-auto">
                         These pages cover the common schedules. For anything else, use the live calculator. It takes any
-                        amount, cadence, date range and fee, and runs on the same historical data from Kraken and
-                        Coinbase.
+                        amount, cadence, date range and fee, and prices it from the same daily history these pages
+                        use: Coinbase&apos;s daily closes from {FIRST_EXCHANGE_DAY}, and blockchain.info&apos;s daily
+                        prices before that.
                     </p>
                     <Link
                         href="/"

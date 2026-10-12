@@ -1,7 +1,17 @@
 import React from 'react';
 import Link from 'next/link';
 import { BookOpen, TrendingUp, AlertTriangle, Lightbulb } from 'lucide-react';
+import { feePresetsAsOf, feesCheckIsStale, feesLastVerified } from '@/data/exchangeFees';
+import { EARLIEST_PRICE_TS, formatUtc, utcDayIndex } from '@/utils/dates';
+import { FIRST_EXCHANGE_CLOSE_TS } from '@/data/priceSources';
 
+// What does not belong in this list: a call to buy, a promotional slogan, or a
+// line that cannot be traced to the person named. Three were removed on those
+// grounds in October 2026: the "best time to buy bitcoin was 10 years ago, the
+// second best time is now" proverb (a buy-now call with no known origin),
+// Michael Saylor's "There is no second best" (a slogan), and a line attributed
+// to Nassim Taleb that we could not trace to a primary source; his 2021 paper
+// "Bitcoin, Currencies, and Fragility" argues the opposite.
 const BITCOIN_QUOTES = [
     { text: "If you don't believe it or don't get it, I don't have the time to try to convince you, sorry.", author: "Satoshi Nakamoto" },
     { text: "Bitcoin is a technological tour de force.", author: "Bill Gates" },
@@ -10,18 +20,35 @@ const BITCOIN_QUOTES = [
     { text: "Bitcoin will do to banks what email did to the postal industry.", author: "Rick Falkvinge" },
     { text: "Bitcoin is a remarkable cryptographic achievement and the ability to create something that is not duplicable in the digital world has enormous value.", author: "Eric Schmidt" },
     { text: "I think the fact that within the bitcoin universe an algorithm replaces the function of the government is actually pretty cool.", author: "Al Gore" },
-    { text: "The best time to buy bitcoin was 10 years ago. The second best time is now.", author: "Bitcoin Proverb" },
-    { text: "Bitcoin is the beginning of something great: a currency without a government, something necessary and imperative.", author: "Nassim Nicholas Taleb" },
-    { text: "There is no second best.", author: "Michael Saylor" },
     { text: "I am very intrigued by Bitcoin. It has all the signs. Paradigm shift, hackers love it, yet it's derided as a toy. Just like microcomputers.", author: "Paul Graham" },
     { text: "The swarm is headed towards us.", author: "Satoshi Nakamoto" },
 ];
 
 export const EducationalContent = () => {
-    // Use current date as deterministic seed for quote selection (changes daily)
-    const today = new Date();
-    const dayOfYear = Math.floor((today.getTime() - new Date(today.getFullYear(), 0, 0).getTime()) / 86400000);
+    const now = Date.now();
+    // The quote changes once a UTC day. This counted days in the server's local
+    // time, the one place on the page that did not follow the UTC calendar.
+    const dayOfYear = utcDayIndex(now) - utcDayIndex(Date.UTC(new Date(now).getUTCFullYear(), 0, 0));
     const randomQuote = BITCOIN_QUOTES[dayOfYear % BITCOIN_QUOTES.length];
+
+    // The fee range in step 3 is read off the fee comparison's own rows, so the
+    // two cannot disagree. It used to be a typed "0.5% - 1.5% is typical" that
+    // matched nothing else on the site. No range is quoted when a row carries a
+    // flat fee (a percentage range would misstate it) or when the rows have not
+    // been re-checked for long enough that the comparison warns about itself.
+    const feeRows = feePresetsAsOf(now);
+    const feeRange = feeRows.length > 1 && feeRows.every((row) => row.flatFee === 0) && !feesCheckIsStale(now)
+        ? {
+            count: feeRows.length,
+            low: Math.min(...feeRows.map((row) => row.feePercentage)),
+            high: Math.max(...feeRows.map((row) => row.feePercentage)),
+            checked: formatUtc(feesLastVerified(), 'full'),
+            someFeeOnly: feeRows.some((row) => row.includes === 'fee'),
+        }
+        : null;
+    // "Aug 18, 2010": the date style of the calculator this block sits under.
+    const earliestDay = formatUtc(EARLIEST_PRICE_TS, 'full');
+    const firstExchangeDay = formatUtc(FIRST_EXCHANGE_CLOSE_TS, 'full');
 
     return (
         <div className="space-y-8 sm:space-y-12">
@@ -40,7 +67,7 @@ export const EducationalContent = () => {
                     <div className="bg-white dark:bg-slate-800 p-4 sm:p-6 rounded-2xl border border-slate-200 dark:border-slate-700">
                         <h3 className="text-sm sm:text-xl font-bold text-slate-800 dark:text-white mb-2 sm:mb-3">Time in the Market {'>'} Timing the Market</h3>
                         <p className="text-xs sm:text-base text-slate-600 dark:text-slate-400 leading-relaxed">
-                            Almost nobody buys the exact bottom, and the people who did it once rarely do it twice. Buying on a schedule catches the lows along with the highs. The average price you pay usually ends up lower than guessing would have.
+                            Almost nobody buys the exact bottom, and the people who did it once rarely do it twice. Buying on a schedule catches the lows along with the highs. What you pay works out as an average across all of those days: never the best price of the stretch, and never the worst.
                         </p>
                     </div>
                     <div className="bg-white dark:bg-slate-800 p-4 sm:p-6 rounded-2xl border border-slate-200 dark:border-slate-700">
@@ -73,9 +100,9 @@ export const EducationalContent = () => {
                         Bitcoin moves in cycles, loosely tied to the four-year &quot;halving&quot;, when the supply of new coins is cut in half. The long-term trend has been up. Getting there meant falls of 50%, 70%, even 80% along the way.
                     </p>
                     <p>
-                        This calculator runs on <strong className="text-slate-800 dark:text-slate-200">real historical data</strong> from Kraken and Coinbase. You can see how a plan would have held up through those stretches. Prices reach back to 18 August 2010. The years before 2015 now use real daily market prices from blockchain.info rather than the synthetic estimates they used to. One caveat is worth knowing. Coinbase mode reads real daily prices, while Kraken mode fills in the daily figures from weekly closing prices. Our{' '}
+                        This calculator runs on <strong className="text-slate-800 dark:text-slate-200">real historical prices</strong>, so you can see how a plan would have held up through those stretches. From {firstExchangeDay} it uses Coinbase&apos;s daily closing prices. Before that, back to {earliestDay}, it uses blockchain.info&apos;s daily market prices. One caveat is worth knowing. You can switch the price source to Kraken, where we only have one closing price a week: the days in between are straight-line estimates, not prices that traded. Our{' '}
                         <Link href="/methodology" className="text-amber-700 dark:text-amber-400 hover:underline font-medium">Methodology</Link>{' '}
-                        page covers how the data is built. Start at the 2017 peak or the 2020 crash and the results still tend to surprise people who assume they missed the boat.
+                        page covers how the data is built. Try starting at the December 2017 peak, the March 2020 crash or the November 2021 peak and see how each plan held up.
                     </p>
                 </div>
             </section>
@@ -91,10 +118,13 @@ export const EducationalContent = () => {
                         <strong>Set amount &amp; frequency:</strong> How much per buy (say $50) and how often (daily, weekly, bi-weekly, monthly).
                     </li>
                     <li>
-                        <strong>Select dates:</strong> Pick a start date in the past. Price history goes back to 18 August 2010, the first day with a real market price.
+                        <strong>Select dates:</strong> Pick a start date in the past. The earliest date you can pick is {earliestDay}, where our daily price data begins.
                     </li>
                     <li>
-                        <strong>Add your fees:</strong> Put in what your exchange charges (0.5% - 1.5% is typical) to see what you actually keep.
+                        <strong>Add your fees:</strong> Put in what your platform takes from each buy to see what you actually keep.
+                        {feeRange && (
+                            ` The ${feeRange.count} platforms in our fee comparison that publish a rate take between ${feeRange.low}% and ${feeRange.high}% of a recurring buy (checked ${feeRange.checked}).${feeRange.someFeeOnly ? ' Where the figure is a fee alone, any spread in the quoted price comes on top.' : ''}`
+                        )}
                     </li>
                     <li>
                         <strong>Read the results:</strong> The cards and the chart show where portfolio value pulled away from what you put in.
@@ -105,9 +135,9 @@ export const EducationalContent = () => {
                         shows how long 0.01, 0.1 or a whole coin takes at your contribution rate.
                     </li>
                     <li>
-                        <strong>Withdraw &amp; secure:</strong> Stacking is half the job. Once the balance matters to you, move it to your own keys. Our{' '}
+                        <strong>After the purchase:</strong> Bitcoin left on an exchange is a claim on that company, and bitcoin in your own wallet depends on your own backup. Our{' '}
                         <Link href="/self-custody" className="text-amber-700 dark:text-amber-400 hover:underline font-medium">self-custody guide</Link>{' '}
-                        covers how.
+                        covers both.
                     </li>
                 </ol>
             </section>

@@ -2,16 +2,24 @@
 
 import { useEffect, useState, useSyncExternalStore, useCallback } from 'react';
 import { Sun, Moon } from 'lucide-react';
+import { readStorage, writeStorage } from '@/hooks/safeStorage';
+import { THEME_KEY } from '@/hooks/themeBootstrap';
 
 type Theme = 'light' | 'dark' | 'system';
 
-const THEME_KEY = 'theme-preference';
+// The choice made in this tab when it could not be written (site data blocked,
+// quota full). It outranks storage, so the toggle keeps working for the rest of
+// the visit instead of flipping the class once and losing it to the next
+// OS-scheme event.
+let memoryTheme: Theme | null = null;
 
+// This is the useSyncExternalStore snapshot, so it runs during render: a throw
+// here is not a failed click, it is the whole page replaced by an error screen.
+// readStorage cannot throw.
 function getStoredTheme(): Theme {
-    if (typeof window === 'undefined') return 'system';
-    const stored = localStorage.getItem(THEME_KEY);
-    if (stored && ['light', 'dark', 'system'].includes(stored)) return stored as Theme;
-    return 'system';
+    if (memoryTheme) return memoryTheme;
+    const stored = readStorage('local', THEME_KEY);
+    return stored === 'light' || stored === 'dark' || stored === 'system' ? stored : 'system';
 }
 
 function applyTheme(theme: Theme) {
@@ -26,7 +34,16 @@ function applyTheme(theme: Theme) {
 let listeners: Array<() => void> = [];
 function subscribe(callback: () => void) {
     listeners.push(callback);
-    return () => { listeners = listeners.filter(l => l !== callback); };
+    // A choice made in another tab arrives as a storage event (key === null is
+    // storage.clear()), so every open tab follows the same theme.
+    const onStorage = (e: StorageEvent) => {
+        if (e.key === THEME_KEY || e.key === null) callback();
+    };
+    window.addEventListener('storage', onStorage);
+    return () => {
+        listeners = listeners.filter(l => l !== callback);
+        window.removeEventListener('storage', onStorage);
+    };
 }
 function getSnapshot(): Theme {
     return getStoredTheme();
@@ -65,7 +82,7 @@ export const ThemeToggle = () => {
 
     const toggle = useCallback(() => {
         const next: Theme = document.documentElement.classList.contains('dark') ? 'light' : 'dark';
-        localStorage.setItem(THEME_KEY, next);
+        memoryTheme = writeStorage('local', THEME_KEY, next) ? null : next;
         listeners.forEach(l => l());
     }, []);
 

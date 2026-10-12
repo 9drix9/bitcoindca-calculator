@@ -77,12 +77,12 @@ export const findScenario = (
 // must 404 — every date and amount below is a checkable fact, stated in the
 // title/description exactly as computed.
 //
-// Deliberately NOT merged into SCENARIOS yet: /dca/[slug]/page.tsx hard-codes
-// "since January 1, {year}" copy and a week/month cadence, which would misstate
-// these mid-year, daily and biweekly plans. The page must render curated entries
-// from their own fields (title/description/startDateIso/endDateIso) before they
-// can join generateStaticParams — and, via SCENARIOS, sitemap.ts. Listing them
-// in either today would advertise pages that 404 or lie about their dates.
+// Kept in their own array, not merged into SCENARIOS: that one is the fixed
+// 4 x 2 x 13 matrix behind the "104 scenarios" copy and the grid on /dca, and
+// its entries all start on January 1 at a weekly or monthly cadence. These start
+// mid-year and run daily or biweekly too, so /dca/[slug]/page.tsx builds each
+// page from the entry's own fields (title, dates, frequency), and
+// generateStaticParams, sitemap.ts and /dca list CURATED_SCENARIOS separately.
 
 export type CuratedFrequency = 'daily' | 'weekly' | 'biweekly' | 'monthly';
 
@@ -91,7 +91,10 @@ export interface CuratedScenario {
     slug: string;
     /** Factual page title (root layout appends "| Bitcoin DCA Calculator") */
     title: string;
-    /** One-sentence honest hook: what the schedule is and why the dates matter */
+    /**
+     * What the schedule is and why its dates or amount were chosen. Shown under
+     * the page's heading, so every figure in it has to be checkable.
+     */
     description: string;
     /** Purchase amount in USD */
     amount: number;
@@ -117,21 +120,27 @@ const curated = (s: Omit<CuratedScenario, 'startTs' | 'endTs'>): CuratedScenario
 });
 
 export const CURATED_SCENARIOS: CuratedScenario[] = [
-    // 2021-11-10: Bitcoin's intraday all-time high of that cycle, ~$69,000.
+    // 2021-11-10 on Coinbase, checked 2026-10-12: high $69,000.00, the highest
+    // trade of that cycle, and close $64,912.20, which is what the first buy
+    // is priced at.
     curated({
         slug: 'bought-the-2021-top-weekly',
         title: '$100 a Week in Bitcoin Since the November 2021 Top',
-        description: 'Weekly $100 buys starting November 10, 2021 — the exact day of that cycle’s $69,000 all-time high — carried straight through the bear market that followed.',
+        description: 'Weekly $100 buys starting November 10, 2021, the day Bitcoin traded at $69,000 on Coinbase, its highest price of that cycle. Buys here are priced at the daily close, which was $64,912 that day.',
         amount: 100,
         frequency: 'weekly',
         startDateIso: '2021-11-10',
         shortLabel: '$100/week since Nov 2021',
     }),
-    // 2025-10-06: the October 2025 all-time high.
+    // 2025-10-06: the highest daily close ($124,720) and the highest trade
+    // ($126,296) on Coinbase to date, checked 2026-10-12. Called an all-time
+    // high, not a "top": it is only the top until a higher price trades, and
+    // that title would then be wrong where this one stays true. The slug is in
+    // links already and stays as it is.
     curated({
         slug: 'bought-the-2025-top-weekly',
-        title: '$100 a Week in Bitcoin Since the October 2025 Top',
-        description: 'Weekly $100 buys starting October 6, 2025 — the day of the October 2025 all-time high — showing what starting a plan at a cycle top actually does.',
+        title: '$100 a Week in Bitcoin Since the October 2025 All-Time High',
+        description: 'Weekly $100 buys starting October 6, 2025, the day Bitcoin set its October 2025 all-time high: $124,720 at the daily close on Coinbase.',
         amount: 100,
         frequency: 'weekly',
         startDateIso: '2025-10-06',
@@ -140,18 +149,22 @@ export const CURATED_SCENARIOS: CuratedScenario[] = [
     curated({
         slug: 'one-coffee-a-day-since-2018',
         title: 'A $5 Coffee a Day in Bitcoin Since 2018',
-        description: 'Five dollars — one coffee — put into Bitcoin every single day since January 1, 2018, through two full market cycles.',
+        description: 'Five dollars, about one coffee, put into Bitcoin every day since January 1, 2018.',
         amount: 5,
         frequency: 'daily',
         startDateIso: '2018-01-01',
         shortLabel: '$5/day since 2018',
     }),
-    // $15.49/month was Netflix's US standard-plan price from January 2022 to
-    // January 2025 — most of this window, not all of it (it was $12.99 in 2020).
+    // US Netflix Standard (ad-free) plan, checked 2026-10-12: $12.99 until
+    // October 2020, $13.99 until January 2022, $15.49 from 14 January 2022 to
+    // January 2025, $17.99 from 21 January 2025, $19.99 from 26 March 2026.
+    // $15.49 is a flat amount chosen for the scenario, not the price throughout:
+    // it was the plan's price for 36 of the monthly buys (February 2022 to
+    // January 2025), under half of a window that starts in 2020.
     curated({
         slug: 'skipped-netflix-since-2020',
         title: 'Skipping Netflix for Bitcoin: $15.49 a Month Since 2020',
-        description: 'One standard Netflix subscription — $15.49, its US price for most of these years — put into Bitcoin every month since January 1, 2020 instead.',
+        description: 'A flat $15.49 a month, what a Standard Netflix plan cost in the US from January 2022 to January 2025, put into Bitcoin every month since January 1, 2020.',
         amount: 15.49,
         frequency: 'monthly',
         startDateIso: '2020-01-01',
@@ -162,7 +175,7 @@ export const CURATED_SCENARIOS: CuratedScenario[] = [
     curated({
         slug: 'first-year-of-dca',
         title: 'A First Year of DCA: $25 a Week Through 2025',
-        description: 'Exactly one calendar year of $25 weekly buys — all of 2025 — showing what the first twelve months of a small steady plan look like.',
+        description: 'One calendar year of $25 weekly buys, from January 1 to December 31, 2025. The buying stops there, and the stack is still valued at the latest price.',
         amount: 25,
         frequency: 'weekly',
         startDateIso: '2025-01-01',
@@ -173,7 +186,7 @@ export const CURATED_SCENARIOS: CuratedScenario[] = [
     curated({
         slug: 'minimum-wage-day-per-week',
         title: 'One Workday at Minimum Wage in Bitcoin Weekly Since 2020',
-        description: 'Eight hours at the $7.25 US federal minimum wage is $58 — one workday’s pay put into Bitcoin every week since January 1, 2020.',
+        description: 'Eight hours at the $7.25 US federal minimum wage is $58: one workday’s pay put into Bitcoin every week since January 1, 2020.',
         amount: 58,
         frequency: 'weekly',
         startDateIso: '2020-01-01',
@@ -182,17 +195,20 @@ export const CURATED_SCENARIOS: CuratedScenario[] = [
     curated({
         slug: 'paycheck-percent-experiment',
         title: '$100 From Every Biweekly Paycheck in Bitcoin Since 2019',
-        description: 'A flat $100 set aside every two weeks since January 1, 2019 — the cadence of a standard US paycheck.',
+        description: 'A flat $100 set aside every two weeks since January 1, 2019, the rhythm of a biweekly paycheck.',
         amount: 100,
         frequency: 'biweekly',
         startDateIso: '2019-01-01',
         shortLabel: '$100/2 weeks since 2019',
     }),
-    // 2013-11-30: the peak of the 2013 bubble (~$1,150), followed by an ~85% crash.
+    // In the bundled blockchain.info rows: $1,133.95 on 2013-11-30, the year's
+    // high of $1,136.90 on 2013-12-05, and the low that followed, $172.00 on
+    // 2015-01-15, which is 84.9% below that high. The home page's "from 2013
+    // peak" preset starts on the same day.
     curated({
         slug: 'lost-decade-test',
         title: 'The Lost Decade Test: $50 a Week Since the 2013 Peak',
-        description: 'Weekly $50 buys starting November 30, 2013 — the top of the 2013 bubble, followed by an 85% crash — testing whether the worst start of that era meant a lost decade.',
+        description: 'Weekly $50 buys starting November 30, 2013, within a week of that year’s high (about $1,137 on December 5 in the price history this page uses) and before a fall of about 85% by January 2015.',
         amount: 50,
         frequency: 'weekly',
         startDateIso: '2013-11-30',

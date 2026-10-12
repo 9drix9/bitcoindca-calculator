@@ -1,20 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { formatUtc } from '@/utils/dates';
+import { cacheControl, provenanceNote } from '../contract';
 import {
     CORS_HEADERS,
-    getDailyCloseSeries,
+    getDailySeries,
     handleOptions,
     jsonError,
-    provenanceNote,
+    noRowsYetError,
     resolvePriceQuery,
 } from '../shared';
 
 /**
- * GET /api/v1/prices — daily BTC/USD closes as JSON. Free, no auth, CORS open.
+ * GET /api/v1/prices — daily BTC/USD prices as JSON. Free, no auth, CORS open.
  *
  * Params (all optional):
  *   from, to   ISO dates (yyyy-MM-dd); default full history (2010-08-18 → today)
- *   provider   kraken | coinbase; default kraken
+ *   provider   coinbase | kraken; default coinbase
  *
  * Documented at /developers. force-dynamic keeps the build from prerendering
  * this route (and hitting the exchanges at build time); the CDN caches instead,
@@ -22,29 +23,52 @@ import {
  */
 export const dynamic = 'force-dynamic';
 
-const CACHE_CONTROL = 'public, s-maxage=3600, stale-while-revalidate=86400';
-
 export function OPTIONS() {
     return handleOptions();
 }
 
 export async function GET(request: NextRequest) {
-    const query = resolvePriceQuery(request.nextUrl.searchParams);
+    const now = Date.now();
+    const query = resolvePriceQuery(request.nextUrl.searchParams, now);
     if ('error' in query) return jsonError(400, query.error);
 
     try {
-        const series = await getDailyCloseSeries(query.fromTs, query.toTs, query.provider);
+        const result = await getDailySeries(query.fromTs, query.toTs, query.provider);
+        const { series, kinds } = result;
+        if (series.length === 0) return noRowsYetError(query.fromTs, query.toTs, result);
+
         return NextResponse.json(
             {
+                // `source` is what was ASKED for, which is how existing callers
+                // read it. `served` is whose series this is; the two differ only
+                // when `fallback` is true.
                 source: query.provider,
-                asOf: new Date().toISOString(),
+                served: result.served,
+                fallback: result.fallback,
+                stale: result.stale,
+                asOf: new Date(now).toISOString(),
+                seriesFetchedAt: new Date(result.fetchedAt).toISOString(),
                 from: formatUtc(query.fromTs, 'isoDay'),
                 to: formatUtc(query.toTs, 'isoDay'),
                 count: series.length,
-                note: provenanceNote(query.provider),
+                estimatedCount: result.estimatedCount,
+                kinds,
+                note: provenanceNote(result.served, {
+                    requested: result.requested,
+                    stale: result.stale,
+                    fetchedAt: result.fetchedAt,
+                    lastRowTs: series[series.length - 1][0],
+                    rows: series.length,
+                    estimatedRows: result.estimatedCount,
+                }),
                 series,
             },
-            { headers: { ...CORS_HEADERS, 'Cache-Control': CACHE_CONTROL } },
+            {
+                headers: {
+                    ...CORS_HEADERS,
+                    'Cache-Control': cacheControl('prices', result.fallback || result.stale),
+                },
+            },
         );
     } catch (error) {
         console.error('[api/v1/prices] failed:', error);

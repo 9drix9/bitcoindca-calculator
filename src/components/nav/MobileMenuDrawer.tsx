@@ -1,15 +1,20 @@
 'use client';
 
 import { useCallback, useEffect, useRef } from 'react';
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import Link, { useLinkStatus } from 'next/link';
 import {
   X, Sparkles, FileText, Info, Github, Scale, CalendarDays, User, Mail,
-  Shield, Pickaxe, Receipt, Grid3x3, FlaskConical, Code2,
+  Shield, Pickaxe, Receipt, Grid3x3, FlaskConical, Code2, Loader2,
+  type LucideIcon,
 } from 'lucide-react';
+import { primaryTabs } from './MobileBottomNav';
+import { isPlainClick } from './navPathname';
+import { useNavPathname } from './useNavPathname';
 
-// This is the "More" overflow behind the bottom bar's last tab, so it must NOT
-// repeat the four primary destinations (/, /calculators, /dca, /why-bitcoin).
+// This is the "More" overflow behind the bottom bar's last tab, so it does not
+// repeat the four primary destinations (/, /calculators, /dca, /why-bitcoin)
+// while the bar is on screen. Where the bar is hidden they are listed first:
+// see the .nav-hidden-only group below.
 // Self-Custody and Mining live here now that Learn is a single tab.
 const drawerLinks = [
   { href: '/self-custody', label: 'Self-Custody', icon: Shield },
@@ -29,6 +34,66 @@ const drawerLinks = [
 ] as const;
 
 const FOCUSABLE_SELECTOR = 'a[href], button:not([disabled])';
+const OPENER_SELECTOR = '[aria-controls="mobile-menu-drawer"]';
+
+/**
+ * Shows that a tap registered while the page it leads to is loading.
+ *
+ * Drawer links are not prefetched (see DrawerLink), so on a slow connection
+ * the route is fetched on the tap and the drawer sits unchanged until it
+ * arrives. Always rendered at a fixed size, so the row does not shift; the
+ * delay keeps it out of sight on a fast one.
+ */
+function LinkPending() {
+  const { pending } = useLinkStatus();
+  return (
+    <Loader2
+      size={16}
+      aria-hidden="true"
+      className={`ml-auto shrink-0 transition-opacity delay-150 ${pending ? 'opacity-100 animate-spin' : 'opacity-0'}`}
+    />
+  );
+}
+
+function DrawerLink({
+  href,
+  label,
+  icon: Icon,
+  current,
+  onClick,
+}: {
+  href: string;
+  label: string;
+  icon: LucideIcon;
+  /** 'page' for the page on screen, 'true' for the section it belongs to. */
+  current?: 'page' | 'true';
+  onClick?: (e: React.MouseEvent<HTMLAnchorElement>) => void;
+}) {
+  return (
+    <Link
+      href={href}
+      // replace: see the history note in MobileMenuDrawer.
+      replace
+      // The closed drawer is translated off-screen, not display:none, which
+      // parks its links 16px past the right edge, inside the 200px margin Next
+      // prefetches within. Left to prefetch, every phone page view would fetch
+      // every route listed here whether or not the menu was opened. A tap
+      // fetches the route on demand; the four tab-bar links still prefetch.
+      prefetch={false}
+      onClick={onClick}
+      aria-current={current}
+      className={`flex min-h-11 items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+        current
+          ? 'bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400'
+          : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+      }`}
+    >
+      <Icon size={18} aria-hidden="true" />
+      {label}
+      <LinkPending />
+    </Link>
+  );
+}
 
 interface MobileMenuDrawerProps {
   open: boolean;
@@ -38,7 +103,7 @@ interface MobileMenuDrawerProps {
 }
 
 export function MobileMenuDrawer({ open, onClose, triggerRef }: MobileMenuDrawerProps) {
-  const pathname = usePathname();
+  const pathname = useNavPathname();
   const drawerRef = useRef<HTMLDivElement>(null);
   const wasOpen = useRef(false);
 
@@ -86,10 +151,13 @@ export function MobileMenuDrawer({ open, onClose, triggerRef }: MobileMenuDrawer
   // from. That made every link in this menu appear broken.
   //
   // So the cleanup compares the route now against the route when we opened, and
-  // pops only if it is unchanged (tap outside, X, ESC). After a navigation the
-  // throwaway entry is buried under the new route and is harmless — going back
-  // from the new page lands on the URL the user opened the drawer from, which is
-  // where they expect to land anyway.
+  // pops only if it is unchanged (tap outside, X, ESC).
+  //
+  // After a navigation there is nothing left to pop, because the drawer's links
+  // navigate with `replace`: the new page overwrites the throwaway entry. Landing
+  // on top of it would leave a second copy of the page the drawer was opened from
+  // in history ([about, about, mining]), and Back from the new page would take
+  // two presses, the first appearing to do nothing.
   const ownEntry = useRef(false);
   const pathAtOpen = useRef<string | null>(null);
   const livePath = useRef(pathname);
@@ -173,7 +241,16 @@ export function MobileMenuDrawer({ open, onClose, triggerRef }: MobileMenuDrawer
       first?.focus();
     } else if (wasOpen.current) {
       wasOpen.current = false;
-      triggerRef?.current?.focus();
+      const opener = triggerRef?.current;
+      opener?.focus();
+      // A hidden button cannot take focus, and the opener is hidden if the
+      // screen was turned while the drawer was open: the tab bar's More and
+      // the header's Menu swap places. Use whichever is on screen now.
+      if (document.activeElement !== opener) {
+        Array.from(document.querySelectorAll<HTMLElement>(OPENER_SELECTOR))
+          .find((el) => el.getClientRects().length > 0)
+          ?.focus();
+      }
     }
   }, [open, triggerRef]);
 
@@ -197,6 +274,19 @@ export function MobileMenuDrawer({ open, onClose, triggerRef }: MobileMenuDrawer
       first.focus();
     }
   }, []);
+
+  // Tapping the entry for the page you are already on is "never mind", not a
+  // navigation: the route does not change, so the close-on-route-change effect
+  // never fires. Close the drawer here, which also pops the throwaway history
+  // entry. Modified clicks are left alone so "open in new tab" still works.
+  const closeOnCurrentPage = useCallback(
+    (e: React.MouseEvent<HTMLAnchorElement>) => {
+      if (!isPlainClick(e)) return;
+      e.preventDefault();
+      onClose();
+    },
+    [onClose],
+  );
 
   return (
     <>
@@ -238,24 +328,34 @@ export function MobileMenuDrawer({ open, onClose, triggerRef }: MobileMenuDrawer
           aria-label="Menu navigation"
           className="p-4 pb-[max(env(safe-area-inset-bottom),1rem)] space-y-1"
         >
-          {drawerLinks.map(({ href, label, icon: Icon }) => {
-            const isActive = pathname === href;
-            return (
-              <Link
+          {/* The tab bar's four destinations, only where the tab bar is hidden
+              (globals.css shows .nav-hidden-only under the same media query).
+              Lit by section, as in the bar; only an exact match is "the
+              page", since a page inside Learn has its own entry below. */}
+          <div className="nav-hidden-only space-y-1">
+            {primaryTabs.map(({ href, label, icon, match }) => (
+              <DrawerLink
                 key={href}
                 href={href}
-                aria-current={isActive ? 'page' : undefined}
-                className={`flex min-h-11 items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                  isActive
-                    ? 'bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400'
-                    : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
-                }`}
-              >
-                <Icon size={18} />
-                {label}
-              </Link>
-            );
-          })}
+                label={label}
+                icon={icon}
+                current={pathname === href ? 'page' : match(pathname) ? 'true' : undefined}
+                onClick={pathname === href ? closeOnCurrentPage : undefined}
+              />
+            ))}
+            <div className="border-t border-slate-200 dark:border-slate-800 my-3" />
+          </div>
+
+          {drawerLinks.map(({ href, label, icon }) => (
+            <DrawerLink
+              key={href}
+              href={href}
+              label={label}
+              icon={icon}
+              current={pathname === href ? 'page' : undefined}
+              onClick={pathname === href ? closeOnCurrentPage : undefined}
+            />
+          ))}
 
           <div className="border-t border-slate-200 dark:border-slate-800 my-3" />
 

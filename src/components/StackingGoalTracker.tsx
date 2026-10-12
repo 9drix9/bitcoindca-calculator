@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react';
 import { CheckCircle2 } from 'lucide-react';
-import { useCurrency } from '@/context/CurrencyContext';
+import { btcToSats, useCurrency } from '@/context/CurrencyContext';
 import { Card, CardHeader } from '@/components/ui/Card';
 import clsx from 'clsx';
 
@@ -10,27 +10,35 @@ interface StackingGoalTrackerProps {
     btcAccumulated: number;
     purchaseCount: number;
     /**
-     * Retained for call-site compatibility only. These described the backtest window
-     * and used to drive the time-to-goal estimate (btc accumulated ÷ days elapsed).
-     * That was circular — it priced future sats at the average price of a window the
-     * price had already risen through — so the estimate now uses `currentPrice`
-     * instead and these no longer affect any number on screen.
+     * Not read: the time-to-goal estimate is priced at `currentPrice`, so the
+     * backtest window does not enter into it. Accepted so the call sites that
+     * still pass them need not change.
      */
-    totalInvested: number;
-    startDate: string;
-    endDate: string;
+    totalInvested?: number;
+    startDate?: string;
+    endDate?: string;
     /** Contribution amount per purchase, in USD (parent passes amountUsd) */
     amount: number;
     frequency: string;
     unit: 'BTC' | 'SATS';
     /**
-     * Live BTC price in USD. The time-to-goal estimate is priced at TODAY's market,
-     * not at the average price of the backtest window — extrapolating the historical
-     * accumulation rate assumes future sats keep costing what past sats cost, which
-     * flatters every window in which the price rose. Without a live price there is
-     * no honest rate to project at, so the estimate is simply not shown.
+     * BTC price in USD that every future buy is assumed to pay: the live quote
+     * on the home page (see `priceLabel` for the callers where it is not). The
+     * time-to-goal estimate is priced at this, not at the average price of the
+     * backtest window — extrapolating the historical accumulation rate assumes
+     * future sats keep costing what past sats cost, which flatters every window
+     * in which the price rose. Without a price there is no honest rate to
+     * project at, so the estimate is simply not shown.
      */
     currentPrice?: number;
+    /**
+     * What `currentPrice` is, in words that fit after "at": "the Oct 12, 2026
+     * price", "the price you typed". Left out, the card says "today's price",
+     * which is only true where the price is a live quote. A page that is
+     * rebuilt once a day, or a calculator running on a typed price, passes
+     * what it really is.
+     */
+    priceLabel?: string;
 }
 
 const MILESTONES = [0.001, 0.01, 0.1, 0.21, 0.5, 1];
@@ -52,7 +60,9 @@ const PERIODS_PER_YEAR: Record<string, number> = {
 
 const formatBtcLabel = (btc: number, unit: 'BTC' | 'SATS') => {
     if (unit === 'SATS') {
-        return `${(btc * 100_000_000).toLocaleString()} sats`;
+        // 'en-US' explicitly, so the server's HTML and the browser's first
+        // render are the same text whatever the visitor's locale.
+        return `${btcToSats(btc).toLocaleString('en-US')} sats`;
     }
     return `${btc} BTC`;
 };
@@ -71,6 +81,7 @@ export const StackingGoalTracker = ({
     frequency,
     unit,
     currentPrice,
+    priceLabel = "today's price",
 }: StackingGoalTrackerProps) => {
     const { formatCurrency } = useCurrency();
 
@@ -86,8 +97,8 @@ export const StackingGoalTracker = ({
         if (!nextMilestone) return null;
 
         // Every future purchase buys amount/currentPrice worth of BTC — i.e. the
-        // price is held flat at today's. That is an assumption, not a forecast,
-        // but it is one the reader can check against the ticker.
+        // price is held flat at the one passed in. That is an assumption, not a
+        // forecast, and the card prints the figure so the reader can check it.
         const btcPerPeriod = amount / currentPrice;
         if (btcPerPeriod <= 0) return null;
 
@@ -151,10 +162,10 @@ export const StackingGoalTracker = ({
                 <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-slate-100 dark:border-slate-800 space-y-1.5">
                     <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
                         Keep buying <span className="font-medium text-amber-700 dark:text-amber-400 tabular-nums">{amountLabel} every {frequencyLabel}</span>{' '}
-                        and, at today&apos;s price of <span className="font-medium text-amber-700 dark:text-amber-400 tabular-nums">{formatCurrency(currentPrice)}</span>,
+                        and, at {priceLabel} of <span className="font-medium text-amber-700 dark:text-amber-400 tabular-nums">{formatCurrency(currentPrice)}</span>,
                         each buy adds about{' '}
                         <span className="font-medium tabular-nums text-slate-700 dark:text-slate-300">
-                            {Math.round(projection.btcPerPeriod * 100_000_000).toLocaleString()} sats
+                            {btcToSats(projection.btcPerPeriod).toLocaleString('en-US')} sats
                         </span>. Reaching{' '}
                         <span className="font-medium text-amber-700 dark:text-amber-400 tabular-nums">{formatBtcLabel(projection.target, unit)}</span>
                         {' '}would take{' '}
@@ -167,7 +178,7 @@ export const StackingGoalTracker = ({
                         )}.
                     </p>
                     <p className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-                        That figure holds the price flat at today&apos;s. It is arithmetic, not a forecast. If bitcoin gets
+                        That figure holds the price flat at {formatCurrency(currentPrice)}. It is arithmetic, not a forecast. If bitcoin gets
                         more expensive, the same contribution buys fewer sats and the goal takes longer. If it gets
                         cheaper, the goal arrives sooner. Exchange fees are not deducted, so treat the estimate as a
                         floor on the time required.

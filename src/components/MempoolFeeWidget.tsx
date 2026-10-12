@@ -1,21 +1,16 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
 import { Flame } from 'lucide-react';
-import { getMempoolFees } from '@/app/actions';
+import type { MempoolFees } from '@/app/api/live/contract';
 import { Card, CardHeader, StatRow, EmptyState } from '@/components/ui/Card';
-
-interface MempoolFees {
-    highFee: number;
-    mediumFee: number;
-    lowFee: number;
-}
+import { LONE_LINK_HIT_AREA, StaleNote } from '@/components/live/cardFooter';
+import { useLiveFigure } from '@/components/live/liveSidebar';
 
 interface MempoolFeeWidgetProps {
     initialData: MempoolFees | null;
+    /** When the server fetched `initialData` (ms epoch). */
+    fetchedAt?: number | null;
 }
-
-const POLL_MS = 30_000;
 
 const getFeeColor = (fee: number) => {
     if (fee >= 100) return 'text-rose-700 dark:text-rose-400';
@@ -31,41 +26,8 @@ const formatFee = (fee: number) => {
     return fee.toFixed(2);
 };
 
-export const MempoolFeeWidget = ({ initialData }: MempoolFeeWidgetProps) => {
-    const [data, setData] = useState<MempoolFees | null>(initialData);
-    const hadInitialData = useRef(initialData !== null);
-
-    useEffect(() => {
-        let mounted = true;
-        // SSR data is seconds old at hydration; only fetch immediately when it is missing.
-        let lastFetched = hadInitialData.current ? Date.now() : 0;
-
-        const refresh = async () => {
-            lastFetched = Date.now();
-            try {
-                const fresh = await getMempoolFees();
-                if (mounted && fresh) setData(fresh);
-            } catch {
-                // keep showing last known data
-            }
-        };
-
-        if (!hadInitialData.current) refresh();
-
-        const interval = setInterval(() => {
-            if (!document.hidden) refresh();
-        }, POLL_MS);
-        const onVisibilityChange = () => {
-            if (!document.hidden && Date.now() - lastFetched >= POLL_MS) refresh();
-        };
-        document.addEventListener('visibilitychange', onVisibilityChange);
-
-        return () => {
-            mounted = false;
-            clearInterval(interval);
-            document.removeEventListener('visibilitychange', onVisibilityChange);
-        };
-    }, []);
+export const MempoolFeeWidget = ({ initialData, fetchedAt }: MempoolFeeWidgetProps) => {
+    const { data, fetchedAt: since, old } = useLiveFigure('mempoolFees', initialData, fetchedAt);
 
     const fees = data
         ? [
@@ -104,11 +66,12 @@ export const MempoolFeeWidget = ({ initialData }: MempoolFeeWidgetProps) => {
             )}
 
             <div className="mt-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+                {old && <StaleNote since={since} />}
                 <a
                     href="https://mempool.space"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 hover:text-amber-700 dark:hover:text-amber-400 transition-colors"
+                    className={`${LONE_LINK_HIT_AREA} text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 hover:text-amber-700 dark:hover:text-amber-400 transition-colors`}
                 >
                     Data from mempool.space
                 </a>

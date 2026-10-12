@@ -1,13 +1,15 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { cache } from 'react';
 import { AlertTriangle, ArrowRight, Info } from 'lucide-react';
 import clsx from 'clsx';
 import { Card } from '@/components/ui/Card';
-import { getBitcoinPriceHistory, getCurrentBitcoinPrice } from '@/app/actions';
-import { DAILY_PRICE_REVALIDATE } from '@/utils/revalidate';
-import { calculateDca } from '@/utils/dca';
-import { DAY_MS, EARLIEST_PRICE_TS, formatUtc, utcDayStart } from '@/utils/dates';
-import { looksInterpolated, firstWeekdayOnOrAfter } from '@/utils/datasets';
+import { DAY_MS, formatUtc } from '@/utils/dates';
+import { FIRST_EXCHANGE_CLOSE_TS } from '@/data/priceSources';
+import { feeCostUsd, feeExamplePair, feeTiersAsOf, feesLastVerified } from '@/data/exchangeFees';
+import { loadStudyCloses, studyUnavailable } from './loadStudyCloses';
+import { SNAPSHOT_VS_COINBASE_CLOSE } from './studyCloses';
+import { WEEKLY_AMOUNT, analyseBestDay, type BestDayAnalysis, type WeekTest, type WeekdayEdge } from './analysis';
 
 // Recomputed once a day against fresh prices, like the scenario pages.
 export const revalidate = 86400;
@@ -15,12 +17,8 @@ export const revalidate = 86400;
 const BASE_URL = 'https://btcdollarcostaverage.com';
 const PAGE_PATH = '/best-day-to-buy-bitcoin';
 const PAGE_URL = `${BASE_URL}${PAGE_PATH}`;
+const PAGE_TAG = 'best-day-to-buy-bitcoin';
 
-/** Every schedule buys this much, every week, with no fees. */
-const WEEKLY_AMOUNT = 100;
-const WEEK_MS = 7 * DAY_MS;
-
-const WEEKDAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'] as const;
 // Table order is Mon..Sun (how most people read a week), not JS's Sun..Sat.
 const DISPLAY_ORDER = [1, 2, 3, 4, 5, 6, 0] as const;
 
@@ -38,11 +36,13 @@ function fmtUsd(value: number): string {
 
 function fmtPct(value: number, signed = false): string {
     const digits = Math.abs(value) >= 100 ? 0 : 2;
-    const text = value.toLocaleString('en-US', {
+    // Round first so a tiny negative prints as 0.00%, not -0.00%.
+    const rounded = Number(value.toFixed(digits)) || 0;
+    const text = rounded.toLocaleString('en-US', {
         minimumFractionDigits: digits,
         maximumFractionDigits: digits,
     });
-    return `${signed && value > 0 ? '+' : ''}${text}%`;
+    return `${signed && rounded > 0 ? '+' : ''}${text}%`;
 }
 
 function fmtBtc(value: number): string {
@@ -53,241 +53,188 @@ function fmtBtc(value: number): string {
     });
 }
 
-// ── Data quality detection ─────────────────────────────────────────────────────
+const fmtInt = (value: number): string => value.toLocaleString('en-US');
+
+/** A rough yearly figure: whole dollars, so it does not read as exact. */
+const fmtWholeUsd = (value: number): string => `$${fmtInt(Math.round(value))}`;
+
+/** "Monday", "Monday and Wednesday", "Monday, Wednesday and Friday". */
+const joinNames = (names: string[]): string =>
+    names.length <= 1 ? names.join('') : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
+
+/** 1st, 2nd, 3rd, 4th. Ranks here only run 1 to 7. */
+const ordinal = (n: number): string => `${n}${n === 1 ? 'st' : n === 2 ? 'nd' : n === 3 ? 'rd' : 'th'}`;
+
+// ── Sentences that state a result ──────────────────────────────────────────────
+//
+// Every conclusion the page prints is built here from the computed analysis,
+// once, and reused by the visible copy, the FAQ and the structured data. The
+// earlier version typed its conclusions as prose ("None of them do", "the gap
+// is smaller than your fees") and the tables beside them moved on without it.
+
+const isOutside = (row: WeekdayEdge): boolean => Math.abs(row.edgePercent) > row.marginPercent;
+
+/** One weekday's row as a clause. */
+const edgePhrase = (row: WeekdayEdge): string =>
+    `${row.name} averaged ${fmtPct(row.edgePercent, true)} against the seven days around it (margin of error ±${fmtPct(row.marginPercent)})`;
 
 /**
- * Kraken's series is weekly closes linearly filled out to daily values, so almost
- * every interior point sits exactly on the straight line between its neighbours.
- * Real daily candles essentially never do. This page is only meaningful on real
- * daily data — a straight line has no weekday structure to find — so we detect
- * which series we actually received and say so on the page instead of quietly
- * publishing an artefact.
+ * Said whenever a weekday lands outside its margin. 1 - 0.95^7 = 0.30: the
+ * chance that at least one of seven averages with nothing behind them falls
+ * outside a two-standard-error margin.
  */
+const SEVEN_TRIES = 'With seven weekdays tested, at least one lands outside by chance in about three such tables out of ten.';
 
-// ── Computation ────────────────────────────────────────────────────────────────
-
-interface WeekdayRow {
-    weekday: number;
-    name: string;
-    startTs: number;
-    btc: number;
-    averageCost: number;
-    finalValue: number;
-    /** BTC accumulated relative to the seven-weekday mean, in percent. */
-    vsMeanPercent: number;
-    /** 1 = most BTC accumulated in this window. */
-    rank: number;
-}
-
-interface WindowResult {
-    key: string;
-    label: string;
-    firstBuyTs: number;
-    lastBuyTs: number;
-    purchases: number;
-    invested: number;
-    rows: WeekdayRow[];
-    /** (best BTC - worst BTC) / worst BTC, in percent. */
-    spreadPercent: number;
-    bestName: string;
-    worstName: string;
-    /**
-     * Days between the earliest and latest anchor. Seven weekdays cannot share a
-     * start date, so this is 6 for any window long enough to contain a full week —
-     * the schedules differ by start date as well as by weekday, and over the full
-     * history those six days land in August 2010.
-     */
-    startSpanDays: number;
-    /** How many opening purchases {@link concentrationPercent} covers. */
-    concentrationBuys: number;
-    /**
-     * Mean share of each schedule's final BTC that came from its first
-     * {@link concentrationBuys} purchases. Over the full history this is ~64%: the
-     * ranking is decided by a handful of sub-dollar buys, not by the weekday.
-     */
-    concentrationPercent: number;
-}
-
-/**
- * Seven identical weekly schedules, one anchored to each UTC weekday.
- *
- * Every schedule buys the same amount the same number of times — the purchase
- * count is clamped to the minimum across the seven anchors, so total invested is
- * identical.
- *
- * The weekday is NOT the only thing that differs, and the page must not claim it is.
- * Seven weekdays cannot share a start date, so the anchors are spread across six
- * days. That is immaterial in a recent window and decisive over the full history,
- * where those six days fall in August 2010 at two-decimal penny prices and the first
- * ten buys account for roughly two thirds of every schedule's final BTC. Over that
- * window the ranking is a ranking of start dates wearing a weekday costume, which is
- * why `concentrationPercent` is computed and published next to the table.
- */
-function analyseWindow(
-    key: string,
-    label: string,
-    floorTs: number,
-    lastDataTs: number,
-    priceData: [number, number][],
-    currentPrice: number | null,
-): WindowResult | null {
-    const floorDay = utcDayStart(floorTs);
-    const endTs = utcDayStart(lastDataTs);
-
-    const starts: number[] = [];
-    for (let weekday = 0; weekday < 7; weekday++) {
-        starts.push(firstWeekdayOnOrAfter(floorDay, weekday));
+/** Whether the weekday averages can be told apart from chance. */
+function marginSentence(test: WeekTest): string {
+    if (test.beyondMargin.length === 0) {
+        return 'None of the seven averages is larger than its own margin of error.';
     }
+    const one = test.beyondMargin.length === 1;
+    return `${joinNames(test.beyondMargin.map((row) => row.name))} ${one ? 'is' : 'are'} outside ${one ? 'its' : 'their'} own margin of error. ${SEVEN_TRIES}`;
+}
 
-    const purchases = Math.min(...starts.map((s) => Math.floor((endTs - s) / WEEK_MS) + 1));
-    // Under six months of weekly buys is too few for the comparison to say anything.
-    if (!Number.isFinite(purchases) || purchases < 26) return null;
+/** A share of the random deals, to the nearest percent. */
+const dealShare = (percent: number): string =>
+    percent > 0 && percent < 0.5 ? 'under 1%' : `${Math.round(percent)}%`;
 
-    const raw = starts.map((startTs, weekday) => {
-        const result = calculateDca(
-            {
-                amount: WEEKLY_AMOUNT,
-                frequency: 'weekly',
-                startDate: new Date(startTs),
-                endDate: new Date(startTs + (purchases - 1) * WEEK_MS),
-                feePercentage: 0,
-                priceMode: 'api',
-                manualPrice: 0,
-            },
-            priceData,
-            currentPrice,
-        );
-        return { weekday, startTs, result };
+/** What the calendar-year column shows. Empty when no whole year was measured. */
+function yearsSentence(test: WeekTest): string {
+    if (!test.years) return '';
+    const { count } = test.years;
+    if (test.lopsided.length === 0) {
+        return `Across the ${count} calendar years measured, no weekday was on the same side of its week in as many as four years out of five.`;
+    }
+    const parts = test.lopsided.map((row) => {
+        const ahead = row.yearsAhead >= row.yearsBehind;
+        return `${row.name} was ${ahead ? 'cheaper' : 'dearer'} than its week in ${ahead ? row.yearsAhead : row.yearsBehind} of ${count} calendar years (average ${fmtPct(row.edgePercent, true)}, margin of error ±${fmtPct(row.marginPercent)})`;
     });
+    const many = test.lopsided.length;
+    const byChance =
+        test.shuffle.lopsidedAtLeastPercent === null
+            ? ''
+            : ` With the weekday labels dealt at random, at least ${many} ${many === 1 ? 'weekday comes' : 'weekdays come'} out that lopsided in ${dealShare(test.shuffle.lopsidedAtLeastPercent)} of deals.`;
+    return `${parts.join('; ')}. That is the nearest thing to a pattern in the table.${byChance}`;
+}
 
-    // A missing price would silently skip a buy and break the "identical
-    // contribution" premise, so refuse to publish rather than compare unequal totals.
-    if (raw.some((r) => r.result.breakdown.length !== purchases)) return null;
-    if (raw.some((r) => !Number.isFinite(r.result.btcAccumulated) || r.result.btcAccumulated <= 0)) return null;
+/**
+ * The shuffle check on the best-to-worst gap: how often weekday labels that
+ * mean nothing produce a gap at least as large as the real one.
+ */
+function shuffleSentence(test: WeekTest): string {
+    const { deals, gapAtLeastPercent } = test.shuffle;
+    return gapAtLeastPercent === 0
+        ? `Deal the weekday labels at random within each week and a gap that large did not turn up once in ${fmtInt(deals)} deals.`
+        : `Deal the weekday labels at random within each week and the gap between the best and worst label is at least that large in ${dealShare(gapAtLeastPercent)} of ${fmtInt(deals)} deals.`;
+}
 
-    const meanBtc = raw.reduce((sum, r) => sum + r.result.btcAccumulated, 0) / raw.length;
-    const byBtcDesc = [...raw].sort((a, b) => b.result.btcAccumulated - a.result.btcAccumulated);
+/** The answer to "is the weekend cheaper", from the Saturday and Sunday rows. */
+function weekendSentence(test: WeekTest): string {
+    const days = [test.rows[6], test.rows[0]];
+    const outside = days.filter(isOutside);
+    const lead =
+        outside.length === 0
+            ? 'Not by an amount this data can separate from chance.'
+            : `${joinNames(outside.map((row) => row.name))} ${outside.length === 1 ? 'is' : 'are'} outside ${outside.length === 1 ? 'its' : 'their'} margin of error. ${SEVEN_TRIES}`;
+    const detail = days
+        .map((row) => `${edgePhrase(row)}${row.yearsCounted > 0 ? ` and was cheaper than its week in ${row.yearsAhead} of ${row.yearsCounted} calendar years` : ''}`)
+        .join('; ');
+    return `${lead} Across ${fmtInt(test.weeks)} weeks of Coinbase daily closes, ${detail}.`;
+}
 
-    const rows: WeekdayRow[] = raw.map(({ weekday, startTs, result }) => ({
-        weekday,
-        name: WEEKDAY_NAMES[weekday],
-        startTs,
-        btc: result.btcAccumulated,
-        averageCost: result.averageCost,
-        finalValue: result.currentValue,
-        vsMeanPercent: (result.btcAccumulated / meanBtc - 1) * 100,
-        rank: byBtcDesc.findIndex((r) => r.weekday === weekday) + 1,
-    }));
+/** The whole best-to-worst gap as money on one purchase. */
+const gapUsd = (test: WeekTest): number => (test.gapPercent / 100) * WEEKLY_AMOUNT;
 
-    // How front-loaded is each schedule? If the opening handful of buys accounts for
-    // most of the BTC, then the table ranks start dates, not weekdays.
-    const CONCENTRATION_BUYS = Math.min(10, purchases);
-    const concentrationPercent =
-        (raw.reduce((sum, r) => {
-            const head = r.result.breakdown[CONCENTRATION_BUYS - 1]?.totalAccumulated ?? 0;
-            return sum + head / r.result.btcAccumulated;
-        }, 0) /
-            raw.length) *
-        100;
-
-    const bestBtc = byBtcDesc[0].result.btcAccumulated;
-    const worstBtc = byBtcDesc[byBtcDesc.length - 1].result.btcAccumulated;
-
+/**
+ * The two September 2010 rows that look wrong, and what the full-history table
+ * comes to without them. In two parts so the visible note can link the
+ * methodology page between them. Null when the series does not hold the rows.
+ */
+function spikeSentences(analysis: BestDayAnalysis): { rows: string; effect: string } | null {
+    const spike = analysis.fullWithoutSpike;
+    if (!spike) return null;
+    const level = fmtUsd(spike.neighbourPrice);
+    const days = spike.days.map((day) => `${formatUtc(day.ts, 'full')} at ${fmtUsd(day.price)}`);
+    const first =
+        spike.bestName === analysis.full.bestName
+            ? `${spike.bestName} would still finish first`
+            : `${spike.bestName} would finish first instead of ${analysis.full.bestName}`;
     return {
-        key,
-        label,
-        firstBuyTs: Math.min(...starts),
-        lastBuyTs: Math.max(...starts.map((s) => s + (purchases - 1) * WEEK_MS)),
-        purchases,
-        invested: purchases * WEEKLY_AMOUNT,
-        rows,
-        spreadPercent: ((bestBtc - worstBtc) / worstBtc) * 100,
-        bestName: WEEKDAY_NAMES[byBtcDesc[0].weekday],
-        worstName: WEEKDAY_NAMES[byBtcDesc[byBtcDesc.length - 1].weekday],
-        startSpanDays: Math.round((Math.max(...starts) - Math.min(...starts)) / DAY_MS),
-        concentrationBuys: CONCENTRATION_BUYS,
-        concentrationPercent,
+        rows: `Two early prices in our series look wrong: ${joinNames(days)}, between days at ${level}. Coin Metrics, a second source, shows no such jump`,
+        effect: `With both priced at ${level}, ${first} and the table would span ${fmtPct(spike.spreadPercent)}.`,
     };
 }
 
-interface Analysis {
-    full: WindowResult;
-    others: WindowResult[];
-    /** All windows, longest first — the rank matrix columns. */
-    allWindows: WindowResult[];
-    interpolatedSeries: boolean;
-    lastDataTs: number;
+// ── Data ───────────────────────────────────────────────────────────────────────
+
+/** What the platforms in the fee registry charge on one purchase of WEEKLY_AMOUNT. */
+interface FeeContext {
+    lowUsd: number;
+    highUsd: number;
+    /** yyyy-MM-dd the oldest of those figures was last checked against its source. */
+    checkedOn: string;
+    pair: { higher: string; lower: string; differenceUsd: number } | null;
 }
 
-async function computeAnalysis(): Promise<Analysis | null> {
-    try {
-        const [history, currentPrice] = await Promise.all([
-            // Coinbase gives real daily candles. The Kraken series is interpolated from
-            // weekly closes, which would flatten all seven weekdays by construction.
-            getBitcoinPriceHistory(EARLIEST_PRICE_TS, Date.now() + DAY_MS, 'coinbase', DAILY_PRICE_REVALIDATE),
-            getCurrentBitcoinPrice('coinbase', DAILY_PRICE_REVALIDATE)
-                .catch(() => getCurrentBitcoinPrice('kraken', DAILY_PRICE_REVALIDATE))
-                .catch(() => null),
-        ]);
-        if (!history || history.length < 400) return null;
+function feeContext(asOf: number): FeeContext | null {
+    const costs = feeTiersAsOf(asOf)
+        .map((tier) => feeCostUsd(tier, WEEKLY_AMOUNT, 1))
+        .filter((cost): cost is number => cost !== null);
+    if (costs.length === 0) return null;
 
-        const firstDataTs = history[0][0];
-        const lastDataTs = history[history.length - 1][0];
-
-        const full = analyseWindow('full', 'Full history', firstDataTs, lastDataTs, history, currentPrice);
-        if (!full) return null;
-
-        const others = (
-            [
-                ['10y', 'Last 10 years', 10],
-                ['5y', 'Last 5 years', 5],
-                ['2y', 'Last 2 years', 2],
-            ] as const
-        )
-            .map(([key, label, years]) =>
-                analyseWindow(
-                    key,
-                    label,
-                    lastDataTs - Math.round(years * 365.25) * DAY_MS,
-                    lastDataTs,
-                    history,
-                    currentPrice,
-                ),
-            )
-            .filter((w): w is WindowResult => w !== null);
-
-        return {
-            full,
-            others,
-            allWindows: [full, ...others],
-            interpolatedSeries: looksInterpolated(history),
-            lastDataTs,
-        };
-    } catch (error) {
-        // Never build-fail: the page renders an "unavailable" state instead.
-        console.error('[best-day-to-buy-bitcoin] computation failed:', error);
-        return null;
-    }
+    const example = feeExamplePair(asOf);
+    const higherUsd = example ? feeCostUsd(example.higher, WEEKLY_AMOUNT, 1) : null;
+    const lowerUsd = example ? feeCostUsd(example.lower, WEEKLY_AMOUNT, 1) : null;
+    return {
+        lowUsd: Math.min(...costs),
+        highUsd: Math.max(...costs),
+        checkedOn: feesLastVerified(),
+        pair:
+            example && higherUsd !== null && lowerUsd !== null
+                ? {
+                    higher: `${example.higher.name} (${example.higher.rateLabel})`,
+                    lower: `${example.lower.name} (${example.lower.rateLabel})`,
+                    differenceUsd: higherUsd - lowerUsd,
+                }
+                : null,
+    };
 }
+
+interface Study {
+    analysis: BestDayAnalysis;
+    /** Days Coinbase had no candle for, filled in along a straight line. */
+    estimatedDays: number;
+    fees: FeeContext | null;
+}
+
+// React's cache: generateMetadata and the page share one computation, so the
+// description and the body can never quote different numbers.
+const loadStudy = cache(async (): Promise<Study | null> => {
+    const study = await loadStudyCloses(PAGE_TAG);
+    if (!study) return null;
+    const analysis = analyseBestDay(study.closes);
+    if (!analysis) return studyUnavailable(PAGE_TAG, 'too little price history to compare weekdays');
+    return { analysis, estimatedDays: study.estimatedDays, fees: feeContext(Date.now()) };
+});
 
 // ── Metadata ───────────────────────────────────────────────────────────────────
 
 const TITLE = 'Best Day of the Week to Buy Bitcoin? We Ran All Seven';
 const FALLBACK_DESCRIPTION =
-    'Seven identical weekly Bitcoin DCA schedules, one for each weekday, run over the full price history. We publish all seven results. The gap between them is noise.';
+    'Seven identical weekly Bitcoin DCA schedules, one for each weekday, and a week-by-week test of whether any weekday was reliably cheaper. All seven results are published.';
 
 export async function generateMetadata(): Promise<Metadata> {
     let description = FALLBACK_DESCRIPTION;
     try {
-        // Same warm cache as the page render, so this costs nothing extra.
-        const analysis = await computeAnalysis();
-        if (analysis) {
-            const { full } = analysis;
-            const recent = analysis.others[analysis.others.length - 1];
-            description = `Seven identical $${WEEKLY_AMOUNT}/week Bitcoin DCA schedules, one anchored to each weekday, run from ${formatUtc(full.firstBuyTs, 'full')} to today. Best to worst is only ${fmtPct(full.spreadPercent)}${recent ? `, and the winner flips from ${full.bestName} over the full history to ${recent.bestName} over ${recent.label.toLowerCase()}` : ''}. Updated daily.`;
+        const study = await loadStudy();
+        if (study) {
+            const { test } = study.analysis;
+            // The answer comes first: a search result shows about 155 characters.
+            description = `Best day to DCA into Bitcoin? Over ${fmtInt(test.weeks)} weeks of Coinbase daily closes ${test.beyondMargin.length === 0 ? 'no weekday is outside the margin of error' : `${joinNames(test.beyondMargin.map((row) => row.name))} fell outside the margin of error`}; the largest gap is ${fmtPct(test.gapPercent)} of a purchase. All seven weekday plans are published.`;
         }
     } catch {
-        // Keep the generic description.
+        // Keep the generic description. The page body makes the same call, and
+        // that is where a failure is allowed to surface.
     }
 
     return {
@@ -302,7 +249,7 @@ export async function generateMetadata(): Promise<Metadata> {
         ],
         alternates: { canonical: PAGE_PATH },
         openGraph: {
-        images: [{ url: '/opengraph-image', width: 1200, height: 630 }],
+            images: [{ url: '/opengraph-image', width: 1200, height: 630 }],
             title: TITLE,
             description,
             url: PAGE_PATH,
@@ -311,7 +258,7 @@ export async function generateMetadata(): Promise<Metadata> {
             locale: 'en_US',
         },
         twitter: {
-        images: ['/opengraph-image'],
+            images: ['/opengraph-image'],
             card: 'summary_large_image',
             title: TITLE,
             description,
@@ -322,8 +269,8 @@ export async function generateMetadata(): Promise<Metadata> {
 
 // ── Page ───────────────────────────────────────────────────────────────────────
 
-// No `celebrated` variant on purpose: the full-history "winner" is a measurement
-// artefact, and styling it as a result is how a reader ends up quoting it.
+// No `celebrated` variant on purpose: no figure on this page is a result to aim
+// for, and styling one as a result is how a reader ends up quoting it.
 function StatCard({ label, value, sub }: { label: string; value: string; sub?: string }) {
     return (
         <Card className="p-4 sm:p-5">
@@ -334,8 +281,26 @@ function StatCard({ label, value, sub }: { label: string; value: string; sub?: s
     );
 }
 
+// A breadcrumb link is one or two short words, about 15px tall as text on a
+// phone. The padding makes it a 44px touch target, and the negative margins
+// hand the same space back so the row sits exactly where it did.
+const crumbLink =
+    'inline-flex min-h-11 items-center -my-3.5 px-1.5 -mx-1.5 hover:text-amber-700 dark:hover:text-amber-400 transition-colors';
+
+// The first column of a table that scrolls sideways. It stays at the left edge
+// and is painted in the card's own surface colour, so the columns pass under it.
+const stickyLabel = 'sticky left-0 bg-white dark:bg-slate-900';
+
+const strong = 'font-semibold text-slate-900 dark:text-white';
+const cardStrong = 'font-semibold text-slate-800 dark:text-slate-100';
+const noteStrong = 'font-semibold text-slate-600 dark:text-slate-300';
+const note = 'text-xs sm:text-sm text-slate-500 dark:text-slate-400 leading-relaxed';
+
 export default async function BestDayToBuyBitcoinPage() {
-    const analysis = await computeAnalysis();
+    const study = await loadStudy();
+    const analysis = study?.analysis ?? null;
+    const fees = study?.fees ?? null;
+    const estimatedDays = study?.estimatedDays ?? 0;
 
     const breadcrumbJsonLd = {
         '@context': 'https://schema.org',
@@ -351,10 +316,10 @@ export default async function BestDayToBuyBitcoinPage() {
             '@context': 'https://schema.org',
             '@type': 'Dataset',
             name: 'Bitcoin weekly DCA outcomes by day of the week',
-            description: `Seven identical weekly dollar-cost-averaging schedules of $${WEEKLY_AMOUNT} per purchase, each anchored to a different UTC weekday and each making exactly ${analysis.full.purchases} purchases, backtested against daily Bitcoin closing prices. Reports BTC accumulated, average cost per BTC, and final value for every weekday, over the full price history and over trailing 10-, 5- and 2-year windows. Recomputed daily.`,
+            description: `Two tables. First, for each UTC weekday, the mean gap between that day's close and the geometric mean close of the seven days centred on it (positive means the day closed below its week), across ${analysis.test.weeks} weeks of Coinbase daily closes from ${formatUtc(analysis.test.fromTs, 'isoDay')}, with a two-standard-error margin. Second, seven identical weekly dollar-cost-averaging schedules of $${WEEKLY_AMOUNT} per purchase, each anchored to a different UTC weekday and each making exactly ${analysis.full.purchases} purchases from ${formatUtc(analysis.full.firstBuyTs, 'isoDay')}: BTC accumulated, average cost per BTC and value at the last daily close. Prices before ${formatUtc(FIRST_EXCHANGE_CLOSE_TS, 'isoDay')} are blockchain.info's 00:00 UTC market price, not closes. Recomputed daily.`,
             url: PAGE_URL,
-            temporalCoverage: `${formatUtc(analysis.full.firstBuyTs, 'isoDay')}/${formatUtc(analysis.lastDataTs, 'isoDay')}`,
-            dateModified: formatUtc(analysis.lastDataTs, 'isoDay'),
+            temporalCoverage: `${formatUtc(analysis.full.firstBuyTs, 'isoDay')}/${formatUtc(analysis.lastCloseTs, 'isoDay')}`,
+            dateModified: formatUtc(analysis.lastCloseTs, 'isoDay'),
             license: 'https://creativecommons.org/licenses/by/4.0/',
             isAccessibleForFree: true,
             creator: {
@@ -364,46 +329,54 @@ export default async function BestDayToBuyBitcoinPage() {
             },
             keywords: ['bitcoin', 'dollar cost averaging', 'day of week effect', 'backtest', 'BTC/USD'],
             measurementTechnique:
-                'Deterministic backtest. Each schedule buys a fixed USD amount at the daily closing price on its anchor weekday, with zero fees, over an identical number of purchases.',
+                'Deterministic backtest on one price per UTC day with zero fees. The weekday comparison averages, by UTC weekday, 100 times the natural log of the geometric mean of the seven closes centred on a day over that day\'s close. The schedules buy a fixed USD amount on their anchor weekday over an identical number of purchases.',
             variableMeasured: [
                 { '@type': 'PropertyValue', name: 'Weekday', description: 'UTC weekday the purchases land on' },
+                { '@type': 'PropertyValue', name: 'Mean gap between the day\'s close and the geometric mean close of the seven days centred on it', unitText: 'percent' },
+                { '@type': 'PropertyValue', name: 'Margin of error (two standard errors)', unitText: 'percentage points' },
                 { '@type': 'PropertyValue', name: 'BTC accumulated', unitText: 'BTC' },
                 { '@type': 'PropertyValue', name: 'Average cost per BTC', unitText: 'USD' },
-                { '@type': 'PropertyValue', name: 'Final value', unitText: 'USD' },
+                { '@type': 'PropertyValue', name: 'Value at the last daily close', unitText: 'USD' },
             ],
         }
         : null;
 
-    const recent = analysis?.others[analysis.others.length - 1];
-    const fiveYear = analysis?.others.find((w) => w.key === '5y');
+    // Whether the full-history table rests mostly on each plan's opening buys.
+    const openingDominates = analysis !== null && analysis.full.opening.sharePercent > 50;
+    const centNote =
+        analysis !== null && analysis.full.opening.wholeCents && analysis.full.opening.centLowerPercent !== null
+            ? {
+                higher: fmtPct(Math.abs(analysis.full.opening.centHigherPercent)),
+                lower: fmtPct(analysis.full.opening.centLowerPercent),
+            }
+            : null;
+    const spike = analysis ? spikeSentences(analysis) : null;
 
     const faqs: { q: string; a: string }[] = analysis
         ? [
             {
                 q: 'Is there a best day of the week to buy Bitcoin?',
-                a: `No, not one you can rely on. We ran seven identical $${WEEKLY_AMOUNT}/week schedules from ${formatUtc(analysis.full.firstBuyTs, 'full')} to today. The gap between the best and worst weekday is ${fmtPct(analysis.full.spreadPercent)} of the Bitcoin accumulated. ${recent ? `More importantly, the winner is not stable: ${analysis.full.bestName} leads over the full history, but ${recent.bestName} leads over ${recent.label.toLowerCase()}. ` : ''}A real edge would show up in every window. This one does not.`,
+                a: `Measured week by week on Coinbase daily closes from ${formatUtc(analysis.test.fromTs, 'full')} to ${formatUtc(analysis.test.toTs, 'full')}, the cheapest weekday was ${analysis.test.best.name} (${fmtPct(analysis.test.best.edgePercent, true)} against the seven days around it) and the dearest was ${analysis.test.worst.name} (${fmtPct(analysis.test.worst.edgePercent, true)}). Each average has a margin of error of up to ±${fmtPct(analysis.test.widestMarginPercent)}. ${marginSentence(analysis.test)} On a $${WEEKLY_AMOUNT} purchase the whole gap between the best and worst weekday is ${fmtUsd(gapUsd(analysis.test))}. ${shuffleSentence(analysis.test)} ${yearsSentence(analysis.test)}`.trim(),
             },
             {
                 q: 'Which weekday came out ahead over the full history?',
-                a: `${analysis.full.bestName}, by ${fmtPct(analysis.full.spreadPercent)} over the worst weekday (${analysis.full.worstName}). That number does not mean what it looks like it means. About ${Math.round(analysis.full.concentrationPercent)}% of every schedule's final Bitcoin came from its first ${analysis.full.concentrationBuys} purchases. Those buys were made in August 2010, when Bitcoin was quoted in whole cents and a single cent was a big slice of the entire price. So one cent of rounding moves the Bitcoin you end up with by a double-digit percentage, which is more than the ${fmtPct(analysis.full.spreadPercent)} spread being reported. The seven schedules also begin on ${analysis.full.startSpanDays + 1} different days, because no two weekdays share a date. What the full-history table really ranks is which of those start dates caught the cheapest penny prints. It describes one week in 2010. It does not predict anything about weekdays.`,
+                a: `${analysis.full.bestName}, by ${fmtPct(analysis.full.spreadPercent)} over the worst weekday (${analysis.full.worstName}), for seven $${WEEKLY_AMOUNT}-a-week plans run from ${formatUtc(analysis.full.firstBuyTs, 'full')}. Three things sit behind that number. About ${Math.round(analysis.full.opening.sharePercent)}% of every plan's final Bitcoin came from its first ${analysis.full.opening.buys} purchases, made between ${formatUtc(analysis.full.firstBuyTs, 'full')} and ${formatUtc(analysis.full.opening.endTs, 'full')} at prices from ${fmtUsd(analysis.full.opening.minPrice)} to ${fmtUsd(analysis.full.opening.maxPrice)}.${centNote ? ` Our price series for those weeks is rounded to whole cents. Had each of those prices been one cent higher, a plan would have ended with ${centNote.higher} less Bitcoin; one cent lower, ${centNote.lower} more.` : ''}${spike ? ` ${spike.rows}. ${spike.effect}` : ''} The seven plans also start on seven different days, because no two weekdays share a date${analysis.fullOneDayLater ? `, and starting the whole comparison one day later moves ${analysis.fullOneDayLater.name} from ${ordinal(analysis.fullOneDayLater.from)} to ${ordinal(analysis.fullOneDayLater.to)}` : ''}. And before ${formatUtc(FIRST_EXCHANGE_CLOSE_TS, 'full')} the prices are 00:00 UTC figures, so a purchase labelled Monday was priced at about Sunday's close.`,
             },
             {
-                q: 'Why do people say weekends are cheaper for Bitcoin?',
-                a: 'The usual story is that big trading desks and bank transfers shut down at the weekend, so fewer buyers and sellers are around and prices drift. But Bitcoin trades every hour of every day. Any weekend discount that stuck around would be free money, so traders would close it almost immediately. In the numbers on this page the weekend days do not consistently beat weekdays across time windows.',
+                q: 'Is Bitcoin cheaper at the weekend?',
+                a: `${weekendSentence(analysis.test)} Bitcoin trades on every day of the week, and Coinbase publishes a daily close for a Saturday or a Sunday like any other day.`,
             },
             {
                 q: 'How much money is a weekday difference actually worth?',
-                a: fiveYear
-                    ? `Over ${fiveYear.label.toLowerCase()}, ${fmtUsd(fiveYear.invested)} invested produced a best-to-worst gap of ${fmtUsd(fiveYear.rows.reduce((max, r) => Math.max(max, r.finalValue), 0) - fiveYear.rows.reduce((min, r) => Math.min(min, r.finalValue), Infinity))} across the seven weekdays. A single 1% exchange fee, or one missed contribution, dwarfs that.`
-                    : 'Less than a typical exchange fee spread. Choosing a cheaper exchange or not missing contributions matters far more than which weekday you buy on.',
+                a: `The whole gap between the cheapest and dearest weekday in the week-by-week test is ${fmtPct(analysis.test.gapPercent)} of a purchase. On $${WEEKLY_AMOUNT} a week that is ${fmtUsd(gapUsd(analysis.test))} a purchase, about ${fmtWholeUsd(gapUsd(analysis.test) * 52)} over a year. It is an average with a margin of error, not an amount anyone was paid.${fees?.pair ? ` For scale: the published costs of ${fees.pair.higher} and ${fees.pair.lower} differ by ${fmtUsd(fees.pair.differenceUsd)} on every $${WEEKLY_AMOUNT} purchase.` : ''}`,
             },
             {
-                q: 'What should I optimize instead of the weekday?',
-                a: 'Four things you control actually move the outcome. How much you put in. How long you keep going. The fees you pay. And whether you stop buying during a drawdown, meaning a long stretch when the price sits well below its peak. Pick whichever weekday you are least likely to forget, usually the day after you get paid, and automate it.',
+                q: 'What moves the result more than the weekday?',
+                a: `How much goes in and for how long scale the result directly: twice the amount buys twice the Bitcoin at every price. The fee is taken from every purchase.${fees ? ` The platforms in our fee comparison publish costs from ${fmtUsd(fees.lowUsd)} to ${fmtUsd(fees.highUsd)} on a $${WEEKLY_AMOUNT} recurring buy (their own pricing pages, checked ${formatUtc(fees.checkedOn, 'full')}).` : ''} The largest weekday gap measured on this page is ${fmtUsd(gapUsd(analysis.test))} on the same purchase.`,
             },
             {
                 q: 'How are these numbers calculated?',
-                a: `Each schedule buys $${WEEKLY_AMOUNT} at the daily close on its anchor weekday, in UTC, with no fees. Every schedule makes exactly the same number of purchases (${analysis.full.purchases} over the full window), so total invested is identical. The weekday is not the only thing that differs, though. Seven weekdays cannot share a start date, so the seven schedules begin on ${analysis.full.startSpanDays + 1} consecutive days. In a recent window that does not matter. Over the full history those days fall in August 2010, and about ${Math.round(analysis.full.concentrationPercent)}% of every schedule's final Bitcoin came from its first ${analysis.full.concentrationBuys} purchases. So the full-history ranking mostly reflects which start date caught the cheapest days, not which weekday is better. The figures are recomputed once a day against fresh prices.`,
+                a: `Everything uses one price per UTC day. From ${formatUtc(FIRST_EXCHANGE_CLOSE_TS, 'full')} that is Coinbase's daily close; before it, blockchain.info's market price at 00:00 UTC, which tracks the previous day's close. The week-by-week test uses the Coinbase closes only. For each day it compares that close with the average close of the seven days centred on it (a geometric average, so a day with nothing special about it scores zero), then averages by weekday; the margin of error is two standard errors. The seven plans each buy $${WEEKLY_AMOUNT} on their weekday with no fees, make exactly the same number of purchases (${fmtInt(analysis.full.purchases)} from ${formatUtc(analysis.full.firstBuyTs, 'full')}) and are valued at the last daily close. The figures are recomputed once a day.`,
             },
         ]
         : [];
@@ -437,7 +410,7 @@ export default async function BestDayToBuyBitcoinPage() {
                 <nav aria-label="Breadcrumb" className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
                     <ol className="flex flex-wrap items-center gap-1.5">
                         <li>
-                            <Link href="/" className="hover:text-amber-700 dark:hover:text-amber-400 transition-colors">Home</Link>
+                            <Link href="/" className={crumbLink}>Home</Link>
                         </li>
                         <li aria-hidden="true">/</li>
                         <li aria-current="page" className="text-slate-700 dark:text-slate-300">Best day to buy Bitcoin</li>
@@ -453,20 +426,28 @@ export default async function BestDayToBuyBitcoinPage() {
                         <p className="text-base sm:text-lg text-slate-600 dark:text-slate-300 leading-relaxed">
                             We ran seven buying plans side by side: ${WEEKLY_AMOUNT} every Monday, ${WEEKLY_AMOUNT} every
                             Tuesday, and so on through the week. That is dollar-cost averaging, or DCA, which just means
-                            buying the same amount on a fixed schedule whatever the price is doing. Each plan ran over the
-                            full Bitcoin price history, from{' '}
-                            <strong className="font-semibold text-slate-900 dark:text-white">{formatUtc(analysis.full.firstBuyTs, 'full')}</strong>{' '}
-                            to <strong className="font-semibold text-slate-900 dark:text-white">{formatUtc(analysis.lastDataTs, 'full')}</strong>.
-                            Same amount, same number of purchases, same fees. The gap between the best and worst day is{' '}
-                            <strong className="font-semibold text-slate-900 dark:text-white">{fmtPct(analysis.full.spreadPercent)}</strong>,
-                            and the day that &ldquo;wins&rdquo; changes every time you change the date range. That makes it
-                            noise. Below, we show you exactly where the noise comes from.
+                            buying the same amount on a fixed schedule whatever the price is doing. Run from{' '}
+                            <strong className={strong}>{formatUtc(analysis.full.firstBuyTs, 'full')}</strong> to{' '}
+                            <strong className={strong}>{formatUtc(analysis.lastCloseTs, 'full')}</strong>, the seven finish{' '}
+                            <strong className={strong}>{fmtPct(analysis.full.spreadPercent)}</strong> apart.
+                            {openingDominates && (
+                                <>
+                                    {' '}About {Math.round(analysis.full.opening.sharePercent)}% of each plan&apos;s Bitcoin
+                                    came from its first {analysis.full.opening.buys} purchases, all made by{' '}
+                                    {formatUtc(analysis.full.opening.endTs, 'full')}, so that gap mostly describes those
+                                    weeks.
+                                </>
+                            )}{' '}
+                            The fairer test sets each weekday against the seven days around it, over{' '}
+                            <strong className={strong}>{fmtInt(analysis.test.weeks)} weeks</strong> of Coinbase daily
+                            closes. There the largest difference between two weekdays is{' '}
+                            <strong className={strong}>{fmtPct(analysis.test.gapPercent)}</strong> of a purchase.
                         </p>
                     ) : (
                         <p className="text-base sm:text-lg text-slate-600 dark:text-slate-300 leading-relaxed">
-                            This page runs seven identical weekly DCA schedules, one anchored to each weekday, over the
-                            full Bitcoin price history and publishes all seven results. DCA, or dollar-cost averaging, is
-                            buying the same amount on a fixed schedule whatever the price is doing.
+                            This page runs seven identical weekly DCA schedules, one anchored to each weekday, and tests
+                            each weekday&apos;s closing price against the seven days around it. DCA, or dollar-cost
+                            averaging, is buying the same amount on a fixed schedule whatever the price is doing.
                         </p>
                     )}
                 </header>
@@ -479,26 +460,25 @@ export default async function BestDayToBuyBitcoinPage() {
                                 <Info className="w-5 h-5 text-amber-700 dark:text-amber-400 shrink-0 mt-0.5" aria-hidden="true" />
                                 <div className="space-y-2">
                                     <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white">
-                                        The short answer: no, and the data below is why
+                                        {analysis.test.beyondMargin.length === 0
+                                            ? 'The short answer: none that this data can tell apart from chance'
+                                            : `The short answer: ${analysis.test.beyondMargin.length} of seven weekdays fell outside the margin of error`}
                                     </h2>
                                     <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300 leading-relaxed">
-                                        Over the full history the best weekday is{' '}
-                                        <strong className="font-semibold text-slate-800 dark:text-slate-100">{analysis.full.bestName}</strong>.
-                                        {recent && (
-                                            <>
-                                                {' '}Over {recent.label.toLowerCase()} it is{' '}
-                                                <strong className="font-semibold text-slate-800 dark:text-slate-100">{recent.bestName}</strong>.
-                                            </>
-                                        )}{' '}
-                                        Nothing about Bitcoin&apos;s market changed to cause that. A real day-of-week effect
-                                        would show up in every window. A coin flip would not, and this behaves like a coin
-                                        flip. The full-history figure is worse than merely noisy. About{' '}
-                                        {Math.round(analysis.full.concentrationPercent)}% of every schedule&apos;s Bitcoin came
-                                        from its first {analysis.full.concentrationBuys} buys, all made in August 2010. And
-                                        seven weekdays cannot share a start date, so the seven plans had to start on seven
-                                        different days of that week. What the column ranks is those start dates, more than
-                                        the weekdays. Publish the number, then ignore it.
+                                        Measured week by week on Coinbase daily closes, the cheapest weekday was{' '}
+                                        <strong className={cardStrong}>{analysis.test.best.name}</strong>{' '}
+                                        ({fmtPct(analysis.test.best.edgePercent, true)} against the days around it) and the
+                                        dearest was <strong className={cardStrong}>{analysis.test.worst.name}</strong>{' '}
+                                        ({fmtPct(analysis.test.worst.edgePercent, true)}). Each of those averages is only
+                                        known to within about ±{fmtPct(analysis.test.widestMarginPercent)}.{' '}
+                                        {marginSentence(analysis.test)} The whole gap is {fmtUsd(gapUsd(analysis.test))} on
+                                        a ${WEEKLY_AMOUNT} purchase. {shuffleSentence(analysis.test)}
                                     </p>
+                                    {analysis.test.years && (
+                                        <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300 leading-relaxed">
+                                            {yearsSentence(analysis.test)}
+                                        </p>
+                                    )}
                                 </div>
                             </div>
                         </Card>
@@ -506,97 +486,185 @@ export default async function BestDayToBuyBitcoinPage() {
                         {/* Headline stats */}
                         <section className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
                             <StatCard
-                                label="Best day, full history"
-                                value={analysis.full.bestName}
-                                sub={`${fmtPct(analysis.full.spreadPercent)} ahead of ${analysis.full.worstName}. An artifact, see below`}
+                                label="Largest weekday gap"
+                                value={fmtPct(analysis.test.gapPercent)}
+                                sub={`${analysis.test.best.name} against ${analysis.test.worst.name}, per purchase`}
                             />
-                            {recent && (
-                                <StatCard
-                                    label={`Best day, ${recent.label.toLowerCase()}`}
-                                    value={recent.bestName}
-                                    sub={`${fmtPct(recent.spreadPercent)} ahead of ${recent.worstName}`}
-                                />
-                            )}
-                            {fiveYear && (
-                                <StatCard
-                                    label="Spread, last 5 years"
-                                    value={fmtPct(fiveYear.spreadPercent)}
-                                    sub="Best vs worst weekday"
-                                />
-                            )}
                             <StatCard
-                                label="Purchases per schedule"
-                                value={analysis.full.purchases.toLocaleString('en-US')}
-                                sub={`${fmtUsd(analysis.full.invested)} invested, identical for all seven`}
+                                label="Margin of error"
+                                value={`±${fmtPct(analysis.test.widestMarginPercent)}`}
+                                sub="Widest of the seven weekday averages"
+                            />
+                            <StatCard
+                                label="Weeks measured"
+                                value={fmtInt(analysis.test.weeks)}
+                                sub={`Coinbase daily closes from ${formatUtc(analysis.test.fromTs, 'monthYear')}`}
+                            />
+                            <StatCard
+                                label={`Seven plans since ${formatUtc(analysis.full.firstBuyTs, 'monthYear')}`}
+                                value={fmtPct(analysis.full.spreadPercent)}
+                                sub={`${analysis.full.bestName} ahead of ${analysis.full.worstName}. Read the notes under that table`}
                             />
                         </section>
 
-                        {analysis.interpolatedSeries && (
-                            <Card className="p-4 sm:p-5">
-                                <div className="flex items-start gap-3">
-                                    <AlertTriangle className="w-5 h-5 text-amber-700 dark:text-amber-400 shrink-0 mt-0.5" aria-hidden="true" />
-                                    <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
-                                        <strong className="font-semibold text-slate-800 dark:text-slate-100">Heads up: fallback data in use.</strong>{' '}
-                                        Coinbase&apos;s daily prices were unavailable when this page last rebuilt. The numbers
-                                        below come from the Kraken series instead, which only has weekly closing prices and
-                                        draws a straight line between them. That smooths away the day-to-day movement, which
-                                        pushes the seven weekdays closer together than real daily prices would. Treat
-                                        today&apos;s gap figures as a floor, not a measurement. The page recomputes daily and
-                                        will switch back on its own.
-                                    </p>
-                                </div>
-                            </Card>
-                        )}
-
-                        {/* Main table */}
+                        {/* The test that measures weekdays */}
                         <Card className="p-4 sm:p-6">
                             <h2 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white">
-                                All seven weekdays, full price history
+                                Each weekday against the week around it
                             </h2>
                             <p className="mt-1 mb-4 text-sm text-slate-500 dark:text-slate-400">
-                                ${WEEKLY_AMOUNT} per week, {analysis.full.purchases.toLocaleString('en-US')} purchases each
-                                ({fmtUsd(analysis.full.invested)} invested), no fees. First buys land in the week
-                                of {formatUtc(analysis.full.firstBuyTs, 'full')}; last buys land in the week
-                                of {formatUtc(analysis.full.lastBuyTs, 'full')}.
+                                For every day from {formatUtc(analysis.test.fromTs, 'full')} to{' '}
+                                {formatUtc(analysis.test.toTs, 'full')} we compare that day&apos;s close with the average
+                                close of the seven days centred on it, then average by weekday. Positive means the day
+                                closed below its week: cheaper.
                             </p>
                             <div className="overflow-x-auto -mx-1 sm:mx-0">
-                                <table className="w-full text-xs sm:text-sm tabular-nums min-w-[520px]">
+                                <table className="w-full text-xs sm:text-sm tabular-nums">
                                     <caption className="sr-only">
-                                        BTC accumulated, average cost and final value for seven identical weekly Bitcoin DCA
-                                        schedules, one anchored to each weekday
+                                        Each weekday&apos;s close against the average close of the seven days centred on
+                                        it, with a margin of error and the number of calendar years the weekday was cheaper
+                                        than its week
                                     </caption>
                                     <thead>
                                         <tr className="text-left text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800">
-                                            <th scope="col" className="py-2 pr-4 font-medium">Buy day</th>
-                                            <th scope="col" className="py-2 pr-4 font-medium text-right">BTC accumulated</th>
-                                            <th scope="col" className="py-2 pr-4 font-medium text-right">Average cost / BTC</th>
-                                            <th scope="col" className="py-2 pr-4 font-medium text-right">Value today</th>
-                                            <th scope="col" className="py-2 font-medium text-right">vs. average day</th>
+                                            <th scope="col" className="py-2 pr-3 font-medium">Buy day</th>
+                                            <th scope="col" className="py-2 pr-3 font-medium text-right">Against its week</th>
+                                            <th scope="col" className="py-2 pr-3 font-medium text-right">Margin of error</th>
+                                            <th scope="col" className="py-2 font-medium text-right">Cheaper than its week in</th>
                                         </tr>
                                     </thead>
                                     <tbody className="text-slate-700 dark:text-slate-300">
                                         {DISPLAY_ORDER.map((weekday) => {
-                                            const row = analysis.full.rows.find((r) => r.weekday === weekday);
-                                            if (!row) return null;
+                                            const row = analysis.test.rows[weekday];
+                                            return (
+                                                <tr key={weekday} className="border-b border-slate-100 dark:border-slate-800/60">
+                                                    <th scope="row" className="py-2 pr-3 text-left font-medium text-slate-800 dark:text-slate-100">
+                                                        {row.name}
+                                                    </th>
+                                                    <td className="py-2 pr-3 text-right font-medium">{fmtPct(row.edgePercent, true)}</td>
+                                                    <td className="py-2 pr-3 text-right text-slate-500 dark:text-slate-400">
+                                                        ±{fmtPct(row.marginPercent)}
+                                                    </td>
+                                                    <td className="py-2 text-right">
+                                                        {row.yearsCounted > 0 ? `${row.yearsAhead} of ${row.yearsCounted} years` : '—'}
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                        <tr className="border-t-2 border-slate-200 dark:border-slate-700">
+                                            <th scope="row" className="py-2 pr-3 text-left font-medium text-slate-800 dark:text-slate-100">
+                                                Best minus worst
+                                            </th>
+                                            <td className="py-2 pr-3 text-right font-medium">{fmtPct(analysis.test.gapPercent)}</td>
+                                            <td className="py-2 pr-3" />
+                                            <td className="py-2" />
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <p className={clsx('mt-4', note)}>
+                                <strong className={noteStrong}>How to read it.</strong>{' '}
+                                One day&apos;s price typically sits {fmtPct(analysis.test.typicalDayPercent)} above or below
+                                its own week, so a single week says nothing and it takes {fmtInt(analysis.test.weeks)} of
+                                them to pin an average down even this far. The margin of error is two standard errors: if
+                                chance alone were at work, an average would land inside it about 19 times in 20.{' '}
+                                {marginSentence(analysis.test)}
+                            </p>
+                            {analysis.test.years && (
+                                <p className={clsx('mt-3', note)}>
+                                    <strong className={noteStrong}>The last column needs no statistics.</strong>{' '}
+                                    It splits the same days into {analysis.test.years.count} calendar years,{' '}
+                                    {analysis.test.years.first} to {analysis.test.years.last}, which share no days with each
+                                    other. A weekday with no edge comes out ahead in about half of them.
+                                </p>
+                            )}
+                            <p className={clsx('mt-3', note)}>
+                                <strong className={noteStrong}>A check that assumes nothing.</strong>{' '}
+                                Inside every run of seven days we dealt the seven figures to the weekdays at random,{' '}
+                                {fmtInt(analysis.test.shuffle.deals)} times over. That removes any real weekday effect and
+                                leaves everything else as it was.{' '}
+                                {analysis.test.shuffle.gapAtLeastPercent === 0
+                                    ? `A best-to-worst gap as large as the real ${fmtPct(analysis.test.gapPercent)} did not turn up once.`
+                                    : `The best-to-worst gap came out at least as large as the real ${fmtPct(analysis.test.gapPercent)} in ${dealShare(analysis.test.shuffle.gapAtLeastPercent)} of those deals.`}
+                                {analysis.test.shuffle.lopsidedAtLeastPercent !== null && (
+                                    <>
+                                        {' '}At least {analysis.test.lopsided.length}{' '}
+                                        {analysis.test.lopsided.length === 1 ? 'weekday' : 'weekdays'} came out as
+                                        one-sided across the calendar years as in the real table in{' '}
+                                        {dealShare(analysis.test.shuffle.lopsidedAtLeastPercent)} of them.
+                                    </>
+                                )}
+                            </p>
+                            <p className={clsx('mt-3', note)}>
+                                <strong className={noteStrong}>What it is in money.</strong>{' '}
+                                The whole gap, {analysis.test.best.name} against {analysis.test.worst.name}, is{' '}
+                                {fmtPct(analysis.test.gapPercent)} of a purchase: {fmtUsd(gapUsd(analysis.test))} on a $
+                                {WEEKLY_AMOUNT} buy, about {fmtWholeUsd(gapUsd(analysis.test) * 52)} over a year of weekly
+                                buys.
+                                This table describes {fmtInt(analysis.test.weeks)} past weeks. It is not a forecast of the
+                                next one.
+                            </p>
+                        </Card>
+
+                        {/* The seven plans */}
+                        <Card className="p-4 sm:p-6">
+                            <h2 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white">
+                                The seven plans, full price history
+                            </h2>
+                            <p className="mt-1 mb-4 text-sm text-slate-500 dark:text-slate-400">
+                                ${WEEKLY_AMOUNT} per week, {fmtInt(analysis.full.purchases)} purchases each
+                                ({fmtUsd(analysis.full.invested)} invested), no fees, valued at the{' '}
+                                {formatUtc(analysis.lastCloseTs, 'full')} close of {fmtUsd(analysis.lastClose)}. The last
+                                purchases land in the week ending {formatUtc(analysis.full.lastBuyTs, 'full')}.
+                            </p>
+                            {/* The two columns that rank the plans come first, and the 500px
+                                floor leaves both whole on a 360px screen. The other two scroll
+                                sideways inside the card while the weekday stays put, and the box
+                                takes keyboard focus because Safari gives a keyboard no other way
+                                to scroll it. */}
+                            <div className="overflow-x-auto -mx-1 sm:mx-0" tabIndex={0} role="region" aria-label="Seven plans table">
+                                <table className="w-full text-xs sm:text-sm tabular-nums min-w-[500px]">
+                                    <caption className="sr-only">
+                                        BTC accumulated, average cost and value for seven identical weekly Bitcoin DCA
+                                        schedules, one anchored to each weekday, with the date each made its first purchase
+                                    </caption>
+                                    <thead>
+                                        <tr className="text-left text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800">
+                                            <th scope="col" className={clsx(stickyLabel, 'py-2 pr-4 font-medium')}>Buy day</th>
+                                            <th scope="col" className="py-2 pr-4 font-medium text-right">BTC accumulated</th>
+                                            <th scope="col" className="py-2 pr-4 font-medium text-right">vs. average plan</th>
+                                            <th scope="col" className="py-2 pr-4 font-medium text-right">Average cost / BTC</th>
+                                            <th scope="col" className="py-2 font-medium text-right">Value at last close</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="text-slate-700 dark:text-slate-300">
+                                        {DISPLAY_ORDER.map((weekday) => {
+                                            const row = analysis.full.rows[weekday];
                                             return (
                                                 <tr
                                                     key={weekday}
                                                     className="border-b border-slate-100 dark:border-slate-800/60 last:border-0"
                                                 >
-                                                    <th scope="row" className="py-2 pr-4 text-left font-medium text-slate-800 dark:text-slate-100">
+                                                    <th scope="row" className={clsx(stickyLabel, 'py-2 pr-4 text-left font-medium text-slate-800 dark:text-slate-100')}>
                                                         {row.name}
+                                                        {/* A real space, not only a margin: without one a screen
+                                                            reader and a copy-paste both get "Fridaymost BTC". */}
                                                         {row.rank === 1 && (
-                                                            <span className="ml-2 text-[10px] font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-400">
-                                                                most BTC
-                                                            </span>
+                                                            <>
+                                                                {' '}
+                                                                <span className="ml-1 text-[10px] font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-400">
+                                                                    most BTC
+                                                                </span>
+                                                            </>
                                                         )}
+                                                        <span className="block text-[11px] font-normal text-slate-500 dark:text-slate-400">
+                                                            First buy {formatUtc(row.startTs, 'full')}
+                                                        </span>
                                                     </th>
                                                     <td className="py-2 pr-4 text-right">{fmtBtc(row.btc)}</td>
-                                                    <td className="py-2 pr-4 text-right">{fmtUsd(row.averageCost)}</td>
-                                                    <td className="py-2 pr-4 text-right">{fmtUsd(row.finalValue)}</td>
                                                     <td
                                                         className={clsx(
-                                                            'py-2 text-right font-medium',
+                                                            'py-2 pr-4 text-right font-medium',
                                                             row.vsMeanPercent >= 0
                                                                 ? 'text-emerald-700 dark:text-emerald-400'
                                                                 : 'text-loss',
@@ -604,164 +672,140 @@ export default async function BestDayToBuyBitcoinPage() {
                                                     >
                                                         {fmtPct(row.vsMeanPercent, true)}
                                                     </td>
+                                                    <td className="py-2 pr-4 text-right">{fmtUsd(row.averageCost)}</td>
+                                                    <td className="py-2 text-right">{fmtUsd(row.finalValue)}</td>
                                                 </tr>
                                             );
                                         })}
                                     </tbody>
                                 </table>
                             </div>
-                            <p className="mt-4 text-xs sm:text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
-                                <strong className="font-semibold text-slate-600 dark:text-slate-300">
-                                    Read this table carefully. The ranking is an accident of one week in 2010.
-                                </strong>{' '}
-                                About{' '}
-                                <strong className="font-semibold text-slate-600 dark:text-slate-300">
-                                    {Math.round(analysis.full.concentrationPercent)}%
-                                </strong>{' '}
-                                of the Bitcoin in every row came from that row&apos;s first {analysis.full.concentrationBuys}{' '}
-                                purchases. That is {fmtUsd(analysis.full.concentrationBuys * WEEKLY_AMOUNT)} of the{' '}
-                                {fmtUsd(analysis.full.invested)} invested doing most of the work. Those buys all landed in
-                                August 2010, when the price was quoted in whole cents and one cent was a big slice of the whole
-                                price. Nudge that price by a single cent and the Bitcoin you walk away with changes by a
-                                double-digit percentage. That wobble is bigger than the {fmtPct(analysis.full.spreadPercent)}{' '}
-                                spread this entire table reports.
+                            <p className={clsx('mt-4', note)}>
+                                <strong className={noteStrong}>Read this table carefully before quoting it.</strong>{' '}
+                                About <strong className={noteStrong}>{Math.round(analysis.full.opening.sharePercent)}%</strong>{' '}
+                                of the Bitcoin in every row came from that row&apos;s first {analysis.full.opening.buys}{' '}
+                                purchases, made between {formatUtc(analysis.full.firstBuyTs, 'full')} and{' '}
+                                {formatUtc(analysis.full.opening.endTs, 'full')} at prices from{' '}
+                                {fmtUsd(analysis.full.opening.minPrice)} to {fmtUsd(analysis.full.opening.maxPrice)}. That
+                                is {fmtUsd(analysis.full.opening.buys * WEEKLY_AMOUNT)} of the{' '}
+                                {fmtUsd(analysis.full.invested)} invested.
+                                {centNote && (
+                                    <>
+                                        {' '}Our price series for those weeks is rounded to whole cents. Had each of those
+                                        prices been one cent higher, a row would hold {centNote.higher} less Bitcoin; one
+                                        cent lower, {centNote.lower} more. The whole table spans{' '}
+                                        {fmtPct(analysis.full.spreadPercent)}.
+                                    </>
+                                )}
+                                {spike && (
+                                    <>
+                                        {' '}{spike.rows}, and the{' '}
+                                        <Link href="/methodology" className="text-amber-700 dark:text-amber-400 hover:underline font-medium">
+                                            methodology page
+                                        </Link>{' '}
+                                        has both sets of figures. {spike.effect}
+                                    </>
+                                )}
                             </p>
-                            <p className="mt-3 text-xs sm:text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
-                                Then there is the second problem. Seven weekly plans cannot all begin on the same date, because
-                                only one weekday falls on any given day, so they start on seven days in a row. Over the full
-                                history those seven days sit inside that same August 2010 week, at those same penny prices. So
-                                the order of this table is largely a ranking of <em>start dates</em>, not of weekdays. The value
-                                column is the arithmetic of a fifteen-year schedule nobody actually ran. It is here for
-                                completeness, not as a target. The window table below is the honest test.
+                            <p className={clsx('mt-3', note)}>
+                                <strong className={noteStrong}>The plans do not start together.</strong>{' '}
+                                Only one weekday falls on any given date, so seven weekly plans begin on seven days in a
+                                row, and every purchase of the plan that starts first lands six days ahead of the matching
+                                purchase of the plan that starts last. While the price is climbing, earlier is cheaper.
+                                {analysis.fullOneDayLater && (
+                                    <>
+                                        {' '}Start this whole comparison one day later and {analysis.fullOneDayLater.name}{' '}
+                                        moves from {ordinal(analysis.fullOneDayLater.from)} to{' '}
+                                        {ordinal(analysis.fullOneDayLater.to)}.
+                                    </>
+                                )}
+                                {analysis.exchange && (
+                                    <>
+                                        {' '}Run the same seven plans from {formatUtc(analysis.exchange.firstBuyTs, 'full')},
+                                        where the Coinbase closes in our series begin, and{' '}
+                                        {analysis.exchange.ranksInStartOrder === analysis.exchange.rows.length
+                                            ? 'they finish in exactly the order they started in'
+                                            : `${analysis.exchange.ranksInStartOrder} of the seven finish in the place they started in`}
+                                        :{' '}
+                                        {joinNames(
+                                            [...analysis.exchange.rows].sort((a, b) => a.rank - b.rank).map((row) => row.name),
+                                        )}
+                                        , {fmtPct(analysis.exchange.spreadPercent)} apart from first to last.
+                                    </>
+                                )}
+                            </p>
+                            <p className={clsx('mt-3', note)}>
+                                <strong className={noteStrong}>
+                                    Before {formatUtc(FIRST_EXCHANGE_CLOSE_TS, 'full')} the weekday labels are a day out.
+                                </strong>{' '}
+                                For those years our prices are blockchain.info&apos;s market price, an average across
+                                exchanges stamped at 00:00 UTC, which tracks the previous day&apos;s close. A purchase
+                                labelled Monday in those years was priced at about Sunday&apos;s close, and{' '}
+                                {fmtPct(analysis.full.beforeExchangePercent)} of the Bitcoin in this table was bought in
+                                those years. That is why the first table uses Coinbase closes only. The value column here
+                                is arithmetic on a{' '}
+                                {Math.round((analysis.full.lastBuyTs - analysis.full.firstBuyTs) / (365.25 * DAY_MS))}-year
+                                schedule. It is published for completeness, not as a target.
                             </p>
                         </Card>
 
-                        {/* Rank stability */}
-                        {analysis.others.length > 0 && (
-                            <Card className="p-4 sm:p-6">
-                                <h2 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white">
-                                    The winner changes with the window
-                                </h2>
-                                <p className="mt-1 mb-4 text-sm text-slate-500 dark:text-slate-400">
-                                    Rank of each weekday by BTC accumulated (1 = most BTC) across four different lookback
-                                    windows, each run the same way. If a weekday genuinely bought Bitcoin cheaper, its column
-                                    of ranks would stay near the top. None of them do.
-                                </p>
-                                <div className="overflow-x-auto -mx-1 sm:mx-0">
-                                    <table className="w-full text-xs sm:text-sm tabular-nums min-w-[480px]">
-                                        <caption className="sr-only">
-                                            Weekday rank by BTC accumulated across four lookback windows
-                                        </caption>
-                                        <thead>
-                                            <tr className="text-left text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800">
-                                                <th scope="col" className="py-2 pr-4 font-medium">Buy day</th>
-                                                {analysis.allWindows.map((w) => (
-                                                    <th key={w.key} scope="col" className="py-2 pr-4 font-medium text-right">
-                                                        {w.label}
-                                                    </th>
-                                                ))}
-                                            </tr>
-                                        </thead>
-                                        <tbody className="text-slate-700 dark:text-slate-300">
-                                            {DISPLAY_ORDER.map((weekday) => (
-                                                <tr key={weekday} className="border-b border-slate-100 dark:border-slate-800/60">
-                                                    <th scope="row" className="py-2 pr-4 text-left font-medium text-slate-800 dark:text-slate-100">
-                                                        {WEEKDAY_NAMES[weekday]}
-                                                    </th>
-                                                    {analysis.allWindows.map((w) => {
-                                                        const row = w.rows.find((r) => r.weekday === weekday);
-                                                        return (
-                                                            <td key={w.key} className="py-2 pr-4 text-right">
-                                                                {row ? (
-                                                                    <span
-                                                                        className={clsx(
-                                                                            'inline-flex items-center justify-center w-6 h-6 rounded-md text-xs font-semibold',
-                                                                            row.rank === 1
-                                                                                ? 'bg-amber-100 text-amber-800 dark:bg-amber-500/20 dark:text-amber-300'
-                                                                                : row.rank === 7
-                                                                                    ? 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
-                                                                                    : 'text-slate-600 dark:text-slate-300',
-                                                                        )}
-                                                                    >
-                                                                        {row.rank}
-                                                                    </span>
-                                                                ) : (
-                                                                    '—'
-                                                                )}
-                                                            </td>
-                                                        );
-                                                    })}
-                                                </tr>
-                                            ))}
-                                            <tr className="border-t-2 border-slate-200 dark:border-slate-700">
-                                                <th scope="row" className="py-2 pr-4 text-left font-medium text-slate-800 dark:text-slate-100">
-                                                    Best vs worst
-                                                </th>
-                                                {analysis.allWindows.map((w) => (
-                                                    <td key={w.key} className="py-2 pr-4 text-right font-medium">
-                                                        {fmtPct(w.spreadPercent)}
-                                                    </td>
-                                                ))}
-                                            </tr>
-                                            <tr>
-                                                <th scope="row" className="py-2 pr-4 text-left font-medium text-slate-500 dark:text-slate-400">
-                                                    Purchases each
-                                                </th>
-                                                {analysis.allWindows.map((w) => (
-                                                    <td key={w.key} className="py-2 pr-4 text-right text-slate-500 dark:text-slate-400">
-                                                        {w.purchases.toLocaleString('en-US')}
-                                                    </td>
-                                                ))}
-                                            </tr>
-                                        </tbody>
-                                    </table>
-                                </div>
-                                <p className="mt-4 text-xs sm:text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
-                                    Each column is worked out from scratch: seven schedules, one per weekday, with the same
-                                    number of purchases and the same total invested inside that column. The seven have to begin
-                                    on seven days in a row, and so they also end on seven days in a row, since no two weekdays
-                                    share a date. The windows overlap, so these columns are not independent samples in the
-                                    statistical sense. That makes the reshuffling more damning, not less. Heavily overlapping
-                                    data should produce similar rankings if the effect were real.
-                                </p>
-                            </Card>
-                        )}
-
-                        {/* Why this is noise */}
+                        {/* Reading the result */}
                         <section className="space-y-4">
                             <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">
-                                Why there is no best day, and why the question keeps getting asked
+                                What the two tables do and do not show
                             </h2>
                             <div className="space-y-4 text-sm sm:text-base text-slate-600 dark:text-slate-400 leading-relaxed">
                                 <p>
-                                    <strong className="text-slate-800 dark:text-slate-200">Bitcoin never closes.</strong> Stock
-                                    markets have a real calendar: a weekend gap, an opening auction, index rebalancing on set
-                                    dates. Bitcoin trades every hour of every day on hundreds of venues. Nothing about it makes
-                                    one weekday reliably cheaper. If something did, exploiting it would cost almost nothing, so
-                                    it would be gone within days.
+                                    <strong className="text-slate-800 dark:text-slate-200">Bitcoin trades every day of the
+                                        week.</strong>{' '}
+                                    The Coinbase series has a closing price for{' '}
+                                    {estimatedDays === 0
+                                        ? 'every calendar day'
+                                        : `all but ${fmtInt(estimatedDays)} of the calendar days`}{' '}
+                                    since {formatUtc(FIRST_EXCHANGE_CLOSE_TS, 'full')}, weekends included, so there is no
+                                    weekly open or close for a pattern to hang on. That does not prove no pattern exists.
+                                    It is why the first table is the test, and why its result is stated with a margin of
+                                    error.
                                 </p>
                                 <p>
-                                    <strong className="text-slate-800 dark:text-slate-200">Seven buckets, one dataset.</strong>{' '}
-                                    Split any jumpy price history into seven arbitrary groups and one of them will come out on
-                                    top. That is arithmetic, not a discovery. The real test is whether the same group keeps
-                                    winning when you change the date range. Here it does not.
+                                    <strong className="text-slate-800 dark:text-slate-200">Seven buckets, one history.</strong>{' '}
+                                    Split any price history into seven groups and one of them comes out on top. That is
+                                    arithmetic, not a finding. What separates an effect from luck is whether the same group
+                                    stays ahead in stretches of time that share no days. The last column of the first
+                                    table is that check.
                                 </p>
                                 <p>
-                                    <strong className="text-slate-800 dark:text-slate-200">The gap is smaller than your
-                                        fees.</strong>{' '}
-                                    {fiveYear
-                                        ? `Over ${fiveYear.label.toLowerCase()} the best and worst weekdays differ by ${fmtPct(fiveYear.spreadPercent)}. `
-                                        : ''}
-                                    Now compare that to what an exchange charges. Commission plus the spread, meaning the gap
-                                    between the price you buy at and the price you could sell at, commonly runs 0.5% to 1.5% per
-                                    purchase. Moving from a 1.49% fee tier to a 0.4% one changes your outcome by more than every
-                                    weekday decision you will ever make. Unlike the weekday, that saving is real and it repeats.
+                                    <strong className="text-slate-800 dark:text-slate-200">The fee is certain; the weekday gap
+                                        is not.</strong>{' '}
+                                    The largest gap in the first table is {fmtUsd(gapUsd(analysis.test))} on a $
+                                    {WEEKLY_AMOUNT} purchase, and it is an average with a margin of error. A fee is taken
+                                    from every purchase.
+                                    {fees && (
+                                        <>
+                                            {' '}The platforms in our{' '}
+                                            <Link href="/calculators/exchange-fees" className="text-amber-700 dark:text-amber-400 hover:underline font-medium">
+                                                fee comparison
+                                            </Link>{' '}
+                                            publish costs from {fmtUsd(fees.lowUsd)} to {fmtUsd(fees.highUsd)} on a $
+                                            {WEEKLY_AMOUNT} recurring buy (their own pricing pages, checked{' '}
+                                            {formatUtc(fees.checkedOn, 'full')}).
+                                            {fees.pair && (
+                                                <>
+                                                    {' '}The published costs of {fees.pair.higher} and {fees.pair.lower}{' '}
+                                                    differ by {fmtUsd(fees.pair.differenceUsd)} on every purchase.
+                                                </>
+                                            )}
+                                        </>
+                                    )}
                                 </p>
                                 <p>
-                                    <strong className="text-slate-800 dark:text-slate-200">Consistency beats timing.</strong> What
-                                    really decides a DCA outcome is how many purchases you actually make. A missed month costs
-                                    you a whole contribution. Waiting for the &ldquo;right&rdquo; day is how missed months
-                                    happen. Pick the day after payday, automate it, and stop thinking about it.
+                                    <strong className="text-slate-800 dark:text-slate-200">A skipped purchase is missing in
+                                        full.</strong>{' '}
+                                    In the first table the weekday moved what one purchase bought by{' '}
+                                    {fmtPct(Math.max(Math.abs(analysis.test.best.edgePercent), Math.abs(analysis.test.worst.edgePercent)))}{' '}
+                                    at most, on average. A purchase that does not happen buys nothing. A buy that runs
+                                    automatically on a fixed day, whichever day that is, takes the weekday out of the
+                                    question.
                                 </p>
                             </div>
                         </section>
@@ -771,20 +815,52 @@ export default async function BestDayToBuyBitcoinPage() {
                             <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white mb-2">
                                 How these numbers were computed
                             </h2>
-                            <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
-                                For each window we find the first UTC date on or after the window start whose weekday matches.
-                                A weekly schedule then runs from that date: ${WEEKLY_AMOUNT} per purchase, priced at that
-                                day&apos;s closing price, zero fees, using the same engine as the main calculator. We cap the
-                                number of purchases at the lowest of the seven, so all seven schedules invest exactly the same
-                                total. All dates are bucketed in UTC. Exchange candles are UTC-aligned, and doing this in local
-                                time would shift the whole schedule by a day for anyone west of Greenwich. Prices are{' '}
-                                {analysis.interpolatedSeries
-                                    ? 'currently coming from the Kraken weekly series interpolated to daily values (see the note above)'
-                                    : 'Coinbase daily candles from July 2015 onward, and real daily market prices from blockchain.info for August 2010 to mid-2015'}
-                                . Value today uses the latest spot price, so every row is valued at the same price and the
-                                ranking by value is identical to the ranking by BTC. Figures refresh once every 24 hours; the
-                                data covers {formatUtc(analysis.full.firstBuyTs, 'full')} to{' '}
-                                {formatUtc(analysis.lastDataTs, 'full')}. Full detail on the{' '}
+                            <p className={note}>
+                                Everything uses one price per UTC day. From {formatUtc(FIRST_EXCHANGE_CLOSE_TS, 'full')}{' '}
+                                that is Coinbase&apos;s daily candle close, the last trade of the UTC day. Before it, it is
+                                blockchain.info&apos;s market price, an average across exchanges stamped at 00:00 UTC. Over
+                                the {fmtInt(SNAPSHOT_VS_COINBASE_CLOSE.daysCompared)} days where both exist, that figure
+                                sits a median {SNAPSHOT_VS_COINBASE_CLOSE.previousDayPercent}% from Coinbase&apos;s close of
+                                the day before and {SNAPSHOT_VS_COINBASE_CLOSE.sameDayPercent}% from its close of the same
+                                day (measured {formatUtc(SNAPSHOT_VS_COINBASE_CLOSE.measuredOn, 'full')}), so it is in
+                                effect the previous day&apos;s close.{' '}
+                                {estimatedDays > 0 && (
+                                    <>
+                                        Coinbase has no candle for {fmtInt(estimatedDays)}{' '}
+                                        {estimatedDays === 1 ? 'day' : 'days'} in the series; those are filled in along a
+                                        straight line between the days either side.{' '}
+                                    </>
+                                )}
+                                All dates are UTC. An automatic buy that fires at another time of day is priced
+                                differently from the close used here.
+                            </p>
+                            <p className={clsx('mt-3', note)}>
+                                <strong className={noteStrong}>Week-by-week test.</strong>{' '}
+                                Coinbase closes only. For each day, the close is compared with the geometric mean of the
+                                seven closes centred on it: three before, the day itself, three after. The figure is 100
+                                times the natural log of that mean over the day&apos;s close, which for gaps this small is
+                                the percentage the day closed below its week. A plain dollar spread over the week is not
+                                used, because a fixed amount spread over seven moving prices buys slightly more than the
+                                same amount on the middle day whatever the weekday, which would put every weekday a few
+                                hundredths of a percent below zero. Centring the week on the day keeps a rising price out
+                                of the answer. Against a fixed Monday-to-Sunday week, later days would look dearer simply
+                                for being later.
+                                The figure shown is the mean over every Monday, every Tuesday and so on, and the margin of
+                                error is two standard errors of that mean. A calendar year is counted only when all of its
+                                days were measured. The random deals shuffle the seven figures within each consecutive run
+                                of seven measured days, {fmtInt(analysis.test.shuffle.deals)} times, from a fixed starting
+                                seed so the same prices always give the same shares.
+                            </p>
+                            <p className={clsx('mt-3', note)}>
+                                <strong className={noteStrong}>Seven plans.</strong>{' '}
+                                For each weekday we find the first UTC date on or after the start of the data that falls on
+                                it and run a weekly schedule from there: ${WEEKLY_AMOUNT} per purchase, zero fees, using
+                                the same engine as the main calculator. The number of purchases is capped at the lowest of
+                                the seven, so all seven invest exactly the same total. Every row is valued at the same last
+                                daily close, so ranking by value and ranking by BTC are the same thing. Figures refresh
+                                once every 24 hours; the data runs from {formatUtc(analysis.full.firstBuyTs, 'full')} to{' '}
+                                {formatUtc(analysis.lastCloseTs, 'full')}. Price sources, fee math and UTC handling are on
+                                the{' '}
                                 <Link href="/methodology" className="text-amber-700 dark:text-amber-400 hover:underline font-medium">
                                     methodology page
                                 </Link>
@@ -816,10 +892,10 @@ export default async function BestDayToBuyBitcoinPage() {
                                     Price data is temporarily unavailable
                                 </h2>
                                 <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
-                                    We couldn&apos;t load the daily price history needed to run the seven weekday schedules
-                                    right now, and we won&apos;t publish numbers we can&apos;t compute. The page rebuilds every
-                                    24 hours. In the meantime the live calculator pulls from several providers, so you can run
-                                    a weekly schedule there yourself.
+                                    Coinbase&apos;s daily closing prices could not be loaded when this page was built, and
+                                    it does not publish figures computed on anything else. It tries again within a few
+                                    minutes. The calculator on the home page has a second price source to fall back on, so
+                                    a weekly schedule can still be run there.
                                 </p>
                             </div>
                         </div>
@@ -832,9 +908,8 @@ export default async function BestDayToBuyBitcoinPage() {
                         Run your own numbers
                     </h2>
                     <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300 mb-5 max-w-xl mx-auto">
-                        Pick any weekday you like. It barely matters. What does matter is the amount, the fee, and how long
-                        you keep going. Change all three in the calculator and see what the same history does to your
-                        actual plan.
+                        The calculator runs a weekly plan on the same Coinbase closes. Change the amount, the fee and the
+                        dates to see what each one does to the result.
                     </p>
                     <Link
                         href={`/?amount=${WEEKLY_AMOUNT}&frequency=weekly&fee=0&provider=coinbase`}
@@ -853,8 +928,10 @@ export default async function BestDayToBuyBitcoinPage() {
                     <div className="grid sm:grid-cols-2 gap-2 sm:gap-3">
                         {[
                             { href: '/lump-sum-vs-dca', label: 'Lump sum vs DCA', sub: 'Both strategies, every start month since 2010' },
+                            { href: '/dca/start-date-heatmap', label: 'Start-date heatmap', sub: 'Returns by the year a plan started and how long it ran' },
                             { href: '/dca', label: 'DCA scenarios', sub: 'What steady buying would be worth today' },
-                            { href: '/methodology', label: 'Methodology', sub: 'Every data source and formula we use' },
+                            { href: '/calculators/exchange-fees', label: 'Exchange fees', sub: 'What each platform publishes, with its source' },
+                            { href: '/methodology', label: 'Methodology', sub: 'Price sources, fee math and UTC handling' },
                             { href: '/features', label: 'Calculator features', sub: 'What the tool can actually do' },
                         ].map((link) => (
                             <Link

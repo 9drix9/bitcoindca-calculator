@@ -8,6 +8,10 @@ export function OfflineActions() {
   // Auto-retry the attempted URL the moment connectivity returns. The
   // service worker serves this page as a fallback while keeping the
   // original URL, so a reload retries exactly the page the user wanted.
+  //
+  // 'online' fires only when the device itself regains a network. With the
+  // device online and the site unreachable it never fires, which is why the
+  // page points at Try Again instead of promising a retry in every case.
   useEffect(() => {
     const onOnline = () => window.location.reload();
     window.addEventListener('online', onOnline);

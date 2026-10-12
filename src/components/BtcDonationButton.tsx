@@ -19,6 +19,9 @@ type Target = 'onchain' | 'lightning';
 
 export const BtcDonationButton = () => {
     const [copied, setCopied] = useState<Target | null>(null);
+    // The address whose copy did not go through. It is then printed in full, so
+    // it can be selected by hand: the rows above only ever show part of it.
+    const [failed, setFailed] = useState<Target | null>(null);
     const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     useEffect(() => () => {
@@ -28,18 +31,32 @@ export const BtcDonationButton = () => {
     const handleCopy = useCallback(async (target: Target, value: string) => {
         try {
             await navigator.clipboard.writeText(value);
+            setFailed(null);
             setCopied(target);
         } catch {
-            return; // insecure context or denied — leave the visible address selectable
+            // No Clipboard API (an insecure context, some in-app browsers) or
+            // permission refused.
+            setCopied(null);
+            setFailed(target);
+            return;
         }
         if (timerRef.current) clearTimeout(timerRef.current);
         timerRef.current = setTimeout(() => setCopied(null), 1500);
     }, []);
 
     const rowClass = 'flex items-center gap-1';
+    // 44px on touch (under 640px, and any coarse pointer above it), 32px for a
+    // mouse.
+    //  - shrink-0: in the 152px footer column of a 360px phone the Lightning
+    //    row does not fit, and without it flexbox takes the difference out of
+    //    the button. The address gives way instead (min-w-0 + truncate below);
+    //    copying still copies all of it.
+    //  - No negative margin to pull the rows together: each row is as tall as
+    //    its button, so the two targets never overlap and a tap cannot copy
+    //    the other address.
     const buttonClass =
-        'inline-flex items-center justify-center w-11 h-11 -my-3 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-slate-500 dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-300';
-    const codeClass = 'text-xs text-slate-500 dark:text-slate-400 font-mono';
+        'inline-flex shrink-0 items-center justify-center w-8 h-8 max-sm:w-11 max-sm:h-11 pointer-coarse:w-11 pointer-coarse:h-11 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-slate-500 dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-300';
+    const codeClass = 'min-w-0 truncate text-xs text-slate-500 dark:text-slate-400 font-mono';
 
     return (
         <div className="space-y-1">
@@ -74,12 +91,23 @@ export const BtcDonationButton = () => {
                 </button>
             </div>
 
+            {failed && (
+                <p className="text-xs text-slate-600 dark:text-slate-300">
+                    Copy failed. Select the address:
+                    <code className="mt-1 block select-all break-all font-mono">
+                        {failed === 'lightning' ? LIGHTNING_ADDRESS : BTC_ADDRESS}
+                    </code>
+                </p>
+            )}
+
             <span role="status" aria-live="polite" className="sr-only">
-                {copied === 'lightning'
-                    ? 'Lightning address copied to clipboard'
-                    : copied === 'onchain'
-                        ? 'Bitcoin address copied to clipboard'
-                        : ''}
+                {failed
+                    ? 'Copy failed. The full address is now shown below the buttons.'
+                    : copied === 'lightning'
+                        ? 'Lightning address copied to clipboard'
+                        : copied === 'onchain'
+                            ? 'Bitcoin address copied to clipboard'
+                            : ''}
             </span>
         </div>
     );

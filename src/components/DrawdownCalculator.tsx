@@ -13,16 +13,43 @@ import {
 import { Hourglass } from 'lucide-react';
 import clsx from 'clsx';
 import { Card, CardHeader } from '@/components/ui/Card';
-import { useCurrency } from '@/context/CurrencyContext';
+import { useCurrency, type Denomination } from '@/context/CurrencyContext';
 import { useIsDark } from '@/hooks/useIsDark';
+import {
+    defaultMonthlySpend,
+    flipSign,
+    formatCompactAmount,
+    impliedPrice,
+    priceScenarioLabel,
+    stackAmountAsInput,
+} from '@/app/calculators/bitcoin-fire/projection';
+import {
+    GROWTH_MAX,
+    GROWTH_MIN,
+    clamp,
+    floorMoney,
+    simulateDrawdown,
+    solveSustainableWithdrawal,
+    type PathPoint,
+    type SimParams,
+    type SimResult,
+} from '@/app/calculators/bitcoin-drawdown/spendDown';
+import { readTypedAmount } from '@/app/calculators/bitcoin-drawdown/typedAmount';
+import { SATS_PER_BTC } from '@/utils/units';
 
 // ── Props contract (wired into DcaCalculator by the orchestrator) ─────────────
 
 export interface DrawdownCalculatorProps {
-    /** BTC the user has accumulated (from the DCA result) */
+    /**
+     * BTC the user holds as of today. Never the end-of-plan total of a schedule
+     * that runs into the future: this planner spends "your stack", and coins from
+     * buys that have not happened yet are not in it.
+     */
     btcAccumulated: number;
     /** Current BTC price in USD, or null when the live price is unavailable */
     livePrice: number | null;
+    /** Unit for bitcoin amounts. Defaults to BTC, which is what the standalone page's inputs and prose use. */
+    unit?: Denomination;
 }
 
 // ── Model ─────────────────────────────────────────────────────────────────────
@@ -31,56 +58,16 @@ const MAX_MONTHS = 1200; // 100 years — bounds every loop
 const TARGET_MONTHS = 360; // horizon for the "sustainable withdrawal" solve
 const CHART_MAX_MONTHS = 480; // cap the drawn horizon at 40y when the stack never runs out
 const MAX_CHART_POINTS = 300;
-const AXIS_COLOR = '#64748b';
 const LINE_COLOR = '#d97706'; // amber-600, both modes (spec §2)
 
-const GROWTH_CHIPS = [-0.2, 0, 0.15, 0.3];
-const SCENARIO_SPREAD = 0.2; // bear / bull sit ±20pp around the user's assumption
-
-const GROWTH_MIN = -0.9;
-const GROWTH_MAX = 3;
+const GROWTH_CHIPS = [-0.5, -0.2, 0, 0.15, 0.3];
+const SCENARIO_SPREAD = 0.2; // the two outer cards sit ±20pp around the user's assumption
+// The implied price is quoted a decade out, and again at the horizon of the
+// largest-withdrawal solve (TARGET_MONTHS).
+const IMPLIED_PRICE_YEARS = 10;
 
 const INFLATION_MIN = -0.1;
 const INFLATION_MAX = 0.25;
-
-interface SimParams {
-    startBtc: number;
-    priceUsd: number;
-    monthlyWithdrawalUsd: number;
-    annualGrowth: number;
-    annualInflation: number;
-    floorBtc: number;
-}
-
-interface PathPoint {
-    /** Years elapsed since today */
-    year: number;
-    /** Stack value in USD at that month */
-    value: number;
-    /** BTC remaining at that month */
-    btc: number;
-}
-
-interface SimResult {
-    /** Complete months funded by the stack */
-    monthsSurvived: number;
-    /** True when the stack outlived the simulated horizon */
-    neverExhausted: boolean;
-    btcRemaining: number;
-    /** Nominal USD withdrawn (not inflation-adjusted back to today) */
-    totalWithdrawnUsd: number;
-    path: PathPoint[];
-}
-
-const clamp = (v: number, lo: number, hi: number): number => Math.min(Math.max(v, lo), hi);
-
-/** Parse a user-typed number. Returns null for empty / partial / non-finite input. */
-const parseInput = (raw: string): number | null => {
-    const cleaned = raw.replace(/[,\s]/g, '');
-    if (cleaned === '' || cleaned === '-' || cleaned === '.' || cleaned === '-.') return null;
-    const n = Number(cleaned);
-    return Number.isFinite(n) ? n : null;
-};
 
 /**
  * The simulation clamps growth and inflation internally, so a field left showing
@@ -89,86 +76,10 @@ const parseInput = (raw: string): number | null => {
  * without fighting the user mid-keystroke.
  */
 const snapToRange = (raw: string, lo: number, hi: number): string | null => {
-    const v = parseInput(raw);
+    const v = readTypedAmount(raw);
     if (v === null || (v >= lo && v <= hi)) return null;
     return String(clamp(v, lo, hi));
 };
-
-/**
- * Spend the stack down month by month.
- *
- * Each month the price compounds by `(1+g)^(1/12)-1`, the withdrawal compounds by the
- * monthly inflation rate, and `withdrawal / price` BTC is sold. The month the sale can
- * no longer be funded (down to the floor) is the month the stack runs out.
- */
-function simulateDrawdown(p: SimParams, maxMonths: number, collectPath: boolean): SimResult {
-    const growth = clamp(p.annualGrowth, GROWTH_MIN, GROWTH_MAX);
-    const monthlyGrowth = Math.pow(1 + growth, 1 / 12) - 1;
-    const monthlyInflation = Math.pow(1 + clamp(p.annualInflation, -0.5, 0.5), 1 / 12) - 1;
-
-    let btc = p.startBtc;
-    let price = p.priceUsd;
-    let withdrawal = p.monthlyWithdrawalUsd;
-    let totalWithdrawn = 0;
-    let months = 0;
-
-    const path: PathPoint[] = collectPath ? [{ year: 0, value: btc * price, btc }] : [];
-
-    for (let m = 1; m <= maxMonths; m++) {
-        price *= 1 + monthlyGrowth;
-        if (!Number.isFinite(price) || price <= 0) break; // degenerate assumptions
-
-        const spendable = btc - p.floorBtc;
-        const btcNeeded = withdrawal / price;
-
-        if (!Number.isFinite(btcNeeded) || btcNeeded >= spendable) {
-            // Final, partially funded month: sell what is left above the floor and stop.
-            if (spendable > 0) totalWithdrawn += spendable * price;
-            btc = p.floorBtc;
-            if (collectPath) path.push({ year: m / 12, value: btc * price, btc });
-            break;
-        }
-
-        btc -= btcNeeded;
-        totalWithdrawn += withdrawal;
-        withdrawal *= 1 + monthlyInflation;
-        months = m;
-        if (collectPath) path.push({ year: m / 12, value: btc * price, btc });
-    }
-
-    return {
-        monthsSurvived: months,
-        neverExhausted: months >= maxMonths,
-        btcRemaining: btc,
-        totalWithdrawnUsd: totalWithdrawn,
-        path,
-    };
-}
-
-/**
- * Largest monthly withdrawal (USD, today's money) that still funds `targetMonths`.
- * Months survived is monotonically non-increasing in the withdrawal amount, so bisection
- * converges; the upper bound (one month = the whole stack) always fails.
- */
-function solveSustainableWithdrawal(base: SimParams, targetMonths: number): number | null {
-    const spendable = base.startBtc - base.floorBtc;
-    if (!(spendable > 0) || !(base.priceUsd > 0)) return null;
-
-    const lasts = (w: number): boolean =>
-        simulateDrawdown({ ...base, monthlyWithdrawalUsd: w }, targetMonths, false).monthsSurvived >= targetMonths;
-
-    let lo = 0;
-    let hi = Math.max(spendable * base.priceUsd, 1);
-    if (lasts(hi)) return hi; // unreachable in practice; keeps the result bounded
-    if (!lasts(lo)) return null;
-
-    for (let i = 0; i < 48; i++) {
-        const mid = (lo + hi) / 2;
-        if (lasts(mid)) lo = mid;
-        else hi = mid;
-    }
-    return lo;
-}
 
 const downsample = (rows: PathPoint[], max: number): PathPoint[] => {
     if (rows.length <= max) return rows;
@@ -202,10 +113,15 @@ const formatPercent = (rate: number): string => {
 
 // ── Styling shorthands (spec §1) ──────────────────────────────────────────────
 
+// 44px wherever a finger does the pointing: under 640px, and on a coarse
+// pointer at any width (a tablet, a phone held sideways). 16px text there too,
+// or iOS zooms the page when the field takes focus. A mouse keeps the denser
+// 40px row.
 const inputClass =
-    'h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-base tabular-nums text-slate-800 outline-none ' +
+    'h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm tabular-nums text-slate-800 outline-none ' +
+    'max-sm:h-11 max-sm:text-base pointer-coarse:h-11 pointer-coarse:text-base ' +
     'transition-shadow focus:border-amber-500 focus:ring-2 focus:ring-amber-500/40 ' +
-    'dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 sm:text-sm';
+    'dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100';
 
 const labelClass = 'mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400';
 
@@ -216,8 +132,16 @@ interface TooltipEntry {
     payload?: PathPoint;
 }
 
-function DrawdownTooltip({ active, payload }: { active?: boolean; payload?: TooltipEntry[] }) {
-    const { formatCurrency, formatBtc } = useCurrency();
+function DrawdownTooltip({
+    active,
+    payload,
+    unit,
+}: {
+    active?: boolean;
+    payload?: TooltipEntry[];
+    unit: Denomination;
+}) {
+    const { formatCurrency, formatBtc, formatSats } = useCurrency();
     if (!active || !payload || payload.length === 0) return null;
     const point = payload[0]?.payload;
     if (!point) return null;
@@ -235,9 +159,9 @@ function DrawdownTooltip({ active, payload }: { active?: boolean; payload?: Tool
                     </span>
                 </div>
                 <div className="flex items-center justify-between gap-4">
-                    <span className="text-slate-500 dark:text-slate-400">BTC left</span>
+                    <span className="text-slate-500 dark:text-slate-400">{unit === 'SATS' ? 'Sats left' : 'BTC left'}</span>
                     <span className="font-medium tabular-nums text-slate-800 dark:text-slate-100">
-                        {formatBtc(point.btc)}
+                        {unit === 'SATS' ? formatSats(point.btc) : formatBtc(point.btc)}
                     </span>
                 </div>
             </div>
@@ -252,11 +176,14 @@ function ScenarioCard({
     rate,
     result,
     emphasised,
+    impliedPriceLabel,
 }: {
     label: string;
     rate: number;
     result: SimResult;
     emphasised: boolean;
+    /** The price this rate implies at IMPLIED_PRICE_YEARS, already formatted. Null for a flat path. */
+    impliedPriceLabel: string | null;
 }) {
     const good = result.neverExhausted || result.monthsSurvived >= TARGET_MONTHS;
     const bad = !result.neverExhausted && result.monthsSurvived < 120;
@@ -276,8 +203,13 @@ function ScenarioCard({
                 {label}
             </div>
             <div className="mt-0.5 text-[11px] tabular-nums text-slate-500 dark:text-slate-400">
-                {rate >= 0 ? '+' : ''}
+                {rate > 0 ? '+' : ''}
                 {formatPercent(rate)} / yr
+                {impliedPriceLabel && (
+                    <span className="block">
+                        BTC at {impliedPriceLabel} in {IMPLIED_PRICE_YEARS} yr
+                    </span>
+                )}
             </div>
             <div
                 className={clsx(
@@ -290,7 +222,8 @@ function ScenarioCard({
                 )}
             >
                 {result.neverExhausted ? (
-                    'Never runs out'
+                    // The model stops at 100 years. "Never" is more than it can show.
+                    `${MAX_MONTHS / 12}+ years`
                 ) : years === 0 ? (
                     <>
                         {months}
@@ -316,30 +249,52 @@ function ScenarioCard({
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-export const DrawdownCalculator: React.FC<DrawdownCalculatorProps> = ({ btcAccumulated, livePrice }) => {
-    const { currencyConfig, formatCurrency, formatBtc, convertFromUsd } = useCurrency();
+export const DrawdownCalculator: React.FC<DrawdownCalculatorProps> = ({ btcAccumulated, livePrice, unit = 'BTC' }) => {
+    const { currencyConfig, formatCurrency, formatBtc, formatSats, convertFromUsd, rateNote } = useCurrency();
     const isDark = useIsDark();
     const uid = useId();
+    // A bitcoin amount in the unit this panel was asked for.
+    const formatStack = (btc: number): string => (unit === 'SATS' ? formatSats(btc) : formatBtc(btc));
 
     // Raw inputs. The withdrawal is typed in the DISPLAY currency and divided by the
     // FX rate before any math (spec §3); everything internal is USD.
-    const [withdrawalInput, setWithdrawalInput] = useState('4000');
-    const [growthInput, setGrowthInput] = useState('15');
+    //
+    // null means "not typed yet": the field then shows the default for whichever
+    // currency is active (a bare 4000 is about $25 a month in yen), and follows a
+    // currency switch until the visitor types a figure of their own.
+    const [typedWithdrawal, setTypedWithdrawal] = useState<string | null>(null);
+    const withdrawalInput = typedWithdrawal ?? String(defaultMonthlySpend(currencyConfig.rate));
+    // Opens flat. Any other pre-filled rate is a price forecast the visitor never
+    // made: +15% a year, the old default, is a 66-fold rise over the 30 years the
+    // largest-withdrawal figure is solved for.
+    const [growthInput, setGrowthInput] = useState('0');
     const [inflationInput, setInflationInput] = useState('3');
-    const [floorInput, setFloorInput] = useState('0');
+    // The floor is kept as typed, with the unit it was typed in. With Units on
+    // sats this field used to stay a BTC field, the one bitcoin figure on the
+    // panel that ignored the switch. It now follows it, and a figure typed in
+    // one unit is shown as the same amount in the other when the switch moves.
+    const [floor, setFloor] = useState<{ raw: string; unit: Denomination }>({ raw: '0', unit: 'BTC' });
 
     const stackBtc = Number.isFinite(btcAccumulated) && btcAccumulated > 0 ? btcAccumulated : 0;
     const priceUsd = livePrice !== null && Number.isFinite(livePrice) && livePrice > 0 ? livePrice : null;
 
-    const withdrawalDisplay = parseInput(withdrawalInput);
+    const withdrawalDisplay = readTypedAmount(withdrawalInput);
     const monthlyWithdrawalUsd =
         withdrawalDisplay !== null && withdrawalDisplay > 0 && currencyConfig.rate > 0
             ? withdrawalDisplay / currencyConfig.rate
             : 0;
 
-    const annualGrowth = clamp((parseInput(growthInput) ?? 0) / 100, GROWTH_MIN, GROWTH_MAX);
-    const annualInflation = clamp((parseInput(inflationInput) ?? 0) / 100, INFLATION_MIN, INFLATION_MAX);
-    const floorBtc = clamp(parseInput(floorInput) ?? 0, 0, stackBtc);
+    const annualGrowth = clamp((readTypedAmount(growthInput) ?? 0) / 100, GROWTH_MIN, GROWTH_MAX);
+    const annualInflation = clamp((readTypedAmount(inflationInput) ?? 0) / 100, INFLATION_MIN, INFLATION_MAX);
+    // Read by the rules of the unit it was typed in: "0,5" is half a bitcoin,
+    // and "100,000" is a hundred thousand sats.
+    const floorTyped = readTypedAmount(floor.raw, floor.unit === 'BTC' ? 'decimal' : 'auto');
+    const floorTypedBtc = floorTyped === null ? null : floor.unit === 'SATS' ? floorTyped / SATS_PER_BTC : floorTyped;
+    // Text that cannot be read as a number is shown as it is: there is nothing to convert.
+    const floorInput = floor.unit === unit || floorTypedBtc === null
+        ? floor.raw
+        : stackAmountAsInput(floorTypedBtc, unit);
+    const floorBtc = clamp(floorTypedBtc ?? 0, 0, stackBtc);
 
     const model = useMemo(() => {
         if (priceUsd === null || stackBtc <= 0 || monthlyWithdrawalUsd <= 0) return null;
@@ -353,10 +308,14 @@ export const DrawdownCalculator: React.FC<DrawdownCalculatorProps> = ({ btcAccum
             floorBtc,
         };
 
+        // The outer cards are named for what their rate does to the price. They were
+        // "Slower" and "Faster", which called a card at -20% a year slow growth.
+        const lower = clamp(annualGrowth - SCENARIO_SPREAD, GROWTH_MIN, GROWTH_MAX);
+        const higher = clamp(annualGrowth + SCENARIO_SPREAD, GROWTH_MIN, GROWTH_MAX);
         const scenarios = [
-            { key: 'bear', label: 'Slower', rate: clamp(annualGrowth - SCENARIO_SPREAD, GROWTH_MIN, GROWTH_MAX) },
+            { key: 'lower', label: priceScenarioLabel(lower), rate: lower },
             { key: 'base', label: 'Your assumption', rate: annualGrowth },
-            { key: 'bull', label: 'Faster', rate: clamp(annualGrowth + SCENARIO_SPREAD, GROWTH_MIN, GROWTH_MAX) },
+            { key: 'higher', label: priceScenarioLabel(higher), rate: higher },
         ].map((s) => ({
             ...s,
             result: simulateDrawdown({ ...base, annualGrowth: s.rate }, MAX_MONTHS, false),
@@ -376,18 +335,7 @@ export const DrawdownCalculator: React.FC<DrawdownCalculatorProps> = ({ btcAccum
 
     // Compact currency ticks — always converted from USD before formatting (spec §3).
     const formatAxisTick = useCallback(
-        (usd: number): string => {
-            const v = convertFromUsd(usd);
-            const sym = currencyConfig.symbol;
-            const sign = v < 0 ? '-' : '';
-            const abs = Math.abs(v);
-            if (abs >= 1e12) return `${sign}${sym}${(abs / 1e12).toFixed(1)}T`;
-            if (abs >= 1_000_000_000) return `${sign}${sym}${(abs / 1_000_000_000).toFixed(1)}B`;
-            if (abs >= 1_000_000) return `${sign}${sym}${(abs / 1_000_000).toFixed(1)}M`;
-            if (abs >= 10_000) return `${sign}${sym}${(abs / 1_000).toFixed(0)}k`;
-            if (abs >= 1_000) return `${sign}${sym}${(abs / 1_000).toFixed(1)}k`;
-            return `${sign}${sym}${abs.toFixed(0)}`;
-        },
+        (usd: number): string => formatCompactAmount(convertFromUsd(usd), currencyConfig.symbol),
         [convertFromUsd, currencyConfig.symbol],
     );
 
@@ -403,7 +351,7 @@ export const DrawdownCalculator: React.FC<DrawdownCalculatorProps> = ({ btcAccum
                 />
                 <p className="mt-4 rounded-xl bg-slate-50 p-4 text-sm text-slate-500 dark:bg-slate-800/50 dark:text-slate-400">
                     {stackBtc <= 0
-                        ? 'Run a calculation with some BTC in it first, then come back here.'
+                        ? 'Run a calculation with some bitcoin in it first, then come back here.'
                         : "The live Bitcoin price isn't available, so this can't run right now."}
                 </p>
             </Card>
@@ -412,9 +360,24 @@ export const DrawdownCalculator: React.FC<DrawdownCalculatorProps> = ({ btcAccum
 
     const stackValueUsd = stackBtc * priceUsd;
     const maxYear = model && model.chartData.length > 0 ? model.chartData[model.chartData.length - 1].year : 0;
+
+    // What a rate means in price terms, in the display currency. Printed beside
+    // every non-zero rate so the assumption is visible next to the result it buys.
+    const priceIn = (rate: number, years: number): string =>
+        formatCompactAmount(convertFromUsd(impliedPrice(priceUsd, rate, years)), currencyConfig.symbol);
+    const targetYears = TARGET_MONTHS / 12;
+
+    const flipGrowth = () => {
+        // Snapped here because no blur follows a button press.
+        const flipped = flipSign(growthInput);
+        setGrowthInput(snapToRange(flipped, GROWTH_MIN * 100, GROWTH_MAX * 100) ?? flipped);
+    };
     const yearTick = (v: number): string => (maxYear < 3 ? `${v.toFixed(1)}y` : `${Math.round(v)}y`);
 
     const gridColor = isDark ? '#1e293b' : '#f1f5f9';
+    // Theme-flipped: #64748b is 4.76:1 on the light card but only 3.75:1 on the
+    // dark one, under the 4.5:1 floor for the 11px tick labels.
+    const axisColor = isDark ? '#94a3b8' : '#64748b';
     const cursorColor = isDark ? '#334155' : '#cbd5e1';
 
     return (
@@ -438,27 +401,41 @@ export const DrawdownCalculator: React.FC<DrawdownCalculatorProps> = ({ btcAccum
                             inputMode="decimal"
                             autoComplete="off"
                             value={withdrawalInput}
-                            onChange={(e) => setWithdrawalInput(e.target.value)}
+                            onChange={(e) => setTypedWithdrawal(e.target.value)}
                             className={inputClass}
                         />
                     </div>
                     <div>
                         <label htmlFor={`${uid}-growth`} className={labelClass}>
-                            Bitcoin growth (% per year)
+                            Bitcoin price change (% per year)
                         </label>
-                        <input
-                            id={`${uid}-growth`}
-                            type="text"
-                            inputMode="decimal"
-                            autoComplete="off"
-                            value={growthInput}
-                            onChange={(e) => setGrowthInput(e.target.value)}
-                            onBlur={() => {
-                                const snapped = snapToRange(growthInput, GROWTH_MIN * 100, GROWTH_MAX * 100);
-                                if (snapped !== null) setGrowthInput(snapped);
-                            }}
-                            className={inputClass}
-                        />
+                        <div className="flex gap-2">
+                            {/* Touch screens only: a number pad is not guaranteed a minus key,
+                                and a falling price has to be reachable on any keyboard. */}
+                            <button
+                                type="button"
+                                onClick={flipGrowth}
+                                aria-label="Switch between a rising and a falling price"
+                                className="hidden h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-base font-semibold text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 max-sm:inline-flex pointer-coarse:inline-flex"
+                            >
+                                <span aria-hidden="true">&plusmn;</span>
+                            </button>
+                            {/* type="number" with no inputMode: "decimal" gives iOS a keypad
+                                with no minus key, so a falling price could not be typed. */}
+                            <input
+                                id={`${uid}-growth`}
+                                type="number"
+                                step="any"
+                                autoComplete="off"
+                                value={growthInput}
+                                onChange={(e) => setGrowthInput(e.target.value)}
+                                onBlur={() => {
+                                    const snapped = snapToRange(growthInput, GROWTH_MIN * 100, GROWTH_MAX * 100);
+                                    if (snapped !== null) setGrowthInput(snapped);
+                                }}
+                                className={inputClass}
+                            />
+                        </div>
                     </div>
                     <div>
                         <label htmlFor={`${uid}-inflation`} className={labelClass}>
@@ -466,8 +443,8 @@ export const DrawdownCalculator: React.FC<DrawdownCalculatorProps> = ({ btcAccum
                         </label>
                         <input
                             id={`${uid}-inflation`}
-                            type="text"
-                            inputMode="decimal"
+                            type="number"
+                            step="any"
                             autoComplete="off"
                             value={inflationInput}
                             onChange={(e) => setInflationInput(e.target.value)}
@@ -480,7 +457,7 @@ export const DrawdownCalculator: React.FC<DrawdownCalculatorProps> = ({ btcAccum
                     </div>
                     <div>
                         <label htmlFor={`${uid}-floor`} className={labelClass}>
-                            Stop selling at (BTC)
+                            Stop selling at ({unit === 'SATS' ? 'sats' : 'BTC'})
                         </label>
                         <input
                             id={`${uid}-floor`}
@@ -488,16 +465,16 @@ export const DrawdownCalculator: React.FC<DrawdownCalculatorProps> = ({ btcAccum
                             inputMode="decimal"
                             autoComplete="off"
                             value={floorInput}
-                            onChange={(e) => setFloorInput(e.target.value)}
+                            onChange={(e) => setFloor({ raw: e.target.value, unit })}
                             className={inputClass}
                         />
                     </div>
                 </div>
 
-                {/* Growth quick-picks */}
+                {/* Price-change quick-picks */}
                 <div className="mt-3 flex flex-wrap items-center gap-1.5">
                     <span className="mr-0.5 text-[11px] font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                        Growth
+                        Price change
                     </span>
                     {GROWTH_CHIPS.map((rate) => {
                         const active = Math.abs(rate - annualGrowth) < 1e-9;
@@ -508,14 +485,15 @@ export const DrawdownCalculator: React.FC<DrawdownCalculatorProps> = ({ btcAccum
                                 onClick={() => setGrowthInput(String(Math.round(rate * 100)))}
                                 aria-pressed={active}
                                 className={clsx(
-                                    // min-h-8: the label alone is a ~16px target, so the chip carries the tap area.
-                                    'inline-flex min-h-8 items-center rounded-lg px-2.5 py-1 text-xs font-medium tabular-nums transition-colors',
+                                    // 32px tall for a mouse. On a touch screen 44px tall, and
+                                    // at least as wide: "0%" alone is 39px.
+                                    'inline-flex min-h-8 min-w-0 items-center justify-center rounded-lg px-2.5 py-1 text-xs font-medium tabular-nums transition-colors max-sm:min-h-11 max-sm:min-w-11 pointer-coarse:min-h-11 pointer-coarse:min-w-11',
                                     active
                                         ? 'bg-amber-500 text-slate-950'
                                         : 'border border-slate-200 bg-white text-slate-600 hover:border-amber-500/60 hover:text-amber-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-amber-500/40 dark:hover:text-amber-400',
                                 )}
                             >
-                                {rate >= 0 ? '+' : ''}
+                                {rate > 0 ? '+' : ''}
                                 {Math.round(rate * 100)}%
                             </button>
                         );
@@ -543,12 +521,12 @@ export const DrawdownCalculator: React.FC<DrawdownCalculatorProps> = ({ btcAccum
                             )}
                         >
                             {model.base.neverExhausted
-                                ? 'Indefinitely'
+                                ? `More than ${MAX_MONTHS / 12} years`
                                 : formatDuration(model.base.monthsSurvived)}
                         </div>
                         <p className="mt-1.5 text-xs text-slate-600 dark:text-slate-300 sm:text-sm">
                             {model.base.neverExhausted
-                                ? `At ${formatPercent(annualGrowth)} a year the stack grows faster than you spend it. It never runs out inside 100 years. `
+                                ? `On these assumptions the stack is not used up inside the ${MAX_MONTHS / 12} years this model runs. `
                                 : ''}
                             You spend{' '}
                             <span className="font-medium tabular-nums text-slate-800 dark:text-slate-100">
@@ -556,12 +534,30 @@ export const DrawdownCalculator: React.FC<DrawdownCalculatorProps> = ({ btcAccum
                             </span>{' '}
                             a month out of{' '}
                             <span className="font-medium tabular-nums text-slate-800 dark:text-slate-100">
-                                {formatBtc(stackBtc)}
+                                {formatStack(stackBtc)}
                             </span>{' '}
-                            ({formatCurrency(stackValueUsd)} at {formatCurrency(priceUsd)} per BTC). This run assumes Bitcoin{' '}
-                            {annualGrowth >= 0 ? 'grows' : 'falls'} {formatPercent(Math.abs(annualGrowth))} a year and that
-                            your withdrawals rise {formatPercent(annualInflation)} a year
-                            {floorBtc > 0 ? `, and that you never sell below ${formatBtc(floorBtc)}` : ''}.
+                            ({formatCurrency(stackValueUsd)} at {formatCurrency(priceUsd)} per BTC). This run assumes{' '}
+                            {annualGrowth === 0 ? (
+                                'the Bitcoin price stays flat'
+                            ) : (
+                                <>
+                                    Bitcoin {annualGrowth > 0 ? 'rises' : 'falls'} {formatPercent(Math.abs(annualGrowth))} a
+                                    year, which puts one bitcoin at{' '}
+                                    <span className="font-medium tabular-nums text-slate-800 dark:text-slate-100">
+                                        {priceIn(annualGrowth, IMPLIED_PRICE_YEARS)}
+                                    </span>{' '}
+                                    in {IMPLIED_PRICE_YEARS} years and{' '}
+                                    <span className="font-medium tabular-nums text-slate-800 dark:text-slate-100">
+                                        {priceIn(annualGrowth, targetYears)}
+                                    </span>{' '}
+                                    in {targetYears}
+                                </>
+                            )}
+                            , and that your withdrawals{' '}
+                            {annualInflation === 0
+                                ? 'stay the same'
+                                : `${annualInflation > 0 ? 'rise' : 'fall'} ${formatPercent(Math.abs(annualInflation))} a year`}
+                            {floorBtc > 0 ? `, and that you never sell below ${formatStack(floorBtc)}` : ''}.
                         </p>
                     </div>
 
@@ -578,6 +574,7 @@ export const DrawdownCalculator: React.FC<DrawdownCalculatorProps> = ({ btcAccum
                                     rate={s.rate}
                                     result={s.result}
                                     emphasised={s.key === 'base'}
+                                    impliedPriceLabel={s.rate === 0 ? null : priceIn(s.rate, IMPLIED_PRICE_YEARS)}
                                 />
                             ))}
                         </div>
@@ -592,7 +589,9 @@ export const DrawdownCalculator: React.FC<DrawdownCalculatorProps> = ({ btcAccum
                                 model.chartData[model.chartData.length - 1].value,
                             )} after ${maxYear.toFixed(1)} years`}
                         >
-                            <ResponsiveContainer width="100%" height="100%" debounce={150}>
+                            {/* initialDimension: without it the first render measures -1×-1,
+                                spamming a console warning and flashing an empty chart. */}
+                            <ResponsiveContainer width="100%" height="100%" debounce={150} initialDimension={{ width: 358, height: 220 }}>
                                 <LineChart
                                     data={model.chartData}
                                     margin={{ top: 8, right: 12, left: 0, bottom: 0 }}
@@ -606,7 +605,7 @@ export const DrawdownCalculator: React.FC<DrawdownCalculatorProps> = ({ btcAccum
                                         domain={[0, 'dataMax']}
                                         tickFormatter={yearTick}
                                         minTickGap={32}
-                                        tick={{ fontSize: 11, fill: AXIS_COLOR }}
+                                        tick={{ fontSize: 11, fill: axisColor }}
                                         tickLine={false}
                                         axisLine={{ stroke: gridColor }}
                                     />
@@ -614,12 +613,12 @@ export const DrawdownCalculator: React.FC<DrawdownCalculatorProps> = ({ btcAccum
                                         width={52}
                                         domain={[0, 'auto']}
                                         tickFormatter={formatAxisTick}
-                                        tick={{ fontSize: 11, fill: AXIS_COLOR }}
+                                        tick={{ fontSize: 11, fill: axisColor }}
                                         tickLine={false}
                                         axisLine={false}
                                     />
                                     <Tooltip
-                                        content={<DrawdownTooltip />}
+                                        content={<DrawdownTooltip unit={unit} />}
                                         cursor={{ stroke: cursorColor, strokeWidth: 1 }}
                                     />
                                     <Line
@@ -647,19 +646,29 @@ export const DrawdownCalculator: React.FC<DrawdownCalculatorProps> = ({ btcAccum
                         </div>
                         <div className="flex items-baseline justify-between gap-3">
                             <dt className="text-slate-500 dark:text-slate-400">
-                                BTC left {model.base.neverExhausted ? 'after 100 years' : 'at the end'}
+                                {unit === 'SATS' ? 'Sats' : 'BTC'} left {model.base.neverExhausted ? `after ${MAX_MONTHS / 12} years` : 'at the end'}
                             </dt>
                             <dd className="text-right font-medium tabular-nums text-slate-800 dark:text-slate-100">
-                                {formatBtc(model.base.btcRemaining)}
+                                {formatStack(model.base.btcRemaining)}
                             </dd>
                         </div>
                         {model.sustainableUsd !== null && (
                             <div className="flex items-baseline justify-between gap-3">
                                 <dt className="text-slate-500 dark:text-slate-400">
-                                    Sustainable for {TARGET_MONTHS / 12} years
+                                    Largest withdrawal that lasts {targetYears} years
+                                    {/* The figure is only as good as the price it leans on. */}
+                                    {annualGrowth !== 0 && (
+                                        <span className="block text-xs tabular-nums">
+                                            needs BTC at {priceIn(annualGrowth, targetYears)} in year {targetYears}
+                                        </span>
+                                    )}
                                 </dt>
-                                <dd className="text-right font-medium tabular-nums text-gain">
-                                    {formatCurrency(model.sustainableUsd)} / month
+                                {/* Neutral, not green: it is an output of the assumption above,
+                                    not a finding that this spending is safe. Rounded down, so
+                                    the amount printed is one that lasts the years in its label. */}
+                                <dd className="shrink-0 whitespace-nowrap text-right font-medium tabular-nums text-slate-800 dark:text-slate-100">
+                                    {currencyConfig.symbol}
+                                    {floorMoney(convertFromUsd(model.sustainableUsd)).toLocaleString('en-US', { maximumFractionDigits: 4 })} / month
                                 </dd>
                             </div>
                         )}
@@ -670,9 +679,11 @@ export const DrawdownCalculator: React.FC<DrawdownCalculatorProps> = ({ btcAccum
             {/* Caveat — stated plainly, not buried */}
             <p className="mt-4 text-[11px] leading-relaxed text-slate-500 dark:text-slate-400 sm:text-xs">
                 This assumes the price compounds smoothly, which Bitcoin has never done. The order the returns
-                arrive in matters too. An 80% crash in your first few years would force you to sell far more BTC
-                at low prices. The stack can then be gone long before this model says. Read the number as an upper
-                bound, not a plan. Not financial advice.
+                arrive in matters too. An 80% crash in your first few years would force you to sell far more bitcoin
+                at low prices. The stack can then be gone long before this model says. Read the number as arithmetic
+                on the rate you typed, not a plan. Not financial advice.
+                {/* Set when the display currency's rate is a dated fallback, not today's. */}
+                {rateNote ? ` ${rateNote}` : ''}
             </p>
         </Card>
     );

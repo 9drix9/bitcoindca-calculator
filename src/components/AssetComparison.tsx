@@ -25,16 +25,36 @@ interface AssetComparisonProps {
     loading: boolean;
     /** True when the user set a starting stack the BTC row deliberately omits. */
     excludesStartingStack?: boolean;
+    /**
+     * True when the plan's end date is in the future and the three results were
+     * cut off at today. This panel compares what happened; buys that have not
+     * been made yet would only be the last known price repeated for each asset.
+     */
+    stopsAtToday?: boolean;
 }
 
 type SeriesKey = 'btc' | 'sp500' | 'gold';
 
-// Series colors validated (CVD-safe, ≥3:1 on the dark surface; light-mode gold
-// carries a legend + the summary cards as relief).
+// Line colours, with what was measured (Machado 2009 colour-vision simulation,
+// CIE76 difference in Lab) so the next change can be checked against it:
+//
+//  - Dark gold is pale (#fcd34d) on purpose. It separates from Bitcoin's
+//    #d97706 by lightness: 24.5 under deuteranopia, 31.7 under protanopia,
+//    41.0 with typical vision, and 12.4:1 on the dark card. An amber gold
+//    (#c98500 measured 0.6) is the same colour as Bitcoin's line to a reader
+//    who cannot tell red from green.
+//  - Light gold (#eda100) is 14.2 from Bitcoin under deuteranopia and only
+//    2.2:1 against the white card. A darker gold would clear 3:1 there but sit
+//    closer to Bitcoin's amber, so the legend, the tooltip and the three cards
+//    above the chart name each asset in words.
+//  - Blue is at least 111 from either amber under every simulation.
+//
+// No dashes: on this site a dashed line means a reference or a model (total
+// invested, average cost, the power law), and gold here is an observed series.
 const SERIES: Record<SeriesKey, { label: string; light: string; dark: string }> = {
     btc: { label: 'Bitcoin', light: '#d97706', dark: '#d97706' },
     sp500: { label: 'S&P 500', light: '#2a78d6', dark: '#3987e5' },
-    gold: { label: 'Gold', light: '#eda100', dark: '#c98500' },
+    gold: { label: 'Gold', light: '#eda100', dark: '#fcd34d' },
 };
 
 const MAX_POINTS_PER_SERIES = 200;
@@ -66,12 +86,15 @@ const cardStyles = {
 
 const AssetCard = ({
     result,
+    name,
     style,
     unavailable,
     formatCurrency,
     formatCompact,
 }: {
     result: AssetDcaResult | null;
+    /** What the card is for, shown when there is no result to take the name from. */
+    name: string;
     style: typeof cardStyles.btc;
     unavailable?: boolean;
     formatCurrency: (value: number) => string;
@@ -79,9 +102,11 @@ const AssetCard = ({
 }) => {
     if (unavailable || !result) {
         return (
-            <div className={clsx('p-3 sm:p-4 rounded-xl border', style.bg, style.border, 'opacity-50')}>
+            // No opacity on the card: the name and "Data unavailable" are the
+            // only words in it, and at half strength neither met contrast.
+            <div className={clsx('p-3 sm:p-4 rounded-xl border', style.bg, style.border)}>
                 <div className={clsx('text-xs sm:text-sm font-medium mb-1', style.label)}>
-                    {result?.label ?? 'Asset'}
+                    {result?.label ?? name}
                 </div>
                 <EmptyState />
             </div>
@@ -91,10 +116,13 @@ const AssetCard = ({
     const isProfit = result.profit >= 0;
 
     return (
-        <div className={clsx('p-3 sm:p-4 rounded-xl border', style.bg, style.border)}>
+        <div className={clsx('@container p-3 sm:p-4 rounded-xl border', style.bg, style.border)}>
             <div className={clsx('text-xs sm:text-sm font-medium mb-1', style.label)}>{result.label}</div>
-            {/* Mobile: compact format, Desktop: full format */}
-            <div className="text-lg sm:text-2xl font-bold text-slate-900 dark:text-white truncate">
+            {/* Mobile: compact format, Desktop: full format. A money figure is never
+                cut off, so it does not wrap and is sized from the card's own width:
+                in Inter bold "A$888.8K" is 5.0em wide and "A$12,597,490" 6.8em. A
+                wider figure runs into the card's padding instead of losing digits. */}
+            <div className="text-[clamp(0.75rem,20cqw,1.125rem)] sm:text-[clamp(1rem,14cqw,1.5rem)] font-bold text-slate-900 dark:text-white whitespace-nowrap">
                 <span className="sm:hidden">{formatCompact(result.currentValue)}</span>
                 <span className="hidden sm:inline">{formatCurrency(result.currentValue)}</span>
             </div>
@@ -154,7 +182,7 @@ function GrowthTooltip({
     );
 }
 
-export const AssetComparison = ({ btcResult, sp500Result, goldResult, loading, excludesStartingStack }: AssetComparisonProps) => {
+export const AssetComparison = ({ btcResult, sp500Result, goldResult, loading, excludesStartingStack, stopsAtToday }: AssetComparisonProps) => {
     const { formatCurrency, formatCompact, convertFromUsd, currencyConfig } = useCurrency();
     const isDark = useIsDark();
 
@@ -194,12 +222,20 @@ export const AssetComparison = ({ btcResult, sp500Result, goldResult, loading, e
     if (loading) {
         return (
             <Card className="p-4 sm:p-6">
-                <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 text-slate-800 dark:text-slate-100">BTC vs Other Assets (DCA)</h3>
-                <div className="grid grid-cols-3 gap-2 sm:gap-4">
+                <h3 className="text-base sm:text-lg font-semibold mb-1 text-slate-800 dark:text-slate-100">BTC vs Other Assets (DCA)</h3>
+                {/* Sized like the loaded card (two lines of note on a phone, the
+                    three tiles, the chart). This state comes back on every change
+                    of dates, and a shorter placeholder would move everything under
+                    it twice per edit. */}
+                <p className="mb-3 sm:mb-4 min-h-8 sm:min-h-0 text-xs text-slate-500 dark:text-slate-400" role="status">
+                    Loading the S&amp;P 500 and gold prices for these dates…
+                </p>
+                <div className="grid grid-cols-3 gap-2 sm:gap-4" aria-hidden="true">
                     {[0, 1, 2].map(i => (
-                        <div key={i} className="h-20 sm:h-24 rounded-xl bg-slate-100 dark:bg-slate-800 animate-pulse" />
+                        <div key={i} className="h-[108px] rounded-xl bg-slate-100 dark:bg-slate-800 animate-pulse" />
                     ))}
                 </div>
+                <div className="mt-4 sm:mt-5 h-[204px] rounded-xl bg-slate-100 dark:bg-slate-800 animate-pulse" aria-hidden="true" />
             </Card>
         );
     }
@@ -209,6 +245,12 @@ export const AssetComparison = ({ btcResult, sp500Result, goldResult, loading, e
     // dark one, so a single fixed value cannot clear AA in both.
     const axisText = isDark ? '#94a3b8' : '#64748b';
     const xTickStyle = chartData && chartData.spanDays > 550 ? 'shortMonthYear' : 'monthDay';
+
+    // The chart is one image to a screen reader; this says what it ends on.
+    const chartAriaLabel = `Portfolio value over time. At the end: ${[btcResult, sp500Result, goldResult]
+        .filter((result): result is AssetDcaResult => !!result?.breakdown?.length)
+        .map((result) => `${result.label} ${formatCurrency(result.currentValue)}`)
+        .join(', ')}.`;
 
     const formatAxisValue = (usd: number) => {
         const v = convertFromUsd(usd);
@@ -227,12 +269,13 @@ export const AssetComparison = ({ btcResult, sp500Result, goldResult, loading, e
                 mixing the two let post-window appreciation decide the comparison. */}
             <p className="mb-3 sm:mb-4 text-xs text-slate-500 dark:text-slate-400">
                 Same plan, same dates, each asset valued at its last price in the range.
+                {stopsAtToday ? ' Your plan runs past today, so this counts the purchases made so far.' : ''}
                 {excludesStartingStack ? ' Your starting stack is left out — this compares the buying schedule only.' : ''}
             </p>
             <div className="grid grid-cols-3 gap-2 sm:gap-4">
-                <AssetCard result={btcResult} style={cardStyles.btc} formatCurrency={formatCurrency} formatCompact={formatCompact} />
-                <AssetCard result={sp500Result} style={cardStyles.sp500} unavailable={!sp500Result} formatCurrency={formatCurrency} formatCompact={formatCompact} />
-                <AssetCard result={goldResult} style={cardStyles.gold} unavailable={!goldResult} formatCurrency={formatCurrency} formatCompact={formatCompact} />
+                <AssetCard result={btcResult} name={SERIES.btc.label} style={cardStyles.btc} formatCurrency={formatCurrency} formatCompact={formatCompact} />
+                <AssetCard result={sp500Result} name={SERIES.sp500.label} style={cardStyles.sp500} unavailable={!sp500Result} formatCurrency={formatCurrency} formatCompact={formatCompact} />
+                <AssetCard result={goldResult} name={SERIES.gold.label} style={cardStyles.gold} unavailable={!goldResult} formatCurrency={formatCurrency} formatCompact={formatCompact} />
             </div>
 
             {chartData && (
@@ -240,9 +283,17 @@ export const AssetComparison = ({ btcResult, sp500Result, goldResult, loading, e
                     <div className="text-xs font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">
                         Portfolio value over time
                     </div>
-                    <div className="h-[180px] tabular-nums">
+                    {/* role="img" and no accessibilityLayer, like the main chart: Recharts'
+                        own keyboard layer is an unnamed focus stop. The legend text is
+                        coloured here because a formatter that returns an element ends up
+                        in the icon's label as "[object Object]". */}
+                    <div
+                        className="h-[180px] tabular-nums [&_.recharts-legend-item-text]:text-slate-500! dark:[&_.recharts-legend-item-text]:text-slate-400!"
+                        role="img"
+                        aria-label={chartAriaLabel}
+                    >
                         <ResponsiveContainer width="100%" height="100%" initialDimension={{ width: 358, height: 220 }}>
-                            <LineChart data={chartData.rows} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+                            <LineChart data={chartData.rows} margin={{ top: 4, right: 8, left: 0, bottom: 0 }} accessibilityLayer={false}>
                                 <CartesianGrid vertical={false} stroke={gridStroke} />
                                 <XAxis
                                     dataKey="ts"
@@ -262,16 +313,7 @@ export const AssetComparison = ({ btcResult, sp500Result, goldResult, loading, e
                                     axisLine={false}
                                 />
                                 <Tooltip content={<GrowthTooltip />} />
-                                <Legend
-                                    verticalAlign="top"
-                                    height={26}
-                                    iconType="plainline"
-                                    iconSize={12}
-                                    wrapperStyle={{ fontSize: 11 }}
-                                    formatter={(value: string) => (
-                                        <span className="text-slate-500 dark:text-slate-400">{value}</span>
-                                    )}
-                                />
+                                <Legend verticalAlign="top" height={26} iconType="plainline" iconSize={12} wrapperStyle={{ fontSize: 11 }} />
                                 {chartData.keys.map((key) => (
                                     <Line
                                         key={key}

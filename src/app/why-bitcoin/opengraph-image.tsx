@@ -1,8 +1,7 @@
 import { ImageResponse } from 'next/og';
 import { BRAND_OG_PATH } from '@/components/brand/Logo';
 
-export const runtime = 'edge';
-export const alt = 'Why Bitcoin Has Value';
+export const alt = 'Where Does Bitcoin\'s Value Come From?';
 export const size = { width: 1200, height: 630 };
 export const contentType = 'image/png';
 
@@ -53,7 +52,7 @@ export default function Image() {
                         lineHeight: 1.4,
                     }}
                 >
-                    User Adoption &middot; Network Effect &middot; Cost of Mining &middot; Exiting Fiat
+                    Verifiable Scarcity &middot; Final Settlement &middot; Portability &middot; Network Effects
                 </div>
                 <div
                     style={{

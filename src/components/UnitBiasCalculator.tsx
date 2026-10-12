@@ -3,13 +3,17 @@
 import { useMemo } from 'react';
 import { Scale } from 'lucide-react';
 import { Card, CardHeader } from '@/components/ui/Card';
+import { btcToSats, SATS_PER_BTC } from '@/utils/units';
 
 /**
  * Fixed assumptions, not live data.
  *
- * WORLD_POPULATION is a round stand-in for the world population around 2025-2026. It
- * is hardcoded and will drift; it is labelled as an assumption in the copy below
- * rather than presented as a measurement.
+ * WORLD_POPULATION is the UN's World Population Prospects 2024 medium projection
+ * for 1 July 2026 (8,300,678,396), rounded to 8.3 billion; checked 2026-10-12
+ * against Our World in Data's copy of the UN series. It is hardcoded and will
+ * drift by roughly 70 million people a year; the copy below names the source and
+ * the date rather than presenting it as a live measurement. Update the number,
+ * the date in the copy and this comment together.
  *
  * MAX_SUPPLY_SATS is the 21,000,000 BTC issuance cap. Note the deliberate date
  * mismatch this stat contains: the cap is not reached until roughly 2140, while the
@@ -18,9 +22,14 @@ import { Card, CardHeader } from '@/components/ui/Card';
  * comparing a 2140 supply against a 2026 headcount is only meaningful if the reader
  * knows that is what is being done.
  */
-const WORLD_POPULATION = 8_100_000_000;
-const MAX_SUPPLY_SATS = 21_000_000 * 100_000_000;
-const FAIR_SHARE_SATS = Math.floor(MAX_SUPPLY_SATS / WORLD_POPULATION); // ~259,259 sats
+const WORLD_POPULATION = 8_300_000_000;
+const WORLD_POPULATION_SOURCE = 'UN World Population Prospects 2024, projection for mid-2026';
+const MAX_SUPPLY_SATS = 21_000_000 * SATS_PER_BTC;
+const FAIR_SHARE_SATS = Math.floor(MAX_SUPPLY_SATS / WORLD_POPULATION); // 253,012 sats
+
+// Every number here goes through 'en-US': the card can render on the server,
+// and a browser left to its own locale ("253.012") would not match that HTML.
+const formatSatCount = (sats: number): string => sats.toLocaleString('en-US');
 
 const formatMultiple = (multiple: number): string => {
     if (multiple >= 10) return multiple.toFixed(0);
@@ -38,7 +47,7 @@ interface UnitBiasCalculatorProps {
 export const UnitBiasCalculator = ({ btcAccumulated }: UnitBiasCalculatorProps) => {
     const stats = useMemo(() => {
         if (btcAccumulated <= 0) return null;
-        const totalSats = Math.floor(btcAccumulated * 100_000_000);
+        const totalSats = btcToSats(btcAccumulated);
         const multiplesOfFairShare = totalSats / FAIR_SHARE_SATS;
         return { totalSats, multiplesOfFairShare };
     }, [btcAccumulated]);
@@ -58,17 +67,17 @@ export const UnitBiasCalculator = ({ btcAccumulated }: UnitBiasCalculatorProps) 
             <div className="text-center space-y-3">
                 <div>
                     <div className="text-2xl sm:text-4xl font-bold text-amber-700 dark:text-amber-400">
-                        {stats.totalSats.toLocaleString()}
+                        {formatSatCount(stats.totalSats)}
                     </div>
                     <div className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">sats accumulated</div>
                 </div>
 
                 <div className="bg-white/60 dark:bg-slate-800/60 rounded-xl p-3 sm:p-4 space-y-2">
                     <p className="text-sm sm:text-base text-slate-700 dark:text-slate-300">
-                        Your stack of <span className="font-bold text-amber-700 dark:text-amber-400 tabular-nums">{stats.totalSats.toLocaleString()} sats</span> is{' '}
+                        Your stack of <span className="font-bold text-amber-700 dark:text-amber-400 tabular-nums">{formatSatCount(stats.totalSats)} sats</span> is{' '}
                         <span className="font-bold text-gain tabular-nums">{shareLabel}</span> an equal split.
                         Divide every bitcoin that will ever exist among everyone alive today and each person gets about{' '}
-                        <span className="font-bold text-slate-800 dark:text-white tabular-nums">{FAIR_SHARE_SATS.toLocaleString()} sats</span>.
+                        <span className="font-bold text-slate-800 dark:text-white tabular-nums">{formatSatCount(FAIR_SHARE_SATS)} sats</span>.
                     </p>
 
                     <div className="grid grid-cols-2 gap-3 pt-2">
@@ -77,16 +86,17 @@ export const UnitBiasCalculator = ({ btcAccumulated }: UnitBiasCalculatorProps) 
                             <div className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400">Multiple of an equal split</div>
                         </div>
                         <div className="text-center">
-                            <div className="text-lg sm:text-xl font-bold text-slate-800 dark:text-white tabular-nums">{FAIR_SHARE_SATS.toLocaleString()}</div>
+                            <div className="text-lg sm:text-xl font-bold text-slate-800 dark:text-white tabular-nums">{formatSatCount(FAIR_SHARE_SATS)}</div>
                             <div className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400">Sats per person, split equally</div>
                         </div>
                     </div>
                 </div>
 
                 <p className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 leading-relaxed text-left">
-                    How this is worked out: 21,000,000 BTC divided by 8.1 billion people, giving{' '}
-                    {FAIR_SHARE_SATS.toLocaleString()} sats each. There will only ever be 21,000,000 BTC, and the last of
-                    them is not mined until around 2140. The population is a fixed number in this tool, not a live figure.
+                    How this is worked out: 21,000,000 BTC divided by {(WORLD_POPULATION / 1e9).toFixed(1)} billion people
+                    ({WORLD_POPULATION_SOURCE}), giving {formatSatCount(FAIR_SHARE_SATS)} sats each. The cap is
+                    21,000,000 BTC, and the last of it is not mined until around 2140. The population is a fixed
+                    number in this tool, not a live figure.
                     So this deliberately compares a future supply against a present headcount. An unknown but substantial
                     number of coins are also lost for good, which would raise the real per-person share. It is an
                     arithmetic curiosity about a fixed supply, not a claim about what anyone is owed or what a sat will be

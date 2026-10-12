@@ -1,31 +1,34 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { Box } from 'lucide-react';
-import { getRecentBlocks } from '@/app/actions';
+import type { RecentBlock } from '@/app/api/live/contract';
 import { Card, CardHeader, EmptyState } from '@/components/ui/Card';
-
-interface BlockData {
-    height: number;
-    timestamp: number;
-    txCount: number;
-    size: number;
-}
+import { LONE_LINK_HIT_AREA, StaleNote } from '@/components/live/cardFooter';
+import { useLiveFigure } from '@/components/live/liveSidebar';
 
 interface LiveBlocksWidgetProps {
-    initialData: BlockData[] | null;
+    initialData: RecentBlock[] | null;
+    /** When the server fetched `initialData` (ms epoch). */
+    fetchedAt?: number | null;
 }
 
-const POLL_MS = 30_000;
-
-const formatTimeAgo = (timestamp: number) => {
-    const seconds = Math.max(0, Math.floor(Date.now() / 1000 - timestamp));
+const formatTimeAgo = (timestamp: number, nowMs: number) => {
+    const seconds = Math.max(0, Math.floor(nowMs / 1000 - timestamp));
     if (seconds < 60) return `${seconds}s ago`;
     const minutes = Math.floor(seconds / 60);
     if (minutes < 60) return `${minutes}m ago`;
     const hours = Math.floor(minutes / 60);
     if (hours < 24) return `${hours}h ago`;
     return `${Math.floor(hours / 24)}d ago`;
+};
+
+// What a row says before the visitor's clock is read: the block's own time of
+// day. The server and the browser print the same text for it, where an age
+// worked out on each side would differ and React would keep the server's.
+const formatUtcClock = (timestamp: number) => {
+    const minutes = Math.floor(timestamp / 60) % 1440;
+    return `${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')} UTC`;
 };
 
 // Blocks arrive every ~10 minutes; a newest block this old means the feed is
@@ -37,74 +40,50 @@ const formatSize = (bytes: number) => {
     return (bytes / 1_000_000).toFixed(2);
 };
 
-export const LiveBlocksWidget = ({ initialData }: LiveBlocksWidgetProps) => {
-    const [data, setData] = useState<BlockData[] | null>(initialData);
-    const prevHeightsRef = useRef<Set<number>>(new Set(initialData?.map(b => b.height) ?? []));
-    const [newHeights, setNewHeights] = useState<Set<number>>(new Set());
-    const hadInitialData = useRef(initialData !== null);
+const NO_HEIGHTS: ReadonlySet<number> = new Set();
 
+export const LiveBlocksWidget = ({ initialData, fetchedAt }: LiveBlocksWidgetProps) => {
+    const { data, fetchedAt: since, old, checkedAt } = useLiveFigure('recentBlocks', initialData, fetchedAt);
+
+    // Blocks that were not in the list before this one, tinted for two seconds.
+    const [listed, setListed] = useState(data);
+    const [newHeights, setNewHeights] = useState(NO_HEIGHTS);
+    if (data !== listed) {
+        const before = new Set(listed?.map(b => b.height));
+        const arrived = (data ?? []).filter(b => !before.has(b.height)).map(b => b.height);
+        setListed(data);
+        setNewHeights(arrived.length > 0 ? new Set(arrived) : NO_HEIGHTS);
+    }
     useEffect(() => {
-        let mounted = true;
-        // SSR data is seconds old at hydration; only fetch immediately when it is missing.
-        let lastFetched = hadInitialData.current ? Date.now() : 0;
+        if (newHeights.size === 0) return;
+        const timer = setTimeout(() => setNewHeights(NO_HEIGHTS), 2000);
+        return () => clearTimeout(timer);
+    }, [newHeights]);
 
-        const refresh = async () => {
-            lastFetched = Date.now();
-            try {
-                const fresh = await getRecentBlocks();
-                if (mounted && fresh) {
-                    const prevHeights = prevHeightsRef.current;
-                    const freshNewHeights = new Set<number>();
-                    for (const block of fresh) {
-                        if (!prevHeights.has(block.height)) {
-                            freshNewHeights.add(block.height);
-                        }
-                    }
-                    if (freshNewHeights.size > 0) {
-                        setNewHeights(freshNewHeights);
-                        setTimeout(() => {
-                            if (mounted) setNewHeights(new Set());
-                        }, 2000);
-                    }
-                    prevHeightsRef.current = new Set(fresh.map(b => b.height));
-                    setData(fresh);
-                }
-            } catch {
-                // keep showing last known data
-            }
-        };
-
-        if (!hadInitialData.current) refresh();
-
-        const interval = setInterval(() => {
-            if (!document.hidden) refresh();
-        }, POLL_MS);
-        const onVisibilityChange = () => {
-            if (!document.hidden && Date.now() - lastFetched >= POLL_MS) refresh();
-        };
-        document.addEventListener('visibilitychange', onVisibilityChange);
-
-        return () => {
-            mounted = false;
-            clearInterval(interval);
-            document.removeEventListener('visibilitychange', onVisibilityChange);
-        };
-    }, []);
-
-    // Update time-ago labels every 10 seconds (skipped while the tab is hidden).
-    // 0 during SSR/hydration so the staleness check below is deterministic there.
+    // The visitor's clock, for the time-ago labels: read after hydration, then
+    // every 10 seconds and whenever the tab is shown again (a hidden tab's
+    // timer is skipped, so the labels would otherwise wait for the next tick).
+    // 0 during SSR/hydration, where each row shows its UTC time instead.
     const [now, setNow] = useState(0);
     useEffect(() => {
-        // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time client clock sync after hydration; SSR deterministically skips the stale notice
-        setNow(Date.now());
-        const timer = setInterval(() => {
+        const sync = () => {
             if (!document.hidden) setNow(Date.now());
-        }, 10_000);
-        return () => clearInterval(timer);
+        };
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time client clock sync after hydration; SSR deterministically renders each block's UTC time
+        setNow(Date.now());
+        const timer = setInterval(sync, 10_000);
+        document.addEventListener('visibilitychange', sync);
+        return () => {
+            clearInterval(timer);
+            document.removeEventListener('visibilitychange', sync);
+        };
     }, []);
 
+    // Judged against the server's clock once a refresh has finished. Before
+    // that the blocks are the page's, and a page out of a cache is old without
+    // the feed being down.
     const newestTs = data?.length ? Math.max(...data.map(b => b.timestamp)) : null;
-    const isStale = now > 0 && newestTs !== null && now / 1000 - newestTs > STALE_AFTER_S;
+    const isStale = checkedAt !== null && newestTs !== null && checkedAt / 1000 - newestTs > STALE_AFTER_S;
 
     return (
         <Card className="p-4">
@@ -127,17 +106,18 @@ export const LiveBlocksWidget = ({ initialData }: LiveBlocksWidgetProps) => {
                             }`}
                         >
                             <div className="flex flex-col">
+                                {/* 'en-US', as the server rendered it: a browser's own locale
+                                    ("971.005") broke hydration for the whole sidebar. */}
                                 <span className="text-xs sm:text-sm font-semibold text-amber-700 dark:text-amber-400 tabular-nums">
-                                    {block.height.toLocaleString()}
+                                    {block.height.toLocaleString('en-US')}
                                 </span>
-                                {/* Relative time drifts between SSR and hydration — mismatch is expected */}
-                                <span suppressHydrationWarning className="text-[11px] text-slate-500 dark:text-slate-400 tabular-nums">
-                                    {formatTimeAgo(block.timestamp)}
+                                <span className="text-[11px] text-slate-500 dark:text-slate-400 tabular-nums">
+                                    {now === 0 ? formatUtcClock(block.timestamp) : formatTimeAgo(block.timestamp, now)}
                                 </span>
                             </div>
                             <div className="flex flex-col items-end">
                                 <span className="text-[11px] sm:text-xs text-slate-600 dark:text-slate-400 tabular-nums">
-                                    {block.txCount.toLocaleString()} txs
+                                    {block.txCount.toLocaleString('en-US')} txs
                                 </span>
                                 <span className="text-[11px] text-slate-500 dark:text-slate-400 tabular-nums">
                                     {formatSize(block.size)} MB
@@ -151,11 +131,12 @@ export const LiveBlocksWidget = ({ initialData }: LiveBlocksWidgetProps) => {
             )}
 
             <div className="mt-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+                {old && <StaleNote since={since} />}
                 <a
                     href="https://mempool.space"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 hover:text-amber-700 dark:hover:text-amber-400 transition-colors"
+                    className={`${LONE_LINK_HIT_AREA} text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 hover:text-amber-700 dark:hover:text-amber-400 transition-colors`}
                 >
                     Data from mempool.space
                 </a>

@@ -3,9 +3,13 @@ import Link from 'next/link';
 import { ArrowRight, Coins, Flame, Receipt, Scale, TrendingDown } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
-import { getBitcoinPriceHistory, getCurrentBitcoinPrice } from '@/app/actions';
+import { getBitcoinPriceHistoryWithMeta, getBitcoinSpot } from '@/app/actions';
 import { DAILY_PRICE_REVALIDATE } from '@/utils/revalidate';
-import { DAY_MS, EARLIEST_PRICE_TS, formatUtc } from '@/utils/dates';
+import { expireRenderSoon } from '@/utils/isr';
+import { DAY_MS, EARLIEST_PRICE_TS, formatUtc, utcFullYearsBetween } from '@/utils/dates';
+import { countPriceKinds } from '@/utils/priceSeries';
+import { FIRST_EXCHANGE_CLOSE_DATE, PRICE_PROVIDER_LABELS, type PriceProvider } from '@/data/priceSources';
+import { feeExamplePair } from '@/data/exchangeFees';
 
 // The coverage strip recomputes against fresh prices once a day.
 export const revalidate = 86400;
@@ -19,10 +23,26 @@ interface CalculatorEntry {
     name: string;
     /** The question a person arrives with, phrased the way they'd ask it. */
     question: string;
-    body: string;
+    /** A function when the copy quotes a figure that has to be read when the page is rendered. */
+    body: string | (() => string);
     /** One honest limitation, stated up front rather than buried. */
     caveat: string;
     icon: LucideIcon;
+}
+
+// Used only when the fee registry's example rows cannot be compared (see
+// feeExamplePair): the card's arithmetic then runs on a plain round rate.
+const FALLBACK_EXAMPLE_FEE_PERCENT = 1;
+
+/**
+ * The opening line of the fee-comparison card, on the rate that page builds its
+ * own worked sentences on. Read from the fee registry at render time: typed in
+ * here by hand, the card went on quoting a rate after the page it describes had
+ * stopped listing it. Per $100, so the amount is exact at any rate.
+ */
+function feeIllustration(): string {
+    const percent = feeExamplePair()?.higher.percent ?? FALLBACK_EXAMPLE_FEE_PERCENT;
+    return `A ${percent}% fee is $${percent.toFixed(2).replace(/\.00$/, '')} on every $100 you buy.`;
 }
 
 const CALCULATORS: CalculatorEntry[] = [
@@ -40,26 +60,31 @@ const CALCULATORS: CalculatorEntry[] = [
         name: 'Bitcoin FIRE Calculator',
         question: 'How much Bitcoin would it take to cover what I spend?',
         body:
-            'Pick your annual spending and this works backwards, at the standard 4% rule, to the stack that supports it. It also shows how far the BTC you already hold gets you toward that number, and why applying that rule to Bitcoin is contested.',
+            'Enter what you spend in a month and this works backwards, at the 4% rule, to the stack that would cover it. It starts from a DCA plan you pick, shows how far that plan’s stack gets toward the number, and explains why applying the rule to Bitcoin is contested.',
         caveat: 'A withdrawal rate is an assumption, not a law. Bitcoin has never had a smooth return path.',
         icon: Flame,
     },
     {
         slug: 'stack-sats-goal',
-        name: 'Stack Sats Goal Tracker',
+        name: 'Stack Sats Goal Calculator',
         question: 'At my buy rate, when do I actually hit 0.1 BTC?',
+        // Describes the page as it is: a fixed table and a tracker on a sample
+        // schedule. It has no target field, no amount field and no price
+        // scenarios, and this card used to promise all three.
         body:
-            'Set a target in BTC or sats (a sat is one hundred-millionth of a bitcoin) and how much you buy each week or month. You get a date and the total it costs to get there. You also see how the answer moves if the price runs or stalls.',
-        caveat: 'Future dates assume a price path. Nobody has one, so treat the date as a range.',
+            'A table of how long 0.01, 0.1 and 1 BTC take at seven contribution rates, from $10 a week to $1,000 a month, with every future buy priced at the latest price. Below it, a milestone tracker runs a real $50-a-week schedule over the last twelve months of prices. A sat is one hundred-millionth of a bitcoin.',
+        caveat: 'Every date assumes the price never moves, so read it as arithmetic, not a forecast. A higher price makes the date later and a lower one earlier. Exchange fees are not deducted.',
         icon: Coins,
     },
     {
         slug: 'exchange-fees',
         name: 'Exchange Fee Comparison',
         question: 'What is my exchange quietly costing me over years of buying?',
-        body:
-            'A 1.5% fee sounds small on a single $50 buy. Run it across a full DCA schedule and it becomes a specific number of dollars. It also becomes a specific amount of Bitcoin you never bought. This puts each major exchange side by side on the same schedule.',
-        caveat: 'Trading fees only. The spread is the gap between the price you are quoted and the real market price. It is where several "zero fee" services earn, and it is not counted here.',
+        body: () =>
+            `${feeIllustration()} Run it across a five-year weekly schedule and it becomes a specific number of dollars, and a specific amount of Bitcoin you never bought. The page runs one schedule at several fee levels, then lists what each major platform says it charges on a recurring buy.`,
+        // The rows are not one like-for-like fee, and the old caveat said the
+        // opposite ("trading fees only, spread not counted") while most rows were spreads.
+        caveat: 'Platforms price differently: some charge a fee, some only a spread, which is the gap between the price you are quoted and the market price. Each row says which. A cost a platform does not publish is not counted.',
         icon: Receipt,
     },
     {
@@ -67,7 +92,7 @@ const CALCULATORS: CalculatorEntry[] = [
         name: 'Bitcoin Cost Basis Calculator',
         question: 'What did I actually pay per coin across all my buying?',
         body:
-            'Add each period you bought in: a 2021 run, a 2023 restart, a lump sum. You get one blended average cost, the BTC held in each batch, and where the whole position stands today.',
+            'Add each period you bought in: a 2021 run, a 2023 restart, a lump sum. You get one blended average cost, the BTC held in each batch, and what the whole position is worth at the latest price.',
         caveat: 'A cost basis estimate, meaning what you paid per coin. This is not tax reporting, and jurisdictions differ on how purchases get matched to sales.',
         icon: Scale,
     },
@@ -79,33 +104,70 @@ interface Coverage {
     firstTs: number;
     lastTs: number;
     points: number;
+    /** How many of those daily values are straight-line fills, not prices the source reported. */
+    estimatedPoints: number;
     years: number;
-    price: number | null;
+    /** The exchange whose series this is. Not assumed: the price action can fall back to the other one. */
+    provider: PriceProvider;
+    /** The latest quote, with the exchange it came from and when. Null when neither exchange answered. */
+    spot: { price: number; asOf: number; provider: PriceProvider } | null;
 }
 
 async function loadCoverage(): Promise<Coverage | null> {
     try {
         const now = Date.now();
-        const [history, price] = await Promise.all([
-            getBitcoinPriceHistory(EARLIEST_PRICE_TS, now + DAY_MS, 'kraken', DAILY_PRICE_REVALIDATE),
-            getCurrentBitcoinPrice('kraken', DAILY_PRICE_REVALIDATE).catch(() => null),
+        // No provider is named: this is the price action's default series, the
+        // one the tools below run on unless their own page says otherwise.
+        const [history, spot] = await Promise.all([
+            getBitcoinPriceHistoryWithMeta(EARLIEST_PRICE_TS, now + DAY_MS, undefined, DAILY_PRICE_REVALIDATE),
+            getBitcoinSpot(undefined, DAILY_PRICE_REVALIDATE),
         ]);
-        if (!history || history.length === 0) return null;
-        const firstTs = history[0][0];
-        const lastTs = history[history.length - 1][0];
-        if (!Number.isFinite(firstTs) || !Number.isFinite(lastTs) || lastTs <= firstTs) return null;
+        const firstTs = history.data.length > 0 ? history.data[0][0] : NaN;
+        const lastTs = history.data.length > 0 ? history.data[history.data.length - 1][0] : NaN;
+        if (!Number.isFinite(firstTs) || !Number.isFinite(lastTs) || lastTs <= firstTs) {
+            // A series that came back unusable without an error: still a page
+            // rendered without its figures, so it must not be kept for 24 hours.
+            await expireRenderSoon();
+            return null;
+        }
         return {
             firstTs,
             lastTs,
-            points: history.length,
-            years: Math.floor((lastTs - firstTs) / (DAY_MS * 365.25)),
-            price: price !== null && Number.isFinite(price) && price > 0 ? price : null,
+            points: history.data.length,
+            estimatedPoints: countPriceKinds(history.kinds).estimated,
+            years: utcFullYearsBetween(firstTs, lastTs),
+            provider: history.servedProvider,
+            spot: spot ? { price: spot.price, asOf: spot.asOf, provider: spot.provider } : null,
         };
     } catch (error) {
         // Never build-fail on a provider outage: the strip just doesn't render.
+        // A strip-less page is complete in every other way, so it is published,
+        // but only for a few minutes (utils/isr), not the usual 24 hours.
         console.error('[calculators] coverage load failed:', error);
+        await expireRenderSoon();
         return null;
     }
+}
+
+/**
+ * How many of the daily prices in the strip a source actually reported, and
+ * how many are straight-line fills. Counted from the series' own markers, not
+ * inferred from which exchange answered: Kraken's weekly series is mostly
+ * fills, and Coinbase's daily one can carry a filled-in day too.
+ */
+function reportedWords({ points, estimatedPoints }: Pick<Coverage, 'points' | 'estimatedPoints'>): string {
+    const total = points.toLocaleString('en-US');
+    if (estimatedPoints <= 0) {
+        return `All ${total} daily prices counted here are ones those sources reported. None is an estimate.`;
+    }
+    const estimated = estimatedPoints.toLocaleString('en-US');
+    const reported = (points - estimatedPoints).toLocaleString('en-US');
+    return `${reported} of the ${total} daily prices counted here are ones those sources reported. The other ${estimated} ${estimatedPoints === 1 ? 'is an estimate' : 'are estimates'}, filled in along a straight line between two reported prices.`;
+}
+
+/** "Oct 12, 2026 at 04:50 UTC". Every date on the site is a UTC date. */
+function fmtUtcMoment(ts: number): string {
+    return `${formatUtc(ts, 'full')} at ${new Date(ts).toISOString().slice(11, 16)} UTC`;
 }
 
 // Server-rendered pages are USD-only by design; the live calculator handles currency.
@@ -120,13 +182,15 @@ function fmtUsd(value: number): string {
 
 // ── Metadata ──────────────────────────────────────────────────────────────────
 
-const TITLE = 'Bitcoin Calculators: Drawdown, FIRE, Fees, Cost Basis, and Sat Goals';
+const TITLE = 'Bitcoin Calculators: Drawdown, FIRE, Fees, Cost Basis, Sat Goals';
 const DESCRIPTION =
     'Five free Bitcoin calculators, each answering one question: how far a stack fell from its peak, how much BTC funds retirement, how long until your sat goal, what exchange fees really cost, and your blended cost basis. Real market history, no signup.';
 
 export const metadata: Metadata = {
-    // Root layout template appends "| Bitcoin DCA Calculator".
-    title: TITLE,
+    // `absolute` opts out of the root layout's "| Bitcoin DCA Calculator" suffix.
+    // With it the title ran to 93 characters and search results cut the list of
+    // tools short; on its own the list fits.
+    title: { absolute: TITLE },
     description: DESCRIPTION,
     alternates: {
         canonical: '/calculators',
@@ -176,6 +240,12 @@ const itemListJsonLd = {
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
+// A breadcrumb link is one or two short words, about 15px tall as text on a
+// phone. The padding makes it a 44px touch target, and the negative margins
+// hand the same space back so the row sits exactly where it did.
+const crumbLink =
+    'inline-flex min-h-11 items-center -my-3.5 px-1.5 -mx-1.5 hover:text-amber-700 dark:hover:text-amber-400 transition-colors';
+
 export default async function CalculatorsHubPage() {
     const coverage = await loadCoverage();
 
@@ -195,7 +265,7 @@ export default async function CalculatorsHubPage() {
                 <nav aria-label="Breadcrumb" className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
                     <ol className="flex flex-wrap items-center gap-1.5">
                         <li>
-                            <Link href="/" className="hover:text-amber-700 dark:hover:text-amber-400 transition-colors">
+                            <Link href="/" className={crumbLink}>
                                 Home
                             </Link>
                         </li>
@@ -211,9 +281,9 @@ export default async function CalculatorsHubPage() {
                     </h1>
                     <p className="text-base sm:text-lg text-slate-600 dark:text-slate-300 leading-relaxed">
                         Five tools, each built around a single question people actually ask. Dollar-cost averaging, or
-                        DCA, means buying a fixed amount on a fixed schedule. All five run on the same engine and the
-                        same historical price data as the main DCA calculator. A number you see here lines up with the
-                        same number there. No account, no email, nothing saved on a server.
+                        DCA, means buying a fixed amount on a fixed schedule. All five run on the same engine as the
+                        main DCA calculator, and each page says which price series its figures use. No account, no
+                        email, nothing saved on a server.
                     </p>
                 </header>
 
@@ -237,24 +307,36 @@ export default async function CalculatorsHubPage() {
                                 </p>
                             </div>
                             <div>
-                                <p className="text-xs text-slate-500 dark:text-slate-400">Daily price points</p>
+                                <p className="text-xs text-slate-500 dark:text-slate-400">Daily prices</p>
                                 <p className="mt-0.5 text-sm font-semibold text-slate-800 dark:text-slate-100 tabular-nums">
                                     {coverage.points.toLocaleString('en-US')}
                                     <span className="font-normal text-slate-500 dark:text-slate-400"> · {coverage.years} years</span>
                                 </p>
                             </div>
                             <div>
-                                <p className="text-xs text-slate-500 dark:text-slate-400">Latest price used</p>
+                                <p className="text-xs text-slate-500 dark:text-slate-400">
+                                    {coverage.spot ? `Price on ${formatUtc(coverage.spot.asOf, 'monthDay')}` : 'Latest price'}
+                                </p>
                                 <p className="mt-0.5 text-sm font-semibold text-slate-800 dark:text-slate-100 tabular-nums">
-                                    {coverage.price !== null ? fmtUsd(coverage.price) : '—'}
+                                    {coverage.spot ? fmtUsd(coverage.spot.price) : '—'}
                                 </p>
                             </div>
                         </div>
                         <p className="mt-3 text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-                            Prices come from Kraken, with Coinbase as a fallback. Each day gets one price, bucketed by
-                            the UTC calendar day. These figures refresh once a day. The live calculator uses the
-                            current price at the moment you load it. Pre-2015 history and the rest of the assumptions
-                            are written out on the{' '}
+                            Each day gets one price, bucketed by the UTC calendar day:{' '}
+                            {coverage.provider === 'kraken'
+                                ? `Kraken's weekly closes from ${formatUtc(FIRST_EXCHANGE_CLOSE_DATE, 'full')}, with the days in between filled in along a straight line`
+                                : `Coinbase's daily close from ${formatUtc(FIRST_EXCHANGE_CLOSE_DATE, 'full')}`}
+                            , and blockchain.info&apos;s daily average market price before that.{' '}
+                            {reportedWords(coverage)}
+                            {coverage.provider === 'kraken'
+                                ? ' Coinbase, the usual source, could not be reached when this page was last rebuilt.'
+                                : ' When Coinbase cannot be reached, the tools fall back to Kraken, whose public history is weekly, and the page affected says so.'}
+                            {coverage.spot
+                                ? ` The price shown is the ${PRICE_PROVIDER_LABELS[coverage.spot.provider].name} price on ${fmtUtcMoment(coverage.spot.asOf)}.`
+                                : ''}{' '}
+                            These figures are recalculated about once a day. The main calculator fetches a current
+                            price when you load it. The rest of the assumptions are written out on the{' '}
                             <Link href="/methodology" className="text-amber-700 dark:text-amber-400 hover:underline font-medium">
                                 methodology page
                             </Link>.
@@ -279,7 +361,12 @@ export default async function CalculatorsHubPage() {
                                     </span>
                                     <div className="min-w-0">
                                         <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white">
-                                            <Link href={`/calculators/${slug}`} className="hover:text-amber-700 dark:hover:text-amber-400 transition-colors">
+                                            {/* The title alone is a 20px-tall target. min-h-11 makes it
+                                                44px, and the negative margins give the height back. */}
+                                            <Link
+                                                href={`/calculators/${slug}`}
+                                                className="inline-flex min-h-11 items-center -my-2.5 sm:-my-2 hover:text-amber-700 dark:hover:text-amber-400 transition-colors"
+                                            >
                                                 {name}
                                             </Link>
                                         </h3>
@@ -289,18 +376,19 @@ export default async function CalculatorsHubPage() {
                                     </div>
                                 </div>
                                 <p className="mt-3 text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
-                                    {body}
+                                    {typeof body === 'function' ? body() : body}
                                 </p>
                                 <p className="mt-3 text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
                                     <span className="font-semibold text-slate-600 dark:text-slate-300">Worth knowing:</span>{' '}
                                     {caveat}
                                 </p>
-                                <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800">
+                                <div className="mt-4 pt-1 border-t border-slate-100 dark:border-slate-800">
+                                    {/* min-h-11: the link text alone is a 20px-tall target. */}
                                     <Link
                                         href={`/calculators/${slug}`}
-                                        className="inline-flex items-center gap-1.5 text-sm font-semibold text-amber-700 dark:text-amber-400 hover:underline"
+                                        className="inline-flex min-h-11 items-center gap-1.5 text-sm font-semibold text-amber-700 dark:text-amber-400 hover:underline"
                                     >
-                                        Open {name.replace('Bitcoin ', '').toLowerCase()}
+                                        Open the {name.replace('Bitcoin ', '')}
                                         <ArrowRight className="w-3.5 h-3.5" aria-hidden="true" />
                                     </Link>
                                 </div>

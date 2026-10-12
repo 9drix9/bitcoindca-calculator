@@ -20,7 +20,23 @@ import {
 import { WalletImage } from '@/components/WalletImage';
 
 /** Date the factual claims on this page were last checked against their sources. */
-const LAST_REVIEWED = '11 August 2026';
+const LAST_REVIEWED = '12 October 2026';
+
+/**
+ * Date the prices were read off each manufacturer's own US-dollar store. Kept
+ * apart from LAST_REVIEWED because prices go stale fastest: re-check them
+ * without having to re-verify the whole page, and never the other way round.
+ */
+const PRICES_CHECKED = '12 October 2026';
+
+/**
+ * Date of the provisional note on the Ledger reseller investigation. That
+ * story was three days old when this was written. The note keeps its own date
+ * so a later page review cannot make it look fresher than it is: read the
+ * newest posts from @Ledger and @Ledger_Support in full and rewrite the note
+ * against them before touching this.
+ */
+const LEDGER_NOTE_AS_OF = '12 October 2026';
 
 /** A single external reference. `label` is what the reader sees inline. */
 type Source = { label: string; url: string };
@@ -30,6 +46,8 @@ type Source = { label: string; url: string };
  * claim it supports on the date in LAST_REVIEWED. Vendor pages are cited only
  * for claims about that vendor's own product; incidents are cited to the
  * regulator, the affected company, or the security reporting, not to a blog.
+ * The one exception is research a vendor has not answered in public, which is
+ * cited to the researchers' own write-up and labelled as their account.
  */
 const SRC = {
   bip39: { label: 'BIP-39 specification', url: 'https://github.com/bitcoin/bips/blob/master/bip-0039.mediawiki' },
@@ -38,6 +56,7 @@ const SRC = {
   bip84: { label: 'BIP-84 (native SegWit derivation)', url: 'https://github.com/bitcoin/bips/blob/master/bip-0084.mediawiki' },
   bip341: { label: 'BIP-341 (Taproot)', url: 'https://github.com/bitcoin/bips/blob/master/bip-0341.mediawiki' },
   mtgox: { label: 'TechCrunch, Mt. Gox bankruptcy filing (2014)', url: 'https://techcrunch.com/2014/02/28/mt-gox-files-for-bankruptcy' },
+  mtgoxFound: { label: 'CNBC, Mt. Gox finds 200,000 bitcoins in an old wallet (March 2014)', url: 'https://www.cnbc.com/2014/03/20/mtgox-says-it-found-200000-bitcoins-in-forgotten-wallet.html' },
   quadriga: { label: 'Ontario Securities Commission, QuadrigaCX review', url: 'https://www.osc.ca/quadrigacxreport/' },
   ftx: { label: 'CFTC press release 8638-22 (FTX/Alameda)', url: 'https://www.cftc.gov/PressRoom/PressReleases/8638-22' },
   celsius: { label: 'FTC, Celsius Network settlement (2023)', url: 'https://www.ftc.gov/news-events/news/press-releases/2023/07/ftc-reaches-settlement-crypto-platform-celsius-network-charges-former-executives-duping-consumers' },
@@ -51,26 +70,65 @@ const SRC = {
   ledger2020Ceo: { label: 'Ledger CEO update, 272,000 records', url: 'https://www.ledger.com/message-ledgers-ceo-data-leak' },
   ledger2026: { label: 'BleepingComputer, Ledger / Global-e breach (Jan 2026)', url: 'https://www.bleepingcomputer.com/news/security/ledger-customers-impacted-by-third-party-global-e-data-breach/' },
   ledgerRecover: { label: 'CoinDesk, Ledger Recover postponed (2023)', url: 'https://www.coindesk.com/business/2023/05/23/crypto-wallet-provider-ledger-postpones-release-of-key-recovery-service-after-public-criticism' },
+  ledgerRecoverLaunch: { label: 'Cointelegraph, Ledger Recover launches (24 Oct 2023)', url: 'https://cointelegraph.com/news/ledger-cloud-private-key-recovery' },
+  ledgerBulletins: { label: 'Ledger Donjon, Ledger security bulletins', url: 'https://donjon.ledger.com/lsb/' },
+  // The reseller investigation. Ledger's own statements are long posts on X, and
+  // X's embed preview shows only the opening of each. The guidance to buyers is in
+  // the closing paragraphs, so read the whole post. Cointelegraph's 9 October piece
+  // carries the first, narrower guidance and what Ledger told the outlet directly;
+  // CoinDesk quotes the 11 October guidance word for word.
+  ledgerReseller: { label: 'Cointelegraph, Ledger investigates losses tied to a reseller (9 Oct 2026)', url: 'https://cointelegraph.com/news/ledger-investigates-fund-losses-linked-to-southeast-asian-reseller-warns-users' },
+  ledgerImplant: { label: 'Cointelegraph, Ledger confirms unauthorized hardware implant (11 Oct 2026)', url: 'https://cointelegraph.com/news/ledger-confirms-unauthorized-hardware-implant-losses-may-exceed-86m' },
+  ledgerImplantPost: { label: 'Ledger Support, situation update (10 Oct 2026)', url: 'https://x.com/Ledger_Support/status/2108968264055345381' },
+  ledgerUpdatePost: { label: 'Ledger, 72-hour update on the reseller incident (11 Oct 2026)', url: 'https://x.com/Ledger/status/2109331538072494364' },
+  ledgerUpdateCoindesk: { label: 'CoinDesk, Ledger update and its guidance to CryptoBilis buyers (12 Oct 2026)', url: 'https://www.coindesk.com/tech/2026/10/12/ledger-says-unauthorized-implant-found-in-at-least-one-device-sold-by-cryptobilis' },
+  ledgerLosses: { label: 'Bitquery, on-chain count of the CryptoBilis thefts (updated 12 Oct 2026)', url: 'https://www.bitquery.io/investigations/ledger-cryptobilis-hack' },
+  // Unconfirmed by Ledger. The magazine piece is the independent report of the
+  // first device; the second is cited to the buyer's own post, as his account.
+  ledgerEurope: { label: 'Cointelegraph Magazine, tampered Ledger reported in Europe (11 Oct 2026)', url: 'https://cointelegraph.com/magazine/ledger-attack-spreads-to-eu-ai-finds-18-trillion-xrp-bug-hodlers-digest' },
+  ledgerEuropeSecond: { label: 'The European buyer\'s own account of a second device, on X (12 Oct 2026)', url: 'https://x.com/0xJohannes_/status/2109634513957527974' },
+  ledgerGenuine: { label: 'Ledger Donjon, what the Genuine Check verifies', url: 'https://donjon.ledger.com/threat-model/device-genuineness/' },
   trezorSafe3: { label: 'Trezor, Ledger Donjon Safe 3 evaluation', url: 'https://trezor.io/vulnerability/donjon-s-trezor-safe-3-evaluation' },
   trezorTropic: { label: 'Trezor, TROPIC01 disclosure', url: 'https://trezor.io/learn/security-privacy/how-trezor-keeps-you-safe/tropic-01-chip-vulnerability-disclosure-what-happened' },
+  trezorSecurity: { label: 'Trezor, security portal and resolved vulnerabilities', url: 'https://trezor.io/security' },
+  trezorMailchimp: { label: 'Trezor, details of the Mailchimp data breach (14 Apr 2022)', url: 'https://blog.trezor.io/details-of-the-mailchimp-data-breach-a06872caa1fd' },
   trezorLeak: { label: 'BleepingComputer, Trezor support-portal breach (2024)', url: 'https://www.bleepingcomputer.com/news/security/trezor-support-site-breach-exposes-personal-data-of-66-000-customers/' },
+  trezorShipMonk: { label: 'Trezor, ShipMonk shipping-provider breach (13 Aug 2026, updated 4 Sep)', url: 'https://trezor.io/blog/news/recent-customer-data-exposed-in-shipping-provider-incident' },
+  trezorBrevo: { label: 'Trezor, Brevo email-provider incident (10 Sep 2026, updated 17 Sep)', url: 'https://trezor.io/blog/news/security-incident-at-brevo-our-third-party-email-provider' },
+  trezorMultiShare: { label: 'Trezor, Multi-share Backup on Trezor', url: 'https://trezor.io/guides/backups-recovery/advanced-wallets/multi-share-backup-on-trezor' },
   trezorOne: { label: 'Trezor Model One', url: 'https://trezor.io/trezor-model-one' },
+  trezorCompare: { label: 'Trezor, model comparison', url: 'https://trezor.io/compare' },
   jadeRepo: { label: 'Blockstream Jade firmware', url: 'https://github.com/Blockstream/Jade' },
   jadeOracle: { label: 'Blockstream blind PIN server', url: 'https://github.com/Blockstream/blind_pin_server' },
+  jadeDisclosure: { label: 'Blockstream, Jade security disclosure (16 Dec 2025)', url: 'https://blog.blockstream.com/jade-security-disclosure/' },
+  liquidIncident: { label: 'Blockstream, Liquid Network security incident assessment (23 Sep 2026)', url: 'https://blog.blockstream.com/liquid-network-security-incident-assessment/' },
   bitbox: { label: 'BitBox02 firmware (dual-chip design)', url: 'https://github.com/BitBoxSwiss/bitbox02-firmware' },
+  bitboxCompare: { label: 'BitBox, BitBox02 and BitBox02 Nova compared', url: 'https://bitbox.swiss/bitbox02/' },
+  bitboxDixence: { label: 'BitBox, Dixence security update (17 Aug 2026)', url: 'https://blog.bitbox.swiss/en/bitbox-08-2026-dixence-update/' },
   coldcardAdvisory: { label: 'Coinkite, Coldcard security advisory (30 July 2026)', url: 'https://blog.coinkite.com/coldcard-mk3-seed-generation-warning/' },
+  coldcardStatus: { label: 'Coinkite, current Coldcard security status (verified 1 Oct 2026)', url: 'https://coldcard.com/security/status' },
   coldcardThn: { label: 'The Hacker News, Coldcard seed flaw and thefts (Aug 2026)', url: 'https://thehackernews.com/2026/08/coldcard-hardware-wallet-flaw-linked-to.html' },
-  coldcardTrm: { label: 'TRM Labs, inside the $116M Coldcard hack (5 Aug 2026)', url: 'https://www.trmlabs.com/resources/blog/the-largest-hardware-wallet-exploit-of-2026-inside-the-usd-116-million-coldcard-hack' },
+  coldcardGalaxy: { label: 'Cointelegraph, Galaxy tally of 1,789 BTC from 8,865 addresses (25 Aug 2026)', url: 'https://cointelegraph.com/news/coldcard-hack-galaxy-btc-lost-87-unmoved' },
   seedsigner: { label: 'SeedSigner project', url: 'https://github.com/SeedSigner/seedsigner' },
   cypherock: { label: 'Cypherock X1 firmware', url: 'https://github.com/Cypherock/x1_wallet_firmware' },
+  cypherockSe: { label: 'Cypherock docs, open source with secure elements', url: 'https://docs.cypherock.com/cypherock-x1-features/open-source-with-secure-elements' },
+  darknavyCypherock: { label: 'DARKNAVY, how and why we hacked the Cypherock hardware wallet (21 Nov 2025)', url: 'https://www.darknavy.org/blog/how_and_why_we_hacked_cypherock_hardware_wallet_the_full_story/' },
 } as const satisfies Record<string, Source>;
 
-const citeLink = 'text-amber-700 dark:text-amber-400 hover:underline';
+// Underlined, not colour alone: these links sit inside running text, where amber
+// against slate is about 1.5:1 and a hover underline never shows on a phone.
+const citeLink = 'text-amber-700 dark:text-amber-400 underline underline-offset-2 hover:text-amber-800 dark:hover:text-amber-300';
+// The "On this page" rows stand alone in a labelled nav, so position marks them.
+const navLink = 'text-amber-700 dark:text-amber-400 hover:underline';
 
-/** Unobtrusive inline external link used for citations in prose. */
-function Src({ href, children }: { href: string; children: ReactNode }) {
+/**
+ * Unobtrusive inline external link used for citations in prose. `className` is
+ * for the one place a citation stands alone as a row, the Sources list, where
+ * it has to be a full-height tap target on a phone.
+ */
+function Src({ href, children, className }: { href: string; children: ReactNode; className?: string }) {
   return (
-    <a href={href} target="_blank" rel="noopener noreferrer" className={citeLink}>
+    <a href={href} target="_blank" rel="noopener noreferrer" className={className ? `${citeLink} ${className}` : citeLink}>
       {children}
     </a>
   );
@@ -119,14 +177,16 @@ const EXCHANGE_FAILURES: { name: string; year: string; lost: string; description
     name: 'Mt. Gox',
     year: '2014',
     lost: '850,000 BTC',
-    description: 'The largest Bitcoin exchange of its era filed for bankruptcy in Tokyo. It cited 850,000 missing bitcoin, 750,000 of them belonging to customers, worth about $450M at the time. Around 200,000 were later found in an old wallet. Creditors waited more than a decade for partial repayment.',
-    sources: [SRC.mtgox],
+    description: 'The largest Bitcoin exchange of its era filed for bankruptcy in Tokyo. It cited 850,000 missing bitcoin, 750,000 of them belonging to customers, worth about $477M at the time. Around 200,000 were found a week later in an old-format wallet. Creditors waited more than a decade for partial repayment.',
+    sources: [SRC.mtgox, SRC.mtgoxFound],
   },
   {
     name: 'QuadrigaCX',
     year: '2019',
-    lost: '$169M+',
-    description: 'The popular story is that the founder died holding the only keys. The Ontario Securities Commission investigated and found something worse. Gerald Cotten had been trading away client assets for years, in what staff described as a Ponzi scheme, and at least $169M of client funds were lost. Sole control of the keys made the fraud possible. It was not itself the cause.',
+    // The OSC report states every amount in Canadian dollars. The other three
+    // cards are US dollars, so the currency has to be on the figure itself.
+    lost: 'C$169M+',
+    description: 'The popular story is that the founder died holding the only keys. The Ontario Securities Commission investigated and found something worse. Gerald Cotten had been trading away client assets for years, in what staff described as a Ponzi scheme, and clients lost at least C$169 million (the regulator reports in Canadian dollars). Sole control of the keys made the fraud possible. It was not itself the cause.',
     sources: [SRC.quadriga],
   },
   {
@@ -156,9 +216,9 @@ const THREATS: { rank: string; title: string; detail: string; fix: string; sourc
   {
     rank: '2',
     title: 'Phishing and impersonation',
-    detail: 'Fake wallet apps in the app stores. Sponsored search ads pointing at cloned wallet sites. "Support agents" who appear within minutes of you posting a problem publicly. Fake airdrops and forced "migrations". Hardware wallet customer lists have leaked as well: Ledger in 2020 and again in January 2026, Trezor\'s support portal in 2024. That leak fed targeted letters and emails aimed at people known to hold crypto.',
-    fix: 'No legitimate wallet, support agent, exchange, or airdrop will ever need your recovery phrase. There is no exception to this rule.',
-    sources: [SRC.ledger2020Ceo, SRC.ledger2026, SRC.trezorLeak],
+    detail: 'Fake wallet apps in the app stores. Sponsored search ads pointing at cloned wallet sites. "Support agents" who appear within minutes of you posting a problem publicly. Fake airdrops and forced "migrations". Hardware wallet customer lists have leaked repeatedly: Ledger in 2020 and again in January 2026; Trezor\'s support portal in 2024 and, in August 2026, its shipping provider, which exposed names, emails, phone numbers and delivery addresses. Leaks like these feed targeted letters, calls and emails aimed at people known to hold crypto. In September 2026 a fake security alert even went out from Trezor\'s own newsletter account after its email provider was breached.',
+    fix: 'Nobody who contacts you will ever need your recovery phrase: no support agent, exchange, wallet company or airdrop, however genuine the sender address looks. The only place it goes is a hardware wallet you are restoring yourself.',
+    sources: [SRC.ledger2020Ceo, SRC.ledger2026, SRC.trezorLeak, SRC.trezorShipMonk, SRC.trezorBrevo],
   },
   {
     rank: '3',
@@ -181,9 +241,9 @@ const THREATS: { rank: string; title: string; detail: string; fix: string; sourc
   {
     rank: '6',
     title: 'Supply-chain tampering',
-    detail: 'In 2021, criminals working from the leaked Ledger customer list mailed convincing "replacement" hardware wallets, in authentic-looking packaging with an explanatory letter, to real owners. The devices had a flash implant and shipped with instructions to enter the recovery phrase into a fake Ledger Live app. Second-hand and marketplace devices can also arrive pre-seeded, so the seller already holds the keys.',
-    fix: 'Buy only direct from the manufacturer. Never use a device that arrives with a recovery phrase already printed or set. A genuine device generates its own in front of you on first use.',
-    sources: [SRC.fakeLedgers],
+    detail: 'In 2021, criminals working from the leaked Ledger customer list mailed convincing "replacement" hardware wallets, in authentic-looking packaging with an explanatory letter, to real owners. The devices had a flash implant and shipped with instructions to enter the recovery phrase into a fake Ledger Live app. Second-hand and marketplace devices can also arrive pre-seeded, so the seller already holds the keys. And in October 2026 Ledger confirmed an unauthorized hardware implant inside a device bought through a reseller in Southeast Asia. That investigation is still open; the dated note in the wallet section below has what is known.',
+    fix: 'Buy only direct from the manufacturer. Never use a device that arrives with a recovery phrase already printed or set. A device that generates its own phrase in front of you has passed one test, not all of them: it cannot show you tampering inside the case, which is why where you buy it matters most.',
+    sources: [SRC.fakeLedgers, SRC.ledgerImplantPost, SRC.ledgerImplant],
   },
   {
     rank: '7',
@@ -205,7 +265,16 @@ interface Wallet {
   features: string[];
   price: string;
   lineup: string;
+  /** The design trade-off: what this device asks you to accept. */
   caveat: string;
+  /**
+   * Security flaws and customer-data incidents the vendor, or the researchers
+   * who found them, have published. Dated, and attributed sentence by sentence.
+   * Every vendor with a disclosure in the last year or so gets one, affiliate
+   * or not: listing them for some and not others would be a recommendation in
+   * disguise. Kept apart from `caveat` so neither buries the other on a phone.
+   */
+  record?: string;
   href: string;
   color: WalletColor;
   image: string;
@@ -219,102 +288,109 @@ interface Wallet {
 }
 
 // Ordered roughly from most beginner-friendly to most specialist.
-// Prices checked August 2026 and deliberately stated as approximations; vendors discount often.
+// Prices are US-dollar list prices read off each maker's own store on PRICES_CHECKED,
+// and deliberately stated as approximations; vendors discount often. One currency
+// throughout: the previous version mixed a euro figure into a dollar sentence.
 const WALLETS: Wallet[] = [
   {
     name: 'Trezor',
     slug: 'trezor',
     tagline: 'Open-source, and the easiest to verify',
     description: 'SatoshiLabs shipped the Trezor Model One in 2014, the first hardware wallet of its kind. Its firmware has always been open-source and reproducibly built, so independent researchers can confirm the code on your device matches the published source. The current Safe line adds a certified secure element, and every model can run Bitcoin-only firmware that strips the altcoin code out entirely.',
-    features: ['Open-source firmware with reproducible builds', 'EAL6+ secure element across the Safe line', 'Bitcoin-only firmware option on every model', 'Shamir backup on Safe 5 and Safe 7', 'Works with Trezor Suite, Sparrow, Electrum, and Nunchuk'],
-    price: 'from ~$79',
-    lineup: 'Safe 3 around $79, Safe 5 around $169, Safe 7 around $249. The older Model One and Model T are retired.',
-    caveat: 'Ledger\'s Donjon research team has twice demonstrated laboratory attacks on Trezor silicon. First, a voltage glitch that bypassed Safe 3 supply-chain countermeasures, disclosed March 2025. Second, a laser fault-injection attack on the Safe 7\'s TROPIC01 secure element, disclosed 2026, after Donjon reported it to Tropic Square in January. Both need physical possession, decapsulation or desoldering, specialist lab equipment and expertise. Trezor says the TROPIC01 flaw compromises one of three independent secrets and does not by itself expose keys or funds. Neither attack has been seen in the wild. So the practical lesson is about tampered and second-hand devices, not about a device you bought direct and set up yourself. Separately, a third-party support portal exposed names and email addresses for up to 66,000 people who had contacted Trezor support, disclosed January 2024. No postal addresses, but plenty for targeted phishing.',
+    features: ['Open-source firmware with reproducible builds', 'EAL6+ secure element across the Safe line', 'Bitcoin-only firmware option on every model', 'Multi-share (Shamir) backup across the Safe line', 'Works with Trezor Suite, Sparrow, Electrum, and Nunchuk'],
+    price: 'from ~$59',
+    lineup: 'Safe 3 around $59, Safe 5 around $129, Safe 7 around $249. The older Model One and Model T are retired.',
+    caveat: 'Ledger\'s Donjon research team has twice demonstrated laboratory attacks on Trezor silicon. First, a voltage glitch that bypassed Safe 3 supply-chain countermeasures, disclosed March 2025. Second, a laser fault-injection attack on the Safe 7\'s TROPIC01 secure element, disclosed 2026, after Donjon reported it to Tropic Square in January. Both need physical possession, decapsulation or desoldering, specialist lab equipment and expertise. Trezor says the TROPIC01 flaw compromises one of three independent secrets and does not by itself expose keys or funds. Neither attack has been seen in the wild. So the practical lesson is about tampered and second-hand devices, not about a device you bought direct and set up yourself.',
+    record: 'Trezor lists the vulnerabilities it has fixed on its own security portal. Entries from 2026 include a Safe 7 pairing step that a computer could complete without the code shown on the device (reported in June) and Safe 7 authenticity proofs that were checked too loosely (reported in August); both are listed as resolved. Its customer data has leaked at least four times, each time through a supplier. In April 2022 attackers who had breached its newsletter provider Mailchimp took subscribers\' email addresses, and in some cases names and IP addresses, and used them for a phishing email. In January 2024 a support-ticket portal exposed names and email addresses of up to 66,000 people; Trezor said it did not believe postal addresses were taken. In August 2026 its shipping provider ShipMonk was breached, exposing names, emails, phone numbers and delivery addresses. Trezor counts 80,689 customers, including US orders from 2019 to 2021 that it says ShipMonk had confirmed were deleted. On 9 September 2026 its newsletter provider Brevo was breached: 347,149 email addresses were exported, and a fake "STM32 Entropy Vulnerability" alert, linking to an app that asked for the recovery phrase, went out from Trezor\'s own account. Trezor says its own systems and devices were not compromised in either 2026 incident.',
     href: 'https://affil.trezor.io/aff_c?offer_id=238&aff_id=36991',
     color: 'emerald',
-    image: '/wallets/trezor.png',
+    image: '/wallets/trezor.webp',
     bestFor: 'Best for: a first hardware wallet you can independently verify',
     openSource: 'Yes, reproducible builds',
     secureElement: 'Yes (EAL6+)',
-    airGap: 'No (USB)',
+    airGap: 'No (USB; Bluetooth on Safe 7)',
     affiliate: true,
-    sources: [SRC.trezorOne, SRC.trezorSafe3, SRC.trezorTropic, SRC.trezorLeak],
+    sources: [SRC.trezorOne, SRC.trezorCompare, SRC.trezorMultiShare, SRC.trezorSafe3, SRC.trezorTropic, SRC.trezorSecurity, SRC.trezorMailchimp, SRC.trezorLeak, SRC.trezorShipMonk, SRC.trezorBrevo],
   },
   {
     name: 'Blockstream Jade',
     slug: 'blockstream-jade',
-    tagline: 'Bitcoin-focused, fully open, well priced',
-    description: 'Built by Blockstream, Jade is fully open-source in both hardware and firmware. The lineup now splits into three devices: Classic and Core for a quick move off an exchange, Jade Plus for camera-based QR signing and SD-card air-gapping. All three run identical firmware and the same security model.',
-    features: ['Fully open-source hardware and firmware', 'Bitcoin and Liquid; no altcoin code', 'Air-gapped QR signing and SD card support (Plus)', 'Camera, USB-C, Bluetooth, built-in battery', 'Pairs with Blockstream Green, Sparrow, Electrum, Nunchuk'],
+    tagline: 'Bitcoin-focused and fully open',
+    description: 'Built by Blockstream, Jade is fully open-source in both hardware and firmware. Jade Plus and Jade Core are the current models, and the original Jade, which Blockstream\'s store also calls the Jade Classic, is still sold. Core is the stripped-down one for a quick move off an exchange; Plus and Classic add a camera for QR signing. All three run the same open-source firmware and the same security model.',
+    features: ['Fully open-source hardware and firmware', 'Bitcoin and Liquid; no altcoin code', 'Air-gapped QR signing on Plus and Classic; SD card support on Plus', 'USB-C and Bluetooth on every model; camera and battery on Plus and Classic, not Core', 'Pairs with the Blockstream app (formerly Green), Sparrow, Electrum, Nunchuk'],
     price: 'from ~$79',
-    lineup: 'Jade Classic around $79, Jade Core around $99, Jade Plus around $169 list and often on sale near $143. Stock runs out regularly, so check availability.',
+    lineup: 'Jade Classic around $79 list (about $67 on the store\'s sale when checked), Jade Core around $99, Jade Plus around $149 in plastic or $169 in metal. Stock runs out regularly, so check availability.',
     caveat: 'Jade has no dedicated secure element chip. Instead it encrypts your key material and unlocks it through a handshake with a "blind oracle" PIN server. That server is blind to the PIN by design, and exists mainly to enforce a three-attempt limit. Blockstream runs one by default. The server is open source and Dockerized, so you can run your own. Signing still happens offline and the seed never leaves the device. But if you want zero third-party dependency in the unlock path, plan to self-host the oracle.',
+    record: 'In December 2025 Blockstream disclosed a flaw, reported by the research group DARKNAVY, in firmware 1.0.24 to 1.0.36. A malformed request from malware on the connected phone or computer could crash an unlocked Jade and, in the worst case Blockstream describes, extract the key. It was reachable over USB or Bluetooth, not in QR mode. Blockstream fixed it in 1.0.37 and blocked downgrades in 1.0.38. It says it is not aware of the flaw being exploited or of any lost funds, and it advises against using Jade with web wallets. Separately, and not a flaw in the Jade itself: on 6 September 2026 an attacker used a bug in Elements, the Blockstream-built software the Liquid sidechain runs on, to withdraw about 4,000 BTC from Liquid\'s reserve. Blockstream\'s assessment of 23 September says 3,400 BTC had been returned, about 602 BTC was still outstanding, and withdrawals from Liquid to Bitcoin were still paused.',
     href: 'https://oshi.link/ETC6DL',
     color: 'green',
-    image: '/wallets/blockstream-jade.png',
-    bestFor: 'Best for: open-source purists and the best value in the category',
+    image: '/wallets/blockstream-jade.webp',
+    bestFor: 'Best for: open-source purists who want the hardware open as well as the firmware',
     openSource: 'Yes, hardware and firmware',
     secureElement: 'No (blind-oracle PIN server)',
-    airGap: 'Optional (QR on the Plus)',
+    airGap: 'Optional (QR on Plus and Classic)',
     affiliate: true,
-    sources: [SRC.jadeRepo, SRC.jadeOracle],
+    sources: [SRC.jadeRepo, SRC.jadeOracle, SRC.jadeDisclosure, SRC.liquidIncident],
   },
   {
     name: 'Ledger',
     slug: 'ledger',
     tagline: 'The most polished software, with a real trade-off',
-    description: 'Ledger has sold more hardware wallets than anyone, and Ledger Live is the most approachable companion app in the category. Its secure element chips carry independent security certifications, and no Ledger device has ever been remotely compromised. The trade-off is transparency. The device operating system and the secure element firmware are both proprietary.',
-    features: ['Certified secure element (CC EAL5+ / EAL6+)', 'Ledger Live handles buy, send, receive, and staking', 'Bluetooth on Nano X and Gen5; NFC on Gen5', 'Very broad multi-asset support', 'Largest ecosystem of third-party integrations'],
-    price: 'from ~$79',
-    lineup: 'Nano S Plus around $79, Nano X around $149, Nano Gen5 around $179, Flex around $249, Stax around $399. The original Nano S reached end of support in 2025.',
-    caveat: 'Two things to weigh honestly. First, you can\'t audit Ledger\'s device OS the way you can Trezor\'s, BitBox\'s, or Jade\'s. You are trusting the company\'s implementation. The 2023 "Ledger Recover" seed-backup service, announced and then postponed after a public backlash, showed that what the firmware is capable of can change. Second, Ledger has leaked customer contact data twice. The 2020 e-commerce breach exposed about a million email addresses, and the dump published that December contained roughly 272,000 records with postal address, name and phone number. A payment-processor breach at Global-e, disclosed in January 2026, exposed names, addresses, emails and phone numbers again. No keys, credentials or funds were exposed in either case. But those lists have driven years of targeted phishing and tampered devices mailed to real customers. If you buy one, use a delivery address you would not mind being public, and treat every unsolicited Ledger message as fraudulent.',
+    description: 'Ledger has sold more hardware wallets than anyone, and its Ledger Wallet app (formerly Ledger Live) is the most approachable companion app in the category. Its secure element chips carry independent security certifications. The trade-off is transparency. The device operating system and the secure element firmware are both proprietary.',
+    features: ['Certified secure element (CC EAL5+ / EAL6+)', 'The Ledger Wallet app (formerly Ledger Live) handles buy, send, receive, and staking', 'Bluetooth on every model except the Nano S Plus; NFC on Gen5, Flex and Stax', 'Very broad multi-asset support', 'Largest ecosystem of third-party integrations'],
+    price: 'from ~$69',
+    lineup: 'Nano S Plus around $69, Nano X around $99, Nano Gen5 around $179, Flex around $249, Stax around $399. The original Nano S reached end of support in 2025.',
+    caveat: 'Two things to weigh honestly. First, you can\'t audit Ledger\'s device OS the way you can Trezor\'s, BitBox\'s, or Jade\'s. You are trusting the company\'s implementation. The "Ledger Recover" seed-backup service showed that what the firmware is capable of can change: it was announced in 2023, postponed that May after a public backlash, then launched that October as an optional paid subscription. Second, Ledger has leaked customer contact data at least twice. The 2020 e-commerce breach exposed about a million email addresses, and the dump published that December contained roughly 272,000 records with postal address, name and phone number. A breach at payment processor Global-e, disclosed in January 2026, exposed customers\' names and contact details again. No keys, credentials or funds were exposed in either case. But those lists have driven years of targeted phishing and tampered devices mailed to real customers. Treat every unsolicited Ledger message as fraudulent.',
+    record: `As of ${LEDGER_NOTE_AS_OF} an investigation is open: on 10 October 2026 Ledger confirmed that a device bought through a reseller in Southeast Asia contained an unauthorized hardware implant, after customers of that reseller reported lost funds. Ledger says it has no indication its own systems were compromised. The dated note above this list has what is and is not known. Separately, Ledger publishes security bulletins for flaws in its own software. Four are dated June to August 2026: three about how transactions were reviewed or signed on the device, and one that could let a Monero secret key be recovered.`,
     href: 'https://shop.ledger.com/?r=ee186bc1f36d',
     color: 'amber',
-    image: '/wallets/ledger.png',
+    image: '/wallets/ledger.webp',
     bestFor: 'Best for: people who want the smoothest app and accept the closed-source trade-off',
     openSource: 'No (proprietary device OS)',
     secureElement: 'Yes (EAL5+/EAL6+)',
     airGap: 'No (USB/Bluetooth)',
     affiliate: true,
-    sources: [SRC.ledger2020, SRC.ledger2020Ceo, SRC.ledger2026, SRC.ledgerRecover],
+    sources: [SRC.ledger2020, SRC.ledger2020Ceo, SRC.ledger2026, SRC.ledgerRecover, SRC.ledgerRecoverLaunch, SRC.ledgerImplantPost, SRC.ledgerImplant, SRC.ledgerBulletins],
   },
   {
     name: 'BitBox02',
     slug: 'bitbox02',
     tagline: 'Swiss-made, minimal, quietly excellent',
-    description: 'Shift Crypto builds the BitBox02 in Switzerland. A dual-chip design pairs an ATECC608B secure element with an ATSAMD51 microcontroller, so neither one alone can release your keys. The Bitcoin-only edition strips out every other coin and costs the same as the multi edition. The newer Nova adds a glass display plus native iPhone and iPad support.',
-    features: ['Bitcoin-only edition at no extra cost', 'Open-source firmware, reproducible builds', 'Dual-chip security design', 'microSD backup as well as a written 12-word seed', 'Nova adds iOS/iPadOS support and a glass display'],
-    price: 'from ~$109',
-    lineup: 'The BitBox02 Nova, around €175, is the current flagship; the original BitBox02, around $109, is still sold. Bitcoin-only and multi editions are the same price.',
+    description: 'Shift Crypto builds the BitBox02 in Switzerland. A dual-chip design pairs an ATECC608B secure element with an ATSAMD51 microcontroller, so neither one alone can release your keys. The Bitcoin-only edition strips out every other coin and costs the same as the multi edition. The newer Nova adds a glass display plus iPhone and iPad support over Bluetooth.',
+    features: ['Bitcoin-only edition at no extra cost', 'Open-source firmware, reproducible builds', 'Dual-chip security design', 'microSD backup, with recovery words you can also write down', 'Nova adds iPhone and iPad support over Bluetooth, and a glass display'],
+    price: 'from ~$167',
+    lineup: 'The BitBox02 is around $167 and the newer BitBox02 Nova around $196 on BitBox\'s US-dollar store, which says it covers taxes and tariffs on US orders. Bitcoin-only and multi editions are the same price.',
     caveat: 'The microSD backup is convenient. It is also a full copy of your seed sitting on a small piece of plastic that degrades and is easy to misplace. Treat it exactly as you would treat written words, and keep a durable written or metal copy too.',
+    record: 'On 17 August 2026 BitBox disclosed three firmware issues found in its own audits, each of which it rated severe or potentially severe. A bootloader weakness could let an attacker who had first phished the owner install fake firmware on a BitBox02; it was fixed in firmware 9.26.2, and BitBox says the Nova is not affected. A memory-corruption bug affected the Multi edition when no wallet had been set up yet and the device was used with a malicious computer; BitBox says the Bitcoin-only edition does not contain the affected code. A Silent Payments bug could lock coins at an unintended address, though not steal them directly. The last two were fixed in 9.26.5. BitBox says it has no reports of exploitation or stolen funds, and that existing seeds are not affected.',
     href: 'https://shop.bitbox.swiss/?ref=pnuwdpiq',
     color: 'slate',
-    image: '/wallets/bitbox.png',
+    image: '/wallets/bitbox.webp',
     bestFor: 'Best for: minimalists who want Bitcoin-only without the complexity tax',
     openSource: 'Yes, reproducible builds',
     secureElement: 'Yes (dual-chip)',
-    airGap: 'No (USB)',
+    airGap: 'No (USB; Bluetooth on Nova)',
     affiliate: true,
-    sources: [SRC.bitbox],
+    sources: [SRC.bitbox, SRC.bitboxCompare, SRC.bitboxDixence],
   },
   {
     name: 'Cypherock X1',
     slug: 'cypherock-x1',
     tagline: 'Nothing to write down, five things to protect',
     description: 'Cypherock takes a different approach. Instead of one seed phrase on paper, it splits your key material into five shares using Shamir Secret Sharing. One share sits inside the X1 Vault, and one on each of four NFC cards. Any two shares reconstruct the wallet, so you can lose up to three components and still recover.',
-    features: ['No written seed phrase required', 'Shamir 2-of-5 across the vault and four cards', 'EAL6+ secure elements', 'Source-available firmware (MIT + Commons Clause)', 'BIP-39 export available as an escape hatch'],
-    price: '~$159-$199',
-    lineup: 'Usually around $199 list, frequently discounted to about $159. Replacement cards and cases are sold separately.',
-    caveat: 'The threshold cuts both ways. Any two of the five shares reconstruct your keys, so two cards found together are as good as the whole wallet to a thief. That means the cards have to be geographically separated, which is more work than most people expect from a "no seed phrase" product. The scheme is also newer and less battle-tested than a plain BIP-39 backup. The firmware ships under an MIT grant with a Commons Clause attached, which withholds the right to sell the software, so it is source-available rather than open-source in the strict sense. The mitigating factor: you can export a standard BIP-39 phrase at any time and walk away to another vendor.',
+    features: ['No written seed phrase required', 'Shamir 2-of-5 across the vault and four cards', 'EAL6+ secure elements in the four cards (the Vault uses a different chip)', 'Vault firmware is source-available (MIT + Commons Clause); the card code is proprietary', 'BIP-39 export available as an escape hatch'],
+    price: '~$99-$129',
+    lineup: 'X1 Basic, the Vault plus four cards, is $129 list and was $99 on the store\'s sale when checked. Standard is $209 list ($179 on sale) and Pro $299 list ($249 on sale). Replacement cards and cases are sold separately.',
+    caveat: 'The threshold cuts both ways. Any two of the five shares reconstruct your keys, so two cards found together are as good as the whole wallet to a thief. That means the cards have to be geographically separated, which is more work than most people expect from a "no seed phrase" product. The scheme is also newer and less battle-tested than a plain BIP-39 backup. The firmware ships under an MIT grant with a Commons Clause attached, which withholds the right to sell the software, so it is source-available rather than open-source in the strict sense. It also covers the Vault only: Cypherock\'s own documentation says the card code is proprietary. The mitigating factor: you can export a standard BIP-39 phrase at any time and walk away to another vendor.',
+    record: 'In November 2025 the security research group DARKNAVY published an attack it had demonstrated live at the GEEKCON 2025 conference. By chaining bugs in the Vault\'s firmware and its update checks, it loaded modified firmware that still passed Cypherock\'s own device-authenticity check. DARKNAVY presented it as a supply-chain attack: tampering with a device before its owner first sets it up. It also says the Vault\'s bootloader and the code that checks firmware updates are not published, and that the Vault\'s secure chip is used only for the authenticity check. We found no public response from Cypherock and could not confirm what has been fixed, so treat this as one research team\'s account.',
     href: 'https://cypherock.com/store/?ref=BTCDOLLARCOSTAVERAGE',
     color: 'violet',
-    image: '/wallets/cypherock.png',
+    image: '/wallets/cypherock.webp',
     bestFor: 'Best for: people who distrust their ability to protect a single paper backup',
-    openSource: 'Source-available (Commons Clause)',
-    secureElement: 'Yes (EAL6+)',
+    openSource: 'Vault firmware only (Commons Clause)',
+    secureElement: 'Cards (EAL6+); Vault uses ATECC608A',
     airGap: 'No (USB)',
     affiliate: true,
-    sources: [SRC.cypherock],
+    sources: [SRC.cypherock, SRC.cypherockSe, SRC.darknavyCypherock],
   },
   {
     name: 'SeedSigner',
@@ -327,7 +403,7 @@ const WALLETS: Wallet[] = [
     caveat: 'No company, no support line, no warranty, nobody to blame. Statelessness also means your seed backup comes out and gets used every time you sign, rather than staying sealed in a safe. In a home with other people in it, that is a real trade-off. Excellent as a multisig signer or a second device. A demanding choice as your only one.',
     href: 'https://seedsigner.com/',
     color: 'cyan',
-    image: '/wallets/seedsigner.png',
+    image: '/wallets/seedsigner.webp',
     bestFor: 'Best for: technical users, multisig signers, and maximum verifiability',
     openSource: 'Yes, reproducible builds',
     secureElement: 'No (stateless, stores nothing)',
@@ -346,7 +422,7 @@ const STEPS = [
   {
     step: 2,
     title: 'Buy the device direct from the manufacturer',
-    description: 'Never from a marketplace, a reseller, or second-hand. A genuine device arrives with no recovery phrase. It generates one in front of you on first use. Anything that turns up pre-seeded is a theft in progress.',
+    description: 'Never from a marketplace, a reseller, or second-hand. A genuine device arrives with no recovery phrase and generates one in front of you on first use, so anything that turns up pre-seeded is a theft in progress. That check is necessary, not sufficient: a device tampered with before it reached you can still generate its own phrase, which is why the place you buy it is the real protection.',
   },
   {
     step: 3,
@@ -406,7 +482,7 @@ const FAQ: { q: string; a: string; sources?: readonly Source[] }[] = [
   },
   {
     q: 'Is self-custody worth it for small amounts?',
-    a: 'Not always, and pretending otherwise does beginners no favors. If you hold a few hundred dollars you are actively trading, a reputable exchange with a hardware security key on the account is a defensible choice. A badly executed self-custody setup loses money more reliably than a well-run exchange does. But the moment the balance becomes savings rather than a trading position, or crosses the point where losing it would hurt, self-custody is worth the effort. Devices on this page run from roughly $50 for a DIY build or about $79 for an entry-level Trezor, Jade, or Ledger, up to $250-$400 for the high-end models.',
+    a: 'Not always, and pretending otherwise does beginners no favors. If you hold a few hundred dollars you are actively trading, a reputable exchange with a hardware security key on the account is a defensible choice. A badly executed self-custody setup loses money more reliably than a well-run exchange does. But the moment the balance becomes savings rather than a trading position, or crosses the point where losing it would hurt, self-custody is worth the effort. Devices on this page run from roughly $50 for a DIY build, or about $60 to $80 for an entry-level Trezor, Ledger, or Jade, up to $250-$400 for the high-end models.',
   },
   {
     q: 'What happens to my Bitcoin if I die?',
@@ -414,8 +490,8 @@ const FAQ: { q: string; a: string; sources?: readonly Source[] }[] = [
   },
   {
     q: 'Should I buy a discounted or second-hand hardware wallet?',
-    a: 'No. Buy direct from the manufacturer, every time. Second-hand and marketplace devices can arrive already initialized with a seed the seller kept. And in 2021, criminals mailed convincing tampered "replacement" devices, complete with an explanatory letter, to real customers whose addresses leaked in the Ledger breach. A genuine device never arrives with a recovery phrase already written down. The discount is not worth the question mark.',
-    sources: [SRC.fakeLedgers],
+    a: 'No. Buy direct from the manufacturer, every time. Second-hand and marketplace devices can arrive already initialized with a seed the seller kept. In 2021, criminals mailed convincing tampered "replacement" devices, complete with an explanatory letter, to real customers whose addresses leaked in the Ledger breach. And in October 2026 Ledger confirmed an unauthorized hardware implant inside a device bought through a reseller. A genuine device never arrives with a recovery phrase already written down, but a device that generates its own can still have been opened on the way to you. The discount is not worth the question mark.',
+    sources: [SRC.fakeLedgers, SRC.ledgerImplantPost, SRC.ledgerImplant],
   },
   {
     q: 'Can I be forced to hand over my Bitcoin?',
@@ -424,6 +500,8 @@ const FAQ: { q: string; a: string; sources?: readonly Source[] }[] = [
   },
 ];
 
+// The badge is 10px text on its own tint. amber-700 and green-700 measured
+// 4.54:1 and 4.50:1 there, right on the AA line, so those two use the 800 step.
 const walletColorClasses: Record<WalletColor, {
   bg: string;
   border: string;
@@ -443,7 +521,7 @@ const walletColorClasses: Record<WalletColor, {
   amber: {
     bg: 'bg-amber-50 dark:bg-amber-950/20',
     border: 'border-amber-200 dark:border-amber-800/50',
-    badge: 'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400',
+    badge: 'bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-400',
     button: 'bg-amber-700 hover:bg-amber-800',
     accent: 'text-amber-700 dark:text-amber-400',
     check: 'text-amber-600 dark:text-amber-500',
@@ -451,7 +529,7 @@ const walletColorClasses: Record<WalletColor, {
   green: {
     bg: 'bg-green-50 dark:bg-green-950/20',
     border: 'border-green-200 dark:border-green-800/50',
-    badge: 'bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400',
+    badge: 'bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-400',
     button: 'bg-green-700 hover:bg-green-800',
     accent: 'text-green-700 dark:text-green-400',
     check: 'text-green-600 dark:text-green-500',
@@ -544,9 +622,11 @@ const articleJsonLd = {
     "@type": "WebPage",
     "@id": "https://btcdollarcostaverage.com/self-custody"
   },
-  "datePublished": "2025-01-01",
+  // First publication date, from the commit that added this page. It does not
+  // move when the page is revised; dateModified is the one that does.
+  "datePublished": "2026-02-04",
   // Static date. Update when the content changes, and keep it in sync with sitemap.ts.
-  "dateModified": "2026-08-11",
+  "dateModified": "2026-10-12",
 };
 
 const howToJsonLd = {
@@ -621,13 +701,15 @@ export default function SelfCustodyPage() {
         aria-label="On this page"
         className="bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-2xl border border-slate-200 dark:border-slate-800"
       >
-        <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-3">
+        <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">
           On this page
         </p>
-        <ul className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-1.5 text-xs sm:text-sm">
+        {/* Each link fills a 44px row. As bare text they were 15px tall on a
+            22px pitch, in two columns: the wrong section was one thumb-width away. */}
+        <ul className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 text-xs sm:text-sm">
           {TOC.map((item) => (
             <li key={item.href}>
-              <a href={item.href} className={citeLink}>{item.label}</a>
+              <a href={item.href} className={`${navLink} flex min-h-11 items-center`}>{item.label}</a>
             </li>
           ))}
         </ul>
@@ -891,8 +973,8 @@ export default function SelfCustodyPage() {
               treated as already read by someone else.
             </p>
             <p className="mt-2 text-xs sm:text-sm font-semibold text-red-700 dark:text-red-400 leading-relaxed">
-              No legitimate wallet, exchange, support agent, giveaway, or airdrop has ever needed your recovery phrase.
-              Anyone who asks is stealing from you, without exception.
+              No legitimate exchange, support agent, wallet company, giveaway, or airdrop has ever needed your recovery
+              phrase. Anyone who asks for it is stealing from you, without exception.
             </p>
           </div>
         </div>
@@ -1058,8 +1140,8 @@ export default function SelfCustodyPage() {
             Withdrawals are usually cheapest when the network is quiet, typically weekends and off-peak hours. If you
             are dollar-cost averaging, consolidating a month or a quarter of purchases into one withdrawal beats
             withdrawing after every buy. You can model how the fee drag affects results in
-            the <Link href="/" className="text-amber-700 dark:text-amber-400 hover:underline">calculator</Link>, and the{' '}
-            <Link href="/methodology" className="text-amber-700 dark:text-amber-400 hover:underline">methodology page</Link>{' '}
+            the <Link href="/" className={citeLink}>calculator</Link>, and the{' '}
+            <Link href="/methodology" className={citeLink}>methodology page</Link>{' '}
             explains how fees are handled there.
           </p>
         </div>
@@ -1222,11 +1304,12 @@ export default function SelfCustodyPage() {
           <p className={prose}>
             Ordered roughly from most beginner-friendly to most specialist. Every one is a reasonable choice, and the
             differences between them matter far less than whether you test your backup. The trade-offs are still real,
-            so each entry carries its caveat as well as its pitch.
+            so each entry carries its caveat and its security record as well as its pitch.
           </p>
           <p className="text-xs text-slate-500 dark:text-slate-400">
-            Prices checked August 2026 and stated as approximations; vendors discount frequently, so confirm current
-            pricing on the manufacturer&apos;s site. Links marked <strong className="text-slate-600 dark:text-slate-300">(affiliate)</strong> support this project at no extra cost to you.
+            Prices are in US dollars, read off each manufacturer&apos;s own store on {PRICES_CHECKED} and stated as
+            approximations; vendors discount frequently, so confirm current pricing on the manufacturer&apos;s site.
+            Links marked <strong className="text-slate-600 dark:text-slate-300">(affiliate)</strong> support this project at no extra cost to you.
           </p>
         </div>
 
@@ -1241,15 +1324,17 @@ export default function SelfCustodyPage() {
                 <strong className="text-slate-800 dark:text-slate-200">Coldcard.</strong> Until 11 August 2026 this page
                 recommended Coinkite&apos;s Coldcard. On 30 July 2026 Coinkite disclosed that a firmware flaw introduced
                 in March 2021 had weakened seed generation on its devices, and attackers spent the following week
-                draining affected wallets — roughly $116 million by 5 August, by Galaxy Research&apos;s tally. Patched
-                firmware exists, but it cannot repair an existing seed: anyone whose seed was generated on affected
-                firmware must create a new wallet and move everything. We removed the recommendation while the exploit
-                is active and Coinkite&apos;s post-mortem is pending. If you own a Coldcard, read{' '}
+                draining affected wallets — roughly 1,800 BTC, about $115 million at the prices when the coins were
+                taken, by Galaxy Research&apos;s late-August tally. Patched firmware exists, but it cannot repair an
+                existing seed: anyone whose seed was generated on affected firmware must create a new wallet and move
+                everything. We removed the recommendation twelve days after that disclosure, and it stays off this
+                list: when last verified on 1 October 2026, Coinkite&apos;s status page said its detailed technical
+                post-mortem was still in preparation. If you own a Coldcard, read{' '}
                 <Link href="/coldcard" className="font-semibold text-red-700 dark:text-red-400 underline hover:no-underline">
                   our full write-up: what happened, which seeds are affected, and what to do now
                 </Link>.
               </p>
-              <Cite items={[SRC.coldcardAdvisory, SRC.coldcardTrm, SRC.coldcardThn]} />
+              <Cite items={[SRC.coldcardAdvisory, SRC.coldcardGalaxy, SRC.coldcardStatus, SRC.coldcardThn]} />
             </div>
           </div>
         </div>
@@ -1260,22 +1345,83 @@ export default function SelfCustodyPage() {
             <strong className="text-red-700 dark:text-red-400">Buy direct from the manufacturer, every time.</strong>{' '}
             Not Amazon, not eBay, not a reseller, not second-hand, however good the discount looks. Tampered devices
             are a documented attack: in 2021 criminals used the leaked Ledger customer list to{' '}
-            <Src href={SRC.fakeLedgers.url}>mail convincing counterfeit &ldquo;replacements&rdquo; to real customers</Src>.
-            A genuine device never arrives with a recovery phrase already written down. It generates one in front of you.
+            <Src href={SRC.fakeLedgers.url}>mail convincing counterfeit &ldquo;replacements&rdquo; to real customers</Src>,
+            and in October 2026 Ledger confirmed a hardware implant in a device sold through a reseller (the note
+            below). A device that arrives with a recovery phrase already written down is compromised. One that
+            generates its own in front of you has passed a necessary test, not a sufficient one. The same order also
+            puts your name and address on a customer list, and those lists have leaked at both Ledger and Trezor. Give
+            the order as little as you can: a separate email address and, where you can, a P.O. box, which is{' '}
+            <Src href={SRC.trezorShipMonk.url}>Trezor&apos;s own advice to its customers</Src>.
           </p>
+        </div>
+
+        {/* Provisional. Everything here is attributed and dated, because the investigation
+            was days old when it was written; see LEDGER_NOTE_AS_OF before editing. */}
+        <div
+          id="ledger-reseller-note"
+          className="bg-white dark:bg-slate-800 border-l-4 border-amber-500 border-y border-r border-slate-200 dark:border-slate-700 p-4 sm:p-5 rounded-r-xl scroll-mt-24"
+        >
+          <div className="flex items-start gap-3">
+            <ShieldAlert className="w-5 h-5 text-amber-600 dark:text-amber-500 shrink-0 mt-0.5" />
+            <div className="space-y-2">
+              <p className="text-[10px] sm:text-xs font-semibold uppercase tracking-wider text-amber-700 dark:text-amber-400">
+                Developing &middot; as of {LEDGER_NOTE_AS_OF}
+              </p>
+              <p className="text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
+                <strong className="text-slate-800 dark:text-slate-200">Ledger devices sold by one reseller.</strong> On
+                9 October 2026 Ledger said it was investigating reports of lost funds from customers in Southeast Asia
+                who had bought devices from a reseller called CryptoBilis, and that it had asked the reseller to pause
+                sales. Cointelegraph reports that CryptoBilis was listed as an authorized Ledger reseller. On 10
+                October Ledger confirmed that one affected customer&apos;s device contained an unauthorized hardware
+                implant, and said it had no indication that its own infrastructure, systems or services had been
+                compromised. On 11 October it described the number of affected devices as limited.
+              </p>
+              <p className="text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
+                Ledger&apos;s guidance, as last stated in its update of 11 October: &ldquo;For CryptoBilis buyers: do
+                not initialize unused devices. If already set up, move to a new seed on a device from Ledger.&rdquo; A
+                seed is the recovery phrase. Its first statement, on 9 October, was narrower: it covered only
+                purchases in the previous 90 days and said to &ldquo;consider moving&rdquo; assets. We found no newer
+                guidance from Ledger on {LEDGER_NOTE_AS_OF}.
+              </p>
+              <p className="text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
+                What is not known: Ledger has confirmed no loss figure and has not said how the implant worked.
+                Outside estimates rose from above $72 million on 9 October to $102 million across 324 wallets in
+                Bitquery&apos;s count on 12 October, and it has not been established that the implant explains every
+                loss.
+              </p>
+              <p className="text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
+                Other sellers are an open question. On 11 October a buyer in Europe published photographs that he
+                said show added wiring inside a Ledger bought about two weeks earlier from a large electronics chain;
+                he reported no funds taken. On 12 October he said a second, bought that day at another branch, was
+                altered the same way, and that he was sending it to Ledger. We found no statement from Ledger
+                confirming or denying either. Its 11 October update says all confirmed cases tied to the 9 October
+                thefts involve the one reseller, and that its own systems and direct sales channels are unaffected:
+                what it has confirmed so far, not a guarantee.
+              </p>
+              <p className="text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
+                Ledger&apos;s own security documentation says its Genuine Check &ldquo;cannot detect unauthorized
+                physical modifications to the hardware, such as spying implants, if the original Secure Element
+                remains intact&rdquo;. This note is provisional and will be rewritten when Ledger publishes its
+                findings.
+              </p>
+              <Cite items={[SRC.ledgerReseller, SRC.ledgerImplantPost, SRC.ledgerUpdatePost, SRC.ledgerUpdateCoindesk, SRC.ledgerLosses, SRC.ledgerEurope, SRC.ledgerEuropeSecond, SRC.ledgerGenuine]} />
+            </div>
+          </div>
         </div>
 
         {/* At-a-glance comparison, rendered from the same WALLETS data as the full cards below. */}
         <div className="bg-slate-100 dark:bg-slate-900/50 p-5 sm:p-6 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-4">
           <h3 className="text-sm sm:text-base font-bold text-slate-800 dark:text-white">The Short Version</h3>
-          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
-            Approximate prices as of August 2026. Tap a name to jump to the full write-up, which carries the caveats
-            this table is too small for.
+          {/* slate-600, not slate-500: on this slate-100 panel slate-500 is 4.35:1 and
+              fails AA at this size. Same for the header row below. */}
+          <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400">
+            Approximate US-dollar prices, checked {PRICES_CHECKED}. Tap a name to jump to the full write-up, which
+            carries the caveats this table is too small for.
           </p>
           <div className="overflow-x-auto -mx-2 sm:mx-0">
             <table className="w-full text-xs sm:text-sm min-w-[640px]">
               <thead>
-                <tr className="text-left text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-700">
+                <tr className="text-left text-slate-600 dark:text-slate-400 border-b border-slate-200 dark:border-slate-700">
                   <th scope="col" className="pb-2 pr-3 font-medium">Wallet</th>
                   <th scope="col" className="pb-2 pr-3 font-medium">Price</th>
                   <th scope="col" className="pb-2 pr-3 font-medium">Open source</th>
@@ -1288,7 +1434,12 @@ export default function SelfCustodyPage() {
                 {WALLETS.map((w) => (
                   <tr key={w.name} className="border-t border-slate-200 dark:border-slate-700/50">
                     <td className="py-2 pr-3 font-medium">
-                      <a href={`#wallet-${w.slug}`} className={citeLink}>{w.name}</a>
+                      {/* 44px tall on a phone and on any touch screen, where the other cells
+                          already wrap the row past that. items-start keeps the name on the
+                          first text line. min-w-11 is for the one-word names: "Trezor" and
+                          "Ledger" are 37px and 40px of text, narrower than a thumb. The column
+                          is already wider than 44px (its longest name sets it), so nothing moves. */}
+                      <a href={`#wallet-${w.slug}`} className={`${citeLink} inline-flex items-start max-sm:min-h-11 max-sm:min-w-11 pointer-coarse:min-h-11 pointer-coarse:min-w-11`}>{w.name}</a>
                     </td>
                     <td className="py-2 pr-3 whitespace-nowrap tabular-nums">{w.price}</td>
                     <td className="py-2 pr-3">{w.openSource}</td>
@@ -1354,6 +1505,11 @@ export default function SelfCustodyPage() {
                         <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
                           <strong className="text-slate-700 dark:text-slate-300">Know this too:</strong> {wallet.caveat}
                         </p>
+                        {wallet.record && (
+                          <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+                            <strong className="text-slate-700 dark:text-slate-300">Security record:</strong> {wallet.record}
+                          </p>
+                        )}
                       </div>
 
                       {wallet.sources && <Cite items={wallet.sources} />}
@@ -1366,7 +1522,7 @@ export default function SelfCustodyPage() {
                         href={wallet.href}
                         target="_blank"
                         rel={wallet.affiliate ? 'noopener noreferrer sponsored' : 'noopener noreferrer'}
-                        className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm sm:text-base font-semibold text-white ${colors.button} transition-colors shadow-sm`}
+                        className={`inline-flex min-h-11 items-center gap-2 px-5 py-2.5 rounded-xl text-sm sm:text-base font-semibold text-white ${colors.button} transition-colors shadow-sm`}
                       >
                         {wallet.affiliate ? `Shop ${wallet.name} (affiliate)` : `Visit ${wallet.name}`}
                         <ExternalLink className="w-4 h-4" />
@@ -1383,8 +1539,11 @@ export default function SelfCustodyPage() {
           Affiliate disclosure: the Trezor, Blockstream Jade, Ledger, BitBox02, and Cypherock links are affiliate links.
           We may earn a commission at no extra cost to you, and it helps keep this calculator free. The SeedSigner link
           is not an affiliate link. Affiliate status did not decide what appears here or what is said about it — the
-          Coldcard, removed above, was never an affiliate link either. Note that the caveats above are attached to the
-          affiliate products too.
+          Coldcard, removed above, was never an affiliate link either. It came off because a flaw in its own firmware
+          weakened seeds wherever the device was bought. Ledger stays, with the dated note above, because what Ledger
+          has confirmed so far is an unauthorized implant in a device sold through a reseller. That is our reading of
+          an open investigation, and we will look at it again when Ledger publishes its findings. Note that the
+          caveats above are attached to the affiliate products too.
         </p>
       </section>
 
@@ -1417,18 +1576,18 @@ export default function SelfCustodyPage() {
           on the device screen. That covers almost every way this goes wrong.
         </p>
         <div className="flex flex-wrap justify-center gap-3">
-          <a href="#wallets" className="inline-flex items-center gap-2 px-5 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-semibold rounded-xl text-sm sm:text-base transition-colors">
+          <a href="#wallets" className="inline-flex min-h-11 items-center gap-2 px-5 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-semibold rounded-xl text-sm sm:text-base transition-colors">
             Compare Hardware Wallets
           </a>
-          <Link href="/" className="inline-flex items-center gap-2 px-5 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 font-semibold rounded-2xl text-sm sm:text-base transition-colors hover:bg-slate-50 dark:hover:bg-slate-700">
+          <Link href="/" className="inline-flex min-h-11 items-center gap-2 px-5 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 font-semibold rounded-2xl text-sm sm:text-base transition-colors hover:bg-slate-50 dark:hover:bg-slate-700">
             Open the Calculator
             <ArrowRight className="w-4 h-4" />
           </Link>
         </div>
         <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400">
           New to all of this? Start with{' '}
-          <Link href="/why-bitcoin" className="text-amber-700 dark:text-amber-400 hover:underline">where Bitcoin&apos;s value comes from</Link>, or read the{' '}
-          <Link href="/methodology" className="text-amber-700 dark:text-amber-400 hover:underline">methodology</Link>{' '}
+          <Link href="/why-bitcoin" className={citeLink}>where Bitcoin&apos;s value comes from</Link>, or read the{' '}
+          <Link href="/methodology" className={citeLink}>methodology</Link>{' '}
           behind the calculator.
         </p>
       </section>
@@ -1442,15 +1601,18 @@ export default function SelfCustodyPage() {
         <div className="bg-slate-100 dark:bg-slate-900/50 p-5 sm:p-6 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-3">
           <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
             Standards claims are cited to the BIP itself. Incidents are cited to the regulator, the affected company&apos;s
-            own disclosure, or the security reporting, not to a summary of a summary. Product claims are cited to the
-            vendor&apos;s published source code where one exists, which is also the point of preferring wallets that
-            publish it. Where a number could not be traced, it was softened or removed.
+            own disclosure, or the security reporting, not to a summary of a summary. Where a vendor has not answered
+            a piece of research in public, the researchers&apos; own write-up is cited and labelled as their account.
+            Product claims are cited to the vendor&apos;s published source code where one exists, which is also the
+            point of preferring wallets that publish it. Where a number could not be traced, it was softened or removed.
           </p>
-          <ul className="space-y-1.5 text-xs sm:text-sm text-slate-600 dark:text-slate-400">
+          {/* On a phone, and on any touch screen, each source is a 44px row: as bare links
+              they were 16px tall and 24px apart. For a mouse from sm up they are a compact list. */}
+          <ul className="sm:space-y-1.5 pointer-coarse:space-y-0 text-xs sm:text-sm text-slate-600 dark:text-slate-400">
             {Object.values(SRC).map((s) => (
-              <li key={s.url} className="flex items-start gap-2">
-                <span className="text-amber-700 dark:text-amber-500 mt-0.5 shrink-0">&bull;</span>
-                <Src href={s.url}>{s.label}</Src>
+              <li key={s.url} className="flex items-center sm:items-start pointer-coarse:items-center gap-2">
+                <span className="text-amber-700 dark:text-amber-500 sm:mt-0.5 pointer-coarse:mt-0 shrink-0">&bull;</span>
+                <Src href={s.url} className="flex items-center max-sm:min-h-11 pointer-coarse:min-h-11">{s.label}</Src>
               </li>
             ))}
           </ul>
@@ -1472,7 +1634,7 @@ export default function SelfCustodyPage() {
             we may earn a commission at no additional cost to you. Prices, product lineups, and security disclosures
             change, so verify current details with the manufacturer before purchasing. Inheritance and estate
             arrangements vary by jurisdiction; consult a qualified professional. This site may also display ads; see{' '}
-            <a href="/about#ads-and-analytics" className="text-amber-700 dark:text-amber-400 hover:underline">/about</a> for full disclosure.
+            <a href="/about#ads-and-analytics" className={citeLink}>/about</a> for full disclosure.
           </p>
         </div>
       </section>

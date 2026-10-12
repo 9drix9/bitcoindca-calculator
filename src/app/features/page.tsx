@@ -30,10 +30,29 @@ import {
     Boxes,
     Shield,
     Cpu,
+    TrendingDown,
+    LayoutGrid,
+    CalendarDays,
+    ListOrdered,
+    AppWindow,
+    Code,
+    BookOpen,
 } from 'lucide-react';
+import { EXCHANGE_FEES } from '@/data/exchangeFees';
+import { HEATMAP_MONTHLY_AMOUNT } from '@/utils/heatmap';
 
-/** Date this guide was last checked against the product it describes. */
-const LAST_REVIEWED = '10 August 2026';
+/**
+ * Date this guide was last checked against the product it describes, card by
+ * card. Move it only after doing that check again, not for a wording edit.
+ */
+const LAST_REVIEWED = '12 October 2026';
+
+/** "A, B and C". */
+const listNames = (names: readonly string[]): string =>
+    names.length <= 1 ? names.join('') : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
+
+// Read from the fee registry, so the card names the platforms the table lists.
+const FEE_PLATFORM_NAMES = listNames(EXCHANGE_FEES.map((fee) => fee.name));
 
 export const metadata: Metadata = {
     title: 'Features Guide',
@@ -89,8 +108,14 @@ const FeatureCard = ({
             <h3 className="font-semibold text-slate-800 dark:text-white mb-2">{title}</h3>
             <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">{description}</p>
             {link && (
-                <p className="mt-3 text-sm">
-                    <Link href={link.href} className="text-amber-700 dark:text-amber-400 hover:underline font-medium">
+                // min-h-11: the link is the only thing to tap on the card, so it
+                // carries the 44px floor itself. The negative margin keeps the
+                // text where a plain paragraph would have put it.
+                <p className="mt-1 -mb-2 text-sm">
+                    <Link
+                        href={link.href}
+                        className="inline-flex min-h-11 items-center text-amber-700 dark:text-amber-400 underline underline-offset-2 font-medium"
+                    >
                         {link.label} &rarr;
                     </Link>
                 </p>
@@ -105,6 +130,58 @@ const SectionHeader = ({ title, subtitle }: { title: string; subtitle: string })
         <p className="text-slate-600 dark:text-slate-400">{subtitle}</p>
     </div>
 );
+
+/** Tools and studies that live on their own page and have no card above. */
+const STANDALONE_PAGES: { href: string; title: string; description: string; icon: React.ElementType }[] = [
+    {
+        href: '/calculators/bitcoin-drawdown',
+        title: 'Drawdown Calculator',
+        description: 'Every fall of more than 30% from a previous high since 2010, on one price per day, and how long a stack would last if you spent it down.',
+        icon: TrendingDown,
+    },
+    {
+        href: '/dca/start-date-heatmap',
+        title: 'Start-Date Heatmap',
+        description: `Annualized returns for a $${HEATMAP_MONTHLY_AMOUNT}-a-month plan, by the year it started and how long it ran. Each window is valued at its own end date.`,
+        icon: LayoutGrid,
+    },
+    {
+        href: '/best-day-to-buy-bitcoin',
+        title: 'Best Day to Buy',
+        description: 'Seven weekly plans, one per weekday, and a week-by-week test of whether any weekday was reliably cheaper. All seven results are published.',
+        icon: CalendarDays,
+    },
+    {
+        href: '/dca',
+        title: 'Scenario Library',
+        description: 'Prebuilt backtests for common amounts and start years, each with its own page and a year-by-year table.',
+        icon: ListOrdered,
+    },
+    {
+        href: '/calculators',
+        title: 'All Calculators',
+        description: 'The standalone calculators in one place, each with the question it answers and one limitation stated up front.',
+        icon: Calculator,
+    },
+    {
+        href: '/embed-guide',
+        title: 'Embeddable Widget',
+        description: 'A live DCA result card for your own site, in one line of HTML. No API key.',
+        icon: AppWindow,
+    },
+    {
+        href: '/developers',
+        title: 'Developer API',
+        description: 'Daily price history as JSON or CSV, and full DCA backtests as JSON. No key and no account.',
+        icon: Code,
+    },
+    {
+        href: '/methodology',
+        title: 'Methodology',
+        description: 'Every data source, the formulas behind each figure, and the known limitations.',
+        icon: BookOpen,
+    },
+];
 
 const breadcrumbJsonLd = {
     "@context": "https://schema.org",
@@ -129,8 +206,8 @@ export default function FeaturesPage() {
                     Features Guide
                 </h1>
                 <p className="text-lg text-slate-600 dark:text-slate-300 max-w-2xl mx-auto mb-4">
-                    A plain-English tour of every tool on the site: what each one does,
-                    what its numbers mean, and when it&apos;s worth your time.
+                    A plain-English tour of the tools on the site: what each one does
+                    and what its numbers mean.
                 </p>
                 <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mb-6">
                     By{' '}
@@ -155,28 +232,29 @@ export default function FeaturesPage() {
                     <p className="text-slate-700 dark:text-slate-300 mb-4 leading-relaxed">
                         Dollar cost averaging means putting a fixed amount into an asset at regular intervals, whatever the
                         price happens to be that day. You give up on trying to &quot;time the market&quot; and buy on a
-                        schedule instead, letting the average price work itself out over the long run.
+                        schedule instead, letting the average price work itself out over the long run. It does not
+                        remove risk: what you hold still falls when the price does.
                     </p>
                     <div className="grid sm:grid-cols-3 gap-4 mt-6">
                         <div className="flex items-start gap-3">
                             <CheckCircle2 className="w-5 h-5 text-green-500 mt-0.5 shrink-0" />
                             <div>
-                                <div className="font-medium text-slate-800 dark:text-white text-sm">Reduces Risk</div>
-                                <div className="text-xs text-slate-600 dark:text-slate-400">Smooths out price volatility</div>
+                                <div className="font-medium text-slate-800 dark:text-white text-sm">Averages Your Entry</div>
+                                <div className="text-xs text-slate-600 dark:text-slate-400">No single day&apos;s price decides the result</div>
                             </div>
                         </div>
                         <div className="flex items-start gap-3">
                             <CheckCircle2 className="w-5 h-5 text-green-500 mt-0.5 shrink-0" />
                             <div>
                                 <div className="font-medium text-slate-800 dark:text-white text-sm">No Timing Needed</div>
-                                <div className="text-xs text-slate-600 dark:text-slate-400">Just invest consistently</div>
+                                <div className="text-xs text-slate-600 dark:text-slate-400">The schedule decides when you buy</div>
                             </div>
                         </div>
                         <div className="flex items-start gap-3">
                             <CheckCircle2 className="w-5 h-5 text-green-500 mt-0.5 shrink-0" />
                             <div>
-                                <div className="font-medium text-slate-800 dark:text-white text-sm">Builds Discipline</div>
-                                <div className="text-xs text-slate-600 dark:text-slate-400">Automatic investing habit</div>
+                                <div className="font-medium text-slate-800 dark:text-white text-sm">Same Amount Each Time</div>
+                                <div className="text-xs text-slate-600 dark:text-slate-400">It buys more when the price is low</div>
                             </div>
                         </div>
                     </div>
@@ -193,13 +271,13 @@ export default function FeaturesPage() {
                     <FeatureCard
                         icon={DollarSign}
                         title="Investment Amount"
-                        description="How much goes in each period. Any number works, and $10 or $20 a week adds up faster than most people expect."
+                        description="How much goes in each period, in your display currency."
                         color="green"
                     />
                     <FeatureCard
                         icon={Repeat}
                         title="Frequency Options"
-                        description="Daily, weekly, bi-weekly (every 2 weeks), or monthly. Weekly is the most popular choice among people who buy by hand."
+                        description="Daily, weekly, bi-weekly (every 2 weeks), or monthly. Every purchase is dated by UTC calendar day."
                         color="blue"
                     />
                     <FeatureCard
@@ -210,8 +288,8 @@ export default function FeaturesPage() {
                     />
                     <FeatureCard
                         icon={Calculator}
-                        title="Fee Percentage"
-                        description="Exchange fees usually land somewhere between 0.1% and 1.5%. Enter yours and every return on the page accounts for the drag."
+                        title="Fees"
+                        description="What your platform takes from each buy. Enter it and the plan's results are worked out after it. The fee comparison further down lists what each platform publishes."
                         color="amber"
                     />
                     <FeatureCard
@@ -223,7 +301,7 @@ export default function FeaturesPage() {
                     <FeatureCard
                         icon={Database}
                         title="Price Sources"
-                        description="Kraken or Coinbase historical data, your pick. Both are major exchanges with price history going back years."
+                        description="Coinbase daily closes by default, or Kraken weekly closes with the days in between filled in along a straight line. Before July 20, 2015 both use a daily series from blockchain.info."
                         color="red"
                     />
                 </div>
@@ -239,7 +317,7 @@ export default function FeaturesPage() {
                     <ul className="text-sm text-slate-600 dark:text-slate-400 space-y-1">
                         <li>&bull; <strong>$50/week for 5 years</strong>: the classic long-term schedule</li>
                         <li>&bull; <strong>$100/week for 3 years</strong>: shorter window, bigger contributions</li>
-                        <li>&bull; <strong>&quot;What if I bought the peak?&quot;</strong>: how DCA plays out when your first buy lands on a cycle top. Bitcoin&apos;s most recent all-time high was about $126,000 in October 2025, and the 2021 top near $69,000 is the older test case</li>
+                        <li>&bull; <strong>&quot;What if I bought the peak?&quot;</strong>: three plans that start near the 2013, 2017 and 2021 price highs, on November 30, 2013, December 17, 2017 and November 10, 2021. The last is the day Bitcoin reached $69,000 on Coinbase</li>
                     </ul>
                 </div>
             </section>
@@ -254,7 +332,7 @@ export default function FeaturesPage() {
                     <FeatureCard
                         icon={Wallet}
                         title="Portfolio Summary"
-                        description="Total invested, BTC accumulated, current value, and profit or loss in a single row. One toggle switches the balance between BTC and satoshis, the smallest Bitcoin unit."
+                        description="Total invested, BTC accumulated, current value, and profit or loss. One toggle switches the balance between BTC and satoshis, the smallest Bitcoin unit."
                         color="amber"
                     />
                     <FeatureCard
@@ -266,13 +344,13 @@ export default function FeaturesPage() {
                     <FeatureCard
                         icon={Table}
                         title="Transaction History"
-                        description="Every purchase in a table: date, BTC price, amount invested, BTC bought, fees paid, and running totals."
+                        description="Every purchase in a table: date, BTC price, amount invested, BTC bought, and the running holdings and their value."
                         color="green"
                     />
                     <FeatureCard
                         icon={Download}
                         title="CSV Export"
-                        description="Pull the whole transaction history down as a spreadsheet. Useful for tax records, your own tracking, or importing somewhere else."
+                        description="Every purchase the plan has made so far, as a spreadsheet for your own analysis. Buys that a plan with a future end date has not made yet are left out. It is a simulation, not a record of trades you made, so it is no use as a tax record."
                         color="purple"
                     />
                     <FeatureCard
@@ -302,23 +380,24 @@ export default function FeaturesPage() {
                         title="DCA vs Lump Sum"
                         description="The same total, dropped in all at once on day one. Sometimes lump sum wins and sometimes DCA does; this tells you which it was for your period."
                         color="blue"
+                        link={{ href: '/lump-sum-vs-dca', label: 'See the study across every start month since 2010' }}
                     />
                     <FeatureCard
                         icon={BarChart3}
                         title="Asset Comparison"
-                        description="Bitcoin against the S&P 500 and gold over the same window, using real historical market data."
+                        description="Bitcoin against the S&P 500 total return index (dividends reinvested) and gold over the same window, on daily prices from Yahoo Finance."
                         color="green"
                     />
                     <FeatureCard
                         icon={PiggyBank}
                         title="Savings Account Comparison"
-                        description="The same schedule parked in a high-yield savings account instead, with compound interest. Rates sit around 4-5% APY (annual percentage yield) and vary by bank, so the rate is fully adjustable."
+                        description="The same schedule paid into a savings account instead, with compound interest. You set the APY (annual percentage yield). It starts at 4.5%, which is a placeholder, not a quoted rate."
                         color="amber"
                     />
                     <FeatureCard
                         icon={TrendingUp}
                         title="Inflation-Adjusted Returns"
-                        description="Your returns in real terms, deflated by official CPI data from the Federal Reserve. What's left over is the gain in purchasing power."
+                        description="Your returns in real terms, deflated by the US Consumer Price Index (published by the Bureau of Labor Statistics, fetched from FRED). What's left over is the gain in purchasing power."
                         color="red"
                     />
                 </div>
@@ -334,9 +413,12 @@ export default function FeaturesPage() {
                     <FeatureCard
                         icon={Target}
                         title="Stacking Goal Tracker"
-                        description="Pick a target: 0.1 BTC, a whole coin, whatever you're after. The tracker shows how far along you are and how long the rest takes at your current pace."
+                        description="Progress toward a ladder of milestones from 0.001 BTC to 1 BTC, and how long the next one takes if you keep buying the same amount with the price held at today's (in Manual mode, at the price you typed). Arithmetic, not a forecast, and fees are not deducted."
                         color="amber"
-                        link={{ href: '/calculators/stack-sats-goal', label: 'Open the stack sats calculator' }}
+                        // The page behind this link has no fields of its own: it is a
+                        // fixed table and a tracker on a sample plan, so the label says
+                        // table, not calculator.
+                        link={{ href: '/calculators/stack-sats-goal', label: 'See the table for seven fixed contribution rates' }}
                     />
                     <FeatureCard
                         icon={TrendingUp}
@@ -349,23 +431,24 @@ export default function FeaturesPage() {
                         title="FIRE Calculator"
                         description="Financial Independence, Retire Early. Enter your monthly expenses and it estimates the years to financial independence under the 4% rule, across three editable price scenarios — falling, flat, and rising — so the downside is never hidden."
                         color="red"
+                        link={{ href: '/calculators/bitcoin-fire', label: 'Open the Bitcoin FIRE calculator' }}
                     />
                     <FeatureCard
                         icon={Coins}
                         title="Unit Bias Calculator"
-                        description="Bitcoin looks expensive until you count in satoshis. One BTC is 100 million sats, and a million sats is a far more reachable target than a whole coin."
+                        description="Your stack counted in satoshis (one BTC is 100 million sats), set against an equal split of all 21 million BTC among everyone alive today."
                         color="purple"
                     />
                     <FeatureCard
                         icon={Calculator}
                         title="Opportunity Cost Calculator"
-                        description="Enter a past date and an amount to see what that money would be worth today had you bought Bitcoin with it. Sometimes reassuring, sometimes not."
+                        description="Pick a daily habit such as a coffee, or type your own daily amount, and see what five years of putting it into Bitcoin each day would be worth today."
                         color="blue"
                     />
                     <FeatureCard
                         icon={ImageIcon}
                         title="Share My Stack"
-                        description="Renders your DCA results as an image built for social media: total invested, current value, and return."
+                        description="Renders your DCA results as an image you can download: total invested, current value, and return, with the assumptions behind them. Buttons post the same figures to X or Nostr."
                         color="cyan"
                     />
                 </div>
@@ -381,14 +464,16 @@ export default function FeaturesPage() {
                     <FeatureCard
                         icon={Calculator}
                         title="Exchange Fee Comparison"
-                        description="Fees side by side across Coinbase, Kraken, Binance, Cash App, Strike, Swan, and River, totaled for your specific buying pattern."
+                        description={`What ${FEE_PLATFORM_NAMES} publish about the cost of a recurring buy, totaled for your buying pattern where the platform states a rate.`}
                         color="amber"
+                        link={{ href: '/calculators/exchange-fees', label: 'Open the exchange fee comparison' }}
                     />
                     <FeatureCard
                         icon={BarChart3}
                         title="Cost Basis Tracker"
-                        description="Your average purchase price as it moves over time. That number is your break-even line, and it's what tax reporting is built on."
+                        description="Your average purchase price across the positions you enter, which is your break-even line. Tax rules differ by country, and some count each purchase separately. The tool's own page explains the difference."
                         color="green"
+                        link={{ href: '/calculators/bitcoin-cost-basis', label: 'Open the cost basis calculator' }}
                     />
                 </div>
             </section>
@@ -433,33 +518,57 @@ export default function FeaturesPage() {
                     <FeatureCard
                         icon={Database}
                         title="Supply Scarcity"
-                        description="Roughly 95% of the 21 million Bitcoin cap has already been mined. This tracks the exact percentage and how much supply is left."
+                        description="More than 95% of the 21 million Bitcoin cap has already been mined. This tracks the exact percentage and how much supply is left."
                         color="amber"
                     />
                     <FeatureCard
                         icon={DollarSign}
                         title="Purchasing Power"
-                        description="What $100 has lost since 2015, set against what Bitcoin gained over the same stretch. Inflation on one line, appreciation on the other."
+                        description="What $100 has lost to US inflation since January 2015, set against the change in Bitcoin's price over the same stretch. Both figures depend on that start date."
                         color="green"
                     />
                     <FeatureCard
                         icon={Zap}
                         title="Lightning Network Stats"
-                        description="Lightning settles Bitcoin payments instantly and for close to nothing. This shows total nodes, channels, and network capacity."
+                        description="Lightning is a payment network built on top of Bitcoin. This shows its node count, channel count, and total capacity in BTC, as reported by mempool.space."
                         color="cyan"
                     />
                     <FeatureCard
                         icon={Globe}
                         title="Bitcoin Dominance"
-                        description="Bitcoin's share of the total cryptocurrency market cap. Rising dominance often means Bitcoin is outperforming altcoins."
+                        description="Bitcoin's share of the total cryptocurrency market cap. It rises when Bitcoin's market value grows faster, or falls more slowly, than the rest of the market."
                         color="purple"
                     />
                     <FeatureCard
                         icon={Coins}
                         title="Sat Converter"
-                        description="USD to satoshis at the current price. Type in a dollar amount, get the sat count."
+                        description="Your display currency to satoshis and back, at the current price."
                         color="amber"
                     />
+                </div>
+            </section>
+
+            {/* Standalone tools and studies */}
+            <section className="mb-12 sm:mb-16">
+                <SectionHeader
+                    title="Tools With Their Own Pages"
+                    subtitle="Studies and calculators that are not part of the main calculator."
+                />
+                <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    {STANDALONE_PAGES.map(({ href, title, description, icon: Icon }) => (
+                        <Link key={href} href={href} className="group">
+                            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 h-full hover:border-amber-300 dark:hover:border-amber-700 transition-colors">
+                                <div className="flex items-center justify-between mb-3">
+                                    <div className="w-10 h-10 rounded-lg bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 flex items-center justify-center">
+                                        <Icon className="w-5 h-5" />
+                                    </div>
+                                    <ArrowRight className="w-4 h-4 text-slate-500 dark:text-slate-400 group-hover:text-amber-700 dark:group-hover:text-amber-400 transition-colors" />
+                                </div>
+                                <h3 className="font-semibold text-slate-800 dark:text-white mb-2">{title}</h3>
+                                <p className="text-sm text-slate-600 dark:text-slate-400">{description}</p>
+                            </div>
+                        </Link>
+                    ))}
                 </div>
             </section>
 
@@ -518,7 +627,7 @@ export default function FeaturesPage() {
                         </div>
                         <h3 className="font-semibold text-slate-800 dark:text-white mb-2">Bitcoin Adoption Tracker</h3>
                         <p className="text-sm text-slate-600 dark:text-slate-400">
-                            An interactive chart laying Bitcoin&apos;s adoption curve over early internet growth, so you can judge how early it still is.
+                            Two published estimates on one chart: the share of the world using the internet, and the share estimated to own Bitcoin. They are measured in different ways, and the card says so.
                         </p>
                     </div>
                 </div>

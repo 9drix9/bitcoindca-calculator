@@ -1,20 +1,16 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
 import { Gauge } from 'lucide-react';
-import { getFearGreedIndex } from '@/app/actions';
+import type { FearGreed } from '@/app/api/live/contract';
 import { Card, CardHeader, EmptyState } from '@/components/ui/Card';
-
-interface FearGreedData {
-    value: number;
-    classification: string;
-}
+import { LONE_LINK_HIT_AREA, StaleNote } from '@/components/live/cardFooter';
+import { useLiveFigure } from '@/components/live/liveSidebar';
 
 interface FearGreedWidgetProps {
-    initialData: FearGreedData | null;
+    initialData: FearGreed | null;
+    /** When the server fetched `initialData` (ms epoch). */
+    fetchedAt?: number | null;
 }
-
-const POLL_MS = 5 * 60_000; // this data changes slowly
 
 const getValueColor = (value: number) => {
     if (value <= 25) return 'text-rose-700 dark:text-rose-400';
@@ -24,42 +20,8 @@ const getValueColor = (value: number) => {
     return 'text-emerald-700 dark:text-emerald-400';
 };
 
-export const FearGreedWidget = ({ initialData }: FearGreedWidgetProps) => {
-    const [data, setData] = useState<FearGreedData | null>(initialData);
-    const hadInitialData = useRef(initialData !== null);
-
-    useEffect(() => {
-        let mounted = true;
-        // SSR data is seconds old at hydration; only fetch immediately when it is missing.
-        let lastFetched = hadInitialData.current ? Date.now() : 0;
-
-        const refresh = async () => {
-            lastFetched = Date.now();
-            try {
-                const fresh = await getFearGreedIndex();
-                if (mounted && fresh) setData(fresh);
-            } catch {
-                // keep showing last known data
-            }
-        };
-
-        if (!hadInitialData.current) refresh();
-
-        // Visibility-gated polling: skip while hidden, catch up when the tab returns.
-        const interval = setInterval(() => {
-            if (!document.hidden) refresh();
-        }, POLL_MS);
-        const onVisibilityChange = () => {
-            if (!document.hidden && Date.now() - lastFetched >= POLL_MS) refresh();
-        };
-        document.addEventListener('visibilitychange', onVisibilityChange);
-
-        return () => {
-            mounted = false;
-            clearInterval(interval);
-            document.removeEventListener('visibilitychange', onVisibilityChange);
-        };
-    }, []);
+export const FearGreedWidget = ({ initialData, fetchedAt }: FearGreedWidgetProps) => {
+    const { data, fetchedAt: since, old } = useLiveFigure('fearGreed', initialData, fetchedAt);
 
     const clampedValue = data ? Math.min(100, Math.max(0, data.value)) : 0;
 
@@ -106,11 +68,12 @@ export const FearGreedWidget = ({ initialData }: FearGreedWidgetProps) => {
             )}
 
             <div className="mt-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+                {old && <StaleNote since={since} />}
                 <a
                     href="https://alternative.me/crypto/fear-and-greed-index/"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 hover:text-amber-700 dark:hover:text-amber-400 transition-colors"
+                    className={`${LONE_LINK_HIT_AREA} text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 hover:text-amber-700 dark:hover:text-amber-400 transition-colors`}
                 >
                     Data from alternative.me
                 </a>

@@ -103,7 +103,7 @@ const profilePageJsonLd = {
     },
     // Static dates: the page is updated when its content changes, not on every build.
     dateCreated: '2026-08-08',
-    dateModified: '2026-08-08',
+    dateModified: '2026-10-12',
 };
 
 const breadcrumbJsonLd = {
@@ -114,6 +114,13 @@ const breadcrumbJsonLd = {
         { '@type': 'ListItem', position: 2, name: 'Author', item: `${BASE_URL}/author` },
     ],
 };
+
+// A breadcrumb link is one short word, about 15px tall as text on a phone. The
+// padding makes it a 44px touch target, and the negative margins hand the same
+// space back so the row sits exactly where it did. Same string as the study
+// pages use (lump-sum-vs-dca and its siblings).
+const crumbLink =
+    'inline-flex min-h-11 items-center -my-3.5 px-1.5 -mx-1.5 hover:text-amber-700 dark:hover:text-amber-400 transition-colors';
 
 function SectionHeading({ icon, children }: { icon: React.ReactNode; children: React.ReactNode }) {
     return (
@@ -161,7 +168,7 @@ export default function AuthorPage() {
                 <nav aria-label="Breadcrumb" className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
                     <ol className="flex flex-wrap items-center gap-1.5">
                         <li>
-                            <Link href="/" className="hover:text-amber-700 dark:hover:text-amber-400 transition-colors">
+                            <Link href="/" className={crumbLink}>
                                 Home
                             </Link>
                         </li>
@@ -185,7 +192,7 @@ export default function AuthorPage() {
                             href={X_URL}
                             target="_blank"
                             rel="noopener noreferrer me"
-                            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold bg-slate-800 dark:bg-slate-700 hover:bg-slate-900 dark:hover:bg-slate-600 text-white transition-colors"
+                            className="inline-flex min-h-11 items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold bg-slate-800 dark:bg-slate-700 hover:bg-slate-900 dark:hover:bg-slate-600 text-white transition-colors"
                         >
                             <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                                 <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
@@ -196,7 +203,7 @@ export default function AuthorPage() {
                             href={REPO_URL}
                             target="_blank"
                             rel="noopener noreferrer me"
-                            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold bg-slate-800 dark:bg-slate-700 hover:bg-slate-900 dark:hover:bg-slate-600 text-white transition-colors"
+                            className="inline-flex min-h-11 items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold bg-slate-800 dark:bg-slate-700 hover:bg-slate-900 dark:hover:bg-slate-600 text-white transition-colors"
                         >
                             <GithubMark />
                             Source on GitHub
@@ -216,11 +223,9 @@ export default function AuthorPage() {
                             paying for the output, so when something here is wrong, it&apos;s mine to fix.
                         </p>
                         <p>
-                            I started this because one plain question had no honest answer online: what would
-                            consistent Bitcoin buying have done for me? The sites that answered it wanted an email
-                            address first, invented their own price history, or quietly showed a number that
-                            flattered the strategy. I wanted a calculator where every input, every formula, and
-                            every data source was visible. One where the uncomfortable figures sit next to the
+                            I started this to answer one plain question: what would consistent Bitcoin buying
+                            have done for me? I wanted a calculator where every input, every formula, and every
+                            data source was visible. One where the uncomfortable figures sit next to the
                             flattering ones: maximum drawdown, the worst buy, the fee drag. (Maximum drawdown is
                             the worst fall from a high point to the low that followed.)
                         </p>
@@ -301,7 +306,7 @@ export default function AuthorPage() {
                                 <Bullet>
                                     I hold Bitcoin. That&apos;s a real bias, and you should read everything here with
                                     it in mind. It&apos;s also why the{' '}
-                                    <Link href="/methodology" className="text-amber-700 dark:text-amber-400 hover:underline font-medium">
+                                    <Link href="/methodology#known-limitations" className="text-amber-700 dark:text-amber-400 hover:underline font-medium">
                                         limitations section
                                     </Link>{' '}
                                     exists and is kept blunt.
@@ -344,9 +349,14 @@ export default function AuthorPage() {
                                     2. Missing data is shown as missing
                                 </h3>
                                 <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-                                    When a provider is down, widgets and pages render an explicit
-                                    &quot;unavailable&quot; state. They do not fall back to a zero, a placeholder,
-                                    or a stale number presented as current.
+                                    When a provider is down and there is nothing to show, a widget or page
+                                    says &quot;unavailable&quot;. It does not put a zero or a placeholder in its
+                                    place. When the calculator has to use the other exchange&apos;s prices, or a
+                                    copy fetched earlier, it says which, and the price ticker marks an old quote
+                                    &quot;last known&quot;. A network widget that cannot refresh keeps its last
+                                    figure and says so once that figure is too old to pass as current: after
+                                    five minutes for fees, blocks and prices, and up to half an hour for the
+                                    slowest.
                                 </p>
                             </div>
 
@@ -357,7 +367,7 @@ export default function AuthorPage() {
                                 <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
                                     When a calculation error turns up, the fix goes into the public commit history.
                                     If it changed any displayed result, it also goes into the{' '}
-                                    <Link href="/methodology" className="text-amber-700 dark:text-amber-400 hover:underline font-medium">
+                                    <Link href="/methodology#changelog" className="text-amber-700 dark:text-amber-400 hover:underline font-medium">
                                         methodology changelog
                                     </Link>, with what was wrong and what changed. Past entries include double-counted
                                     future contributions, currency conversion inconsistencies, and timezone-dependent
@@ -459,10 +469,15 @@ export default function AuthorPage() {
                                 the site is gated behind them.
                             </Bullet>
                             <Bullet>
-                                <strong className="text-slate-800 dark:text-slate-200">Cookieless ads.</strong>{' '}
-                                Two small A-ADS slots. I deliberately removed Google AdSense in July 2026, because
-                                surveillance advertising contradicts what this site says about privacy. I accepted
-                                the lower revenue for it.
+                                <strong className="text-slate-800 dark:text-slate-200">Ads from A-ADS.</strong>{' '}
+                                A few small slots, each labeled &quot;Sponsored&quot;. The{' '}
+                                <Link href="/privacy" className="text-amber-700 dark:text-amber-400 hover:underline font-medium">
+                                    privacy policy
+                                </Link>{' '}
+                                says what the ad frames load. I removed Google AdSense in July 2026 and accepted
+                                the lower revenue. Google&apos;s ads tag is separate: it shows no ads, loads only
+                                if you press Accept All, and the privacy policy says what it does, ad
+                                personalisation included.
                             </Bullet>
                             <Bullet>
                                 <strong className="text-slate-800 dark:text-slate-200">Affiliate links,</strong>{' '}
