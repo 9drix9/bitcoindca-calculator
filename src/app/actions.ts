@@ -547,7 +547,10 @@ export async function getBitcoinPriceHistoryWithMeta(
 ): Promise<PriceHistoryResult> {
     // Untrusted input — see normalizeProvider. Everything below uses `requested`.
     const requested = normalizeProvider(providerArg);
-    const revalidate = normalizeRevalidate(revalidateArg, HISTORY_REVALIDATE);
+    // Anyone can call a server action with any arguments, so a caller may make
+    // the series staler than the default but never fresher: a lower value would
+    // let it force a refetch from the exchange on every call.
+    const revalidate = Math.max(HISTORY_REVALIDATE, normalizeRevalidate(revalidateArg, HISTORY_REVALIDATE));
     const { loaded, served, stale } = await resolveSeries(requested, revalidate);
 
     const full = loaded.series;

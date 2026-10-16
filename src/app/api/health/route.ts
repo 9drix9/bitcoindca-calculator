@@ -151,7 +151,12 @@ const isCurrentHistory = (v: unknown): boolean => {
 
 const isPositiveNumber = (v: unknown): boolean => typeof v === 'number' && v > 0;
 
-export async function GET() {
+export async function GET(request: Request) {
+    // One address only: a query string would give each request its own CDN
+    // cache entry and walk past the cache to the throttle below.
+    if (new URL(request.url).search) {
+        return NextResponse.json({ error: 'This endpoint takes no parameters.' }, { status: 400, headers: { 'Cache-Control': 'public, max-age=3600' } });
+    }
     const now = Date.now();
 
     const checks = await Promise.all([

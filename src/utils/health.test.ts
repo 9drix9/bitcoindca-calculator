@@ -75,7 +75,7 @@ async function coldRoute(): Promise<() => Promise<{ status: number; cacheControl
     vi.resetModules();
     const { GET } = await import('@/app/api/health/route');
     return async () => {
-        const res = await GET();
+        const res = await GET(new Request('https://btcdollarcostaverage.com/api/health'));
         return { status: res.status, cacheControl: res.headers.get('cache-control'), body: (await res.json()) as Health };
     };
 }
@@ -150,6 +150,15 @@ describe('/api/health', () => {
         expect(status).toBe(200);
         expect(body.status).toBe('degraded');
         expect(body.failing).toEqual(['fear-greed']);
+    });
+
+    it('refuses a query string without asking any provider', async () => {
+        delete (globalThis as Record<symbol, unknown>)[STATE_KEY];
+        vi.resetModules();
+        const { GET } = await import('@/app/api/health/route');
+        const res = await GET(new Request('https://btcdollarcostaverage.com/api/health?bust=1'));
+        expect(res.status).toBe(400);
+        expect(calls).toEqual([]);
     });
 
     it('does not let a caller hammer the providers by polling', async () => {
